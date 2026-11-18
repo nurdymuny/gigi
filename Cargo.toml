@@ -23,6 +23,11 @@ name = "ricci_operator_probe"
 path = "examples/ricci_operator_probe.rs"
 required-features = ["gauge"]
 
+[[example]]
+name = "recover_curvature_probe"
+path = "examples/recover_curvature_probe.rs"
+required-features = ["gauge"]
+
 # ── Feature flags ──
 #
 # `kahler` — opt-in Kähler-geometry substrate (catalog.md §1, the

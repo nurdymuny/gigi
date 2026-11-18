@@ -435,6 +435,18 @@ pub enum Statement {
         time: String,
         block: Option<usize>,
     },
+    /// `RECOVER_CURVATURE cells FROM edges ON field [RINGS n]` — the two-ring
+    /// closed linear curvature recovery of *Reading the Curve, Not Counting
+    /// the Points* (docs/papers/two-ring-pg). One row per mesh cell: the
+    /// recovered field `c + B z` in the cell's canonical chart, and the
+    /// amplification, condition and neighbourhood size the paper reports.
+    /// Executes only with the `gauge` feature; refuses by name otherwise.
+    RecoverCurvature {
+        cells: String,
+        edges: String,
+        field: String,
+        rings: Option<usize>,
+    },
     /// `SPECTRAL bundle [FULL [LIMIT k]]` — λ₁ of the normalized
     /// field-index-graph Laplacian (Scalar), or with FULL the whole
     /// normalized spectrum ascending (Rows; Phase 2, 2026-07-16).
@@ -2555,6 +2567,7 @@ impl Parser {
             "CURVATURE" => self.parse_curvature(),
             // Shape verbs (2026-08-09) — GQL twins of the REST routes.
             "TEXTURE" => self.parse_texture(),
+            "RECOVER_CURVATURE" => self.parse_recover_curvature(),
             "PRECEDENCE" => self.parse_precedence(),
             "CADENCE" => self.parse_cadence(),
             "SPECTRAL" => self.parse_spectral(),
@@ -5928,6 +5941,22 @@ impl Parser {
             }
         }
         Ok(Statement::Texture { bundle, field, along, q, min_lag, max_lag })
+    }
+
+    /// `RECOVER_CURVATURE cells FROM edges ON field [RINGS n]`
+    fn parse_recover_curvature(&mut self) -> Result<Statement, String> {
+        let cells = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        let edges = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let field = self.expect_word()?;
+        let rings = if self.is_keyword("RINGS") {
+            self.advance();
+            Some(self.expect_usize()?)
+        } else {
+            None
+        };
+        Ok(Statement::RecoverCurvature { cells, edges, field, rings })
     }
 
     /// `PRECEDENCE bundle ON x, y [ALONG order]` — exactly two fields, because
@@ -10857,8 +10886,63 @@ pub fn shape_verb_exec(
                 Ok(ExecResult::Rows(vec![row]))
             })())
         }
+        Statement::RecoverCurvature { cells, edges, field, rings } => {
+            Some(recover_curvature_rows(engine, cells, edges, field, rings.unwrap_or(2)))
+        }
         _ => None,
     }
+}
+
+/// RECOVER_CURVATURE as GQL rows: one row per cell, in cell order.
+#[cfg(feature = "gauge")]
+fn recover_curvature_rows(
+    engine: &crate::engine::Engine,
+    cells: &str,
+    edges: &str,
+    field: &str,
+    rings: usize,
+) -> Result<ExecResult, String> {
+    use crate::types::Value as V;
+    let out = crate::gauge::curvature_recovery::recover_curvature_from_bundles(
+        engine, cells, edges, field, rings,
+    )
+    .map_err(|e| e.to_string())?;
+    let rows = out
+        .iter()
+        .enumerate()
+        .map(|(ci, r)| {
+            let mut row = crate::types::Record::new();
+            row.insert("cell".into(), V::Float(ci as f64));
+            for i in 0..3 {
+                row.insert(format!("c{i}"), V::Float(r.c[i]));
+                for j in 0..3 {
+                    row.insert(format!("b{i}{j}"), V::Float(r.b[i][j]));
+                }
+            }
+            row.insert("amplification".into(), V::Float(r.amplification));
+            row.insert("condition".into(), V::Float(r.condition));
+            row.insert("rank".into(), V::Float(r.rank as f64));
+            row.insert("faces".into(), V::Float(r.faces as f64));
+            row.insert("cells".into(), V::Float(r.cells as f64));
+            row.insert("residual".into(), V::Float(r.residual));
+            row.insert("own_residual".into(), V::Float(r.own_residual));
+            row
+        })
+        .collect();
+    Ok(ExecResult::Rows(rows))
+}
+
+#[cfg(not(feature = "gauge"))]
+fn recover_curvature_rows(
+    _engine: &crate::engine::Engine,
+    _cells: &str,
+    _edges: &str,
+    _field: &str,
+    _rings: usize,
+) -> Result<ExecResult, String> {
+    Err("RECOVER_CURVATURE requires the `gauge` feature, which this build does not \
+         enable — nothing was executed"
+        .to_string())
 }
 
 pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<ExecResult, String> {
@@ -11776,7 +11860,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // a READ lock on the engine when it dispatches, so anything needing
         // `&mut` there deadlocks. Sharing one `&Engine` helper keeps a single
         // implementation and makes the lock discipline impossible to get wrong.
-        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. } => {
+        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
+        | Statement::RecoverCurvature { .. } => {
             shape_verb_exec(engine, stmt)
                 .expect("shape verb matched here must be handled by shape_verb_exec")
         }

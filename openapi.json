@@ -1524,6 +1524,186 @@
         }
       }
     },
+    "/v1/bundles/{name}/recover_curvature": {
+      "post": {
+        "summary": "RECOVER_CURVATURE — two-ring closed linear curvature recovery on a tetrahedral mesh of S^3 or a quotient",
+        "description": "The curvature recovery of the paper 'Reading the Curve, Not Counting the Points' (docs/papers/two-ring-pg). {name} is the cell bundle: numeric `cell` = 0..N-1, `v{i}_{k}` (vertex i, unit-quaternion component k, scalar first), `e0..e5` (global edge ids of local edges 01,02,03,12,13,23) and `r0..r5` (1 if the stored edge runs opposite). The edge bundle has numeric `edge` = 0..E-1 and the value field. Each cell's own four face fluxes are held exactly, the rest of its `rings`-step neighbourhood is fitted in least squares, and every neighbour is first carried onto the cell's sheet of the cover. Refuses (422) with the cell named if the mesh is not closed, a neighbour does not coincide after transport, a flux map is rank-deficient or ill-conditioned, or the own fluxes are not reproduced. Unknown request keys are rejected. Requires the `gauge` feature. GQL: RECOVER_CURVATURE cells FROM edges ON field [RINGS n].",
+        "tags": [
+          "Analytics"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "edges": {
+                    "type": "string",
+                    "description": "Bundle holding the 1-cochain."
+                  },
+                  "field": {
+                    "type": "string",
+                    "description": "Numeric field of the edge bundle with the edge integrals."
+                  },
+                  "rings": {
+                    "type": "integer",
+                    "default": 2,
+                    "minimum": 1,
+                    "maximum": 3,
+                    "description": "Neighbourhood radius in face-steps."
+                  }
+                },
+                "required": [
+                  "edges",
+                  "field"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One recovery per cell, plus amplification and neighbourhood summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "bundle",
+                    "edges",
+                    "field",
+                    "rings",
+                    "n_cells",
+                    "cells",
+                    "reads",
+                    "notes"
+                  ],
+                  "properties": {
+                    "bundle": {
+                      "type": "string"
+                    },
+                    "edges": {
+                      "type": "string"
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "rings": {
+                      "type": "integer"
+                    },
+                    "n_cells": {
+                      "type": "integer"
+                    },
+                    "amplification_median": {
+                      "type": "number"
+                    },
+                    "amplification_max": {
+                      "type": "number"
+                    },
+                    "faces_min": {
+                      "type": "integer"
+                    },
+                    "faces_max": {
+                      "type": "integer"
+                    },
+                    "cells": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "cell": {
+                            "type": "integer"
+                          },
+                          "c": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "description": "Constant part of the recovered field, in the cell's chart."
+                          },
+                          "b": {
+                            "type": "array",
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              }
+                            },
+                            "description": "Traceless linear part (3x3), in the cell's chart."
+                          },
+                          "coefficients": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            },
+                            "description": "The eleven basis coefficients."
+                          },
+                          "amplification": {
+                            "type": "number",
+                            "description": "2-norm of the map from neighbourhood fluxes to coefficients. Lower is steadier."
+                          },
+                          "condition": {
+                            "type": "number"
+                          },
+                          "rank": {
+                            "type": "integer"
+                          },
+                          "faces": {
+                            "type": "integer",
+                            "description": "Distinct faces read (16 for one ring)."
+                          },
+                          "cells": {
+                            "type": "integer",
+                            "description": "Cells in the neighbourhood, the cell itself included."
+                          },
+                          "residual": {
+                            "type": "number"
+                          },
+                          "own_residual": {
+                            "type": "number",
+                            "description": "Misfit on the cell's own four faces; held exactly."
+                          }
+                        }
+                      }
+                    },
+                    "reads": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "notes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A named bundle does not exist"
+          },
+          "422": {
+            "description": "Refusal: names the cell and the violated requirement"
+          }
+        }
+      }
+    },
     "/v1/bundles/{name}/texture": {
       "post": {
         "summary": "TEXTURE — how rough is one ordered signal (self-similarity exponent)",

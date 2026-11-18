@@ -45,6 +45,8 @@ pub mod ricci_whitney;
 #[cfg(feature = "gauge")]
 pub mod ricci_simplicial;
 #[cfg(feature = "gauge")]
+pub mod curvature_recovery;
+#[cfg(feature = "gauge")]
 pub mod edge_connection;
 #[cfg(feature = "gauge")]
 pub mod holonomy;

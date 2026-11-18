@@ -9641,6 +9641,75 @@ async fn bundle_solve(
     })))
 }
 
+/// Request for `POST /v1/bundles/{name}/recover_curvature`. Unknown keys are
+/// rejected, so a misspelt parameter is an error, never a silent default.
+#[cfg(feature = "gauge")]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RecoverCurvatureRequest {
+    /// Bundle holding the 1-cochain: numeric `edge` = 0..E-1 and the value field.
+    edges: String,
+    /// Numeric field of the edge bundle holding the edge integrals.
+    field: String,
+    /// Neighbourhood radius in face-steps, 1..=3 (default 2, the paper's choice).
+    #[serde(default = "default_recover_rings")]
+    rings: usize,
+}
+#[cfg(feature = "gauge")]
+fn default_recover_rings() -> usize { 2 }
+
+/// POST /v1/bundles/{name}/recover_curvature
+///
+/// RECOVER_CURVATURE: the two-ring closed linear curvature recovery of
+/// *Reading the Curve, Not Counting the Points* (docs/papers/two-ring-pg).
+/// `{name}` is the cell bundle. Refusals are 422 and name the cell and the
+/// violated requirement.
+#[cfg(feature = "gauge")]
+async fn bundle_recover_curvature(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    ApiJson(req): ApiJson<RecoverCurvatureRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::gauge::curvature_recovery::{recover_curvature_from_bundles, BundleRecoveryError};
+    let engine = state.engine_read();
+    let out = recover_curvature_from_bundles(&engine, &name, &req.edges, &req.field, req.rings)
+        .map_err(|e| match e {
+            BundleRecoveryError::NotFound(m) => (StatusCode::NOT_FOUND, Json(ErrorResponse { error: m })),
+            BundleRecoveryError::Refused(m) => (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: m })),
+        })?;
+    let mut amps: Vec<f64> = out.iter().map(|r| r.amplification).collect();
+    amps.sort_by(|a, b| a.total_cmp(b));
+    let median = if amps.is_empty() { f64::NAN } else { amps[amps.len() / 2] };
+    let max_faces = out.iter().map(|r| r.faces).max().unwrap_or(0);
+    let min_faces = out.iter().map(|r| r.faces).min().unwrap_or(0);
+    let cells: Vec<serde_json::Value> = out.iter().enumerate().map(|(ci, r)| serde_json::json!({
+        "cell": ci, "c": r.c, "b": r.b, "coefficients": r.coefficients,
+        "amplification": r.amplification, "condition": r.condition, "rank": r.rank,
+        "faces": r.faces, "cells": r.cells, "residual": r.residual, "own_residual": r.own_residual,
+    })).collect();
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "edges": req.edges,
+        "field": req.field,
+        "rings": req.rings,
+        "n_cells": out.len(),
+        "amplification_median": median,
+        "amplification_max": amps.last().copied().unwrap_or(f64::NAN),
+        "faces_min": min_faces,
+        "faces_max": max_faces,
+        "cells": cells,
+        "reads": [
+            "Each cell's curvature is the closed linear field c + B z in that cell's canonical chart.",
+            "The cell's own four face fluxes are held exactly; the other faces in the neighbourhood are fitted in least squares.",
+            "amplification is how strongly the fit can magnify rough edge data; lower is steadier.",
+        ],
+        "notes": [
+            "Coefficients are in each cell's own chart (Gram-Schmidt frame, positive diagonal); amplification, condition and fluxes do not depend on that frame.",
+            "This verb recovers curvature only. The Petrov-Galerkin force and the BW05 gate are computed by the research scripts in the repository.",
+        ],
+    })))
+}
+
 /// POST /v1/bundles/{name}/circulation
 ///
 /// Directed-flow circulation analysis (rung two). Splits a directed flow into the
@@ -15772,7 +15841,8 @@ fn execute_gql_on_store_read(
         //
         // Delegating to `gigi::parser::execute` keeps ONE implementation: same
         // kernels, same refusals, same row shape as the heap path and as REST.
-        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. } => {
+        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
+        | Statement::RecoverCurvature { .. } => {
             let eng_lock = engine.ok_or_else(|| {
                 "shape verbs require engine context (not available in this \
                  dispatch path)".to_string()
@@ -15885,6 +15955,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         ProjectInvariant { bundle, .. } => Some(bundle.clone()),
         // Cognitive Geometry (Branch VII — Davis 2026-05-29)
         Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle, .. } => Some(bundle.clone()),
+        RecoverCurvature { cells, .. } => Some(cells.clone()),
         // Divergence is cross-bundle; no single name
         _ => None,
     }
@@ -15910,6 +15981,7 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Spectral { .. }       => "SPECTRAL",
         Helicity { .. }       => "HELICITY",
         SpectralGauge { .. }  => "SPECTRAL_GAUGE",
+        RecoverCurvature { .. } => "RECOVER_CURVATURE",
         ChernClass { .. }     => "CHERN_CLASS",
         Pontryagin { .. }     => "PONTRYAGIN",
         HolonomyCycle { .. }  => "HOLONOMY_CYCLE",
@@ -16913,6 +16985,10 @@ async fn main() {
     }
     #[cfg(feature = "gauge")]
     let app = app.merge(gigi::gauge::http::build_router());
+    // RECOVER_CURVATURE (docs/RECOVER_CURVATURE_SPEC.md): the two-ring curvature
+    // recovery of docs/papers/two-ring-pg as an engine verb. Gauge-only.
+    #[cfg(feature = "gauge")]
+    let app = app.route("/v1/bundles/{name}/recover_curvature", post(bundle_recover_curvature));
 
     let app = app
         // GQL endpoint

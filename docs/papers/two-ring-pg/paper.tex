@@ -87,8 +87,9 @@ integration are untested.
 
 Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
 Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
-$120$-fold cover, and a Python recovery layer, with hash-pinned receipts. We show the
-code alongside the mathematics.
+$120$-fold cover; the two-ring recovery itself as an engine verb, which matches the
+research code cell by cell on every mesh; and hash-pinned receipts. We show the code
+alongside the mathematics.
 \end{abstract}
 
 \section{Introduction}
@@ -347,13 +348,39 @@ Force errors, Table~\ref{tab:force} & \path{make_data.py}, \path{make_tables.py}
 Numerical range, Table~\ref{tab:stability} & \path{numerical_range.py} \\
 Amplification, Figure~\ref{fig:conditioning} & \path{make_data.py} $\to$ \texttt{conditioning.json} \\
 Unit tests of the two-ring fit & \path{scripts/test_ricci_pg_tworing.py} \\
+Engine verb \path{RECOVER_CURVATURE} & \path{src/gauge/curvature_recovery.rs} \\
+Verb gates, parity, live run & \path{tests/recover_curvature.rs}, \path{e2e/probes/*recover_curvature*} \\
 \bottomrule\end{tabular}
 \end{table}
 
+\paragraph{Engine verb.}
+The two-ring recovery is also a \GIGI{} verb, \path{RECOVER_CURVATURE}, implemented
+natively in Rust (\path{src/gauge/curvature_recovery.rs}). It reads the mesh and the
+edge cochain from two bundles and returns, for every cell, the recovered closed linear
+curvature and the diagnostics reported here (amplification, condition, neighbourhood
+size):
+\begin{lstlisting}[style=json]
+RECOVER_CURVATURE cells FROM edges ON a RINGS 2;
+POST /v1/bundles/cells/recover_curvature  {"edges": "edges", "field": "a", "rings": 2}
+\end{lstlisting}
+Like the research layer, it refuses rather than guesses. It names the cell when the mesh
+is not closed, when a neighbour fails to coincide after transport, when a flux map is
+rank-deficient or ill-conditioned, or when the cell's own fluxes are not reproduced.
+On all four meshes and for one and two rings, it agrees with the research code cell by
+cell: coefficients to $1.0\times10^{-14}$ relative, amplification to $2.1\times10^{-14}$ and
+condition number to $2.0\times10^{-14}$, with identical neighbourhoods. On the finest mesh
+($\T_5$, 15000 cells) the native recovery takes 8.7\,s. A live
+\texttt{gigi-stream} built from this tree, with $\T_1$ ingested over HTTP, returns the
+same values through both surfaces. Its refusals fire with HTTP status 422, or 404 for a
+missing bundle. One implementation note: \texttt{nalgebra}'s singular value
+decomposition reconstructed the rank-deficient own-face matrix to only $2.6\times10^{-3}$,
+which broke the equality constraint, so the verb uses a one-sided Jacobi decomposition,
+accurate to rounding on these small matrices.
+
 \paragraph{Scope of the code.}
-The native layer is \GIGI{} library code. The recovery and the gate are research scripts
-in the repository, not an engine query verb: no \GIGI{} query route or HTTP endpoint was
-used, and none is claimed.
+The transport, masses and curvature recovery are \GIGI{} engine code; the recovery is
+reachable as a query verb. The Petrov--Galerkin force assembly and the \BW{} gate remain
+research scripts in the repository.
 
 \section{Where the error comes from}\label{sec:decomp}
 

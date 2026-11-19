@@ -99,9 +99,10 @@ def add(z, rel):
 def main():
     head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
     tag = subprocess.run(["git", "rev-parse", f"{TAG}^{{commit}}"], cwd=REPO, capture_output=True, text=True).stdout.strip()
-    if OUT.exists():
-        shutil.rmtree(OUT)
-    OUT.mkdir()
+    # empty the folder in place (OneDrive refuses to delete and recreate a synced folder)
+    OUT.mkdir(exist_ok=True)
+    for p in OUT.iterdir():
+        shutil.rmtree(p) if p.is_dir() else p.unlink()
 
     shutil.copy2(PAPER / "paper.pdf", OUT / "paper.pdf")
 

@@ -1,9 +1,9 @@
-# S2d status: partial (2026-11-19)
+# S2d status: complete (2026-11-19); results in docs/RICCI_SU2_PG_SPECTRUM_N3_RESULTS.md
 
 Spec `docs/RICCI_SU2_PG_SPECTRUM_N3_SPEC.md` (4938db6, before measurement). Script `scripts/ricci_su2_pg_spectrum.py`.
 
 Finished receipts: L0_native, L0_pg, L1_native, L1_pg (the C-repro runs), L2_native, L2_pg.
-Running: L2_pg_onering (the removal).
+All runs finished, including L2_pg_onering (the removal: 4,437 rough modes, as required).
 
 | run | rough (Re λ < −10) | min Re λ | W-left | max \|Im λ\| | C-col |
 | --- | --- | --- | --- | --- | --- |

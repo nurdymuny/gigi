@@ -96,8 +96,10 @@ matching the native operator's, while the one-ring force has hundreds. Its numer
 range, which bounds transient growth, has its left edge at $-4.66$ against the native
 $-4.68$ at $n=2$, so the lopsided spectrum hides no swell.
 Integrated in time while the Berger metric flows underneath, in a research replica of the
-flow gate, it ends $1.76\%$ off the exact trajectory at $n=2$, down from $13.8\%$ at $n=1$,
-and overtakes the native force ($2.21\%$).
+flow gate, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact trajectory at $n=1,2,3$,
+and from $n=2$ on it stays ahead of the native force ($2.21\%$, then $1.07\%$). At $n=3$ the
+flow is stepped by the Cayley map, which reaches the same answers with a few large implicit
+steps.
 
 Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
 Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
@@ -375,6 +377,7 @@ Amplification, Figure~\ref{fig:conditioning} & \path{make_data.py} $\to$ \texttt
 Unit tests of the two-ring fit & \path{scripts/test_ricci_pg_tworing.py} \\
 $SU(2)$ numerical range, Table~\ref{tab:su2numrange} & \path{scripts/ricci_su2_pg_numrange.py} \\
 $SU(2)$ time integration, Table~\ref{tab:su2flow} & \path{scripts/ricci_su2_pg_flow.py} \\
+Cayley step, $n=3$ rows & \path{scripts/ricci_su2_pg_flow_cayley.py} \\
 Slow and fast residual & \path{scripts/ricci_su2_pg_flow_filter.py} \\
 Engine verb \path{RECOVER_CURVATURE} & \path{src/gauge/curvature_recovery.rs} \\
 Verb gates, parity, live run & \path{tests/recover_curvature.rs}, \path{e2e/probes/*recover_curvature*} \\
@@ -1075,7 +1078,8 @@ Table~\ref{tab:su2flow} gives the result.
 \begin{table}[t]\centering\small
 \caption{Time integration of the $SU(2)$ force on the Ricci-flowed Berger metric over
 $t\in[0,0.02]$, $q6$. $R=E/D$ is the final error over the distance the exact field
-travelled; the last column measures it on gauge-invariant data.}
+travelled; the last column measures it on gauge-invariant data. Rows at $n\le2$ use the
+explicit RKMK4 step; rows at $n=3$ use the Cayley step with $8$ implicit steps.}
 \label{tab:su2flow}
 \begin{tabular}{llrrrr}\toprule
 Force & $n$ & steps & $E(0.02)$ & $R$ (\%) & gauge-invariant $R$ (\%) \\ \midrule
@@ -1085,7 +1089,10 @@ control: metric frozen at $g(0)$ & 1 & 32 & 0.0699 & 14.02 & 9.39 \\
 removal: one ring & 1 & 32 & diverges & 2541 & -- \\ \midrule
 Native $SU(2)$ Whitney & 2 & 64 & 0.0113 & 2.21 & 2.10 \\
 \textbf{Two-ring Petrov--Galerkin} & 2 & 64 & 0.0090 & \textbf{1.76} & 1.82 \\
-control: metric frozen at $g(0)$ & 2 & 64 & 0.0412 & 8.07 & 5.70 \\
+control: metric frozen at $g(0)$ & 2 & 64 & 0.0412 & 8.07 & 5.70 \\ \midrule
+Native $SU(2)$ Whitney & 3 & 8 & 0.0055 & 1.07 & 1.22 \\
+\textbf{Two-ring Petrov--Galerkin} & 3 & 8 & 0.0045 & \textbf{0.87} & 0.77 \\
+control: metric frozen at $g(0)$ & 3 & 8 & 0.0417 & 8.13 & 5.30 \\
 \bottomrule\end{tabular}
 \end{table}
 
@@ -1120,16 +1127,39 @@ carries into the trajectory is the slow part of the error, $2.28\%$ for native a
 for two rings at $n=2$, falling with observed orders $1.17$ and $2.62$. On a longer window
 more directions count as slow, and the native force's stiff error begins to matter.
 
+\paragraph{The third level.} At $n=3$ ($11{,}358$ unknowns) the explicit step needs too
+many force evaluations, so the flow is stepped by the Cayley map of the companion
+paper~\cite{threeways}: $U_{k+1}=U_k\,\mathrm{cay}(\Omega)$, with $\Omega$ solving
+$\Omega=h\,\xi(U_k\,\mathrm{cay}(\Omega/2),t_k+h/2)$, the Lie form of the implicit midpoint
+rule. Its linearisation is Crank--Nicolson, stable for any step, and every update stays
+exactly on $SU(2)$. Each step is a quasi-Newton solve with one iteration matrix factored per
+run. The step was checked before use. Its distance from the exponential map falls as
+$|v|^3/12$, the phase lag of the companion paper. Its observed time order is $1.99$. At $n=1$
+and $n=2$, with $8$ steps, it reproduces the RKMK4 errors of Table~\ref{tab:su2flow} to within
+$1.5\%$ for both forces, with a fifth to a third of the force evaluations. The specification fixed
+$8$ steps from those two levels before $n=3$ was run. Getting there needed the derivative of
+the face defect in closed form: a finite-difference derivative had left the force noisy at
+about $10^{-10}$, below which Newton could not converge.
+
+At $n=3$ every step converged, in at most eight iterations, and the gates set before the
+run hold. The two-ring error is $0.87\%$ of the distance moved, falling by a factor of
+$2.03$ from $n=2$. The mesh size shrinks by $3/2$ between these levels (the link count grows
+by $1.5^3$), so the observed order is $1.74$. Halving the step moves $E$ by $0.75\%$. The
+gap between the moving and frozen-metric runs, now measured exactly from saved final states,
+is $\Delta=0.042$, ten times the moving run's error. The frozen run's error does not
+converge at all ($0.0412$ to $0.0417$, order $-0.03$). The two-ring force stays ahead of
+native, at $0.82$ of its error. The native error still falls (order $1.80$), so the stall
+asked for by the corrected control is again absent, as the filter model explains. That model
+also forecast, without a gate, that the two-ring error would fall faster than the native
+one. At this refinement it did not: the two orders are $1.74$ and $1.80$.
+
 \paragraph{Scope.} Both the covariant recovery and the non-Abelian force are research
 scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
 metric, with the spectrum of Table~\ref{tab:su2stab}. The time integration is a research
-replica on one metric and one window, at $n\le2$, and stability and the numerical range are
-likewise measured only at $n\le2$. For finer levels, where explicit steps become
-unaffordable, the companion
-paper~\cite{threeways} gives the natural next rule: the Crank--Nicolson step is the
-Cayley map, the tangent reading of a turn, which keeps each update exactly on $SU(2)$, and
-the numerical range bounds how large its steps may be. A reciprocal version remains the
-open problem of Section~\ref{sec:magnet}.
+replica on one metric and one window, at $n\le3$, and stability and the numerical range are
+measured only at $n\le2$. The step that reached $n=3$ came from the companion
+paper~\cite{threeways}: the Crank--Nicolson step is the Cayley map, the tangent reading of a
+turn. A reciprocal version remains the open problem of Section~\ref{sec:magnet}.
 
 \section{Discussion}
 
@@ -1218,8 +1248,8 @@ separates them, and what the third, outside path means, became the companion
 paper~\cite{threeways}. It finds the chord and the outside path missing the arc in a fixed
 ratio of two to one, in length, in energy and in time stepping. For this paper it settles
 two points: the chord--arc gap on our meshes is too small to matter
-(Section~\ref{sec:su2force}), and the Cayley map is the integrator to try next for the flow,
-at the levels where the explicit step used here becomes unaffordable.
+(Section~\ref{sec:su2force}), and the Cayley map is the integrator that carried the flow to
+$n=3$, where the explicit step became unaffordable.
 
 \paragraph{What grew from this work.} Two research notes of 18 November 2026 record further
 ideas that came out of these results, each with its provenance and with every link tagged as
@@ -1237,9 +1267,9 @@ used as evidence in this paper.
     exact left-invariant fields with sampled cells. The $SU(2)$ force of
     Section~\ref{sec:su2force} passes \BW{} on the Berger metric only, and its stability and
     numerical range are measured at $n\le2$. Its time integration is a research replica at
-    $n\le2$ over $t\in[0,0.02]$, not the engine's flow gate, and the predicted stall of the
-    native force in time did not appear; a first-order filter model
-    explains why, and it is not a substitute for runs at $n\ge3$.
+    $n\le3$ over $t\in[0,0.02]$, not the engine's flow gate. The predicted stall of the
+    native force in time did not appear at $n=2$ or $n=3$; a first-order filter model
+    explains why. The two-ring force keeps its lead over native but does not widen it.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only

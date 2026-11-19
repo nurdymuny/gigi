@@ -66,7 +66,9 @@ physical eigenvalue ($n\le3$) in the right half-plane; at $n=1,2$ the flow is di
 The force error falls to $6.22\%$, $3.83\%$, $2.79\%$ and $1.45\%$ at $n=1,2,3,5$ (orders
 $0.73$, $0.80$, $1.29$) and passes the unchanged \BW{} gate. Nothing is fitted and no data
 are added; only the size of the neighbourhood the reading consults changes. The force is
-not the gradient of an energy, and we show why every symmetrized variant fails.
+not the gradient of an energy, and we show why every symmetrized variant fails. Counting
+the clues one order higher calls for three rings read to second order. That reading keeps
+each cell's own fluxes exact and reaches $0.158\%$ at $n=5$, with orders near two.
 
 The construction carries over to $SU(2)$. With neighbouring holonomies turned into
 register by link transport, the recovery converges at second order on the Levi-Civita
@@ -195,6 +197,10 @@ each failed one of two requirements:
     is positive definite, so there the semi-discrete flow is dissipative.
   \item Mechanism removals and a quantitative account of why symmetrized and variational
     variants of the same recovery fail (Section~\ref{sec:removals}).
+  \item A count of the clues each neighbourhood holds, and the reading it calls for: three
+    rings fitted to second order, with the cell's own fluxes kept exact. Its force reaches
+    $0.158\%$ at $n=5$ with observed orders near two, stays stable and dissipative, and passes
+    \BW{} (Section~\ref{sec:hybrid}).
   \item The same construction for $SU(2)$: a covariant recovery that converges at second
     order, a force that passes \BW{} on a Berger metric where the native force stalls at
     $25\%$, and a time integration that follows the Ricci-flowed metric to within $0.87\%$
@@ -592,8 +598,9 @@ discretization, and the test space is left unchanged.
 \begin{itemize}
   \item \emph{Two rings.} The star (one face-step) is exactly determined; two whole
     face-steps is the smallest radius that oversamples, and it grows the neighbourhood
-    symmetrically, one face-step in every direction. Only radii
-    one and two were ever run; no radius was tuned.
+    symmetrically, one face-step in every direction. For the linear fit only radii
+    one and two were ever run; no radius was tuned. The second-order reading of
+    Section~\ref{sec:hybrid} uses three rings because its count requires them.
   \item \emph{Equal weights.} Every voting face counts the same, so the fit has no
     parameter. Distance-weighted variants are possible and were not tested.
   \item \emph{Chart scaled by the cell's diameter.} The coefficients, and so $\Lambda_K$,
@@ -740,7 +747,8 @@ against Whitney's first-order $1.53\%$.
   \centering
   \includegraphics[width=0.98\textwidth]{figures/fig_force_error.pdf}
   \caption{Relative instantaneous force error under refinement. Whitney floors near
-  $26\%$. Both Petrov--Galerkin forces converge, and the variational force of the same
+  $26\%$. Every Petrov--Galerkin force converges, the hybrid three-ring reading
+  (Section~\ref{sec:hybrid}) at an order near two, and the variational force of the same
   recovery diverges.}
   \label{fig:force}
 \end{figure}
@@ -817,6 +825,95 @@ it. In an exploratory construction we found this coupling solvable but dense, an
 leave a scalable formulation open.
 
 \input{tables/removals.tex}
+
+\section{A third ring: reading to second order}\label{sec:hybrid}
+
+The two-ring force converges, but slowly: its observed orders are $0.73$, $0.80$ and $1.29$,
+while its recovered curvature converges at second order. This section asks what the
+remaining error is made of, and answers by counting again.
+
+\paragraph{Counting the clues.} Section~\ref{sec:conditioning} counted the star: $16$ faces,
+$11$ independent fluxes, exactly $\dim\Pone$. The same count on larger neighbourhoods, taking
+the rank of the flux map from edge data, gives $26$ independent fluxes for two rings at $n=1$
+($29$ at $n=2$), and $50$ ($64$) for three. Every sampled cell gives the same numbers. Now
+count unknowns one order up. Closed (divergence-free) homogeneous quadratic fields add $15$
+coefficients to the $11$ of $\Pone$, for $26$ in all, and on every sampled cell their face
+fluxes span exactly the two-ring clue space at $n=1$. So the two-ring fit's spare clues are not
+noise directions: they are the second-order part of the field. A linear fit over two rings
+reads that part as best it can as linear, and how it does so depends on how the
+neighbourhood happens to sit around $K$. A fit exact to second order on two rings would use up
+every clue and fall back into the one-ring trap: its median amplification is about $1{,}490$.
+With three rings there are about twice as many clues as second-order unknowns, the same vote
+the two-ring fit gives the linear one.
+
+\paragraph{The hybrid reading.} Fit the $26$ closed linear and quadratic coefficients over
+three rings by the constrained least squares of~\eqref{eq:fit}, $K$'s own faces exact; call
+the map $\cR^{(26)}_K$. The trial field stays in $\Pone$, so that the test pairing, the
+assembly and every other part of the force are unchanged. Keeping only the linear part of
+$\cR^{(26)}_K$ would give up $K$'s own fluxes, since a quadratic field has flux through them
+(a $4.8\%$ defect, measured). Instead, add back the closed linear field of least norm that
+carries the quadratic part's own-face flux:
+\begin{equation}\label{eq:hybrid}
+  \cR^{\mathrm{hyb}}_K \;=\; \cR^{(26)}_K\big|_{\Pone} \;+\; A_K^{+}\,A^{\mathrm{q}}_K\,\cR^{(26)}_K\big|_{\mathrm{quad}},
+\end{equation}
+where $A_K$ and $A^{\mathrm{q}}_K$ are the own-face flux rows of the linear and quadratic fields
+and $A_K^{+}$ is the pseudoinverse. Three properties hold by construction:
+\begin{itemize}
+  \item it reproduces $K$'s own fluxes for all edge data: they are closed, so the added term
+    lands in the range of $A_K$;
+  \item it is exact on $\Pone$, so Lemma~\ref{lem:acc} applies unchanged;
+  \item it reads a quadratic field as $K$'s own-face representative of it, with nothing drawn
+    from the outer rings.
+\end{itemize}
+The construction came out of the variational investigation of Section~\ref{sec:removals}. It
+was probed first, then measured under a specification that fixed every gate before the run
+(repository: \path{docs/RICCI_PG_HYBRID_SPEC.md}).
+
+\paragraph{Result.} Table~\ref{tab:hybrid} and Figure~\ref{fig:force} give the result.
+\begin{itemize}
+  \item \emph{Consistency.} The force error falls to $5.47\%$, $0.848\%$, $0.401\%$ and
+    $0.158\%$ at $n=1,2,3,5$, with observed orders $2.84$, $1.88$ and $1.83$. It passes the
+    unchanged \BW{} gate, and it is below the two-ring force's at every level: $9.2$ times
+    below at $n=5$.
+  \item \emph{Stability.} S3 holds at $n\le3$: the small-eigenvalue counts equal the gauge
+    dimensions, and the smallest physical real parts are $4.016$, $4.005$ and $4.002$.
+  \item \emph{Dissipativity.} The symmetric part is positive definite at $n=1,2$, with
+    $\mu=4.010$ and $4.002$. These sit closer to the continuum value $4$ than the two-ring
+    force's $3.998$ and $3.969$.
+  \item \emph{Controls.} The $q4/q6$ velocity differences are at most $2\times10^{-7}$. The
+    gated values reproduce the exploratory probe to $10^{-12}$.
+\end{itemize}
+The recovered curvature still converges at second order (orders $2.13$, $2.08$, $2.05$), but
+with a constant $2.8$ times smaller at $n=5$ ($0.056\%$ against $0.155\%$).
+
+\input{tables/hybrid.tex}
+
+\paragraph{What does the work.} Two removals, from the probe, isolate the mechanism.
+\begin{itemize}
+  \item \emph{The third ring alone does not help.} The linear fit over three rings gives
+    $4.02\%$, $5.63\%$ and $3.80\%$ at $n=1,2,3$, no better than two rings: more clues read
+    with a first-order model only bring in more second-order bias.
+  \item \emph{Reading to second order does,} and the own-face term keeps it honest. Keeping
+    the linear part of $\cR^{(26)}_K$ without that term gives $4.83\%$, $1.19\%$ and $0.56\%$,
+    at the price of $K$'s own fluxes. The hybrid gives $5.47\%$, $0.85\%$ and $0.40\%$ with
+    them exact.
+\end{itemize}
+The amplification also falls, to a median of $26.8$, $16.2$ and $15.5$ at $n=1,2,3$ (two
+rings: $30.5$ to $35.2$).
+
+\paragraph{What is not shown.}
+\begin{itemize}
+  \item The bound~\eqref{eq:pgbound} promises order one from a second-order recovery. The
+    measured order of nearly two means the inverse estimate is not attained on this
+    reconstruction error. A plausible reading is that the hybrid's error varies smoothly from
+    cell to cell, where a linear fit's neighbourhood-dependent bias does not. We have not
+    proved this.
+  \item The cost is a larger stencil: $80$ to $100$ faces per cell instead of $40$ to $44$.
+    A build at $n=5$ takes $559$\,s, against $200$\,s for two rings.
+  \item Everything in this section is Abelian. The $SU(2)$ results of
+    Section~\ref{sec:su2} use the two-ring reading, and a covariant hybrid is open.
+  \item Like the two-ring force, the hybrid force is not the gradient of an energy.
+\end{itemize}
 
 \section{Beyond the Abelian control: covariant recovery}\label{sec:su2}
 
@@ -1251,7 +1348,9 @@ the recovery is given more information than it strictly needs, rough patterns ar
 averaged rather than interpolated. Exactness on the model space is untouched, so
 consistency survives. Stability follows without any damping parameter, filter or
 regularization: the only change is a neighbourhood radius, and only radii one and two
-were ever run.
+were ever run. The same count, taken one order higher, gives the hybrid reading of
+Section~\ref{sec:hybrid}: three rings, read to second order, raise the observed order of the
+force from about $0.8$ to about $1.85$.
 
 \subsection{Fitting to a guide}\label{sec:magnet}
 
@@ -1354,8 +1453,10 @@ used as evidence in this paper.
     error is about $10.6\%$ at $n=3$.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
-  \item The observed orders $0.73$ and $0.80$ before the last refinement are only
-    moderately above the threshold, and a further level would strengthen the rate claim.
+  \item For the two-ring force, the observed orders $0.73$ and $0.80$ before the last
+    refinement are only moderately above the threshold. The hybrid reading
+    (Section~\ref{sec:hybrid}) gives $1.88$ and $1.83$ on the same meshes, but it is
+    Abelian only, and its order exceeds what the bound~\eqref{eq:pgbound} explains.
   \item The force is not the gradient of an energy. Whether a dissipative, consistent,
     non-variational force suffices for the programme's purposes is a modelling decision,
     not a numerical one.

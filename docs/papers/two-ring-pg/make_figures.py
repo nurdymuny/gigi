@@ -64,7 +64,7 @@ ax.plot(H, [100*HY['cases'][f'level{l}_q6']['relative_error'] for l in range(4)]
 ax.axhline(5, color=INK2, lw=0.7, ls=(0, (1, 1.5)))
 ax.text(0.0835, 4.35, 'BW05 threshold 5%', color=INK2, fontsize=6.8, ha='left', va='top')
 ax.set_xscale('log'); ax.set_yscale('log')
-ax.set_xlim(0.395, 0.074)
+ax.set_xlim(0.395, 0.074); ax.set_ylim(0.1, 1.5e3)
 ax.set_xticks(H); ax.set_xticklabels([f'{h:.3f}\n(n={n})' for h, n in zip(H, E['n'])], fontsize=6.8)
 ax.minorticks_off()
 ax.set_xlabel('mesh size $h_{\\max}$ (refinement $\\rightarrow$)')

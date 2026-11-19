@@ -104,3 +104,17 @@ V1 took 4,670 s at n = 2 on this machine; V2 is expected to take longer, but not
 ## Not done here
 
 n = 3 and 5, SU(2), the flow, and any objective other than minimum norm.
+
+## Amendment 1 (19 November 2026, before any V2 run)
+
+From the base-fit probe in `docs/research/v2-review-2026-11-19.md` (C = 0 only; no V2 change has been
+computed). Nothing above is relaxed.
+
+- **Second arm, V2q.** Identical to V2 except the base: fit the 26 closed linear and quadratic
+  coefficients by the same equality-constrained least squares over three rings, and keep the linear
+  part (the first 11 coefficients, at the chart origin). Then M X_quad = 0, and the change, kept off
+  linear and quadratic fields, leaves the quadratic response at zero. Same gates, controls and
+  predictions as V2; P-recon, V2-acc and V2-stable are judged for each arm separately.
+- **Solve.** `lsqr` on A (atol = btol = 10⁻¹⁴, iter_lim 10⁵) is primary; the dense eigh of AAᵀ is the
+  cross-check. Both residuals are reported; C-solve uses the smaller.
+- **Reported, not gated:** the three-ring Petrov–Galerkin force error for both bases.

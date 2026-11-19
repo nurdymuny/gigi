@@ -1,0 +1,53 @@
+{
+ "level": 1,
+ "kind": "exploratory probe, not gated",
+ "rings2_linear": {
+  "pg_error": 0.03833696121596987,
+  "variational_error": 2.7634020861594797,
+  "reconstruction_term": 0.03668757368305696,
+  "test_variation_term": 2.759427633274435,
+  "curvature_relative_error": 0.009240731961240744,
+  "amplification_median_max": [
+   35.17832034417175,
+   44.71850870408972
+  ],
+  "quadratic_bias_median": 3.7795710439439496
+ },
+ "rings2_quad": {
+  "pg_error": 0.01659504792480397,
+  "variational_error": 11.617470094351352,
+  "reconstruction_term": 0.06465277991947034,
+  "test_variation_term": 11.599379154843165,
+  "curvature_relative_error": 0.0041103127502779314,
+  "amplification_median_max": [
+   60.489386778039375,
+   832.9128372900259
+  ],
+  "quadratic_bias_median": 9.206118329196125e-15
+ },
+ "rings3_linear": {
+  "pg_error": 0.05630782591034863,
+  "variational_error": 1.8380960561004496,
+  "reconstruction_term": 0.047820265202000944,
+  "test_variation_term": 1.8231855961670609,
+  "curvature_relative_error": 0.009833571377909345,
+  "amplification_median_max": [
+   21.455396441397806,
+   34.46922518808194
+  ],
+  "quadratic_bias_median": 1.6859421857812509
+ },
+ "rings3_quad": {
+  "pg_error": 0.01192514900709061,
+  "variational_error": 2.4923872020101747,
+  "reconstruction_term": 0.012925412405532527,
+  "test_variation_term": 2.4859400358954016,
+  "curvature_relative_error": 0.004112419028367272,
+  "amplification_median_max": [
+   16.420591737161317,
+   19.011584182784286
+  ],
+  "quadratic_bias_median": 3.978314667949183e-15
+ },
+ "seconds": 250.7
+}

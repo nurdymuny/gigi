@@ -4,7 +4,8 @@ Spec: docs/RICCI_SU2_PG_FLOW_CAYLEY_SPEC.md. Research script, not an engine verb
 usage:
   python scripts/ricci_su2_pg_flow_cayley.py controls LEVEL
   python scripts/ricci_su2_pg_flow_cayley.py buildK LEVEL TRIAL [WORKERS]
-  python scripts/ricci_su2_pg_flow_cayley.py run LEVEL TRIAL N [RECEIPT.json]
+  python scripts/ricci_su2_pg_flow_cayley.py run LEVEL TRIAL N [RECEIPT.json] [--startup be2]
+    --startup be2  first step = two backward-Euler half-steps (S3d, docs/RICCI_SU2_PG_FLOW_STARTUP_SPEC.md)
     TRIAL  pg | native | pg_fixed        N  steps over [0, 0.02]
 """
 import json
@@ -119,7 +120,7 @@ def controls(level):
 
 
 # ---------------------------------------------------------------- the run
-def run(level, trial, N):
+def run(level, trial, N, startup=None):
     t0 = time.time()
     lat = FL.Lattice(level, trial)
     met = FL.Metric(fixed=(trial == "pg_fixed"))
@@ -136,6 +137,42 @@ def run(level, trial, N):
     Om = np.zeros((lat.n, 3))
     t_eval = 0.0
     for k in range(N):
+        if startup == "be2" and k == 0:
+            # S3d: two backward-Euler half-steps, Omega = (h/2) xi(U cay(Omega), t_end); A = B0 + (h/2)K0
+            # is exactly the backward-Euler Jacobian for step h/2. L-stable, first order, one step only.
+            for half in (1, 2):
+                g = met(half * 0.5 * h)
+                Ob = np.zeros((lat.n, 3)); ok = False
+                for it in range(1, NEWTON_MAX + 1):
+                    te = time.time()
+                    F = Ob - 0.5 * h * lat.velocity(compose(U, cay(Ob)), g)
+                    t_eval += time.time() - te
+                    evals += 1
+                    d = A.solve(-(B0 @ F.ravel())).reshape(lat.n, 3)
+                    Ob = Ob + d
+                    inc = float(np.linalg.norm(d) / max(np.linalg.norm(Ob), 1e-300))
+                    if inc <= NEWTON_TOL:
+                        ok = True
+                        break
+                iters.append(it)
+                worst_inc = max(worst_inc, inc)
+                if not ok:
+                    break
+                U = compose(U, cay(Ob))
+                U /= np.linalg.norm(U, axis=1, keepdims=True)
+            if not ok:
+                status = f"failed in the start-up step: Newton increment {inc:.2e}"
+                break
+            Om = 2.0 * Ob                                  # initial guess for the next Cayley step
+            if 1 in samples:
+                t = h; gt = true_met(t); L = lat.exact_links(gt)
+                E, D = lat.error(U, L, gt), lat.error(L0, L, gt)
+                fa_U, fa_L, fa_0 = lat.face_angles(U), lat.face_angles(L), lat.face_angles(L0)
+                rows.append({"t": t, "E": E, "D": D, "R": E / D,
+                             "gauge_invariant_R": float(np.linalg.norm(fa_U - fa_L) / np.linalg.norm(fa_0 - fa_L)),
+                             "newton_iterations": iters[-1], "seconds": round(time.time() - t0, 1)})
+                print(json.dumps(rows[-1]), flush=True)
+            continue
         tm = (k + 0.5) * h
         g = met(tm)
         ok = False
@@ -169,7 +206,7 @@ def run(level, trial, N):
                          "gauge_invariant_R": float(np.linalg.norm(fa_U - fa_L) / np.linalg.norm(fa_0 - fa_L)),
                          "newton_iterations": iters[-1], "seconds": round(time.time() - t0, 1)})
             print(json.dumps(rows[-1]), flush=True)
-    return {"level": level, "trial": trial, "stepper": "cayley_midpoint", "N": N, "h": h,
+    return {"level": level, "trial": trial, "stepper": "cayley_midpoint", "startup": startup, "N": N, "h": h,
             "status": status, "rows": rows,
             "R_final": rows[-1]["R"] if rows and abs(rows[-1]["t"] - T_END) < 1e-15 else None,
             "E_final": rows[-1]["E"] if rows and abs(rows[-1]["t"] - T_END) < 1e-15 else None,
@@ -187,11 +224,15 @@ def main():
     if mode == "buildK":
         build_K(int(sys.argv[2]), sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 12)
         return
-    level, trial, N = int(sys.argv[2]), sys.argv[3], int(sys.argv[4])
-    receipt = Path(sys.argv[5]) if len(sys.argv) > 5 else None
+    args = sys.argv[2:]
+    startup = None
+    if "--startup" in args:
+        i = args.index("--startup"); startup = args[i + 1]; del args[i:i + 2]
+    level, trial, N = int(args[0]), args[1], int(args[2])
+    receipt = Path(args[3]) if len(args) > 3 else None
     if receipt and receipt.exists():
         raise SystemExit(f"refusing to overwrite {receipt}")
-    out = run(level, trial, N)
+    out = run(level, trial, N, startup)
     final = out.pop("_final")
     print(json.dumps({k: v for k, v in out.items() if k not in ("rows", "newton_iterations")}), flush=True)
     if receipt:

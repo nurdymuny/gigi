@@ -1,6 +1,6 @@
 # The curvature of one unit: zero, ±1, the gauge group and the mass gap
 
-2026-11-18. Research note. It records an idea of Bee's, separates what is exact from
+2026-11-18. Research note. It records an idea of mine, separates what is exact from
 what is open, and computes the one piece that could be computed today. **No mass-gap
 claim is made.** The one open link is tagged as open throughout.
 
@@ -10,9 +10,9 @@ Altitude tags, as in `docs/research/small-edges-2026-11-18.md`:
 - **RESONANCE:** the same question in a different setting. It suggests, and proves nothing;
 - **OPEN:** the link this note would need, and does not have.
 
-## The idea, in Bee's words and in plain words
+## The idea, in my words and in plain words
 
-Bee, 2026-11-18, continuing from the chord–arc–tangent picture
+What I said on 2026-11-18, continuing from the chord–arc–tangent picture
 (`docs/papers/chord-arc-tangent/`):
 
 > 0 is nothing, there is no system, but if you take 1 unit of energy, 1 unit of anything
@@ -25,21 +25,21 @@ Bee, 2026-11-18, continuing from the chord–arc–tangent picture
 real thing has nothing to make it prefer one direction over another, so it extends the
 same amount in every direction. "The same amount in every direction" is a sphere, and a
 sphere is curved. So curvature is not something added to the smallest thing from
-outside. It comes with existing at all. Bee's proposal is that this curvature, at the
+outside. It comes with existing at all. My proposal is that this curvature, at the
 bottom of everything, is related to why some forces have a mass gap.
 
 ## Provenance
 
 | Source | What it contributes | Where |
 | --- | --- | --- |
-| Bee's messages, 2026-11-18 | The idea above. Also: residuals come in twins, and the "root" (where the construction is based) decides whether numbers are real or unreal. She related both to Bertrand's paradox, to her graph theory and to her grouping theory. | this session |
+| My messages, 2026-11-18 | The idea above. Also: residuals come in twins, and the "root" (where the construction is based) decides whether numbers are real or unreal. I related both to Bertrand's paradox, to my graph theory and to my grouping theory. | this session |
 | The chord–arc–tangent paper | The turn U, the chord U − 1, the half-turn U = −1 where the tangent construction breaks, twins and Bertrand (§§ 2–6) | `docs/papers/chord-arc-tangent/paper.tex` |
-| Bee's Good Will Hunting graph-fold article | Folding with matching menus: AP = PB, hence AⁿP = PBⁿ. Connectedness and equitability are different properties. | math-website `notebook/content/good-will-hunting-graph-fold.html`, commit `8eb87c00` |
-| *Zero Does Not Exist* (Bee) | A count of n is the path P_{n+1}. Zero crossings is still one position (P₁), never empty. | cited in the article above |
-| Bee's connected-partition counting paper | Grouping into connected pieces, and contraction | cited in the article above |
-| *The Double Cover Principle* (Bee) | S + d² = 1 on the double cover | Zenodo 10.5281/zenodo.18895462 |
+| My Good Will Hunting graph-fold article | Folding with matching menus: AP = PB, hence AⁿP = PBⁿ. Connectedness and equitability are different properties. | math-website `notebook/content/good-will-hunting-graph-fold.html`, commit `8eb87c00` |
+| *Zero Does Not Exist* (mine) | A count of n is the path P_{n+1}. Zero crossings is still one position (P₁), never empty. | cited in the article above |
+| My connected-partition counting paper | Grouping into connected pieces, and contraction | cited in the article above |
+| *The Double Cover Principle* (mine) | S + d² = 1 on the double cover | Zenodo 10.5281/zenodo.18895462 |
 | Two-ring paper, Section 9 | The measured eigenvalue 4 on S³/2I is a geometric eigenvalue of a compact space, not a mass gap (the correction of 2026-11-17) | `docs/papers/two-ring-pg/paper.tex` |
-| Halcyon | Bee's SU(2) Yang–Mills lattice programme, the downstream home of any test | `davis-wilson-lattice/` |
+| Halcyon | My SU(2) Yang–Mills lattice programme, the downstream home of any test | `davis-wilson-lattice/` |
 | Computation (this note) | The double-cover fold on the binary icosahedral group 2I | `scripts/binary_icosahedral_fold.py`, receipt `research/binary-icosahedral-fold-20261118/fold.json` |
 
 The outside literature is listed at the end. **The citations there are from memory**,
@@ -116,7 +116,7 @@ our paper breaks.
 inside; you need two directions for that. So the photon's circle of turns is flat in the
 only sense that matters to someone living on it. The SU(2) turns are genuinely curved, and
 the amount of curvature is exactly how much "this turn, then that one" differs from "that
-one, then this". Bee's "curvature at the bottom" has an exact name here: the commutator.
+one, then this". My "curvature at the bottom" has an exact name here: the commutator.
 
 ## 4. Curvature and gaps: what is a theorem, what is observed, what is open
 
@@ -155,23 +155,23 @@ one, then this". Bee's "curvature at the bottom" has an exact name here: the com
 - Karabali, Kim and Nair (1998) built a Hamiltonian treatment of 2+1 Yang–Mills with a
   mass gap along these lines.
 
-So "curvature of the configuration space ⇒ gap" is an established line of thought. Bee's
+So "curvature of the configuration space ⇒ gap" is an established line of thought. My
 specific picture (the unit's own curvature, the centre twins ±1, and the commutator as the
 curvature) has to be positioned against it, not presented as its origin.
 
-**Why this is better than the reading I corrected on 2026-11-17.** The eigenvalue 4
+**Why this is better than the reading corrected on 2026-11-17.** The eigenvalue 4
 measured in the two-ring paper comes from the curvature of the *space* (S³/2I, of fixed
 size). In infinite flat space that curvature, and any gap borrowed from it, disappears.
-Bee's idea puts the curvature in the *fibre*, the group of turns, which stays curved however
+My idea puts the curvature in the *fibre*, the group of turns, which stays curved however
 flat and large spacetime is. That is the right place for it to be. It is also where the
 2+1 literature above puts it.
 
 **In plain words.** Mathematicians have proved that curvature forces a gap for the
-simplest vibrations on a curved space or graph. Physicists observe the pattern Bee
-describes: the flat, commuting force (light) has no gap, and the curved, non-commuting
+simplest vibrations on a curved space or graph. Physicists observe the pattern I
+describe: the flat, commuting force (light) has no gap, and the curved, non-commuting
 ones do. Nobody has proved that the curvature *causes* the gap for the real force in real,
 infinite space; that is the million-dollar problem. Feynman and others had a related idea
-in 1981, so this belongs in that conversation. Bee's version places the curvature in the
+in 1981, so this belongs in that conversation. My version places the curvature in the
 right spot: in the turns themselves, not in the space around them.
 
 ## 5. The double cover as a fold (computed)
@@ -179,7 +179,7 @@ right spot: in the turns themselves, not in the space around them.
 *STRUCTURAL: exact computation. Script `scripts/binary_icosahedral_fold.py`, receipt
 `research/binary-icosahedral-fold-20261118/fold.json`.*
 
-This is Bee's graph-fold idea applied to the double cover. In the Good Will Hunting
+This is my graph-fold idea applied to the double cover. In the Good Will Hunting
 article, stations with matching menus share one label, and AP = PB proves that every walk
 count survives. Here the stations are the 120 elements of 2I, the roads are
 multiplication by the generators a = (1+i+j+k)/2, b = (φ + φ⁻¹i + j)/2 and their inverses
@@ -206,14 +206,14 @@ What it shows:
 
 1. **The double cover is an exact fold.** AP = PB holds, so the 60-label quotient (the
    icosahedral rotation group of ordinary space) reproduces every walk count of the
-   120-element group, as in Bee's article.
+   120-element group, as in my article.
 2. **The twin half of the spectrum is gapped from zero by construction.** A function with
    f(−U) = −f(U) cannot be constant. Here its lowest eigenvalue, 1.382, sits a full unit
    above the graph's gap, 0.382.
    - *RESONANCE.* The spinor (twin) sector sits strictly above the bottom of the spectrum.
 3. **Matching menus without connectedness.** Twins are always three steps apart, so the fold
    cells are not connected groups, yet the fold is exact. This is exactly the distinction
-   in Bee's article: connectedness says a group holds together, while matching menus say it
+   in my article: connectedness says a group holds together, while matching menus say it
    can act as one state. The double cover is the case where far-apart twins act as one.
 4. **An honest surprise: curvature is sufficient, not necessary.** With these four
    generators, every edge has Ollivier curvature −0.5, so Ollivier's theorem gives nothing,
@@ -222,7 +222,7 @@ What it shows:
    positive curvature (expander families are the standard example). So the defensible
    statement is "positive curvature forces a gap", never "a gap requires curvature".
 
-**In plain words.** Folding every turn with its twin is an exact fold in Bee's sense: the
+**In plain words.** Folding every turn with its twin is an exact fold in my sense: the
 smaller map counts every journey correctly. The spectrum splits cleanly into the folded
 half and the twin half, and the twin half can never sink to zero. The twins are never
 neighbours, always three steps apart, and they still act as one, which is precisely the
@@ -244,7 +244,7 @@ one, and we should say exactly that.
 
 **In plain words.** Everything we have measured so far is a small-wiggle analysis. For
 small wiggles around "nothing happening", the curved turns and the flat ones behave
-identically, because the curvature only shows up when turns are combined. To test Bee's
+identically, because the curvature only shows up when turns are combined. To test my
 idea we would need big turns, or the full nonlinear theory.
 
 ## 7. Next tests (proposed, not run)

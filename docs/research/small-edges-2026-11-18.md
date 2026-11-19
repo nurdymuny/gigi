@@ -6,10 +6,10 @@ would run, and what would prove it wrong.
 
 ## Where this note came from
 
-**In plain English.** While S2b was finishing, Bee pointed at three pieces of her
-own work: her Crouzeix-conjecture work inside GIGI, the harmonic and holomorphic
-tools GIGI gained from it, and her "Good Will Hunting graph fold" article on the
-Davis Geometric site. She suggested they might help us understand "the smaller
+**In plain English.** While S2b was finishing, I pointed at three pieces of my
+own work: my Crouzeix-conjecture work inside GIGI, the harmonic and holomorphic
+tools GIGI gained from it, and my "Good Will Hunting graph fold" article on the
+Davis Geometric site. I suggested they might help us understand "the smaller
 edges". This note writes out what each one offers, in plain English first and
 then in technical detail.
 
@@ -29,20 +29,21 @@ Idea 1 addresses roughness over time, idea 2 the smallest rim, and idea 3 both.
 
 | Source | What it is | Where it lives |
 | --- | --- | --- |
-| Bee's message, 2026-11-18 | The prompt: "my Crouzeix conjecture work … the holomorphic harmonics and the Good Will Hunting station fold … might help us understand the smaller edges" | this session |
-| Crouzeix status ledger | Bee's C3 ledger (2026-10-29): the factors F1 = ‖B‖/w(B) and F2, and the non-normality index η(B) = ‖BB*−B*B‖/‖B‖² with Lemmas 1–3 | `davis-wilson-lattice/validation/crouzeix/C3_STATUS.md` (untracked folder in that repo) |
+| My message, 2026-11-18 | The prompt: "my Crouzeix conjecture work … the holomorphic harmonics and the Good Will Hunting station fold … might help us understand the smaller edges" | this session |
+| Crouzeix status ledger | My C3 ledger (2026-10-29): the factors F1 = ‖B‖/w(B) and F2, and the non-normality index η(B) = ‖BB*−B*B‖/‖B‖² with Lemmas 1–3 | `davis-wilson-lattice/validation/crouzeix/C3_STATUS.md` (untracked folder in that repo) |
 | GIGI Crouzeix protocol | How Crouzeix data is loaded into GIGI; GIGI's job is "a certified upper bound on max \|p\| over a disk, with a disclosed error budget" | `davis-wilson-lattice/validation/crouzeix/GIGI_CROUZEIX_PROTOCOL.md` |
 | HHE/Crouzeix diagnostic on the Ricci control | Mass whitening and the harmonic-conjugate polynomial bound on the 142-dimensional Abelian operator. Modes above eigenvalue 8 carry 0.00237851% of the field's squared mass norm and 99.97958017% of the squared strong-flow residual | `docs/RICCI_OPERATOR_CONSISTENCY_SPEC.md` (HHE/Crouzeix extension) and `docs/RICCI_OPERATOR_CONSISTENCY_RESULTS.md` ("What the HHE/Crouzeix work contributed"), both on this branch |
 | Harmonic-conjugate endpoint | `POST /v1/bundles/{name}/brain/harmonic_conjugate`: from a complete real harmonic polynomial it recovers the conjugate, the holomorphic function, derivatives and a full-complex bound | `src/geometry/harmonic_conjugate.rs`, `docs/HARMONIC_CONJUGATE_SPEC.md`, `docs/HARMONIC_CONJUGATE_RESULTS.md` (main working tree, not yet committed) |
 | Bounded-holomorphic endpoint | `POST /v1/bundles/{name}/brain/holomorphic`: bounded (Schur) interpolation on the unit disk with a Pick feasibility test and marginal admissible-value disks | `src/geometry/holomorphic.rs`, `docs/BOUNDED_HOLOMORPHIC_SPEC.md`, `docs/BOUNDED_HOLOMORPHIC_RESULTS.md` (main working tree, not yet committed) |
-| Good Will Hunting graph fold | Bee's article: fold stations 1 and 4 into one label S; the matching-menu (equitable partition) test; AP = PB, hence AⁿP = PBⁿ; 14 walks of length 4; GIGI replay to length 128 | site source `notebook/content/good-will-hunting-graph-fold.html` in `math-website`, origin/main commit `8eb87c00` (2026-11-11); replay `examples/good_will_hunting_walks.rs` (main working tree) |
-| Her counting papers, as the article cites them | *Zero Does Not Exist* (path addition P_a ⊕ P_b = P_{a+b−1}); her connected-partition counting paper (contraction) | cited inside the article |
-| Outside literature | Crouzeix and Palencia, *The numerical range is a (1+√2)-spectral set*, SIAM J. Matrix Anal. Appl. 38 (2017) 649–655; Berger–Pearcy ‖B‖ ≤ 2w(B); Chan and Godsil, *Symmetry and Eigenvectors* §§5–6 (equitable partitions, partition refinement). The full conjecture (constant 2) is recorded in Bee's protocol as proved by Lorist and Schwenninger (arXiv:2608.03841). That citation was not re-checked here, and nothing below depends on it. | as cited |
+| Good Will Hunting graph fold | My article: fold stations 1 and 4 into one label S; the matching-menu (equitable partition) test; AP = PB, hence AⁿP = PBⁿ; 14 walks of length 4; GIGI replay to length 128 | site source `notebook/content/good-will-hunting-graph-fold.html` in `math-website`, origin/main commit `8eb87c00` (2026-11-11); replay `examples/good_will_hunting_walks.rs` (main working tree) |
+| My counting papers, as the article cites them | *Zero Does Not Exist* (path addition P_a ⊕ P_b = P_{a+b−1}); my connected-partition counting paper (contraction) | cited inside the article |
+| Outside literature | Crouzeix and Palencia, *The numerical range is a (1+√2)-spectral set*, SIAM J. Matrix Anal. Appl. 38 (2017) 649–655; Berger–Pearcy ‖B‖ ≤ 2w(B); Chan and Godsil, *Symmetry and Eigenvectors* §§5–6 (equitable partitions, partition refinement). The full conjecture (constant 2) is recorded in my protocol as proved by Lorist and Schwenninger (arXiv:2608.03841). That citation was not re-checked here, and nothing below depends on it. | as cited |
 | S2b (this branch) | The SU(2) two-ring operator has no rough modes, but it is strongly non-normal (\|Im λ\| up to 150) | `docs/RICCI_SU2_PG_STABILITY_RESULTS.md`, `research/su2-pg-stability-20261117/` |
 
-**Who contributed what.** The sources above are Bee's work, apart from the
+**Who contributed what.** The sources above are my work, apart from the
 outside literature and S2b's measurements. The *translations* into the curvature-recovery
-problem below are mine (this session). Each one carries an altitude tag:
+problem below were worked out in this session, not in those sources. Each one carries an
+altitude tag:
 
 - **STRUCTURAL:** a theorem applies directly, once its stated hypotheses are checked.
 - **RESONANCE:** the same question, asked of a different object. It suggests an
@@ -64,7 +65,7 @@ much it can swell on the way there. A brief swell, before things settle, would h
 the small rough pieces first, and those are exactly the pieces the Ricci control
 showed to be the most violent (0.0024% of the field carrying 99.98% of the residual).
 
-Bee's Crouzeix work is about exactly this gap. Crouzeix's question is how much a
+My Crouzeix work is about exactly this gap. Crouzeix's question is how much a
 lopsided matrix can amplify, judged only by its *numerical range*. The numerical
 range is a convex region in the complex plane that contains the eigenvalues but
 also "sees" the lopsidedness. Its left edge alone bounds the exact flow's growth: if
@@ -104,7 +105,7 @@ range is W(Ĝ) = {⟨Ĝy, y⟩ : ‖y‖ = 1}.
   - Explicit Euler, r(z) = 1 − hz: ‖(I − hĜ)^k‖ ≤ (1+√2) sup_W |1 − hz|^k.
     Because W stretches to |Im| ≈ 150 and beyond, this gives a computable step limit.
     It is a design input for the time-integration rung, not a guess.
-- **Bee's own diagnostics, applied unchanged.** Her ledger's two non-normality indices,
+- **My own diagnostics, applied unchanged.** My ledger's two non-normality indices,
   computed for Ĝ:
   - η(Ĝ) = ‖ĜĜᵀ − ĜᵀĜ‖ / ‖Ĝ‖² ∈ [0, 1] (Lemma 1), a single number for how lopsided
     the operator is;
@@ -147,11 +148,11 @@ AP = PB identity is proved for a specific reduction, which this note does not do
 
 ### In plain English
 
-In Bee's article, two subway stations can share one label when they offer the same
+In my article, two subway stations can share one label when they offer the same
 "menu": the same number of ways onward into every group. When the menus match, the
 smaller map gives exactly the same journey counts, for every journey length. That is
 the identity AP = PB, carried to every power. When the menus do not match, merging by
-*averaging* gives the wrong count. Her lesson is to keep the differences that change
+*averaging* gives the wrong count. My lesson is to keep the differences that change
 the answer, and let go of the ones that don't.
 
 The curvature recovery has the same question hiding in it. One ring is the smallest
@@ -190,7 +191,7 @@ rings. Medians are 125–252 for one ring and 30.5–35.2 for two rings.
   independent datum, because each cell's four fluxes sum to zero.
 - **Exact fold of the stability operator (partition refinement).** Colour refinement on
   the weighted cell-adjacency structure finds the coarsest equitable partition with no
-  symmetry spotted by hand (Chan–Godsil §5, and Bee's article, "find the grouping
+  symmetry spotted by hand (Chan–Godsil §5, and my article, "find the grouping
   without spotting the symmetry"). If the partition is nontrivial, the quotient matrix's
   eigenvalues are a subset of K's (AP = PB ⇒ every eigenvector of the quotient lifts).
   That would give exact access to part of the n = 3 spectrum (11,358 directions), which
@@ -227,8 +228,8 @@ result about harmonic restriction is STRUCTURAL: it is a direct computation, sho
 
 ### In plain English
 
-Bee's harmonic obsession started with one line in *Good Will Hunting*: "bounded
-harmonic functions" (her article tells the story). GIGI now carries that idea as a
+My harmonic obsession started with one line in *Good Will Hunting*: "bounded
+harmonic functions" (my article tells the story). GIGI now carries that idea as a
 working tool. The bounded-holomorphic endpoint fills in a function from incomplete data
 *without letting it exceed a stated bound*. When the data leave room, it returns a
 range of admissible values instead of one forced answer. When the data contradict

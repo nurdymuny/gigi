@@ -127,9 +127,16 @@ action \cite{wilson}, the arc energy is Manton's \cite{manton}, the Cayley map i
 identifications is new. What this paper does is read the three paths as one object: three
 ways of measuring the same turn, which miss in fixed proportions, with each proportion
 showing up again in energy, in algebra and in time stepping. It then checks how much
-this matters on a real non-Abelian mesh. The energy combination of
-Section~\ref{sec:energy} is the one statement we have not found in the sources above. A
-proper prior-art search is listed as open in Section~\ref{sec:claims}.
+this matters on a real non-Abelian mesh. Parts of the energy story are not new either.
+Cancelling the $\theta^4$ (compactness) term of Wilson's action has been done for $U(1)$ with an
+adjoint, doubled-angle term \cite{deforcrand}. For $U(1)$ and $SU(2)$ the tangent energy is,
+as $T^2/2$, L\"uscher's topology-conserving action at its boundary value \cite{luscher,fukaya}.
+The scalar inequality $\tfrac23(\sin x/x)^2+\tfrac13(\tan x/x)^2>1$ behind
+Proposition~\ref{prop:energy} is a known inequality of Wilker--Huygens type
+\cite{wusrivastava,yang}, and the chord, arc and tangent appear side by side as discrete
+curvatures of polygons \cite{cranewardetzky}. What we have not found is the chord--tangent
+blend itself proposed as a lattice energy, its algebraic form in $U$, or its coefficients
+$\tfrac{7}{720}$ and $\tfrac{1}{1008}$.
 
 \paragraph{Where this is going.} The turn in this paper is not only a stick on a circle. In
 a gauge field every small loop carries one, its holonomy, and read that way the picture
@@ -274,8 +281,10 @@ from the shape of the face, not from the compactness of the group; it is what Sy
 improvement removes \cite{lw}. The combination above addresses only the compactness error.
 That error matters for strong fields and coarse lattices, and is negligible for smooth
 fields on fine ones. The tangent energy also diverges at the half turn $U=-1$, unlike
-Wilson's and like the Cayley map. Whether that barrier is harmless or harmful in a lattice
-simulation is not studied here.
+Wilson's and like the Cayley map. Lattice actions with exactly this barrier have been studied
+as topology-conserving actions \cite{luscher,fukaya}: they freeze topology in Monte Carlo, and
+Creutz has argued that such admissibility conditions are incompatible with a positive transfer
+matrix \cite{creutz}. For the blend, the barrier's effect in a simulation is not studied here.
 \end{remark}
 
 \section{The non-Abelian turn}\label{sec:su2}
@@ -854,8 +863,10 @@ curvature-recovery work; Section~\ref{sec:mesh} shows it does not.
 
 \textbf{Open.}
 \begin{itemize}
-  \item A prior-art search for the energy combination of Proposition~\ref{prop:energy} and
-    for tangent-based lattice actions in general.
+  \item How the chord--tangent blend of Proposition~\ref{prop:energy} compares, in non-Abelian
+    simulations, with the adjoint-improved action of \cite{deforcrand} and with L\"uscher-type
+    barrier actions \cite{luscher,fukaya}, and whether its barrier at $U=-1$ inherits their known
+    costs \cite{creutz}. (The prior-art search is summarised in Section~\ref{sec:picture}.)
   \item A Cayley (Crank--Nicolson) step inside the engine. It has been tested in the research
     flow of the companion paper~\cite{davis-rtc}; \textsc{gigi}'s own integrator steps with
     the exponential (Section~\ref{sec:gigi}).
@@ -876,6 +887,13 @@ directory; the output of the first is saved as \texttt{verify\_output.txt}, of t
 \bibitem{wilson} K.~G.~Wilson, Confinement of quarks, \emph{Phys.\ Rev.\ D} 10 (1974) 2445--2459.
 \bibitem{manton} N.~S.~Manton, An alternative action for lattice gauge theories, \emph{Phys.\ Lett.\ B} 96 (1980) 328--330.
 \bibitem{lw} M.~L\"uscher, P.~Weisz, On-shell improved lattice gauge theories, \emph{Commun.\ Math.\ Phys.} 97 (1985) 59--77.
+\bibitem{creutz} M.~Creutz, Positivity and topology in lattice gauge theory, \emph{Phys.\ Rev.\ D} 70 (2004) 091501, arXiv:hep-lat/0409017.
+\bibitem{cranewardetzky} K.~Crane, M.~Wardetzky, A glimpse into discrete differential geometry, \emph{Notices Amer.\ Math.\ Soc.} 64 (2017) 1153--1159.
+\bibitem{deforcrand} Ph.~de Forcrand, J.~E.~Hetrick, T.~Takaishi, A.~J.~van der Sijs, Three topics in the Schwinger model, \emph{Nucl.\ Phys.\ B Proc.\ Suppl.} 63 (1998) 679--681, arXiv:hep-lat/9709104.
+\bibitem{fukaya} H.~Fukaya, S.~Hashimoto, T.~Hirohashi, K.~Ogawa, T.~Onogi, Topology conserving gauge action and the overlap-Dirac operator, \emph{Phys.\ Rev.\ D} 73 (2006) 014503, arXiv:hep-lat/0510116.
+\bibitem{luscher} M.~L\"uscher, Topology and the axial anomaly in abelian lattice gauge theories, \emph{Nucl.\ Phys.\ B} 549 (1999) 295--334, arXiv:hep-lat/9811032.
+\bibitem{wusrivastava} S.-H.~Wu, H.~M.~Srivastava, A weighted and exponential generalization of Wilker's inequality and its applications, \emph{Integral Transforms Spec.\ Funct.} 18 (2007) 529--535.
+\bibitem{yang} Z.-H.~Yang, Some sharp Wilker type inequalities and their applications, arXiv:1304.5392, 2013.
 \bibitem{iserles} A.~Iserles, H.~Z.~Munthe-Kaas, S.~P.~N{\o}rsett, A.~Zanna, Lie-group methods, \emph{Acta Numerica} 9 (2000) 215--365.
 \bibitem{milnor} J.~Milnor, Curvatures of left invariant metrics on Lie groups, \emph{Adv.\ Math.} 21 (1976) 293--329.
 \bibitem{feynman} R.~P.~Feynman, The qualitative behavior of Yang--Mills theory in $2+1$ dimensions, \emph{Nucl.\ Phys.\ B} 188 (1981) 479--512.

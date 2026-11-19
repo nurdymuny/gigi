@@ -15,8 +15,8 @@ Zenodo's HTML source view. Post this record first: its DOI then goes into *Readi
 **Resource type** Publication / Preprint
 
 **Files**
-1. `paper.pdf` — the paper in English (18 pages; `docs/papers/chord-arc-tangent/paper.pdf`)
-2. `paper_ru.pdf` — the Russian edition (20 pages; `docs/papers/chord-arc-tangent/ru/paper_ru.pdf`)
+1. `paper.pdf` — the paper in English (19 pages; `docs/papers/chord-arc-tangent/paper.pdf`)
+2. `paper_ru.pdf` — the Russian edition (21 pages; `docs/papers/chord-arc-tangent/ru/paper_ru.pdf`)
 3. `perelman_ru.pdf` — *Thank You, Mr. Perelman* in Russian (24 pages; kept outside the repo, in
    `~/Documents/three-ways-ru-zenodo/`)
 

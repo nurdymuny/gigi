@@ -7,7 +7,7 @@ book material and is deliberately not kept in this repository.
 
 | File | What it is |
 | --- | --- |
-| `paper_ru.pdf` | the paper in Russian (20 pages), built from `paper_ru.tex` + `part1.tex`…`part5.tex` |
+| `paper_ru.pdf` | the paper in Russian (21 pages), built from `paper_ru.tex` + `part1.tex`…`part5.tex` |
 | `figures/` | the six figures with Russian labels: `FIG_LANG=ru python ../make_figures.py` |
 | `GLOSSARY.md` | the English → Russian terms every section was translated with |
 | `zenodo/` | Zenodo description (Russian, with English summary) and metadata |

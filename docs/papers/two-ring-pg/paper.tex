@@ -83,9 +83,10 @@ neighbour into register by the symmetry of the space, holds exactly only what mu
 held, lets the rest of the evidence vote, and refuses a piece that does not fit. The
 force is accurate and stable in every mode we decomposed. It is not reciprocal, in the
 sense that it is not the gradient of an energy, and we document, quantitatively, why every
-symmetrized variant we tested fails. Everything so far concerns a single Abelian
-control on the round quotient. The curvature recovery itself extends covariantly to
-$SU(2)$: with each neighbour's face holonomy turned into register by link transport, it
+symmetrized variant we tested fails.
+
+All of the above concerns a single Abelian control on the round quotient. The curvature
+recovery extends covariantly to $SU(2)$: with each neighbour's face holonomy turned into register by link transport, it
 converges at second order on the Levi-Civita fields of the round and a Berger metric
 (Section~\ref{sec:su2}). The force extends too, though at about first order rather than
 second. The native $SU(2)$ Whitney force stays $25.5\%$
@@ -94,12 +95,12 @@ a covariantly recovered trial, falls to $2.51\%$ at $n=5$ and passes the
 unchanged \BW{} gate. At $n=1$ and $n=2$ its linearised spectrum has no rough modes,
 matching the native operator's, while the one-ring force has hundreds. Its numerical
 range, which bounds transient growth, has its left edge at $-4.66$ against the native
-$-4.68$ at $n=2$, so the lopsided spectrum hides no swell.
+$-4.68$ at $n=2$, so the strongly non-normal operator hides no transient growth.
 Integrated in time while the Berger metric flows underneath, in a research replica of the
 flow gate, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact trajectory at $n=1,2,3$,
-and from $n=2$ on it stays ahead of the native force ($2.21\%$, then $1.07\%$). At $n=3$ the
-flow is stepped by the Cayley map, which reaches the same answers with a few large implicit
-steps.
+and from $n=2$ on it stays ahead of the native force ($2.21\%$, then $1.07\%$). The finest
+level is reached with the Cayley step, an implicit Crank--Nicolson rule that needs only
+eight steps over the window.
 
 Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
 Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
@@ -182,8 +183,9 @@ Yang--Mills gradient exactly, with the clock fixed to one rather than fitted. Th
 statement is instantaneous and homogeneous. It is not a general Ricci-flow result, and
 fixed-background trajectory equivalence fails in the tested non-round cases. Any lattice
 realisation of the programme also needs something more basic: a discrete Yang--Mills
-force that converges to its continuum counterpart. That prerequisite, for an Abelian
-control, is the subject of this paper.
+force that converges to its continuum counterpart. That prerequisite is the subject of
+this paper: first for an Abelian control, then for an $SU(2)$ connection on a flowing
+Berger metric.
 
 The difficulty is not approximation in the usual sense. The lowest-order Whitney
 discretization~\cite{whitney1957,bossavit1988} is a perfectly good finite element method:
@@ -218,10 +220,14 @@ each failed one of two requirements:
     the reciprocal of a small singular value (Section~\ref{sec:conditioning}).
   \item A two-ring, equality-constrained least-squares recovery. It is exact on closed
     linear curvature, has mesh-uniform amplification, and gives a force that passes the
-    unchanged \BW{} convergence gate and the stability test. Its symmetric part is
-    positive definite, so the semi-discrete flow is dissipative.
+    unchanged \BW{} convergence gate and the stability test. At $n=1,2$ its symmetric part
+    is positive definite, so there the semi-discrete flow is dissipative.
   \item Mechanism removals and a quantitative account of why symmetrized and variational
     variants of the same recovery fail (Section~\ref{sec:removals}).
+  \item The same construction for $SU(2)$: a covariant recovery that converges at second
+    order, a force that passes \BW{} on a Berger metric where the native force stalls at
+    $25\%$, and a time integration that follows the Ricci-flowed metric to within $0.87\%$
+    at $n=3$ (Section~\ref{sec:su2}).
 \end{enumerate}
 
 \paragraph{A question for a companion paper.} Every face of the mesh carries a turn, its
@@ -359,8 +365,9 @@ to overwrite. The gate writes its own receipt. Its verdict fields read, verbatim
 "berger": "NOT_RUN",
 "release_gate": "OPEN"
 \end{lstlisting}
-The last two fields are as much a part of the result as the first: the force gate was
-not run on the Berger metrics, and the programme's release gate stays open. Table~\ref{tab:evidence} maps
+The last two fields are as much a part of the result as the first: this Abelian gate was
+not run on the Berger metrics (the $SU(2)$ force of Section~\ref{sec:su2force} is a separate
+research replica with its own receipts), and the programme's release gate stays open. Table~\ref{tab:evidence} maps
 each table and figure to the script that regenerates it.
 
 \begin{table}[t]\centering\small
@@ -842,9 +849,12 @@ leave a scalable formulation open.
 
 \section{Beyond the Abelian control: covariant recovery}\label{sec:su2}
 
-The force results above are Abelian. This section takes the first step past that: first
-the recovery, then the force (Section~\ref{sec:su2force}). It asks whether the same reading of curvature, seated on the cell's own
-faces with the neighbours voting, survives when the field is a genuine $SU(2)$ connection.
+The results above are Abelian. This section asks whether the same reading of curvature,
+seated on the cell's own faces with the neighbours voting, survives when the field is a
+genuine $SU(2)$ connection: first the recovery, then the force
+(Section~\ref{sec:su2force}), then the flow in time (Section~\ref{sec:su2flow}).
+
+\subsection{The covariant recovery}\label{sec:su2rec}
 
 \paragraph{What changes.} An $SU(2)$ field on the mesh is a link $U_e$ on every edge, and
 there is no edge cochain to add up. What a face carries is its holonomy
@@ -940,7 +950,9 @@ the errors reported here. Mixing the two readings is therefore not a source of t
 measured error.
 
 \paragraph{Controls.} Before any result was read, a Python replica reproduced the native
-energy to $1.5\times10^{-16}$ and the native gradient to $4.5\times10^{-10}$. Feeding the cell's
+energy to $1.5\times10^{-16}$ and the native gradient to $4.5\times10^{-10}$; with the face
+defect differentiated in closed form (Section~\ref{sec:su2flow}) the gradient agrees to
+$8\times10^{-15}$. Feeding the cell's
 own Whitney field through the new pairing reproduced the native gradient exactly, and the
 native error was recomputed to the recorded $26.2459\%$ at $n=1$.
 
@@ -1061,6 +1073,8 @@ For a time stepper, Crouzeix--Palencia~\cite{cp} bounds $k$ steps of any rationa
 $(1+\sqrt2)\sup_{W}|r(hz)|^k$; the explicit-Euler limit it implies at $n=2$,
 $h\approx2.85\times10^{-4}$, agrees with the step sizes used for the flow.
 
+\subsection{The flow in time}\label{sec:su2flow}
+
 \paragraph{Time integration.} The last test lets the lattice move. Starting from the exact
 links at $t=0$, the links evolve under $B(U,g(t))\,\dot\xi=-a(U;g(t))$, where the metric
 $g(t)$ follows the Ricci flow of the Berger metric, by a fourth-order
@@ -1070,9 +1084,8 @@ $\sqrt{\delta^\top B\delta/\mathrm{Vol}}$ between them, $D$ is the same distance
 by the exact field, and $R=E/D$ is the error over the distance actually moved. The gates,
 fixed before measurement, asked for $R<5\%$ at the finest level with an observed order of at
 least $0.5$, and for halving the step, or changing the quadrature, to move $E$ by less than
-a tenth. Two negative controls were corrected after the $n=1$ results and before any $n=2$
-run finished; the correction is recorded beside the unchanged original gates in the
-specification. This is a Python replica of the programme's flow gate, not an engine run.
+a tenth. Two negative controls were corrected after the $n=1$ results, beside the unchanged
+original gates. This is a Python replica of the programme's flow gate, not an engine run.
 Table~\ref{tab:su2flow} gives the result.
 
 \begin{table}[t]\centering\small
@@ -1157,9 +1170,8 @@ one. At this refinement it did not: the two orders are $1.74$ and $1.80$.
 scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
 metric, with the spectrum of Table~\ref{tab:su2stab}. The time integration is a research
 replica on one metric and one window, at $n\le3$, and stability and the numerical range are
-measured only at $n\le2$. The step that reached $n=3$ came from the companion
-paper~\cite{threeways}: the Crank--Nicolson step is the Cayley map, the tangent reading of a
-turn. A reciprocal version remains the open problem of Section~\ref{sec:magnet}.
+measured only at $n\le2$. A reciprocal version remains the open problem of
+Section~\ref{sec:magnet}.
 
 \section{Discussion}
 
@@ -1227,9 +1239,6 @@ projection layer between the two. It cut the Whitney floor from $26\%$ to about 
 but still floored. A force that is accurate, stable and reciprocal is the open problem
 this paper leaves.
 
-The language of this section is ordinary rather than physical: no field, potential or
-magnetic Laplacian enters the recovery.
-
 \subsection{Where the ideas came from}\label{sec:provenance}
 
 This paper describes its method in everyday language, a guide, a magnet, a rim chart, a
@@ -1262,14 +1271,14 @@ used as evidence in this paper.
 
 \paragraph{Limitations.}
 \begin{itemize}
-  \item The force results concern a single Abelian control on a single round quotient.
-    The covariant recovery of Section~\ref{sec:su2} is a research script, tested on two
-    exact left-invariant fields with sampled cells. The $SU(2)$ force of
-    Section~\ref{sec:su2force} passes \BW{} on the Berger metric only, and its stability and
-    numerical range are measured at $n\le2$. Its time integration is a research replica at
-    $n\le3$ over $t\in[0,0.02]$, not the engine's flow gate. The predicted stall of the
-    native force in time did not appear at $n=2$ or $n=3$; a first-order filter model
-    explains why. The two-ring force keeps its lead over native but does not widen it.
+  \item The Abelian results concern a single control on a single round quotient.
+  \item The covariant recovery of Section~\ref{sec:su2rec} is a research script, tested on
+    two exact left-invariant fields with sampled cells. The $SU(2)$ force passes \BW{} on
+    the Berger metric only, and its stability and numerical range are measured at $n\le2$.
+  \item The time integration is a research replica at $n\le3$ over $t\in[0,0.02]$, not the
+    engine's flow gate. The predicted stall of the native force did not appear at $n=2$ or
+    $n=3$; a first-order filter model explains why. The two-ring force keeps its lead over
+    native but does not widen it.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only
@@ -1277,9 +1286,9 @@ used as evidence in this paper.
   \item The force is not the gradient of an energy. Whether a dissipative, consistent,
     non-variational force suffices for the programme's purposes is a modelling decision,
     not a numerical one.
-  \item No Ricci-flow claim is made. The target here is the Abelian Yang--Mills force
-    $-\delta dA$; the result is a prerequisite for a lattice \DAVIS{}--Wilson
-    correspondence, not an instance of one.
+  \item No Ricci-flow claim is made. The targets are the instantaneous Yang--Mills force
+    and, for $SU(2)$, one short window of the flow on one metric; the results are a
+    prerequisite for a lattice \DAVIS{}--Wilson correspondence, not an instance of one.
 \end{itemize}
 
 \paragraph{Reproducibility.} Every number and figure in this paper is regenerated from
@@ -1303,6 +1312,13 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     \path{research/su2-pg-force-20261117/}.
   \item $SU(2)$ stability:\newline \path{scripts/ricci_su2_pg_stability.py};\newline receipts,
     with every eigenvalue, in\newline \path{research/su2-pg-stability-20261117/}.
+  \item $SU(2)$ numerical range:\newline \path{scripts/ricci_su2_pg_numrange.py};\newline receipts in
+    \path{research/su2-numrange-20261118/}.
+  \item $SU(2)$ flow: \path{scripts/ricci_su2_pg_flow.py} (RKMK4),
+    \path{scripts/ricci_su2_pg_flow_filter.py} (slow and fast residual) and
+    \path{scripts/ricci_su2_pg_flow_cayley.py} (Cayley step); receipts in
+    \path{research/su2-flow-20261118/}, \path{research/su2-filter-20261118/} and
+    \path{research/su2-cayley-20261118/}.
 \end{itemize}
 
 \begin{thebibliography}{99}\small
@@ -1311,6 +1327,7 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
 \bibitem{afw2010} D.~N.~Arnold, R.~S.~Falk, R.~Winther, Finite element exterior calculus: from Hodge theory to numerical stability, \emph{Bull.\ Amer.\ Math.\ Soc.} 47 (2010) 281--354.
 \bibitem{bossavit1988} A.~Bossavit, Whitney forms: a class of finite elements for three-dimensional computations in electromagnetism, \emph{IEE Proc.\ A} 135 (1988) 493--500.
 \bibitem{cdl2013} A.~Cohen, M.~A.~Davenport, D.~Leviatan, On the stability and accuracy of least squares approximations, \emph{Found.\ Comput.\ Math.} 13 (2013) 819--834.
+\bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
 \bibitem{threeways} B.~R.~Davis, Three ways across a turn: chord, arc and tangent, Davis
 Geometric working paper, 2026, \path{docs/papers/chord-arc-tangent/} in the \GIGI{} repository
 (DOI forthcoming).
@@ -1318,7 +1335,6 @@ Geometric working paper, 2026, \path{docs/papers/chord-arc-tangent/} in the \GIG
 \bibitem{hiptmair2002} R.~Hiptmair, Finite elements in computational electromagnetism, \emph{Acta Numerica} 11 (2002) 237--339.
 \bibitem{whitney1957} H.~Whitney, \emph{Geometric Integration Theory}, Princeton University Press, 1957.
 \bibitem{zz1992} O.~C.~Zienkiewicz, J.~Z.~Zhu, The superconvergent patch recovery and a posteriori error estimates, \emph{Int.\ J.\ Numer.\ Methods Eng.} 33 (1992) 1331--1364.
-\bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
 \end{thebibliography}
 
 \end{document}

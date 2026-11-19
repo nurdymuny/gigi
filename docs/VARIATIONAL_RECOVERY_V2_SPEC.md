@@ -118,3 +118,29 @@ computed). Nothing above is relaxed.
 - **Solve.** `lsqr` on A (atol = btol = 10⁻¹⁴, iter_lim 10⁵) is primary; the dense eigh of AAᵀ is the
   cross-check. Both residuals are reported; C-solve uses the smaller.
 - **Reported, not gated:** the three-ring Petrov–Galerkin force error for both bases.
+
+## Amendment 2 (19 November 2026, before any V2 run)
+
+From a check of the V2q base (`fit_maps` in `scripts/ricci_variational_baseprobe.py`, three rings,
+every 20th to 50th cell). Nothing above is relaxed.
+
+- **V2q gives up the cell's own fluxes, by design.** Keeping only the linear part of the 26-field fit
+  drops the quadratic part's flux through the cell's own faces. On fields smooth to second order, the
+  kept field misreproduces the cell's own fluxes by 4.8% (median, relative, n = 1 and n = 2). The
+  linear base does so to 4 × 10⁻¹⁶. With a linear output, no base can both reproduce its own fluxes
+  and read quadratic fields as zero: a quadratic field has nonzero own fluxes. For V2q, **C-exact's
+  own-flux clause is replaced by:** the change does not alter the own fluxes (‖A(M′ − M)‖ ≤ 10⁻¹⁰),
+  and the base's own-flux defect is reported. If V2q passes and V2 does not, this departure from
+  *Reading the Curve*'s "own faces exact" is a design change. Its effect on the consistency argument
+  is stated before any claim.
+- **Mechanism removal for V2q.** The same as for V2 (N replaced by V1's N, the left null of X_lin
+  only), on the quadratic-aware base. The prediction and threshold are the same: its reconstruction
+  term is at least 3× V2q's at n = 2.
+- **Solve (refines Amendment 1).** `lsqr` from x₀ = 0, so that it returns the minimum-norm solution
+  that V1's objective asks for. It stops when the C-solve residual reaches 10⁻⁹ relative, or at
+  iter_lim 10⁵; atol and btol are not the stopping rule. Its iteration count is reported.
+- **Not added, recorded for later.** A 26-dimensional trial space, i.e. keeping the whole fitted
+  field rather than its linear part, would reproduce the cell's own fluxes *and* read quadratic
+  fields without bias. It changes the energy, the force assembly and the Petrov–Galerkin test
+  pairing, so it is a separate design. It is considered only if V2q passes and the own-flux
+  departure turns out to matter.

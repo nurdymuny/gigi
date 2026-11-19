@@ -17,7 +17,7 @@ identifiers. Paste `description.html` into Zenodo's HTML source view.
 
 **Files**
 1. `paper_ru.pdf` — the paper (20 pages)
-2. `perelman_ru.pdf` — «Спасибо, господин Перельман», the book chapter (22 pages)
+2. `perelman_ru.pdf` — «Спасибо, господин Перельман», the book chapter (24 pages; updated 2026-11-19 with the lattice results)
 
 **Keywords**
 хорда; дуга; касательная; поворот; действие Вильсона; отображение Кэли; метод Кранка — Николсон;

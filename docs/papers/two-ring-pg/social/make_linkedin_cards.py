@@ -89,20 +89,53 @@ def card_results():
     fig = plt.figure(figsize=(6, 6))
     mast(fig, "RESULTS")
     headline(fig, .905, "From a 26% floor to 1.45%.")
-    M.text(fig, .055, .80, "Measured on the paper's meshes, with pass/fail lines fixed before each run.", 8.5, MUTED)
+    M.text(fig, .055, .80, "Measured on the paper's meshes. Every number traces to a saved receipt.", 8.5, MUTED)
     M.rule(fig, .755, .055, .945)
     rows = [("26% to 1.45%", "Abelian control: the standard (Whitney) force stalls;\nthe two-ring force converges.", BLUE),
             ("25.5% to 2.51%", "Non-commuting SU(2) field, research code:\nthe same reading carries over.", BLUE),
+            ("0.87%", "off the true path when the lattice moves while\nthe space flows (SU(2), finest mesh, research code).", BLUE),
             ("0", "runaway modes for the two-ring SU(2) force\n(two smallest meshes); one ring has 1,451.", TEAL),
             ("10⁻¹⁴", "agreement between the GIGI engine verb\nRECOVER_CURVATURE and the research code.", INK)]
     y = .715
     for num, cap, col in rows:
-        M.text(fig, .055, y, num, 22, color=col, fontfamily=SERIF)
-        M.text(fig, .50, y - .004, cap, 8.6, INK)
-        y -= .155
+        M.text(fig, .055, y, num, 20, color=col, fontfamily=SERIF)
+        M.text(fig, .50, y - .004, cap, 8.2, INK)
+        y -= .125
         M.rule(fig, y + .03, .055, .945)
-    M.text(fig, .055, .085, "Paper: Reading the Curve, Not Counting the Points. Code: GIGI, open source (PolyForm).", 7.8, MUTED)
+    M.text(fig, .055, .085, "Paper: Reading the Curve, Not Counting the Points (doi:10.5281/zenodo.24328085).\n"
+           "Code: GIGI, open source (PolyForm).", 7.8, MUTED)
     save(fig, "03_results.png")
+
+
+def card_time():
+    """The SU(2) flow in time: R at n = 1, 2, 3 for two rings, native and the frozen control."""
+    flow = json.loads((HERE.parent / "data" / "su2_flow.json").read_text())
+    fig = plt.figure(figsize=(6, 6))
+    mast(fig, "LETTING THE LATTICE MOVE")
+    headline(fig, .905, "The space flows. The lattice\nfollows it.")
+    M.text(fig, .055, .755, "The links move under the force while the metric underneath follows its Ricci flow;\n"
+           "at the end they are compared with where the true field went.", 8.2, MUTED)
+    ax = fig.add_axes([.12, .30, .50, .38])
+    n = np.array([1, 2, 3])
+    series = [("pg", "two rings", BLUE, "o", "-", 2.4), ("native", "standard", GREY, "s", "-", 1.4),
+              ("pg_fixed", "background frozen", COPPER, "v", (0, (4, 2)), 1.6)]
+    for key, lab, col, mk, ls, lw in series:
+        R = np.array([100 * flow[f"{key}_n{k}"]["R"][-1] for k in n])
+        ax.plot(n, R, color=col, marker=mk, ls=ls, lw=lw, ms=5, label=lab)
+    ax.set_yscale("log"); ax.set_xticks(n); ax.set_xticklabels(["n = 1", "n = 2", "n = 3"])
+    ax.set_yticks([1, 2, 5, 10, 20]); ax.set_yticklabels(["1%", "2%", "5%", "10%", "20%"]); ax.minorticks_off()
+    ax.set_ylim(.6, 22); ax.set_xlim(.8, 3.2)
+    for s_ in ("top", "right"):
+        ax.spines[s_].set_visible(False)
+    ax.tick_params(labelsize=7.5, colors=MUTED)
+    ax.legend(frameon=False, fontsize=7.5, loc="upper right")
+    big(fig, .68, .62, "0.87%", "two rings, finest mesh:\noff the true path", BLUE, size=26)
+    big(fig, .68, .43, "8%", "background frozen:\nstays stuck, as it should", COPPER, size=26)
+    M.rule(fig, .215, .055, .945)
+    M.text(fig, .055, .19, "13.8%, 1.76%, 0.87% at n = 1, 2, 3; the standard force 7.0%, 2.21%, 1.07%. Against only\n"
+           "the motion the moving space causes, the two-ring error is 10.6% at n = 3: falling, not solved.", 8, INK)
+    M.text(fig, .055, .085, "Research code, one metric, one short window. Paper: Reading the Curve, Section 9.3.", 7.8, MUTED)
+    save(fig, "06_letting_the_lattice_move.png")
 
 
 def card_three_ways():
@@ -139,7 +172,8 @@ def card_three_ways():
     M.rule(fig, .155, .055, .945)
     M.text(fig, .055, .14, "For small turns, the shortcut falls short of the true path by half what the detour overshoots.\n"
            "A lattice measures the chord; the continuum is made of arcs; the gap between them is curvature.", 8.2, INK)
-    M.text(fig, .055, .085, "Paper: Three Ways Across a Turn: Chord, Arc and Tangent. Every identity checked by script.", 7.8, MUTED)
+    M.text(fig, .055, .085, "Paper: Three Ways Across a Turn: Chord, Arc and Tangent (doi:10.5281/zenodo.24375338).\n"
+           "Every identity checked by script.", 7.8, MUTED)
     save(fig, "04_three_ways_across_a_turn.png")
 
 
@@ -155,4 +189,4 @@ def card_landscape():
 
 
 if __name__ == "__main__":
-    card_cover(); card_fold(); card_results(); card_three_ways(); card_landscape()
+    card_cover(); card_fold(); card_results(); card_three_ways(); card_landscape(); card_time()

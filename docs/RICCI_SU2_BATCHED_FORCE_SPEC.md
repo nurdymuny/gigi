@@ -71,3 +71,25 @@ reported either way.
 ## Not done here
 
 Rebuilding K₀ with the batched force; n ≥ 4; the engine path (BW08).
+
+## Amendment 1 (2026-11-19): the metric pieces
+
+**Written after the CPU parity and timing results, before any change to the metric pieces.**
+No gate changes.
+
+**What was measured.** At n = 3, one batched force evaluation spends 2.4 s in
+`metric_pieces` and 0.07 s (native) or 0.5 s (two-ring) in the gradient, 0.07 s in the mass
+and 0.06 s in the CG solve. The metric pieces were listed above as unchanged.
+
+**Change.** Two things, both in the batched class only:
+- **Cache by metric.** The metric pieces depend on g alone, not on the links. Every Newton
+  iteration of a Cayley step uses the same midpoint metric, so they are kept for the last g
+  and recomputed only when g changes. Exact: the same numbers, computed once.
+- **Contraction order.** The two four-operand contractions (m1, m2) and G are evaluated with
+  an optimised contraction order. This changes rounding only.
+
+**New gate.** **P-metric:** m1, m2, G, w and the volume against the loop's `metric_pieces`,
+≤ 10⁻¹³ relative, at n = 1, 2, 3, at g(0) and g(0.02). P-grad, P-mass, P-vel, P-angles and
+P-run are rerun with the change, at the same thresholds.
+
+**GPU.** The GPU step is still run as specified, against this version.

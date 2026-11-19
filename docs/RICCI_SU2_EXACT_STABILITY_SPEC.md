@@ -30,7 +30,7 @@ no runaway eigenvalue below −10 either.
 - **K:** the B5 matrix at g(0) = (3, 1, 1), ε = 10⁻⁶, loaded from `.npz`. Its SHA-256 is checked
   against the kbuild receipt before use.
 - **B:** the native SU(2) tangent mass, i.e. the same native blocks S2b used, from
-  `output/ricci-shape-regular-20261117/berger/level{L}_berger_q4.output.json`.
+  `output/ricci-shape-regular-20261117/berger/level{L}_berger_q6.output.json` (quadrature order 6, as S2b; corrected from "q4" before any B6 code ran).
 - **The generalized spectrum** of (K, B) is the stability object (S2b).
 - **Ĝ = L⁻¹KL⁻ᵀ**, with B = LLᵀ. Its numerical range is W(Ĝ).
 - **Left edge:** min Re W(Ĝ) = λ_min(S), with S = ½(Ĝ + Ĝᵀ). Equivalently, it is the smallest

@@ -1,0 +1,28 @@
+{
+ "level": 1,
+ "trial": "pg",
+ "dof": 3372,
+ "C_col": 1.335524942550437e-12,
+ "C_chol": 1.6226624526326515e-16,
+ "C_W_eig_left_violation": 0.0,
+ "rough_real_below_minus10": 0,
+ "small_modulus_below_1": 481,
+ "negative_real": 253,
+ "min_real": -4.631994086753696,
+ "five_most_negative_real": [
+  -4.631994086753696,
+  -4.631994086753696,
+  -2.5033714745035702,
+  -2.5033714745035702,
+  -1.3898103391049805
+ ],
+ "max_abs_imag": 150.33897036249272,
+ "W_left": -4.664400327374752,
+ "S_negative_count": 242,
+ "norm_estimate": 7049.489990097473,
+ "seconds": {
+  "build": 1303.3,
+  "eig": 12.2,
+  "total": 1441.3
+ }
+}

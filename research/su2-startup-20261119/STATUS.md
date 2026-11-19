@@ -1,4 +1,4 @@
-# S3d status: partial, 7 of 8 runs (2026-11-19)
+# S3d status: complete, 8 of 8 runs (2026-11-19); results in docs/RICCI_SU2_PG_FLOW_STARTUP_RESULTS.md
 
 Spec `docs/RICCI_SU2_PG_FLOW_STARTUP_SPEC.md` (9b44b89, before measurement). Gap of E(t) to S3's
 RKMK4 reference at t = 0.005, 0.01, 0.015, 0.02 (%), with the backward-Euler start-up, and S3b's
@@ -13,7 +13,7 @@ values without it (from `docs/RICCI_SU2_PG_FLOW_CAYLEY_RESULTS.md`):
 | n=2 native N=4 | 12.46, 5.01, 0.46, 0.39 | 22.41, 0.44, 4.09, 1.62 |
 | n=2 native N=8 | 2.60, 2.61, 2.25, 1.77 | 0.02, 0.35, 0.43, 0.47 |
 | n=2 two-ring N=4 | **67.35, 25.60, 13.49, 9.31** | 13.12, 2.20, 2.75, 2.18 |
-| n=2 two-ring N=8 | running | 1.15, 0.68, 0.60, 0.54 |
+| n=2 two-ring N=8 | 1.03, 0.74, 0.39, 0.05 | 1.15, 0.68, 0.60, 0.54 |
 
 Interim reading (not the verdict; L1_pg_N8 missing):
 - P-first (n=2, N=4 first gap below half of S3b): native 12.46 vs bound 11.2 → fail (narrowly);

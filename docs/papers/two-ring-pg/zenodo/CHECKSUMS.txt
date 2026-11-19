@@ -1,0 +1,2 @@
+# SHA-256 of the files uploaded to Zenodo for version 2
+736226b0cbaeb65b0246df153e19adbcaf4f6171c368a78f46bbaca1bc825438  paper.pdf  (30 pages; docs/papers/two-ring-pg/paper.pdf at tag reading-the-curve-v2)

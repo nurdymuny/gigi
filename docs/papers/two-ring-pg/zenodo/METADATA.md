@@ -48,7 +48,10 @@ Cayley map; Crank–Nicolson; Lie-group integrators; GIGI
 - *references*: *Three Ways Across a Turn: Chord, Arc and Tangent*,
   https://doi.org/10.5281/zenodo.24375338 (published; cited in the paper as `threeways`)
 - *references*: *The Double Cover Principle*, https://doi.org/10.5281/zenodo.18895462
-  (only if you want it linked; this paper does not cite it)
+- *references*: *The Geometry of Sameness*, https://doi.org/10.5281/zenodo.17642422
+- *references*: *Zero Does Not Exist*, https://doi.org/10.5281/zenodo.19477365
+  (these three are listed under "Related work by the author" in the description, as in the
+  *Three Ways* record; the paper itself cites only *Three Ways*)
 
 **Check before publishing**
 - *Which commit the first version was.* "What this version adds" treats the first version as the

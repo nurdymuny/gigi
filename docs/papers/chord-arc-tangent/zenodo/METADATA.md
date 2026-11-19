@@ -1,8 +1,10 @@
 # Zenodo record: Three Ways Across a Turn
 
+**Published: https://doi.org/10.5281/zenodo.24375338** (DOI 10.5281/zenodo.24375338).
+
 Paste-ready fields for a new Zenodo record. The description is `description.html`, pasted into
 Zenodo's HTML source view. Post this record first: its DOI then goes into *Reading the Curve*
-(bibliography entry `threeways`, currently "DOI forthcoming").
+(bibliography entry `threeways`; done).
 
 **Title** Three Ways Across a Turn: Chord, Arc and Tangent
 

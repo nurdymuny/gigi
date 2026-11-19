@@ -138,7 +138,7 @@ cd docs/papers/two-ring-pg && pdflatex paper.tex && pdflatex paper.tex
 
 Typesetting uses the shared house style [`../dgstyle.tex`](../dgstyle.tex); see the
 chord–arc–tangent README for the TeX packages. The companion paper,
-[*Three Ways Across a Turn*](../chord-arc-tangent/), is cited in Sections 9 and 10.
+[*Three Ways Across a Turn*](../chord-arc-tangent/) (DOI [10.5281/zenodo.24375338](https://doi.org/10.5281/zenodo.24375338)), is cited in Sections 1, 9 and 10.
 
 Figures 1-3 now use the depth-composited plates in `figures/polished/`. The
 captions distinguish the unchanged measurement labels from the saved drawing

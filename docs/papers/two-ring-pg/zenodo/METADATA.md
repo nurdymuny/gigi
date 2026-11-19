@@ -28,7 +28,7 @@ Cayley map; Crank–Nicolson; Lie-group integrators; GIGI
 - *is new version of*: the first version of this record (Zenodo links it automatically when
   "New version" is used)
 - *is supplemented by*: https://github.com/nurdymuny/gigi (software)
-- *references*: *Three Ways Across a Turn: Chord, Arc and Tangent* (add its DOI once issued)
+- *references*: *Three Ways Across a Turn: Chord, Arc and Tangent*, https://doi.org/10.5281/zenodo.24375338
 - *references*: B. R. Davis, *The Double Cover Principle*, https://doi.org/10.5281/zenodo.18895462
   (only if you want it linked; this paper does not cite it)
 

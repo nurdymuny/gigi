@@ -97,6 +97,10 @@ def main():
         arms = [tuple(x.split(":")) for x in args[i + 1].split(",")]; del args[i:i + 2]
     level, outdir = int(args[0]), Path(args[1])
     outdir.mkdir(parents=True, exist_ok=True)
+    if not c0only:
+        for base, excl in arms:                      # review (b): refuse before computing, not after
+            if (outdir / f"L{level}_{base}_{excl}.json").exists():
+                raise SystemExit(f"refusing to overwrite {outdir / f'L{level}_{base}_{excl}.json'}")
     t0 = time.time()
     L = pg.load_level(level, ORDER)
     cells, a, mass, vol = L["cells"], np.asarray(L["a"]), L["mass"], L["volume"]
@@ -148,13 +152,13 @@ def main():
         return
 
     # C-quad / C-count / C-copies (geometry, base-independent)
-    cquad = max(float(np.linalg.norm(c.Ns["N2"].T @ np.hstack([c.Xl, c.Xq])) / np.linalg.norm(np.hstack([c.Xl, c.Xq])))
-                for c in C)
+    cquad = {"linear": max(float(np.linalg.norm(c.Ns["N2"].T @ c.Xl) / np.linalg.norm(c.Xl)) for c in C),
+             "quadratic": max(float(np.linalg.norm(c.Ns["N2"].T @ c.Xq) / np.linalg.norm(c.Xq)) for c in C)}
     live = {k: [int(np.linalg.matrix_rank(c.NDs[k], tol=1e-9 * max(np.abs(c.NDs[k]).max(), 1e-300)))
                 if c.NDs[k].size else 0 for c in C] for k in ("N1", "N2")}
 
     # per-edge geometry: reference basis Qe, pairings of every user cell, Whitney rhs (shared)
-    left_is = "minus"           # V1 receipts' C-span result; checked again below on cell 0
+    left_is = "minus"           # as detected by every V1/V1b receipt (C-span); not re-detected here
     plus, minus, _ = V.generators_on(C[0], C[0].verts)
 
     def enforced(c, verts):
@@ -277,7 +281,8 @@ def main():
                     "amplification_max_before_after": [float(np.max(amp0)), float(np.max(amp1))]})
         Kv, Kp = assemble(Ts)
         res["variational_error"] = rel(Kv)
-        res["pg_error_unchanged_base"] = before[base]["pg_error"]
+        res["pg_error"] = rel(Kp)                    # review (f): PG force with T' = M'D
+        res["pg_error_base_C0"] = before[base]["pg_error"]
         res["terms_after"] = terms(Ts)
         res["asymmetry"] = float(np.abs(Kv - Kv.T).max() / np.abs(Kv).max())
         Mden = mass.toarray() if hasattr(mass, "toarray") else np.asarray(mass)
@@ -296,8 +301,7 @@ def main():
                                                          "change_norm_median_max", "amplification_median_before_after",
                                                          "C_solve_relative_residual")}), flush=True)
         path = outdir / f"L{level}_{base}_{excl}.json"
-        if path.exists():
-            raise SystemExit(f"refusing to overwrite {path}")
+        np.save(path.with_suffix(".C.npy"), x)       # review (c): keep the solution
         path.write_text(json.dumps(res, indent=1) + "\n")
 
 

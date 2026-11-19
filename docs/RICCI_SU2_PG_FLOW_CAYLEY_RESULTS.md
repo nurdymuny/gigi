@@ -1,11 +1,12 @@
-# S3b: the Cayley time step (results, n = 1 and n = 2)
+# S3b: the Cayley time step (results, n = 1, 2 and 3)
 
 2026-11-18. Spec: `docs/RICCI_SU2_PG_FLOW_CAYLEY_SPEC.md` (with Amendment 1: Newton tolerance
 10⁻⁸). Script: `scripts/ricci_su2_pg_flow_cayley.py`. Receipts:
 `research/su2-cayley-20261118/L0_*.json` and `L1_*.json` (with each run's final state,
 `*.final.npy`); gate verdicts: `gates_L0.json` and `gates_L1.json`, from `gates.py` in the same folder.
 Run after the exact defect derivative (`docs/RICCI_SU2_EXACT_DEFECT_DERIVATIVE_RESULTS.md`,
-merge `be318ca`). Research script, **not an engine run**. n = 3 is not yet run.
+merge `be318ca`). Research script, **not an engine run**. n = 3: `L2_*.json`, verdicts
+`gates_L2.json` from `gates_L2.py`.
 
 ## In plain English
 
@@ -19,6 +20,13 @@ against 128 for the RKMK4 reference at N = 32.
 n = 2 gives the same answer: every run converges, N = 8 passes both gates for both forces
 (gaps 0.47% native and 1.15% two-ring), so **N = 8 is fixed** for n = 3. N = 4 fails at both
 levels, only at its first, single large step.
+
+At n = 3 (11,358 unknowns) every run converged at every step. The two-ring error over the
+distance travelled is **0.87%**, down from 1.77% at n = 2 and 13.8% at n = 1, and it is still
+below the native error (1.07%). Freezing the metric leaves an 8.1% error that does not shrink
+with the mesh. One forecast missed: S3a predicted the two-ring error would fall faster than
+the native one between n = 2 and n = 3. They fall at nearly the same rate (orders 1.74 and
+1.80), and native has not stalled.
 
 ## Controls
 
@@ -120,7 +128,57 @@ settling. At N = 8 the effect is below every threshold. If a larger step is ever
 L-stable variant (for example two backward-Euler-type half steps, or a TR-BDF2 split) is the
 standard remedy; that would be a new spec.
 
+## n = 3
+
+3,786 links, 11,358 unknowns, N = 8 (fixed above) and N = 16 for G-time. Six runs: native,
+two-ring and two-ring with the metric frozen at g(0), final states saved. Iteration matrices K₀
+built on this machine (`buildK`, 12 workers; 1,664 s native, nnz 558,951; 6,672 s two-ring, nnz
+2,995,180). Verdicts: `research/su2-cayley-20261118/gates_L2.json`.
+
+**Mesh ratio.** The mesh size goes as 1/n (links 142, 1,124, 3,786; 3,786/1,124 = 3.37 = 1.5³).
+S3's "log₂ of the ratio" was right for n = 1 → 2, which halves the mesh; n = 2 → 3 divides it
+by 3/2, so the observed order here is log(E₂/E₃)/log(3/2). log₂ of the same ratios is listed
+too. No verdict below changes with the choice.
+
+| run, N = 8 | status | Newton max | force evals | s / eval | E(0.02) | **R** | gauge-invariant R |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| native | ok | 8 | 53 | 41.4 | 0.005465 | 1.07% | 1.22% |
+| two-ring | ok | 7 | 48 | 145.8 | 0.004462 | **0.87%** | 0.77% |
+| two-ring, frozen metric | ok | 6 | 41 | 149.4 | 0.041666 | 8.13% | 5.30% |
+
+N = 16: E(0.02) = 0.005436 (native), 0.004428 (two-ring), 0.041580 (frozen); Newton at most 6
+iterations. Timings are with six runs in parallel on this machine.
+
+| gate (spec, fixed before the run) | result |
+| --- | --- |
+| **G-traj**: two-ring R < 5%, order ≥ 0.5 from n = 2 | **PASS**: R = 0.87%; E 0.009044 → 0.004462, ratio 2.03, order 1.74 (log₂ 1.02) |
+| **G-time** at n = 3: halving h changes E by < E/10 | **PASS**: 0.75% |
+| Frozen metric: informative? (Δ > 2E_m) | **INFORMATIVE**: Δ = 0.0420 exactly, from the saved states (0.0419 at N = 16); 2E_m = 0.0089 |
+| Frozen metric: E_f ≥ Δ/2 | **PASS**: E_f = 0.0417 ≥ 0.0210 |
+| Frozen metric: E_f does not converge (order < 0.25) while E_m does | **PASS**: E_f 0.04118 (n = 2, RKMK4) → 0.04167, order −0.03; E_m order 1.74 |
+| Native: crossover, E_pg < E_native | **PASS**: ratio 0.82 (0.80 at n = 2) |
+| Native: stall, order of E_native < 0.25 | **FAIL**: E 0.011323 → 0.005465, order 1.80 (log₂ 1.05) |
+| S3a forecast (checked, not gated): both errors fall | yes |
+| S3a forecast: two-ring order exceeds native order | **no**: 1.74 against 1.80 |
+
+The n = 2 values are the Cayley N = 8 runs from `gates_L1.json`; against the RKMK4 references
+instead, the orders are 1.73 (two-ring) and 1.78 (native). n = 2 has no frozen Cayley run, so E_f
+at n = 2 is the RKMK4 value; S3 had already found the frozen control informative at n = 2.
+
+### What n = 3 says
+
+- **The two-ring force keeps converging in time.** R goes 13.8% → 1.77% → 0.87% over n = 1, 2, 3.
+- **The metric's motion is what the flow follows.** With the metric frozen, the error sits at
+  0.042 at n = 2 and at n = 3; the gap between the moving and frozen trajectories (0.042) is ten
+  times the moving run's own error.
+- **Native has still not stalled.** Its trajectory error halves from n = 2 to n = 3, as the
+  two-ring error does; the two-ring force stays about 18–20% ahead. The stall was asked for by
+  Amendment 1 of S3, from S2a's instantaneous native error, which stays near 25%. S3a explains
+  why that does not carry over to the trajectory: the native error lives in stiff directions,
+  and the flow washes them out. S3a's own forecast, that the two-ring order would exceed the
+  native one, did not come true at this step. Whether the gap changes at finer levels is not
+  measured.
+
 ## Not run
 
-n = 3 (with N = 8, and N = 16 for G-time), the frozen-metric control, the native-control checks
-at n = 3.
+n ≥ 4; the engine path (BW08).

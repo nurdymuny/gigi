@@ -891,8 +891,8 @@ with a constant $2.8$ times smaller at $n=5$ ($0.056\%$ against $0.155\%$).
 \paragraph{What does the work.} Two removals, from the probe, isolate the mechanism.
 \begin{itemize}
   \item \emph{The third ring alone does not help.} The linear fit over three rings gives
-    $4.02\%$, $5.63\%$ and $3.80\%$ at $n=1,2,3$, no better than two rings: more clues read
-    with a first-order model only bring in more second-order bias.
+    $4.02\%$, $5.63\%$ and $3.80\%$ at $n=1,2,3$: better than two rings at $n=1$, worse at
+    $n=2$ and $3$. More clues read with a first-order model bring in more second-order bias.
   \item \emph{Reading to second order does,} and the own-face term keeps it honest. Keeping
     the linear part of $\cR^{(26)}_K$ without that term gives $4.83\%$, $1.19\%$ and $0.56\%$,
     at the price of $K$'s own fluxes. The hybrid gives $5.47\%$, $0.85\%$ and $0.40\%$ with
@@ -1471,6 +1471,11 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
   \item Two-ring recovery: \path{scripts/ricci_pg_tworing.py}; its focused tests:
     \path{scripts/test_ricci_pg_tworing.py}.
   \item \BW{} and stability gate: \path{scripts/ricci_pg_tworing_gate.py}.
+  \item Hybrid three-ring reading: \path{scripts/ricci_pg_hybrid.py}; its \BW{}, S3 and
+    numerical-range gate: \path{scripts/ricci_pg_hybrid_gate.py}; specification
+    \path{docs/RICCI_PG_HYBRID_SPEC.md}; receipt in\newline
+    \path{research/ricci-pg-hybrid-20261119/}; the exploratory probe's receipts in\newline
+    \path{research/variational-baseprobe-20261119/}.
   \item Figures, data and tables: \path{make_data.py}, \path{numerical_range.py},
     \path{make_figures.py} and \path{make_tables.py} in the paper's directory;
     \path{make_polished_plates.py} renders Figures~\ref{fig:schematic}--\ref{fig:rings3d}
@@ -1485,7 +1490,14 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
   \item $SU(2)$ force:\newline \path{scripts/ricci_su2_pg_force.py};\newline receipts in
     \path{research/su2-pg-force-20261117/}.
   \item $SU(2)$ stability:\newline \path{scripts/ricci_su2_pg_stability.py};\newline receipts,
-    with every eigenvalue, in\newline \path{research/su2-pg-stability-20261117/}.
+    with every eigenvalue, in\newline \path{research/su2-pg-stability-20261117/}; at $n=3$,
+    \path{scripts/ricci_su2_pg_spectrum.py} with receipts in\newline
+    \path{research/su2-spectrum-n3-20261119/}; the exact-derivative rebuild and the sparse
+    certificate, \path{scripts/ricci_su2_exact_stability.py} with receipts in\newline
+    \path{research/su2-exact-stability-20261119/}.
+  \item Cayley start-up experiments: \path{scripts/ricci_su2_pg_flow_cayley.py}
+    (\texttt{--startup}); receipts in \path{research/su2-startup-20261119/} and\newline
+    \path{research/su2-startup-sdirk-20261119/}.
   \item $SU(2)$ numerical range:\newline \path{scripts/ricci_su2_pg_numrange.py};\newline receipts in
     \path{research/su2-numrange-20261118/}.
   \item $SU(2)$ flow: \path{scripts/ricci_su2_pg_flow.py} (RKMK4),

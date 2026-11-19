@@ -11,11 +11,11 @@ variational force.
 | branch | what | state | top commit |
 | --- | --- | --- | --- |
 | `feat/reading-the-curve` | papers, Russian edition, Zenodo files, S3b, exact derivative, prior art | merged | 1c4c893 (+ this note) |
-| `claude/s4-strong-field` | strong-field energies (chord, arc, tangent, blend, adjoint) | **done** | 762de9d |
-| `claude/variational-force-design` | variational force: design note, V1 spec, V1 results at n = 1 | n = 2 **running** | 53fda06 |
-| `claude/s2d-n3-spectrum` | SU(2) spectrum and numerical range at n = 3 | partial, **running** | 659b394 |
-| `claude/s3d-startup` | does the Cayley step's N = 4 failure come from undamped stiff modes? | 7/8, **running** | a05052d |
-| `claude/s3c-long-window` | the SU(2) flow on a 5× longer window | 6/8, **running** | c2e0940 |
+| `feat/s4-strong-field` | strong-field energies (chord, arc, tangent, blend, adjoint) | **done** | 762de9d |
+| `feat/variational-force` | variational force: design note, V1 spec, V1 results at n = 1 | n = 2 **running** | 53fda06 |
+| `feat/s2d-n3-spectrum` | SU(2) spectrum and numerical range at n = 3 | partial, **running** | 659b394 |
+| `feat/s3d-startup` | does the Cayley step's N = 4 failure come from undamped stiff modes? | 7/8, **running** | a05052d |
+| `feat/s3c-long-window` | the SU(2) flow on a 5× longer window | 6/8, **running** | c2e0940 |
 
 ## Done today
 
@@ -30,7 +30,7 @@ variational force.
   blend as a lattice energy, its form in U and its coefficients were not found.
 - S3b Cayley step (n = 1, 2, and the other machine's n = 3), and the exact defect derivative.
 
-**S4, strong field (`claude/s4-strong-field`, `docs/STRONG_FIELD_ENERGY_RESULTS.md`):**
+**S4, strong field (`feat/s4-strong-field`, `docs/STRONG_FIELD_ENERGY_RESULTS.md`):**
 - Discretization error is 3–15× larger than any compactness spread on these meshes, even with faces
   turning up to 2.9 rad: P-regime fails.
 - With the native chord reading U − 1, the 2:1 blend cancels less than predicted; the de Forcrand

@@ -39,7 +39,7 @@ action and the chord–tangent blend with weights 7/15 and 8/15 cancels θ⁶ as
 
 ## Changes to the paper
 
-On branch `claude/three-ways-prior-art`, in English and Russian:
+In English and Russian (merged into `feat/reading-the-curve`):
 
 - Section 1, "What is classical": the sentence "the one statement we have not found" is replaced
   by the three findings above and the narrower claim: what we have not found is the chord–tangent

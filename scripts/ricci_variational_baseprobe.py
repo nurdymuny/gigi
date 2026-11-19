@@ -3,6 +3,8 @@ For rings 2 and 3, and two bases, with no change (C = 0):
   linear  the published closed-linear fit (equality-constrained least squares, own faces exact)
   quad    fit closed linear + closed quadratic (26 coefficients) the same way; keep the linear part
           at the chart origin (the cell's projected centroid), where homogeneous quadratics vanish
+  hybrid  the quad fit's linear part plus the minimum-norm closed linear field carrying the quadratic
+          part's flux through the cell's own faces: own fluxes exact again, linear fields exact
 reports the variational force's Proposition-1 terms, its BW05 error, the Petrov-Galerkin force's
 BW05 error, the curvature error and the amplification. Check: linear base at rings 2 reproduces
 the paper (PG 6.22%/3.83%, variational 45.4%/276%).
@@ -43,8 +45,12 @@ def fit_maps(cells, faces, ci, rings):
         RNp = np.linalg.pinv(R @ N, rcond=pg.RCOND)
         return np.hstack([Ap - N @ RNp @ R @ Ap, N @ RNp])
     M_lin = eclsq(Xl)
-    M_quad = eclsq(np.hstack([Xl, Xq]))[:11]
-    return {"J": J, "t0": t0, "terms": terms, "Xl": Xl, "Xq": Xq, "linear": M_lin, "quad": M_quad}
+    M26 = eclsq(np.hstack([Xl, Xq]))
+    M_quad = M26[:11]
+    Al, Aq = Xl[:n_own], Xq[:n_own]
+    M_hyb = M_quad + np.linalg.pinv(Al, rcond=pg.RCOND) @ Aq @ M26[11:]
+    return {"J": J, "t0": t0, "terms": terms, "Xl": Xl, "Xq": Xq, "linear": M_lin, "quad": M_quad,
+            "hybrid": M_hyb, "n_own": n_own}
 
 
 def main():
@@ -79,10 +85,15 @@ def main():
             vF = np.einsum("qka,qab,qb,q->k", trial, g, Pex, w)
             uF = np.einsum("qfa,qab,qb,q->f", q["two"], g, Pex, w)
             data.append(dict(c=c, tcols=tcols, D=D, G=G, Wp=Wp, TW=TW, trial=trial, g=g, w=w, Pex=Pex,
-                             vF=vF, uF=uF, maps={k: fm[k] for k in ("linear", "quad")},
+                             vF=vF, uF=uF, maps={k: fm[k] for k in ("linear", "quad", "hybrid")},
                              biasq={k: float(np.linalg.norm(fm[k] @ fm["Xq"]) / max(np.linalg.norm(fm["Xq"]), 1e-300))
-                                    for k in ("linear", "quad")}))
-        for base in ("linear", "quad"):
+                                    for k in ("linear", "quad", "hybrid")},
+                             own_defect={k: float(np.linalg.norm(fm["Xl"][:fm["n_own"]] @ fm[k] @ np.hstack([fm["Xl"], fm["Xq"]])
+                                                                 - np.hstack([fm["Xl"], fm["Xq"]])[:fm["n_own"]]) /
+                                                  np.linalg.norm(np.hstack([fm["Xl"], fm["Xq"]])[:fm["n_own"]]))
+                                         for k in ("linear", "quad", "hybrid")},
+                             lin_exact={k: float(np.abs(fm[k] @ fm["Xl"] - np.eye(11)).max()) for k in ("linear", "quad", "hybrid")}))
+        for base in ("linear", "quad", "hybrid"):
             Kv = np.zeros((ne, ne)); Kp = np.zeros((ne, ne)); rec = np.zeros(ne); tv = np.zeros(ne)
             cnum = cden = 0.0; amp = []
             for d in data:
@@ -103,7 +114,9 @@ def main():
                         "test_variation_term": norm(solve_rhs(mass, tv)) / r4,
                         "curvature_relative_error": float(np.sqrt(cnum / cden)),
                         "amplification_median_max": [float(np.median(amp)), float(np.max(amp))],
-                        "quadratic_bias_median": float(np.median([d["biasq"][base] for d in data]))}
+                        "quadratic_bias_median": float(np.median([d["biasq"][base] for d in data])),
+                        "own_flux_defect_median": float(np.median([d["own_defect"][base] for d in data])),
+                        "linear_exactness_max": float(np.max([d["lin_exact"][base] for d in data]))}
             print(key, json.dumps(out[key]), flush=True)
     out["seconds"] = round(time.time() - t00, 1)
     if receipt:

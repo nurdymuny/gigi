@@ -1,0 +1,104 @@
+{
+ "level": 0,
+ "forces": {
+  "native": {
+   "rk4_reference": "L0_native_N32_q6.json",
+   "runs": [
+    {
+     "N": 4,
+     "status": "ok",
+     "newton_max_iterations": 7,
+     "force_evaluations": 25,
+     "E_final": 0.035283089453355974,
+     "G_agree_worst_relative_gap": 0.0823764706634973,
+     "G_agree": false,
+     "G_time_relative_change": 0.007483873111435872,
+     "G_time": true
+    },
+    {
+     "N": 8,
+     "status": "ok",
+     "newton_max_iterations": 5,
+     "force_evaluations": 40,
+     "E_final": 0.03501903528890762,
+     "G_agree_worst_relative_gap": 0.014321504442981409,
+     "G_agree": true,
+     "G_time_relative_change": 0.0019285388753789725,
+     "G_time": true
+    },
+    {
+     "N": 16,
+     "status": "ok",
+     "newton_max_iterations": 5,
+     "force_evaluations": 73,
+     "E_final": 0.03495149971797469,
+     "G_agree_worst_relative_gap": 0.0035905582940108523,
+     "G_agree": true,
+     "G_time_relative_change": 0.0004828012977090876,
+     "G_time": true
+    },
+    {
+     "N": 32,
+     "status": "ok",
+     "newton_max_iterations": 4,
+     "force_evaluations": 128,
+     "E_final": 0.034934625088553974,
+     "G_agree_worst_relative_gap": 0.0008950231998479041,
+     "G_agree": true
+    }
+   ]
+  },
+  "pg": {
+   "rk4_reference": "L0_pg_N32_q6.json",
+   "runs": [
+    {
+     "N": 4,
+     "status": "ok",
+     "newton_max_iterations": 8,
+     "force_evaluations": 28,
+     "E_final": 0.0692554498339589,
+     "G_agree_worst_relative_gap": 0.04287750310068183,
+     "G_agree": true,
+     "G_time_relative_change": 0.004304968159211243,
+     "G_time": true
+    },
+    {
+     "N": 8,
+     "status": "ok",
+     "newton_max_iterations": 6,
+     "force_evaluations": 46,
+     "E_final": 0.06895730732757185,
+     "G_agree_worst_relative_gap": 0.00750780854306324,
+     "G_agree": true,
+     "G_time_relative_change": 0.0010870325107428483,
+     "G_time": true
+    },
+    {
+     "N": 16,
+     "status": "ok",
+     "newton_max_iterations": 5,
+     "force_evaluations": 80,
+     "E_final": 0.0688823484926535,
+     "G_agree_worst_relative_gap": 0.0019080265955162409,
+     "G_agree": true,
+     "G_time_relative_change": 0.0002712907586919781,
+     "G_time": true
+    },
+    {
+     "N": 32,
+     "status": "ok",
+     "newton_max_iterations": 5,
+     "force_evaluations": 130,
+     "E_final": 0.06886366134807044,
+     "G_agree_worst_relative_gap": 0.00047602595955046755,
+     "G_agree": true
+    }
+   ]
+  }
+ },
+ "N_passing_both_forces": [
+  8,
+  16
+ ],
+ "N_chosen_at_this_level": 8
+}

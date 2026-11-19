@@ -375,6 +375,7 @@ Amplification, Figure~\ref{fig:conditioning} & \path{make_data.py} $\to$ \texttt
 Unit tests of the two-ring fit & \path{scripts/test_ricci_pg_tworing.py} \\
 $SU(2)$ numerical range, Table~\ref{tab:su2numrange} & \path{scripts/ricci_su2_pg_numrange.py} \\
 $SU(2)$ time integration, Table~\ref{tab:su2flow} & \path{scripts/ricci_su2_pg_flow.py} \\
+Slow and fast residual & \path{scripts/ricci_su2_pg_flow_filter.py} \\
 Engine verb \path{RECOVER_CURVATURE} & \path{src/gauge/curvature_recovery.rs} \\
 Verb gates, parity, live run & \path{tests/recover_curvature.rs}, \path{e2e/probes/*recover_curvature*} \\
 \bottomrule\end{tabular}
@@ -1102,11 +1103,22 @@ moving run's levels off ($0.004$, $0.006$, $0.008$, $0.009$). The lattice sees t
 background, and the two-ring force follows it. The one ring diverges at the two-ring step,
 as its spectrum predicts.
 
-One prediction failed. The corrected native control expected the native error to stall
-in time, as its instantaneous error stalls near $25\%$; instead it falls, with observed order
-$1.63$. Over a window this short the native force error need not accumulate in the links,
-but that explanation is untested: the run that would separate it, recording the native
-force error along the native trajectory, has not been made.
+One prediction failed, and the reason was then measured. The corrected native control
+expected the native error to stall in time, as its instantaneous error stalls near $25\%$;
+instead it falls, with observed order $1.63$. To first order the trajectory error obeys
+$y'=-\hat Gy+\hat r(t)$, where $\hat r=L^\top r$ is the whitened residual, the lattice
+velocity at the exact links minus the exact velocity. Integrated exactly from residuals
+sampled along the exact path, this linear filter predicts every error in
+Table~\ref{tab:su2flow}, for both forces at both levels, to within $6\%$. The split of the
+residual between slow directions of $\hat G$ (rate below $1/T=50$) and fast ones then
+explains the failure. At $n=2$ only $0.85\%$ of the native residual lies in slow directions,
+against $7.6\%$ for two rings: the native force's $25\%$ error is real, but it is stiff, and the
+dynamics removes it within the window. Refinement makes it stiffer, so the fraction of the
+undamped error that survives falls from $0.29$ to $0.095$ for native between $n=1$ and $n=2$.
+The stall prediction was therefore about the wrong quantity. Over a window this short, what
+carries into the trajectory is the slow part of the error, $2.28\%$ for native against $2.05\%$
+for two rings at $n=2$, falling with observed orders $1.17$ and $2.62$. On a longer window
+more directions count as slow, and the native force's stiff error begins to matter.
 
 \paragraph{Scope.} Both the covariant recovery and the non-Abelian force are research
 scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
@@ -1226,7 +1238,8 @@ used as evidence in this paper.
     Section~\ref{sec:su2force} passes \BW{} on the Berger metric only, and its stability and
     numerical range are measured at $n\le2$. Its time integration is a research replica at
     $n\le2$ over $t\in[0,0.02]$, not the engine's flow gate, and the predicted stall of the
-    native force in time did not appear.
+    native force in time did not appear; a first-order filter model
+    explains why, and it is not a substitute for runs at $n\ge3$.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only

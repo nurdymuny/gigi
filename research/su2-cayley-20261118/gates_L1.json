@@ -1,0 +1,104 @@
+{
+ "level": 1,
+ "forces": {
+  "native": {
+   "rk4_reference": "L1_native_N64_q6.json",
+   "runs": [
+    {
+     "N": 4,
+     "status": "ok",
+     "newton_max_iterations": 8,
+     "force_evaluations": 27,
+     "E_final": 0.011452069067922229,
+     "G_agree_worst_relative_gap": 0.22414606133130888,
+     "G_agree": false,
+     "G_time_relative_change": 0.011269379578075752,
+     "G_time": true
+    },
+    {
+     "N": 8,
+     "status": "ok",
+     "newton_max_iterations": 7,
+     "force_evaluations": 49,
+     "E_final": 0.011323011354641473,
+     "G_agree_worst_relative_gap": 0.004699092451918825,
+     "G_agree": true,
+     "G_time_relative_change": 0.00340097735764633,
+     "G_time": true
+    },
+    {
+     "N": 16,
+     "status": "ok",
+     "newton_max_iterations": 5,
+     "force_evaluations": 79,
+     "E_final": 0.011284502049403965,
+     "G_agree_worst_relative_gap": 0.003263541353459688,
+     "G_agree": true,
+     "G_time_relative_change": 0.0009606674073029338,
+     "G_time": true
+    },
+    {
+     "N": 32,
+     "status": "ok",
+     "newton_max_iterations": 5,
+     "force_evaluations": 134,
+     "E_final": 0.01127366139607746,
+     "G_agree_worst_relative_gap": 0.0011779649395194619,
+     "G_agree": true
+    }
+   ]
+  },
+  "pg": {
+   "rk4_reference": "L1_pg_N64_q6.json",
+   "runs": [
+    {
+     "N": 4,
+     "status": "ok",
+     "newton_max_iterations": 8,
+     "force_evaluations": 26,
+     "E_final": 0.009191926578371557,
+     "G_agree_worst_relative_gap": 0.1311603508669144,
+     "G_agree": false,
+     "G_time_relative_change": 0.016114225870163333,
+     "G_time": true
+    },
+    {
+     "N": 8,
+     "status": "ok",
+     "newton_max_iterations": 6,
+     "force_evaluations": 44,
+     "E_final": 0.00904380579730572,
+     "G_agree_worst_relative_gap": 0.011495422350872298,
+     "G_agree": true,
+     "G_time_relative_change": 0.004017226110374047,
+     "G_time": true
+    },
+    {
+     "N": 16,
+     "status": "ok",
+     "newton_max_iterations": 5,
+     "force_evaluations": 75,
+     "E_final": 0.009007474784519631,
+     "G_agree_worst_relative_gap": 0.0035925324219338527,
+     "G_agree": true,
+     "G_time_relative_change": 0.0009989594073145302,
+     "G_time": true
+    },
+    {
+     "N": 32,
+     "status": "ok",
+     "newton_max_iterations": 4,
+     "force_evaluations": 128,
+     "E_final": 0.008998476682847487,
+     "G_agree_worst_relative_gap": 0.000916902395187666,
+     "G_agree": true
+    }
+   ]
+  }
+ },
+ "N_passing_both_forces": [
+  8,
+  16
+ ],
+ "N_chosen_at_this_level": 8
+}

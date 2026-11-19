@@ -19,6 +19,7 @@ usage: GIGI_RICCI_DATA_ROOT=<gigi checkout with output/> python docs/papers/chor
 (only fig_face_angles needs the frozen meshes)
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -29,7 +30,60 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 HERE = Path(__file__).resolve().parent
-FIG = HERE / 'figures'
+LANG = os.environ.get('FIG_LANG', 'en')            # FIG_LANG=ru writes the Russian edition's figures
+FIG = HERE / 'figures' if LANG == 'en' else HERE / LANG / 'figures'
+
+# Russian edition: every on-figure string passes through this table (exact match; others unchanged)
+RU = {
+    ' corner': ' вершина', 'chord': 'хорда', 'arc': 'дуга', 'outside': 'внешний',
+    r'at $180^\circ$ the corner is at infinity': r'при $180^\circ$ вершина уходит в бесконечность',
+    r'outside $T-A\approx\theta^3/12$': r'внешний $T-A\approx\theta^3/12$',
+    r'chord $A-C\approx\theta^3/24$': r'хорда $A-C\approx\theta^3/24$',
+    r'turn $\theta$ (radians)': r'поворот $\theta$ (радианы)',
+    'miss against the arc $A=\\theta$': 'промах относительно дуги $A=\\theta$',
+    r'limit $2$ as $\theta\to0$': r'предел $2$ при $\theta\to0$',
+    r'turn $\theta$': r'поворот $\theta$',
+    'overshoot / short-fall': 'избыток / недостача',
+    'faces on the\nBerger meshes': 'грани\nсеток Берже',
+    r'outside $\approx\theta^2/6$': r'внешний $\approx\theta^2/6$',
+    r'chord (Wilson) $\approx\theta^2/12$': r'хорда (Вильсон) $\approx\theta^2/12$',
+    r'2:1 blend $\approx7\theta^4/720$': r'смесь 2:1 $\approx7\theta^4/720$',
+    r'relative error against $A^2=\theta^2$': r'относительная погрешность к $A^2=\theta^2$',
+    r'chord $|U-1|^2$': r'хорда $|U-1|^2$', r'arc $\theta^2$': r'дуга $\theta^2$',
+    r'outside $T^2$': r'внешний $T^2$', 'face energy': 'энергия грани',
+    r'chord $|U-1|$': r'хорда $|U-1|$', r'arc $|\log U|$': r'дуга $|\log U|$',
+    r'Cayley $2|v|$': r'Кэли $2|v|$',
+    r'geodesic angle $a$ of $U$ on $S^3$': r'геодезический угол $a$ элемента $U$ на $S^3$',
+    'coordinate length': 'координатная длина', 'exact': 'точное',
+    r'explicit gains energy, $\approx s^2$': r'явный: энергия растёт, $\approx s^2$',
+    r'implicit loses it, $\approx s^2$': r'неявный: энергия убывает, $\approx s^2$',
+    'Crank–Nicolson:\nno energy error,\nphase lag $\\approx s^3/12$':
+        'Кранк — Николсон:\nбез ошибки энергии,\nфазовое запаздывание $\\approx s^3/12$',
+    'step $s$': 'шаг $s$', 'error per step': 'ошибка за шаг',
+    r'face holonomy angle $a$ (radians)': r'угол голономии грани $a$ (радианы)',
+    'fraction of faces with angle $\\leq a$': 'доля граней с углом $\\leq a$',
+    'measured force errors, 2.5%–36%': 'измеренные ошибки силы, 2.5%–36%',
+    r'chord–arc energy gap $a^2/12$': r'разрыв энергий хорды и дуги $a^2/12$',
+    'explicit: out': 'явный: наружу', 'Crank–Nicolson: on': 'Кранк — Николсон:\nна окружности',
+    'implicit: in': 'неявный: внутрь',
+}
+
+
+def tr(s):
+    return RU.get(s, s) if LANG == 'ru' and isinstance(s, str) else s
+
+
+if LANG == 'ru':                                   # route every text call through tr()
+    import matplotlib.axes as _maxes
+    from mpl_toolkits.mplot3d import axes3d as _a3d
+    _text, _xl, _yl, _ti = _maxes.Axes.text, _maxes.Axes.set_xlabel, _maxes.Axes.set_ylabel, _maxes.Axes.set_title
+    _maxes.Axes.text = lambda self, x, y, s, *a, **k: _text(self, x, y, tr(s), *a, **k)
+    _maxes.Axes.set_xlabel = lambda self, s, *a, **k: _xl(self, tr(s), *a, **k)
+    _maxes.Axes.set_ylabel = lambda self, s, *a, **k: _yl(self, tr(s), *a, **k)
+    _maxes.Axes.set_title = lambda self, s, *a, **k: _ti(self, tr(s), *a, **k)
+    _t3, _t2d = _a3d.Axes3D.text, _a3d.Axes3D.text2D
+    _a3d.Axes3D.text = lambda self, x, y, z, s, *a, **k: _t3(self, x, y, z, tr(s), *a, **k)
+    _a3d.Axes3D.text2D = lambda self, x, y, s, *a, **k: _t2d(self, x, y, tr(s), *a, **k)
 INK, INK2, GRID, SURF = '#0b0b0b', '#52514e', '#e4e3df', '#fcfcfb'
 CHORD, ARC, TAN, BLEND = '#2a78d6', '#1baf7a', '#eb6834', '#6250d6'
 RAMP = LinearSegmentedColormap.from_list('blue', ['#86b6ef', '#3987e5', '#256abf', '#184f95', '#0d366b'])
@@ -120,7 +174,7 @@ def sphere_3d():
     ax.text(*((A0+B0)/2*0.82), 'chord', color=CHORD, fontsize=8, ha='center', va='center', fontweight='bold')
     ax.text(*(P(np.array(th*0.62))*1.10), 'arc', color=ARC, fontsize=8, ha='left', fontweight='bold')
     ax.text(*(P(np.array(th*0.12), 1.2)), 'outside', color=TAN, fontsize=8, ha='left', fontweight='bold')
-    style3d(ax, ELEV, AZIM, 1.25)
+    style3d(ax, ELEV, AZIM, 1.25 if LANG == 'en' else 1.1)   # Cyrillic labels run wider
     for f in (ax.set_xlim, ax.set_ylim, ax.set_zlim): f(-1.0, 1.0)
     ax.text2D(0.03, 0.95, '(a)', transform=ax.transAxes, fontsize=9)
 
@@ -273,9 +327,9 @@ def time_stepping():
         ax.plot(z.real, z.imag, color=col, lw=1.5, marker='o', ms=2.8, mec='white', mew=0.4)
     ax.plot(exact[-1].real, exact[-1].imag, 'o', ms=6, mfc='none', mec=INK, mew=0.8)
     for k_, (txt, col) in enumerate((('explicit: out', TAN), ('Crank–Nicolson: on', ARC), ('implicit: in', CHORD))):
-        label(ax, 3.45, 1.55 - 0.32*k_, txt, col, fontweight='bold', ha='right', va='center', fontsize=7.4)
+        label(ax, 3.45 if LANG == 'en' else 4.6, 1.55 - (0.32 if LANG == 'en' else 0.5)*k_, txt, col, fontweight='bold', ha='right', va='center', fontsize=7.4)
     label(ax, 1.12, -0.17, 'exact', INK2, fontsize=7, va='center')
-    ax.set_aspect('equal'); ax.set_xlim(-2.0, 3.5); ax.set_ylim(-1.75, 1.75)
+    ax.set_aspect('equal'); ax.set_xlim(-2.0, 3.5 if LANG == 'en' else 4.7); ax.set_ylim(-1.75, 1.75)
     ax.set_xlabel(r'Re $y$'); ax.set_ylabel(r'Im $y$'); ax.set_title('(a)', loc='left')
     ax = axs[1]
     ss = np.geomspace(1e-2, 1.5, 300)
@@ -336,7 +390,7 @@ ALL = dict(sphere=sphere_3d, lengths=lengths, energy=energy, cayley=cayley_3d, t
            faces=face_angles)
 
 if __name__ == '__main__':
-    FIG.mkdir(exist_ok=True)
+    FIG.mkdir(parents=True, exist_ok=True)
     for name in (sys.argv[1:] or ALL):
         ALL[name]()
         print('wrote', name)

@@ -1,0 +1,43 @@
+{
+ "level": 0,
+ "rings": 2,
+ "cells": 120,
+ "edges": 142,
+ "kind": "V2 (research script, not an engine run)",
+ "before": {
+  "hybrid": {
+   "variational_error": 8.605445489547144,
+   "pg_error": 0.1166006485994121,
+   "reconstruction_term": 4.455842384610427,
+   "test_variation_term": 4.363137876757584,
+   "curvature_relative_error": 0.018050936368045847,
+   "amplification_median_max": [
+    1489.3356323863477,
+    1495.3515274183228
+   ]
+  },
+  "linear": {
+   "variational_error": 0.45405108599751287,
+   "pg_error": 0.06222994521470226,
+   "reconstruction_term": 0.04718014667687535,
+   "test_variation_term": 0.4348570068952714,
+   "curvature_relative_error": 0.036273260450665756,
+   "amplification_median_max": [
+    30.501488549556264,
+    30.52928655049009
+   ]
+  },
+  "quad": {
+   "variational_error": 6.1413262826233375,
+   "pg_error": 0.1037703769100899,
+   "reconstruction_term": 4.3689497364957575,
+   "test_variation_term": 2.258940696830588,
+   "curvature_relative_error": 0.01885222560064681,
+   "amplification_median_max": [
+    1491.5130035697941,
+    1497.5185196080047
+   ]
+  }
+ },
+ "seconds": 3.1
+}

@@ -21,7 +21,7 @@
 
 \title{Three Ways Across a Turn:\\ Chord, Arc and Tangent}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}}
-\date{November 2026 \quad\textperiodcentered\quad working draft}
+\date{November 2026}
 
 \begin{document}
 \maketitle
@@ -378,11 +378,10 @@ The backward version drifts inward and loses energy. The Cayley step, the detour
 exactly on the circle and only lags a little behind, by the same one-twelfth that separates
 the detour from the true path. Drawn over many steps, the outward drift traces a logarithmic
 spiral, the same family as the golden spiral, and at one step size it is exactly golden. The
-inward drift is its mirror twin, and the Cayley step is the circle between them. For our
-next step, simulating the flow on the mesh, that is
-the natural rule to try first. The numerical range we are measuring tells us how big its
-steps may be. The engine's clock today steps along the true curve instead
-(Section~\ref{sec:gigi}).
+inward drift is its mirror twin, and the Cayley step is the circle between them. That made
+it the natural rule for simulating the flow on the mesh, and the companion paper now uses
+it: eight Cayley steps follow the flow as closely as many small explicit ones. The engine's
+own clock still steps along the true curve (Section~\ref{sec:gigi}).
 \end{plain}
 
 \section{Twins, the far side, and Bertrand}\label{sec:twins}
@@ -685,14 +684,16 @@ The angles shrink roughly like the face area, and the chord--arc energy gap is b
 $0.08\%$ everywhere. The force errors measured there are $2.5\%$ to $36\%$. So the
 chord-versus-arc choice is not what limits that work, and the two readings used there
 (the arc, through $\log U$, for the covariant recovery; the chord, $U-1$, for the force)
-agree to well within the measured error. The three paths matter for that programme at
-the next step instead: the time integrator of Section~\ref{sec:time}.
+agree to well within the measured error. Where the three paths do matter for that
+programme is in time: its finest flow level is stepped with the Cayley rule of
+Section~\ref{sec:time}.
 
 \begin{plain}
 On the meshes we actually use, every face turns by less than a tenth of a radian. There the
 shortcut and the true path differ in energy by less than a tenth of a percent, far smaller
 than the errors we measure. So this idea does not explain those errors, and we say so. Where
-it does matter is in simulating the motion over time, which is the next step of that work.
+it does matter is in stepping the motion forward in time, and that work now uses the Cayley
+step to do it.
 \end{plain}
 
 \section{The computation in GIGI}\label{sec:gigi}
@@ -702,7 +703,7 @@ three paths are already part of \textsc{gigi}, the open-source geometric engine 
 curvature-recovery work runs in (PolyForm Noncommercial 1.0.0,
 \url{https://github.com/nurdymuny/gigi}). Others exist so far only in this paper's
 checking script. Table~\ref{tab:gigi} says which. Paths are relative to the repository
-root at commit \texttt{f3e2c1c} of the \texttt{feat/reading-the-curve} branch.
+root at commit \texttt{442c13d} of the \texttt{feat/reading-the-curve} branch.
 
 \begin{table}[h!]\centering\small
 \caption{Where each idea of the paper lives. ``Engine'' means native Rust in \textsc{gigi};
@@ -728,7 +729,7 @@ Face angles of Table~\ref{tab:angles} &
   script on engine output \\
 Arc (Manton) energy, tangent energy, the $2{:}1$ blend &
   \texttt{verify.py} & script \\
-Cayley map and Crank--Nicolson step & \texttt{verify.py} & script \\
+Cayley map and Crank--Nicolson step & \texttt{verify.py}; on the mesh, \path{scripts/ricci_su2_pg_flow_cayley.py} & script \\
 Haar sameness and Bertrand & \path{scripts/haar_sameness.py}, \texttt{verify.py} & script \\
 \bottomrule\end{tabular}
 \end{table}
@@ -751,15 +752,19 @@ SHA-256 (\texttt{71fb30db\ldots}).
 
 \paragraph{The engine steps along the arc, not the tangent.} \textsc{gigi}'s integrator,
 \texttt{SYMPLECTIC\_FLOW}, moves each link by the exponential map, the arc, with a
-kick--drift--kick leapfrog driven by the Wilson force. The research flow under development
-in the curvature-recovery work uses a Runge--Kutta--Munthe-Kaas method of order four, also
-built on the exponential. Neither uses the Cayley map. The Crank--Nicolson step of
-Section~\ref{sec:time} is therefore a proposal for the engine, not a description of it.
+kick--drift--kick leapfrog driven by the Wilson force. The research flow of the
+curvature-recovery work~\cite{davis-rtc} uses a Runge--Kutta--Munthe-Kaas method of order
+four, also built on the exponential, and at its finest level the Cayley step of
+Section~\ref{sec:time} (\path{scripts/ricci_su2_pg_flow_cayley.py}). There the step was
+checked before use: its gap from the exponential falls as $|v|^3/12$, its time order is
+$1.99$, and eight steps reproduce the fourth-order runs to within $1.5\%$ for a fifth to a
+third of the force evaluations. That is a research script. In the engine itself the
+Crank--Nicolson step is still a proposal, not a description.
 
 \paragraph{What is not in the engine.} The arc (Manton) energy, the tangent energy, the
-combination of Proposition~\ref{prop:energy} and the Cayley construction are computed only
-in \texttt{verify.py}. None is an engine verb, and nothing in this paper claims they have
-been tested inside a simulation.
+combination of Proposition~\ref{prop:energy} are computed only in \texttt{verify.py}. None is
+an engine verb, and none has been tested inside a simulation. The Cayley step has, in the
+research flow above, but it is not an engine verb either.
 
 \begin{plain}
 Some of this paper is already inside the engine we use: it reads how far each face has
@@ -851,9 +856,9 @@ curvature-recovery work; Section~\ref{sec:mesh} shows it does not.
 \begin{itemize}
   \item A prior-art search for the energy combination of Proposition~\ref{prop:energy} and
     for tangent-based lattice actions in general.
-  \item A Cayley (Crank--Nicolson) time integrator for the $SU(2)$ flow, tested against
-    exact trajectories, with its step size set by the numerical range. \textsc{gigi}'s
-    current integrator steps with the exponential (Section~\ref{sec:gigi}).
+  \item A Cayley (Crank--Nicolson) step inside the engine. It has been tested in the research
+    flow of the companion paper~\cite{davis-rtc}; \textsc{gigi}'s own integrator steps with
+    the exponential (Section~\ref{sec:gigi}).
   \item A strong-field or coarse-lattice test where $\theta$ is not small, the only regime
     where the energy combination could matter.
 \end{itemize}

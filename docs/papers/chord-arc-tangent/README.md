@@ -1,6 +1,6 @@
 # Three Ways Across a Turn: Chord, Arc and Tangent
 
-**Paper:** [`paper.pdf`](paper.pdf) (17 pages, working draft). **Author:** Bee Rosa Davis, Davis Geometric.
+**Paper:** [`paper.pdf`](paper.pdf) (18 pages). **Author:** Bee Rosa Davis, Davis Geometric.
 
 ## The idea
 

@@ -1,0 +1,40 @@
+<p><strong>Three Ways Across a Turn: Chord, Arc and Tangent</strong><br>
+Bee Rosa Davis, Davis Geometric. November 2026.</p>
+
+<p>Turn a line of length one through an angle &theta;. Its tip moves along a circle, and afterwards the two tip positions can be joined in three natural ways: by the straight <strong>chord</strong>, by the <strong>arc</strong> the turn actually traced, and by the <strong>outside path</strong> along the two tangent lines that meet beyond the circle. Their lengths are 2&nbsp;sin(&theta;/2), &theta; and 2&nbsp;tan(&theta;/2), always in that order. All of this is classical, from Archimedes through Snellius and Huygens. This paper reads the three paths as one object, three measurements of the same turn that miss in fixed proportions, and follows that proportion through length, energy, algebra and time stepping, then into the gauge group SU(2) and onto a real lattice.</p>
+
+<h3>The three readings</h3>
+<ul>
+<li><strong>Length.</strong> The chord falls short of the arc by &theta;<sup>3</sup>/24 and the outside path overshoots by &theta;<sup>3</sup>/12: exactly twice as much, at leading order. The Snellius&ndash;Huygens blend (2C + T)/3 therefore misses only by &theta;<sup>5</sup>/320.</li>
+<li><strong>Energy.</strong> Read the turn as a complex number U = e<sup>i&theta;</sup>. The chord is U &minus; 1, and its square is Wilson's lattice energy; the arc is the logarithm, and its square is the continuum (Manton) energy; the outside path gives an energy that overshoots by twice as much. The same 2:1 weights cancel the &theta;<sup>4</sup> term exactly: (2C<sup>2</sup> + T<sup>2</sup>)/3 = &theta;<sup>2</sup> + 7&theta;<sup>6</sup>/720 + &hellip;, using only arithmetic on U. This combination is the one statement the paper has not found in the classical sources; a prior-art search is listed as open.</li>
+<li><strong>Algebra.</strong> The tangent leg tan(&theta;/2) is the Cayley parameter that rebuilds U with plain arithmetic, U = (1 + i&tau;)/(1 &minus; i&tau;). It reaches every turn except the half turn U = &minus;1, where the two tangents become parallel and the outside path breaks.</li>
+<li><strong>Time stepping.</strong> On the simplest turning motion, y&prime; = iy, explicit Euler steps out along the tangent and spirals outward, implicit Euler spirals inward on the mirror spiral, and Crank&ndash;Nicolson, which is the Cayley map, stays exactly on the circle and lags by s<sup>3</sup>/12: the same one-twelfth that separates the detour from the arc. The outward spiral is logarithmic, and at exactly one step size (s* &asymp; 0.6515, 33.08&deg; per step) it is the golden spiral.</li>
+</ul>
+
+<h3>The non-Abelian turn</h3>
+<p>For a unit quaternion U = cos&nbsp;a + n&nbsp;sin&nbsp;a, an element of SU(2), everything carries over with &theta; replaced by the geodesic angle a on the three-sphere: |U &minus; 1| = 2&nbsp;sin(a/2), log&nbsp;U = a&nbsp;n, and the Cayley vector v = Im&nbsp;U/(1 + Re&nbsp;U) has length tan(a/2). Geometrically, the Cayley vector is the stereographic projection of U from &minus;1. Half the chord is the distance d in the double-cover identity S + d<sup>2</sup> = 1, with sameness S = cos<sup>2</sup>(&theta;/2).</p>
+
+<h3>Twins, the far side, and Bertrand</h3>
+<p>Every miss has a twin on the other side. Snellius' lower estimate misses by &theta;<sup>5</sup>/2880, nine times less than the upper one, and the 9:1 blend of the twins is exact to &theta;<sup>7</sup>. A chord does not know which way round a turn went; the outside path does. Crossing the circle's rim makes the turn imaginary, yet S + d<sup>2</sup> = 1 survives. Bertrand's paradox turns out to be the question of which of these quantities is taken to be uniform: the arc (probability 1/3), &radic;S (1/2), or S (1/4); a uniformly random turn of SU(2) gives a fourth answer, 1/3 &minus; &radic;3/(4&pi;) &asymp; 0.1955.</p>
+
+<h3>The ticket game</h3>
+<p>A game puts it all in one room. A ticket buys one straight walk of at most one step; two players each walk one ticket out from the centre. Getting back costs one ticket along the curve up to one radian (57.30&deg;), straight across up to 60&deg;, and, counted as energy the way the lattice counts it, exactly one ticket at 90&deg; (Pythagoras). With whole tickets every crossing is two trips, turning either at the centre or at its twin corner, which lands on the circle at 120&deg; and meets the tangent corner at 90&deg;.</p>
+
+<h3>On a real lattice</h3>
+<p>On the SU(2) meshes of the Poincar&eacute; homology sphere used in the companion paper, every face turns by at most 0.094 radians, so the chord and the arc differ in energy by under 0.08%, far below the 2.5&ndash;36% force errors measured there. The paper says plainly that these corrections do not explain those errors. Where the three paths do matter is in time: the companion paper's flow uses the Cayley step at its finest level, where eight steps reproduce fine fourth-order runs to within 1.5%. A section maps each idea to where it lives in the open-source GIGI engine and its research scripts, and states which pieces are engine code and which are not.</p>
+
+<h3>Toward Yang&ndash;Mills</h3>
+<p>In a gauge field every small loop carries a turn, its holonomy, and the picture reads directly: the turn creates the energy, and a lattice pays for it along the chord. The smallest unit of anything that exists extends equally in every direction, so it is a sphere and is curved; in four dimensions that unit sphere is SU(2) itself, whose curvature is how much its turns fail to commute (sectional curvature &frac14;|[X,&nbsp;Y]|<sup>2</sup>), and whose centre is again {&minus;1,&nbsp;+1}. The paper sets out why that suggests a floor under the energy of a non-Abelian field. It does <strong>not</strong> claim to resolve the Yang&ndash;Mills mass gap, which remains an open Clay problem; it separates the exact geometry from that open link.</p>
+
+<h3>What is claimed, and what is not</h3>
+<ul>
+<li>Every identity is checked symbolically or numerically by <code>verify.py</code>, which ships with the paper: 68 of 68 checks pass. The face angles are measured from frozen mesh data by <code>face_angles.py</code>.</li>
+<li>No priority is claimed for any classical identity. The paper does not claim that the combined energy is a better lattice action (that needs simulations and a treatment of the half-turn barrier), nor that it explains any error in the curvature-recovery work.</li>
+<li>Open: a prior-art search for the energy combination; a Cayley step inside the engine itself; a strong-field or coarse-lattice test, the only regime where the energy combination could matter.</li>
+</ul>
+
+<h3>Reproducibility</h3>
+<p>Manuscript source, figures (with the script that draws them from the paper's formulas and the frozen meshes), <code>verify.py</code> with its saved output, and <code>face_angles.py</code> are in <code>docs/papers/chord-arc-tangent/</code> of the GIGI repository, <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a> (PolyForm Noncommercial 1.0.0).</p>
+
+<h3>Companion paper</h3>
+<p><em>Reading the Curve, Not Counting the Points: A Consistent, Stable Petrov&ndash;Galerkin Curvature Force for Discrete Yang&ndash;Mills Dynamics on the Poincar&eacute; Homology Sphere</em> (B. R. Davis) computes with these turns: it reads each face both ways, the arc in its curvature recovery and the chord in its force, and steps its flow with the Cayley map.</p>

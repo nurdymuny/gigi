@@ -138,7 +138,7 @@ def generators_on(cell, verts):
     return plus, minus, lin
 
 
-def run(level):
+def run(level, objective="change"):
     t0 = time.time()
     L = pg.load_level(level, ORDER)
     cells, a, mass, vol = L["cells"], np.asarray(L["a"]), L["mass"], L["volume"]
@@ -157,7 +157,7 @@ def run(level):
     def rel(K):
         return norm(solve_rhs(mass, -(K @ a)) + 4 * a) / norm(-4 * a)
 
-    out = {"level": level}
+    out = {"level": level, "objective": objective}
     # C-repro
     K0 = assemble([c.T for c in C])
     out["C_repro_error"] = rel(K0)
@@ -251,6 +251,40 @@ def run(level):
     out["cells_seeing_two_copies_of_an_edge"] = int(multi)
     b = np.concatenate(rhs)
     print("constraints", row_count, "rows;", round(time.time() - t0, 1), "s", flush=True)
+    # Variables. objective "change" (V1): minimise sum ||C_K||^2.  objective "stiffness" (V1b): minimise
+    # trace K' = sum w ||G^1/2 (T + Z C ND)||^2; with S1 = Z^T G Z, S2 = ND ND^T and the substitution
+    # C = P1 Ct P2 / sqrt(w) (P1 = S1^-1/2, P2 = S2^+1/2) it becomes min ||Ct - Ct0||^2, Ct0 the
+    # unconstrained minimiser; directions with no effect on T' (null of S2) are fixed at zero.
+    xform = {}
+    for k, c in enumerate(C):
+        nz, nq = c.Z.shape[1], c.N.shape[1]
+        if objective == "stiffness":
+            l1, U1 = np.linalg.eigh(c.Z.T @ c.G @ c.Z)
+            l2, U2 = np.linalg.eigh(c.ND @ c.ND.T)
+            k2 = l2 > 1e-12 * l2.max()
+            P1 = U1 @ np.diag(l1 ** -0.5) @ U1.T
+            P2 = U2[:, k2] @ np.diag(l2[k2] ** -0.5) @ U2[:, k2].T
+            S1h = U1 @ np.diag(l1 ** 0.5) @ U1.T
+            S2h = U2[:, k2] @ np.diag(l2[k2] ** 0.5) @ U2[:, k2].T
+            S1i = U1 @ np.diag(1 / l1) @ U1.T
+            S2p = U2[:, k2] @ np.diag(1 / l2[k2]) @ U2[:, k2].T
+            C0 = -S1i @ c.Z.T @ c.G @ c.T @ c.ND.T @ S2p
+            Ct0 = np.sqrt(c.weight) * S1h @ C0 @ S2h
+            xform[k] = (P1 / np.sqrt(c.weight), P2, Ct0)
+        else:
+            xform[k] = (np.eye(nz), np.eye(nq), np.zeros((nz, nq)))
+    # constraint blocks in the new variables, and the right-hand side shifted by the reference point
+    bshift = b.copy()
+    for k in range(len(C)):
+        P1, P2, Ct0 = xform[k]
+        nz, nq = Ct0.shape
+        new = []
+        for r0, co in blocks[k]:
+            cm = co.reshape(-1, nz, nq)
+            cm = np.einsum("ip,mpq,qj->mij", P1.T, cm, P2.T) if objective == "stiffness" else cm
+            bshift[r0:r0 + cm.shape[0]] -= np.einsum("mij,ij->m", cm, Ct0)
+            new.append((r0, cm.reshape(cm.shape[0], -1)))
+        blocks[k] = new
     # normal equations, dense at this size
     AAt = np.zeros((row_count, row_count))
     Aloc = {}
@@ -263,13 +297,15 @@ def run(level):
         AAt[np.ix_(idx, idx)] += Ak @ Ak.T
     ev, evec = eigh(AAt)
     keep = ev > 1e-12 * ev.max()
-    y = evec[:, keep] @ ((evec[:, keep].T @ b) / ev[keep])
+    y = evec[:, keep] @ ((evec[:, keep].T @ bshift) / ev[keep])
     Cs = {}
-    resid = b.copy()
+    resid = bshift.copy()
     for k, (idx, Ak) in Aloc.items():
         ck = Ak.T @ y[idx]
-        Cs[k] = ck
         resid[idx] -= Ak @ ck
+        P1, P2, Ct0 = xform[k]
+        Ct = Ct0 + ck.reshape(Ct0.shape)
+        Cs[k] = (P1 @ Ct @ P2).ravel() if objective == "stiffness" else Ct.ravel()
     out["C_solve_relative_residual"] = float(np.linalg.norm(resid) / max(np.linalg.norm(b), 1e-300))
     out["constraint_rows"] = int(row_count); out["rank"] = int(keep.sum())
     # new maps
@@ -286,6 +322,7 @@ def run(level):
     out["amplification_max_before_after"] = [float(np.max(amp0)), float(np.max(amp1))]
     K1 = assemble(Ts)
     out["V1_relative_error"] = rel(K1)
+    out["trace_before_after"] = [float(np.trace(K0)), float(np.trace(K1))]
     # Proposition 1 decomposition for S = R (variational): covectors over edges
     def terms(Tlist):
         rec = np.zeros(ne); tv = np.zeros(ne); cnum = cden = 0.0
@@ -322,11 +359,15 @@ def run(level):
 
 
 if __name__ == "__main__":
-    level = int(sys.argv[1])
-    receipt = Path(sys.argv[2]) if len(sys.argv) > 2 else None
+    args = sys.argv[1:]
+    objective = "change"
+    if "--objective" in args:
+        i = args.index("--objective"); objective = args[i + 1]; del args[i:i + 2]
+    level = int(args[0])
+    receipt = Path(args[1]) if len(args) > 1 else None
     if receipt and receipt.exists():
         raise SystemExit(f"refusing to overwrite {receipt}")
-    out = run(level)
+    out = run(level, objective)
     if receipt:
         receipt.parent.mkdir(parents=True, exist_ok=True)
         receipt.write_text(json.dumps(out, indent=1) + "\n")

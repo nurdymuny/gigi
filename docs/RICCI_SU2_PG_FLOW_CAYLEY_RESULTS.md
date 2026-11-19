@@ -2,8 +2,8 @@
 
 2026-11-18. Spec: `docs/RICCI_SU2_PG_FLOW_CAYLEY_SPEC.md` (with Amendment 1: Newton tolerance
 10⁻⁸). Script: `scripts/ricci_su2_pg_flow_cayley.py`. Receipts:
-`research/su2-cayley-20261118/L0_*.json` (with each run's final state, `*.final.npy`); gate
-verdicts: `research/su2-cayley-20261118/gates_L0.json`, from `gates.py` in the same folder.
+`research/su2-cayley-20261118/L0_*.json` and `L1_*.json` (with each run's final state,
+`*.final.npy`); gate verdicts: `gates_L0.json` and `gates_L1.json`, from `gates.py` in the same folder.
 Run after the exact defect derivative (`docs/RICCI_SU2_EXACT_DEFECT_DERIVATIVE_RESULTS.md`,
 merge `be318ca`). Research script, **not an engine run**. n = 3 is not yet run.
 
@@ -15,6 +15,10 @@ the spec's 5%: from N = 8 steps for both forces, and from N = 4 for the two-ring
 gap to the reference shrinks four-fold each time the step is halved, as a second-order
 method should. At N = 8 the Cayley runs used 40 (native) and 46 (two-ring) force evaluations,
 against 128 for the RKMK4 reference at N = 32.
+
+n = 2 gives the same answer: every run converges, N = 8 passes both gates for both forces
+(gaps 0.47% native and 1.15% two-ring), so **N = 8 is fixed** for n = 3. N = 4 fails at both
+levels, only at its first, single large step.
 
 ## Controls
 

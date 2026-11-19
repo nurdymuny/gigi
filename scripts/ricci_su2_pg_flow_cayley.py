@@ -6,6 +6,7 @@ usage:
   python scripts/ricci_su2_pg_flow_cayley.py buildK LEVEL TRIAL [WORKERS]
   python scripts/ricci_su2_pg_flow_cayley.py run LEVEL TRIAL N [RECEIPT.json] [--startup be2]
     --startup be2  first step = two backward-Euler half-steps (S3d, docs/RICCI_SU2_PG_FLOW_STARTUP_SPEC.md)
+    --startup sdirk2  first step = one two-stage L-stable SDIRK2 step (S3e, docs/RICCI_SU2_PG_FLOW_STARTUP_SDIRK_SPEC.md)
     TRIAL  pg | native | pg_fixed        N  steps over [0, 0.02]
 """
 import json
@@ -129,7 +130,10 @@ def run(level, trial, N, startup=None):
     U = np.asarray(lat.raw["links"], float).copy()
     L0 = U.copy()
     B0 = lat.mass(L0, lat.metric_pieces(met(0.0))).tocsc()
-    A = splu((B0 + 0.5 * h * load_K(level, trial)).tocsc())
+    K0 = load_K(level, trial)
+    A = splu((B0 + 0.5 * h * K0).tocsc())
+    GAMMA = 1 - 1 / np.sqrt(2)
+    A_sd = splu((B0 + GAMMA * h * K0).tocsc()) if startup == "sdirk2" else None
     t_setup = time.time() - t0
     samples = sorted(set([N // 4, N // 2, 3 * N // 4, N]))
     rows, iters, evals = [], [], 0
@@ -137,6 +141,47 @@ def run(level, trial, N, startup=None):
     Om = np.zeros((lat.n, 3))
     t_eval = 0.0
     for k in range(N):
+        if startup == "sdirk2" and k == 0:
+            # S3e: two-stage stiffly accurate SDIRK2 (gamma = 1 - 1/sqrt 2), Lie/Cayley form, one step
+            ok = True
+            stages = [(GAMMA * h, None), (h, None)]
+            O1 = np.zeros((lat.n, 3))
+            for si, tend in enumerate((GAMMA * h, h)):
+                g = met(tend)
+                base = np.zeros((lat.n, 3)) if si == 0 else ((1 - GAMMA) / GAMMA) * O1
+                Ob = base.copy(); ok = False
+                for it in range(1, NEWTON_MAX + 1):
+                    te = time.time()
+                    F = Ob - base - GAMMA * h * lat.velocity(compose(U, cay(Ob)), g)
+                    t_eval += time.time() - te
+                    evals += 1
+                    d = A_sd.solve(-(B0 @ F.ravel())).reshape(lat.n, 3)
+                    Ob = Ob + d
+                    inc = float(np.linalg.norm(d) / max(np.linalg.norm(Ob), 1e-300))
+                    if inc <= NEWTON_TOL:
+                        ok = True
+                        break
+                iters.append(it)
+                worst_inc = max(worst_inc, inc)
+                if not ok:
+                    break
+                if si == 0:
+                    O1 = Ob
+            if not ok:
+                status = f"failed in the SDIRK2 start-up: Newton increment {inc:.2e}"
+                break
+            U = compose(U, cay(Ob))
+            U /= np.linalg.norm(U, axis=1, keepdims=True)
+            Om = Ob.copy()
+            if 1 in samples:
+                t = h; gt = true_met(t); L = lat.exact_links(gt)
+                E, D = lat.error(U, L, gt), lat.error(L0, L, gt)
+                fa_U, fa_L, fa_0 = lat.face_angles(U), lat.face_angles(L), lat.face_angles(L0)
+                rows.append({"t": t, "E": E, "D": D, "R": E / D,
+                             "gauge_invariant_R": float(np.linalg.norm(fa_U - fa_L) / np.linalg.norm(fa_0 - fa_L)),
+                             "newton_iterations": iters[-1], "seconds": round(time.time() - t0, 1)})
+                print(json.dumps(rows[-1]), flush=True)
+            continue
         if startup == "be2" and k == 0:
             # S3d: two backward-Euler half-steps, Omega = (h/2) xi(U cay(Omega), t_end); A = B0 + (h/2)K0
             # is exactly the backward-Euler Jacobian for step h/2. L-stable, first order, one step only.

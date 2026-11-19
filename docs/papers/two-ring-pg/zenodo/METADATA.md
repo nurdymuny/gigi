@@ -25,8 +25,8 @@ binary icosahedral group; SU(2); Ricci flow; Berger metric; numerical range;
 Cayley map; Crank–Nicolson; Lie-group integrators; GIGI
 
 **Related identifiers**
-- *is new version of*: the first version of this record (Zenodo links it automatically when
-  "New version" is used)
+- *is new version of*: https://doi.org/10.5281/zenodo.24328086 (first version, 2026-11-18;
+  concept DOI 10.5281/zenodo.24328085). Zenodo links them automatically when "New version" is used.
 - *is supplemented by*: https://github.com/nurdymuny/gigi (software)
 - *references*: *Three Ways Across a Turn: Chord, Arc and Tangent*, https://doi.org/10.5281/zenodo.24375338
 - *references*: B. R. Davis, *The Double Cover Principle*, https://doi.org/10.5281/zenodo.18895462

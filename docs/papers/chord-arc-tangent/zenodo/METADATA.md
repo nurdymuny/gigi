@@ -23,12 +23,13 @@ Crank–Nicolson; Lie-group integrators; SU(2); unit quaternions; Bertrand's par
 Haar measure; golden spiral; GIGI
 
 **Related identifiers**
-- *is referenced by* / *is supplement to*: the Zenodo record of *Reading the Curve, Not
-  Counting the Points* (add that record's DOI)
+- *is supplement to*: *Reading the Curve, Not Counting the Points*, https://doi.org/10.5281/zenodo.24328085
+  (concept DOI: resolves to its latest version)
 - *is supplemented by*: https://github.com/nurdymuny/gigi (software; scripts in
   `docs/papers/chord-arc-tangent/`)
-- *references*: B. R. Davis, *The Double Cover Principle*, https://doi.org/10.5281/zenodo.18895462
-  (cited in the paper)
+- *references*: *The Double Cover Principle*, https://doi.org/10.5281/zenodo.18895462 (cited in the paper)
+- *references*: *The Geometry of Sameness*, https://doi.org/10.5281/zenodo.17642422
+- *references*: *Zero Does Not Exist*, https://doi.org/10.5281/zenodo.19477365
 
 **After the DOI is issued**
 1. Replace "(DOI forthcoming)" in the `threeways` entry of

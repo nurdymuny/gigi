@@ -1,0 +1,20 @@
+{
+ "level": 1,
+ "cells": 960,
+ "edges": 1124,
+ "fit_unknowns": 11,
+ "faces_read_median": 44.0,
+ "faces_read_min": 40,
+ "redundancy_median": 4.0,
+ "own_rank_median": 3.0,
+ "Z_dim_median": 8.0,
+ "spare_clues_median": 33.0,
+ "C_unknowns_per_cell_median": 264.0,
+ "C_unknowns_total": 245760,
+ "constraint_rows_total": 21356,
+ "rows_per_edge_median": 19.0,
+ "rows_over_unknowns_global": 0.08689778645833333,
+ "rows_touching_cell_median": 836.0,
+ "rows_touching_over_C_unknowns_median": 3.1666666666666665,
+ "edge_rows_over_acting_unknowns_median": 0.001890923566878981
+}

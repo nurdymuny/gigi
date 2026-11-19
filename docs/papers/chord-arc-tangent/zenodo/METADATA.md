@@ -14,7 +14,15 @@ Zenodo's HTML source view. Post this record first: its DOI then goes into *Readi
 
 **Resource type** Publication / Preprint
 
-**File** `docs/papers/chord-arc-tangent/paper.pdf` (18 pages)
+**Files**
+1. `paper.pdf` — the paper in English (18 pages; `docs/papers/chord-arc-tangent/paper.pdf`)
+2. `paper_ru.pdf` — the Russian edition (20 pages; `docs/papers/chord-arc-tangent/ru/paper_ru.pdf`)
+3. `perelman_ru.pdf` — *Thank You, Mr. Perelman* in Russian (24 pages; kept outside the repo, in
+   `~/Documents/three-ways-ru-zenodo/`)
+
+Adding files to the published record needs **New version** on Zenodo (files of a published version
+cannot be changed). The description can be edited in place. Add language *Russian* alongside
+English.
 
 **Keywords**
 chord; arc; tangent; Snellius–Huygens; Archimedes; Wilson action; Manton action;

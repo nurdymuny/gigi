@@ -144,3 +144,22 @@ every 20th to 50th cell). Nothing above is relaxed.
   fields without bias. It changes the energy, the force assembly and the Petrov–Galerkin test
   pairing, so it is a separate design. It is considered only if V2q passes and the own-flux
   departure turns out to matter.
+
+## Amendment 3 (19 November 2026, before any V2 run)
+
+From `docs/research/v2-hybrid-base-2026-11-19.md` (base probe, C = 0 only). Nothing above is relaxed.
+
+- **Third arm, V2h: the hybrid base.** Fit the 26 closed linear and quadratic coefficients over three
+  rings (own faces exact), keep the linear part, and add the minimum-norm closed linear field carrying the
+  quadratic part's own-face flux: M = M₂₆[:11] + pinv(A_lin) A_quad M₂₆[11:]. It reproduces the cell's own
+  fluxes and every closed linear field exactly, so **V2's C-exact clause applies unchanged** (no Amendment 2
+  replacement). The change is kept off linear and quadratic fields exactly as in V2 (N₂), so
+  M′X_quad = M X_quad: the quadratic response stays the cell's own-face representative.
+- **Why.** At n = 2, with C = 0, the hybrid base has the smallest reconstruction term (0.92%; V2q 1.29%,
+  V2 4.78%), the smallest test-variation term (111%; 182% to 249%) and the lowest amplification (16.2), with
+  own fluxes exact to 5×10⁻¹⁶.
+- **Same gates, controls and removal arm** as V2 (P-recon ≤ 10%, V2-acc below Whitney, V2-stable; removal:
+  N₂ replaced by V1's N on the hybrid base, reconstruction term at least 3× V2h's at n = 2). The three arms are
+  judged separately; none is preferred in advance.
+- **Reported, not gated:** the three-ring Petrov–Galerkin force with the hybrid base (0.85% at n = 2 with
+  C = 0), as a lead for *Reading the Curve*.

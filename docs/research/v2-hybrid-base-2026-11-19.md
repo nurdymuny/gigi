@@ -3,7 +3,7 @@
 Research note, written while the n = 2 measurement runs. Responds to Amendment 2 of
 `docs/VARIATIONAL_RECOVERY_V2_SPEC.md` (the counter-review). Probe (exploratory, not gated):
 `scripts/ricci_variational_baseprobe.py`; receipts `research/variational-baseprobe-20261119/L0_three_bases.json`
-(n = 1) and `L1_three_bases.json` (n = 2, **running**). The earlier two-base receipts `L0.json`,
+(n = 1) and `L1_three_bases.json` (n = 2). The earlier two-base receipts `L0.json`,
 `L1.json`, cited by `v2-review-2026-11-19.md`, are unchanged. All numbers here have the change C = 0:
 they describe the *base* V2 would freeze, not V2.
 
@@ -55,22 +55,29 @@ curvature error of the three. Its reconstruction term sits between the other two
 base still has the smallest reconstruction term, as in the two-base probe; n = 1 is pre-asymptotic here,
 as everywhere in this work, and the ranking reversed at n = 2 last time.
 
-## What decides it (n = 2, running)
+## n = 2: the hybrid is best on every count
 
-At n = 2 the two-base probe gave V2q a reconstruction term of 1.3% against the linear base's 4.8%.
+| base, C = 0 | PG force | variational | reconstruction term | test-variation term | curvature error | amplification (median / max) | own-flux defect |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| published (linear, two rings) | 3.83% | 276% | 3.67% | 276% | 0.92% | 35.2 / 44.7 | 4×10⁻¹⁶ |
+| linear, three rings (V2) | 5.63% | 184% | 4.78% | 182% | 0.98% | 21.5 / 34.5 | 4×10⁻¹⁶ |
+| quadratic-aware (V2q) | 1.19% | 249% | 1.29% | 249% | 0.41% | 16.4 / 19.0 | **4.8%** |
+| **hybrid** | **0.85%** | **111%** | **0.92%** | **111%** | **0.36%** | **16.2 / 18.5** | **5×10⁻¹⁶** |
 
-- If the hybrid comes close to V2q at n = 2 (reconstruction term within about 2× of 1.3%) while
-  keeping own fluxes exact, propose **Amendment 3: a third arm, V2h**, with the hybrid base, same gates
-  and removal arm. It would keep *Reading the Curve*'s own-face principle, so a V2h pass would not need
-  the design-change caveat Amendment 2 attaches to V2q.
-- If not, recommend V2 and V2q as amended, and record that the own-face representative of the
-  quadratic part brings back enough of the bias to matter.
+- The hybrid has the smallest reconstruction term (0.92%, against V2q's 1.29%) **and** keeps the cell's
+  own fluxes exact. The departure Amendment 2 attached to V2q is not needed.
+- It also starts V2 from the smallest test-variation term of any base (111%, against 182% to 276%), so
+  the column condition has the least to remove.
+- **By-product, a lead not a result:** the Petrov–Galerkin force with the hybrid base is 0.85% at n = 2,
+  against the published 3.83%, with the own-face principle intact. It needs n = 3, 5 and the S3 spectra
+  before it means anything for *Reading the Curve*.
+- By the criterion stated before the run, this triggers **Amendment 3** (added to the V2 spec): a third
+  arm, V2h.
 
 ## Running now (this machine)
 
 | job | branch | state |
 | --- | --- | --- |
-| three-base probe, n = 2 | `feat/variational-force` | running (~25 min); writes `L1.json`, to be moved to `L1_three_bases.json` and the committed `L1.json` restored |
 | S2d one-ring removal, n = 3 | `feat/s2d-n3-spectrum` | running; the two-ring force already passed both n = 3 gates |
 | S3c two-ring, n = 2, N = 40 and 80 | `feat/s3c-long-window` | running; decides P-long (two-ring) and P-cross |
 

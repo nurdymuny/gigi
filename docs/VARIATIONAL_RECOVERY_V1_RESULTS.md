@@ -1,8 +1,9 @@
-# V1: variational force from a constrained two-ring recovery (results; n = 1, interim)
+# V1: variational force from a constrained two-ring recovery (results, n = 1 and n = 2)
 
 2026-11-19. Spec: `docs/VARIATIONAL_RECOVERY_V1_SPEC.md` (c84c535, before measurement). Script
 `scripts/ricci_variational_v1.py`; receipt `research/variational-v1-20261119/L0.json`. Research
-script, **not an engine run**. n = 2 is queued (needs ~10 GB; it starts when the S2d run frees memory).
+script, **not an engine run**. Receipts `L0.json`, `L1.json`. **Verdict: V1-acc fails at n = 1 and n = 2; V1-stable
+passes at both; V1b (`docs/VARIATIONAL_RECOVERY_V1B_SPEC.md`) runs next, as Bee directed.**
 
 ## In plain English
 
@@ -44,6 +45,36 @@ does not mean it was tuned to it.
 | symmetry ‖K − Kᵀ‖/‖K‖ | — | 8×10⁻¹⁷ |
 
 **V1-acc: FAIL at n = 1. V1-stable: PASS at n = 1.**
+
+## Result at n = 2
+
+| | two-ring variational (C = 0) | V1 constrained |
+| --- | --- | --- |
+| BW05 relative error | 276.3% | **61.6%** |
+| reconstruction term | 3.7% | **61.6%** |
+| test-variation term | **275.9%** | 1.2% |
+| curvature relative error | 0.92% | 2.9% |
+| fit amplification, median / max | 35.2 / 44.7 | 49.4 / 108 |
+| ‖C_K‖ median / max | 0 | 65 / 149 |
+| S3: small / negative / smallest physical | — | 163 (= gauge) / 0 / 3.9988 |
+| symmetry | — | 1.3×10⁻¹⁶ |
+
+Controls at n = 2: C-repro 276.34% (paper 276%), pass; C-span (a) 1.4×10⁻¹⁵, pass; C-span (b)
+2.0×10⁻⁵, **fail** (as at n = 1); **C-solve 6.8×10⁻⁵, fail** (threshold 10⁻⁸; 21,356 constraint rows,
+numerical rank 18,239 at the 10⁻¹² eigenvalue cut). The constraints are not met to the stated
+tolerance at n = 2; the most likely cause is ill-conditioned constraint directions dropped by the
+pseudo-inverse, to be checked (a looser cut, or an iterative solve, would show it).
+
+**V1-acc: FAIL at n = 2** (61.6% is far below 276% but not below Whitney's 26%). **V1-stable: PASS.**
+
+## Trend from n = 1 to n = 2
+
+- The test-variation term, the one that makes the variational force diverge, is almost removed at
+  n = 2: 275.9% → 1.2%.
+- The cost of the change shrinks with refinement: the median change falls from 288 to 65 and the
+  amplification grows by 1.4× instead of 6.5×.
+- The reconstruction term (61.6%) is now the whole error. It is driven by the recovery's response to
+  data, which is what V1b minimises.
 
 ## Reading
 

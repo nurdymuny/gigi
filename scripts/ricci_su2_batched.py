@@ -5,6 +5,8 @@ usage:
   python scripts/ricci_su2_batched.py parity LEVEL TRIAL [RECEIPT.json]
   python scripts/ricci_su2_batched.py time LEVEL TRIAL [LOOP_REPEATS]
   python scripts/ricci_su2_batched.py run LEVEL TRIAL N [RECEIPT.json]   (S3b Cayley step, batched force)
+  python scripts/ricci_su2_batched.py kparity LEVEL TRIAL [RECEIPT.json]  (B5 gates vs the loop)
+  python scripts/ricci_su2_batched.py kbuild LEVEL TRIAL [RECEIPT.json]   (B5: K to outputs/su2-batched-K/)
     TRIAL  native | pg
 """
 import json
@@ -124,6 +126,97 @@ class BatchedLattice(FL.Lattice):
         self.ycell, self.yface, self.yslot = np.array(ycell), np.array(yface), np.array(yslot)
         yl = np.array([[g for g, _ in t] for t in ylinks]), np.array([[iv for _, iv in t] for t in ylinks])
         self.ygid, self.yinv = yl
+        # B5: the same plan, padded per cell, for row-batched evaluation (one cell per row).
+        # Tree: entries in BFS order (a parent always precedes its children); padding writes a
+        # dummy slot Smax from slot 0 and is never read.
+        S1 = Smax - 1
+        self.t_slot = np.full((C, S1), Smax); self.t_pslot = np.zeros((C, S1), int)
+        self.t_gid = np.zeros((C, S1), int); self.t_inv = np.zeros((C, S1), bool)
+        for ci, p in enumerate(self.plan):
+            slot = {p["root"]: 0}
+            for m, v in enumerate(p["order"]):
+                par, nj, i, j = p["parent"][v]
+                slot[v] = m + 1
+                gid, inv = link_of(cells[nj], i, j)
+                self.t_slot[ci, m], self.t_pslot[ci, m] = m + 1, slot[par]
+                self.t_gid[ci, m], self.t_inv[ci, m] = gid, inv
+        self.f_valid = np.zeros((C, Fmax), bool)
+        self.f_gid = np.zeros((C, Fmax, 3), int); self.f_inv = np.zeros((C, Fmax, 3), bool)
+        self.f_slot = np.zeros((C, Fmax), int)
+        self.f_valid[self.ycell, self.yface] = True
+        self.f_gid[self.ycell, self.yface] = self.ygid
+        self.f_inv[self.ycell, self.yface] = self.yinv
+        self.f_slot[self.ycell, self.yface] = self.yslot
+
+    # ------------------------------------------------------------ B5: rows with one link nudged
+    def reads(self):
+        """Global links each cell's contribution depends on."""
+        out = [set(e) for e in self.E.tolist()]
+        if self.trial != "native":
+            for ci in range(len(self.cells)):
+                out[ci].update(self.t_gid[ci][self.t_slot[ci] < self.Smax].tolist())
+                out[ci].update(self.f_gid[ci][self.f_valid[ci]].ravel().tolist())
+        return [sorted(s) for s in out]
+
+    def row_contrib(self, links, mp, T, cell, g, q):
+        """contrib[r] (6 x 3): cell[r]'s gradient contribution at its six edges, with link g[r]
+        replaced by quaternion q[r] wherever the cell reads it (lift included)."""
+        def get(gids, inv=None):
+            vals = links[gids]
+            hit = gids == g.reshape((-1,) + (1,) * (gids.ndim - 1))
+            vals = np.where(hit[..., None], q.reshape((-1,) + (1,) * (gids.ndim - 1) + (4,)), vals)
+            return vals if inv is None else np.where(inv[..., None], vals * CONJ, vals)
+        E, rev = self.E[cell], self.rev[cell]
+        raw = get(E)                                                      # R x 6 x 4
+        u = raw.copy(); u[rev, 1:] *= -1
+        D = b_defects(u)
+        h = np.matmul(mp["m2"][cell], D)
+        if self.trial != "native":
+            R = len(cell)
+            W = np.zeros((R, self.Smax + 1, 4)); W[:, 0] = ONE
+            ts, tp = self.t_slot[cell], self.t_pslot[cell]
+            tl = get(self.t_gid[cell], self.t_inv[cell])                  # R x S1 x 4
+            rr = np.arange(R)
+            for m in range(ts.shape[1]):
+                W[rr, ts[:, m]] = compose(W[rr, tp[:, m]], tl[:, m])
+            L = get(self.f_gid[cell], self.f_inv[cell])                   # R x F x 3 x 4
+            hol = compose(compose(L[:, :, 0], L[:, :, 1]), L[:, :, 2])
+            Wf = W[rr[:, None], self.f_slot[cell]]                        # R x F x 4
+            Y = np.where(self.f_valid[cell][..., None], b_ad(Wf, hol[..., 1:]), 0.0)
+            hvec = np.matmul(T[cell], Y)
+            h = np.concatenate([h[:, :, :1], hvec], axis=2)
+        dD = b_defect_derivatives(u)
+        a_loc = 4 * np.einsum("nekic,nic->nek", dD, h)
+        lift = np.where(rev[:, :, None, None], -rotations(raw), np.eye(3))
+        return np.einsum("ceji,cej->cei", lift, a_loc) * self.w[cell][:, None, None]
+
+    def build_K(self, eps=1e-6, chunk=4000, columns=None):
+        """K at the stored links and g(0) by central differences, as Setup.column. columns: an
+        optional set of global links to build (all if None)."""
+        from scipy.sparse import coo_matrix
+        links = np.asarray(self.raw["links"], float)
+        mp = self.metric_pieces(FL.G0)
+        T = self._T(mp) if self.trial != "native" else None
+        pairs = [(c, g) for c, rd in enumerate(self.reads()) for g in rd
+                 if columns is None or g in columns]
+        cell = np.array([c for c, _ in pairs]); gl = np.array([g for _, g in pairs])
+        import ricci_su2_pg_stability as S2B
+        N = 3 * self.n
+        K = None
+        for k in range(3):                     # assembled one direction at a time (memory at n = 5)
+            rows, cols, vals = [], [], []
+            for sign in (1.0, -1.0):
+                q_all = compose(links[gl], S2B.exp_tau(sign * eps, k))
+                for a in range(0, len(cell), chunk):
+                    c, g, q = cell[a:a + chunk], gl[a:a + chunk], q_all[a:a + chunk]
+                    v = self.row_contrib(links, mp, T, c, g, q) * (sign / (2 * eps))
+                    rows.append((3 * self.E[c][:, :, None] + np.arange(3)).ravel().astype(np.int32))
+                    cols.append(np.repeat(3 * g + k, 18).astype(np.int32))
+                    vals.append(v.ravel())
+            Kk = coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+                            shape=(N, N)).tocsc()
+            K = Kk if K is None else K + Kk
+        return K
 
     def metric_pieces(self, g):
         """Amendment 1: cached by g (exact), optimised contraction order (rounding only)."""
@@ -237,9 +330,76 @@ def timing(level, trial, loop_repeats=1):
     return out
 
 
+def k_parity(level, trial):
+    """B5 gates: P-K1 (n = 1, every column) or P-K2 (60 seeded columns), and P-pattern."""
+    import ricci_su2_pg_stability as S2B
+    t0 = time.time()
+    bat = BatchedLattice(level, trial)
+    N = 3 * bat.n
+    if level == 0:
+        idx = np.arange(N)
+    else:
+        idx = np.sort(np.random.default_rng(0).choice(N, size=60, replace=False))
+    K = bat.build_K(columns=None if level == 0 else set((idx // 3).tolist()))
+    t_b = time.time() - t0
+    S = S2B.Setup(level, trial)
+    rels, pattern_ok = [], True
+    num = den = 0.0
+    for j in idx:
+        ref = S.column(int(j // 3), int(j % 3))
+        b = K[:, int(j)].toarray().ravel()
+        rels.append(float(np.linalg.norm(b - ref) / np.linalg.norm(ref)))
+        num += float(np.sum((b - ref) ** 2)); den += float(np.sum(ref ** 2))
+        thr = 1e-9 * max(np.abs(ref).max(), np.abs(b).max())   # Amendment 1
+        pattern_ok &= bool(np.array_equal(np.abs(b) > thr, np.abs(ref) > thr))
+    out = {"level": level, "trial": trial, "columns_checked": int(len(idx)),
+           "worst_column_rel": max(rels), "median_column_rel": float(np.median(rels)),
+           "matrix_rel": float(np.sqrt(num / den)), "pattern_identical": pattern_ok,
+           "gate": "P-K1" if level == 0 else "P-K2",
+           "pass": (max(rels) <= 1e-8) and pattern_ok,
+           "batched_seconds": round(t_b, 1), "seconds_total": round(time.time() - t0, 1)}
+    if level == 2:
+        from scipy.sparse import load_npz
+        disk = REPO / "outputs" / "su2-cayley" / f"L2_{'pg' if trial == 'pg' else trial}_K.npz"
+        if disk.exists() and trial in ("native", "pg"):
+            D = load_npz(disk).tocsc()[:, idx].toarray()
+            out["vs_S3b_disk_K_rel"] = float(np.linalg.norm(K[:, idx].toarray() - D) / np.linalg.norm(D))
+    return out
+
+
+def k_build(level, trial, out_dir):
+    import hashlib
+    from scipy.sparse import save_npz
+    t0 = time.time()
+    bat = BatchedLattice(level, trial)
+    t_setup = time.time() - t0
+    K = bat.build_K()
+    t_build = time.time() - t0 - t_setup
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"L{level}_{trial}_K.npz"
+    if path.exists():
+        raise SystemExit(f"refusing to overwrite {path}")
+    save_npz(path, K)
+    h = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {"level": level, "trial": trial, "dof": 3 * bat.n, "nnz": int(K.nnz), "file": str(path.relative_to(REPO)).replace("\\", "/"),
+            "sha256": h, "setup_seconds": round(t_setup, 1), "build_seconds": round(t_build, 1),
+            "metric": "g(0) = (3, 1, 1)", "eps": 1e-6, "kind": "B5 batched Jacobian (research script, not an engine run)"}
+
+
 def main():
     mode = sys.argv[1]
     level, trial = int(sys.argv[2]), sys.argv[3]
+    if mode in ("kparity", "kbuild"):
+        receipt = Path(sys.argv[4]) if len(sys.argv) > 4 else None
+        if receipt and receipt.exists():
+            raise SystemExit(f"refusing to overwrite {receipt}")
+        out = k_parity(level, trial) if mode == "kparity" else \
+            k_build(level, trial, REPO / "outputs" / "su2-batched-K")
+        print(json.dumps(out), flush=True)
+        if receipt:
+            receipt.parent.mkdir(parents=True, exist_ok=True)
+            receipt.write_text(json.dumps(out, indent=1) + "\n")
+        return
     if mode == "parity":
         receipt = Path(sys.argv[4]) if len(sys.argv) > 4 else None
         if receipt and receipt.exists():

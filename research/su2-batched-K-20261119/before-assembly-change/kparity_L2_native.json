@@ -1,0 +1,14 @@
+{
+ "level": 2,
+ "trial": "native",
+ "columns_checked": 60,
+ "worst_column_rel": 2.3015799511068484e-12,
+ "median_column_rel": 4.3861301955656947e-13,
+ "matrix_rel": 4.3434636265670795e-13,
+ "pattern_identical": true,
+ "gate": "P-K2",
+ "pass": true,
+ "batched_seconds": 2.4,
+ "seconds_total": 12.2,
+ "vs_S3b_disk_K_rel": 1.0254758617426395e-07
+}

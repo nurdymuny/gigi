@@ -4,8 +4,8 @@ Spec: docs/RICCI_SU2_PG_FLOW_CAYLEY_SPEC.md. Research script, not an engine verb
 usage:
   python scripts/ricci_su2_pg_flow_cayley.py controls LEVEL
   python scripts/ricci_su2_pg_flow_cayley.py buildK LEVEL TRIAL [WORKERS]
-  python scripts/ricci_su2_pg_flow_cayley.py run LEVEL TRIAL N [RECEIPT.json]
-    TRIAL  pg | native | pg_fixed        N  steps over [0, 0.02]
+  python scripts/ricci_su2_pg_flow_cayley.py run LEVEL TRIAL N [RECEIPT.json] [--T 0.1]
+    TRIAL  pg | native | pg_fixed        N  steps over [0, T]  (T = 0.02 unless --T; S3c uses 0.1)
 """
 import json
 import sys
@@ -119,18 +119,29 @@ def controls(level):
 
 
 # ---------------------------------------------------------------- the run
-def run(level, trial, N):
+SAMPLE_EVERY = 0.02          # S3c: on a longer window, errors are sampled every 0.02
+REFRESH_AFTER = 12           # S3c: reassemble the mass in A after this many iterations in one step
+
+
+def run(level, trial, N, T=T_END):
     t0 = time.time()
+    long_window = abs(T - T_END) > 1e-15
     lat = FL.Lattice(level, trial)
-    met = FL.Metric(fixed=(trial == "pg_fixed"))
-    true_met = FL.Metric()
-    h = T_END / N
+    met = FL.Metric(fixed=(trial == "pg_fixed"), t_end=T)
+    true_met = FL.Metric(t_end=T)
+    h = T / N
     U = np.asarray(lat.raw["links"], float).copy()
     L0 = U.copy()
     B0 = lat.mass(L0, lat.metric_pieces(met(0.0))).tocsc()
-    A = splu((B0 + 0.5 * h * load_K(level, trial)).tocsc())
+    K0 = load_K(level, trial)
+    A = splu((B0 + 0.5 * h * K0).tocsc())
+    refreshes = 0
     t_setup = time.time() - t0
-    samples = sorted(set([N // 4, N // 2, 3 * N // 4, N]))
+    if long_window:
+        stride = int(round(SAMPLE_EVERY / h))
+        samples = list(range(stride, N + 1, stride))
+    else:
+        samples = sorted(set([N // 4, N // 2, 3 * N // 4, N]))
     rows, iters, evals = [], [], 0
     status, worst_inc = "ok", 0.0
     Om = np.zeros((lat.n, 3))
@@ -152,6 +163,10 @@ def run(level, trial, N):
             if inc <= NEWTON_TOL:
                 ok = True
                 break
+            if long_window and it == REFRESH_AFTER:
+                B0 = lat.mass(U, lat.metric_pieces(g)).tocsc()
+                A = splu((B0 + 0.5 * h * K0).tocsc())
+                refreshes += 1
         iters.append(it)
         worst_inc = max(worst_inc, inc)
         if not ok:
@@ -171,8 +186,9 @@ def run(level, trial, N):
             print(json.dumps(rows[-1]), flush=True)
     return {"level": level, "trial": trial, "stepper": "cayley_midpoint", "N": N, "h": h,
             "status": status, "rows": rows,
-            "R_final": rows[-1]["R"] if rows and abs(rows[-1]["t"] - T_END) < 1e-15 else None,
-            "E_final": rows[-1]["E"] if rows and abs(rows[-1]["t"] - T_END) < 1e-15 else None,
+            "T": T, "mass_refreshes": refreshes,
+            "R_final": rows[-1]["R"] if rows and abs(rows[-1]["t"] - T) < 1e-12 else None,
+            "E_final": rows[-1]["E"] if rows and abs(rows[-1]["t"] - T) < 1e-12 else None,
             "newton_iterations": iters, "newton_max_iterations": max(iters) if iters else None,
             "newton_worst_final_increment": worst_inc, "force_evaluations": evals,
             "seconds_per_evaluation": round(t_eval / max(evals, 1), 2),
@@ -187,11 +203,17 @@ def main():
     if mode == "buildK":
         build_K(int(sys.argv[2]), sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 12)
         return
-    level, trial, N = int(sys.argv[2]), sys.argv[3], int(sys.argv[4])
-    receipt = Path(sys.argv[5]) if len(sys.argv) > 5 else None
+    args = sys.argv[2:]
+    T = T_END
+    if "--T" in args:
+        i = args.index("--T")
+        T = float(args[i + 1])
+        del args[i:i + 2]
+    level, trial, N = int(args[0]), args[1], int(args[2])
+    receipt = Path(args[3]) if len(args) > 3 else None
     if receipt and receipt.exists():
         raise SystemExit(f"refusing to overwrite {receipt}")
-    out = run(level, trial, N)
+    out = run(level, trial, N, T)
     final = out.pop("_final")
     print(json.dumps({k: v for k, v in out.items() if k not in ("rows", "newton_iterations")}), flush=True)
     if receipt:

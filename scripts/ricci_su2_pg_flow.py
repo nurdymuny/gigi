@@ -66,9 +66,9 @@ def to_quat(M):
 
 # ---------------------------------------------------------------- metric along the Ricci flow
 class Metric:
-    def __init__(self, fixed=False):
+    def __init__(self, fixed=False, t_end=T_END):
         self.fixed = fixed
-        sol = solve_ivp(lambda t, g: RO.velocity(g, False), (0, T_END), G0, method="DOP853",
+        sol = solve_ivp(lambda t, g: RO.velocity(g, False), (0, t_end), G0, method="DOP853",
                         rtol=2e-12, atol=2e-14, dense_output=True)
         self.sol = sol
 

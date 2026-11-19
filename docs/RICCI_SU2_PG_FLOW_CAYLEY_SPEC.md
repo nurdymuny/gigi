@@ -76,3 +76,35 @@ At n = 3, for the native, two-ring and frozen-metric runs, with final states sav
 ## Not measured
 
 n ≥ 4, longer windows, other metrics, the engine path (BW08).
+
+## Amendment 1 (2026-11-18): the Newton tolerance was below the force's own precision
+
+**Written after the first n = 1 attempt failed, and before any trajectory result existed.**
+No gate, control or step-size rule changes; only the Newton tolerance does.
+
+**What happened.** All four native n = 1 runs (N = 4, 8, 16, 32) stopped at step 1 with
+"failed at step 1": the Newton increment fell about 100× per iteration down to about
+10⁻⁹, then hovered at 2.6–4.0×10⁻¹⁰ for the rest of the 40 iterations, never reaching
+10⁻¹⁰. The two-ring runs were stopped before they finished. The failed receipts are kept in
+`research/su2-cayley-20261118/failed-tol-1e-10/`.
+
+**Why (measured).** Scripts and output in `research/su2-cayley-20261118/diagnostics/`.
+- The mass solve is not the cause: the iterative (CG) and a direct sparse solve give
+  velocities that agree to 4.3×10⁻¹³, and Newton stalls at the same floor with either.
+- The force evaluation itself is the floor. Nudging every link by a rounding-level
+  amount (relative 2.2×10⁻¹⁶) moves the computed velocity by 3.3–3.9×10⁻¹⁰ and the
+  gradient by 4.6–5.3×10⁻¹⁰, for both the native and two-ring forces at n = 1. Newton
+  cannot converge below the noise of the function it solves, so 10⁻¹⁰ was unreachable.
+  This was an error in the spec, not in the stepper.
+
+**Change.** Newton converges when ‖Δ‖ ≤ 10⁻⁸ ‖Ω‖, about 30× above the measured floor. The
+40-iteration timeout and the stop-on-failure rule are unchanged. A relative error of 10⁻⁸
+in each step's Ω is far below every comparison the gates make (G-agree at E/20 with E of
+order 10⁻²; G-time at E/10).
+
+**Open, not addressed here (hypothesis, untested).** The gradient amplifies rounding by about
+10⁶. The likely source is the face defect, computed as the holonomy minus one: the chord
+reading U − 1 of a small turn, which loses digits in the same way as computing 1 − cos θ
+directly. The usual cure is to form it from the vector part (the half-angle form
+2 sin²(θ/2)). It would change the force in every SU(2) script at the 10⁻¹⁰ level, so it is
+left for a separate, tested change.

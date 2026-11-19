@@ -70,3 +70,21 @@ the comparison.
 ## Not done here
 
 The spectra and numerical ranges from these matrices (B6, its own spec); the n = 5 flow (C9).
+
+## Amendment 1 (2026-11-19): the pattern threshold was below the method's own noise
+
+**Written after the first P-K1 run failed, before any other gate was run.** No other threshold
+changes.
+
+**What happened.** At n = 1, two-ring, every column agrees with the loop to 5.9 × 10⁻¹¹ (median
+1.6 × 10⁻¹¹), within P-K1's 10⁻⁸. P-pattern failed: in 2 of 61 columns inspected, an entry is
+exactly zero in one build and about 10⁻¹² × the column's largest entry in the other (for example
+−7.6 × 10⁻¹¹ against 0). These are entries whose true value is zero, where the central
+difference of two nearly equal sums leaves rounding noise in one build and cancels exactly in
+the other. The spec put the zero line at 10⁻¹⁴ × max, below the method's own noise floor of
+about 10⁻¹¹ × max (gradient rounding over ε = 10⁻⁶). The failed receipt is kept in
+`research/su2-batched-K-20261119/failed-pattern-1e-14/`.
+
+**Change.** In P-pattern an entry counts as zero below 10⁻⁹ × the column's largest entry: a
+hundred times above the noise floor and ten times below P-K1's tolerance, so an entry that P-K1
+would allow to differ cannot hide a structural difference.

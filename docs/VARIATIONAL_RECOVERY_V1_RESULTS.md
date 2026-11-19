@@ -89,3 +89,20 @@ pseudo-inverse, to be checked (a looser cut, or an iterative solve, would show i
 If the change shrinks under refinement, V1's problem is pre-asymptotic. If not, the objective should
 penalise amplification directly (minimise ‖M'_K‖₂ or the H-norm of R'_K on rough data subject to the
 same constraints), or the condition should be imposed only to the order the error analysis needs.
+
+## V1b (stiffness objective), n = 1 and n = 2
+
+Spec `docs/VARIATIONAL_RECOVERY_V1B_SPEC.md` (e67ea14). Receipts `research/variational-v1b-20261119/L{0,1}.json`.
+
+| | n = 1 | n = 2 |
+| --- | --- | --- |
+| BW05 error (V1 for comparison) | 485% (440%) | **48.3%** (61.6%) |
+| reconstruction / test-variation term | 479% / 10.2% | 48.1% / 1.1% |
+| amplification median, before → after | 30.5 → 285 | 35.2 → 83.5 |
+| trace K′ (V1 for comparison) | 64k (116k) | 132k (n/a) |
+| C-solve residual | 3.1×10⁻⁹ | 6.7×10⁻⁵ (**fail**) |
+| S3 | 21 / 0 negative / 4.014 | 163 / 0 negative / 3.9985 |
+
+**V1b-acc FAIL at both levels; stable at both.** The count (`docs/research/variational-count-2026-11-19.md`)
+explains why no objective could rescue V1: at two rings the change can only act on the field's own
+second-order part. V2 (three rings, change kept off quadratic fields) is the response.

@@ -1012,9 +1012,12 @@ The two-ring force has no rough modes at any of the three levels (Table~\ref{tab
 Figure~\ref{fig:su2spec}). The one-ring
 force has $207$, then $1{,}451$, then $4{,}437$, and its most negative eigenvalue grows under
 refinement ($-8{,}621$, $-19{,}829$, $-45{,}543$), the same signature as the Abelian one ring.
-At $n=3$ the count of growing directions below $-10$ was also certified independently, from a
-sparse factorization of the batched operator rather than a dense eigensolver: zero for two
-rings, and a left edge of $-4.666$, the same to four digits. The few negative eigenvalues of the two-ring
+At $n=3$ the absence of rough modes was also certified independently, from a sparse
+factorization of the separately built (batched) operator rather than a dense eigensolver: by
+Sylvester's law of inertia, no point of the numerical range of the two-ring operator, and hence
+no eigenvalue, lies below $-10$. The same factorization gives the left edge of that range as
+$-4.665611$, agreeing with the dense value to about $10^{-11}$, and the same count of growing
+directions ($772$; native $774$). The few negative eigenvalues of the two-ring
 operator belong to the field, not to the method. The Berger field is not at rest, so its
 linearisation has some directions of growth. At $n=2$, the five most negative real parts
 are $-4.632$, $-4.632$, $-2.503$, $-2.503$, $-1.390$ for the two-ring operator and $-4.650$,
@@ -1055,7 +1058,7 @@ removal: one ring & 3 & $-45{,}922$ & $-45{,}543$ & --- & --- \\
 \end{table}
 
 The two-ring force passes at all three levels. Its left edge lies $0.17$ to the left of its slowest
-eigenvalue at $n=1$ and $0.03$ at $n=2$, and matches the native operator's, so the only growth is the field's own motion:
+eigenvalue at $n=1$, $0.03$ at $n=2$ and $0.015$ at $n=3$, and matches the native operator's, so the only growth is the field's own motion:
 over the window $[0,0.02]$ of the time-integration experiment, the envelope is
 $e^{4.664\times0.02}\approx1.098$ for both forces. The one ring fails, as the removal
 requires, with a left edge of $-19{,}993$ at $n=2$ and $-45{,}922$ at $n=3$. The two-ring operator is non-normal

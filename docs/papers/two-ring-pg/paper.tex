@@ -39,7 +39,7 @@
 \newcommand{\Pone}{\mathcal{P}_1^{\mathrm{cl}}}
 
 \title{Reading the Curve, Not Counting the Points:\\[2pt]
-\large A Consistent, Stable Petrov--Galerkin Curvature Force:\\ An Abelian Control for Discrete Yang--Mills Dynamics\\ on the Poincar\'e Homology Sphere}
+\large A Consistent, Stable Petrov--Galerkin Curvature Force\\ for Discrete Yang--Mills Dynamics on the Poincar\'e Homology Sphere}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}}
 \date{November 2026}
 
@@ -48,65 +48,35 @@
 
 \begin{abstract}
 The \DAVIS{}--Wilson programme asks whether lattice gauge dynamics computed from coarse
-edge data reproduce the continuum geometric flow they discretize. In the exact
-instantaneous form that matters for the programme, the discrete force evaluated on the
-exact edge integrals of a smooth connection, tested against \emph{every} discrete
-variation, must converge to the continuum force. For the lowest-order Whitney
-discretization this fails: on a sequence of shape-regular meshes of the Poincar\'e
-homology sphere $S^3/2I$, the relative force error of an Abelian control stalls at
-$26\%$ under refinement.
+edge data reproduce the continuum flow they discretize. Its first requirement is
+instantaneous: the discrete force on the exact edge integrals of a smooth connection,
+tested against \emph{every} discrete variation, must converge to the continuum force. On
+shape-regular meshes of the Poincar\'e homology sphere $S^3/2I$ the lowest-order Whitney
+force fails this; for an Abelian control its error stalls at $26\%$ under refinement.
 
-We show that this floor is a property of how curvature is \emph{represented}, not of the
-data, and that it can be removed without sacrificing stability. A closed linear
-curvature recovered on each cell's face-star, tested against the original Whitney
-variations, gives a Petrov--Galerkin force that is consistent. In its minimal
-(one-ring) form, however, the recovery is exactly determined. It interpolates rough data
-as large linear fields, with a median per-cell amplification of $125$--$252$ (at most
-$254$), and the resulting operator has hundreds of eigenvalues with negative real part
-($489$ of $961$ physical modes at $n=2$).
+We show that the floor comes from how curvature is \emph{represented}, not from the data.
+A closed linear curvature recovered on each cell's face-star and tested against the
+original Whitney variations gives a consistent Petrov--Galerkin force. In its minimal
+one-ring form, however, the recovery is exactly determined: it amplifies rough data by a
+median $125$--$252$, and its operator has $489$ of $961$ physical modes with negative real
+part at $n=2$. Recovering instead on a \emph{two-ring} neighbourhood by
+equality-constrained least squares keeps the fit exact on closed linear curvature, cuts
+the amplification to a mesh-uniform median of $30.5$--$35.2$, and puts every decomposed
+physical eigenvalue ($n\le3$) in the right half-plane; at $n=1,2$ the flow is dissipative.
+The force error falls to $6.22\%$, $3.83\%$, $2.79\%$ and $1.45\%$ at $n=1,2,3,5$ (orders
+$0.73$, $0.80$, $1.29$) and passes the unchanged \BW{} gate. Nothing is fitted and no data
+are added; only the size of the neighbourhood the reading consults changes. The force is
+not the gradient of an energy, and we show why every symmetrized variant fails.
 
-Recovering on a \emph{two-ring} neighbourhood by equality-constrained least squares keeps
-the recovery exact on closed linear curvature, cuts the amplification to a mesh-uniform
-$30.5$--$35.2$ in median (at most $47$), and changes the operator's character completely. The relative force error
-falls to $6.22\%$, $3.83\%$, $2.79\%$ and $1.45\%$ at $n=1,2,3,5$, with observed orders
-$0.73$, $0.80$ and $1.29$. At every level whose spectrum we decomposed ($n\le 3$), every
-physical eigenvalue has positive real part, with the smallest at the control's true value
-of $4$. At $n=1,2$ the symmetric part of the operator is also positive definite on the
-physical space, so there the semi-discrete flow is dissipative in the native mass norm.
-
-No parameter is fitted. The only choice is the neighbourhood radius, and only radii one
-and two were ever run. No data are added: every construction reads the same edge
-integrals. What changes is what is measured from them, and how much of the outline of
-each cell's neighbourhood the reading consults. That redundancy in the reading, not more
-data, added resolution or damping, is what stabilizes it. In everyday terms the method fits a shape to a guide: it turns each
-neighbour into register by the symmetry of the space, holds exactly only what must be
-held, lets the rest of the evidence vote, and refuses a piece that does not fit. The
-force is accurate and stable in every mode we decomposed. It is not reciprocal, in the
-sense that it is not the gradient of an energy, and we document, quantitatively, why every
-symmetrized variant we tested fails.
-
-All of the above concerns a single Abelian control on the round quotient. The curvature
-recovery extends covariantly to $SU(2)$: with each neighbour's face holonomy turned into register by link transport, it
-converges at second order on the Levi-Civita fields of the round and a Berger metric
-(Section~\ref{sec:su2}). The force extends too, though at about first order rather than
-second. The native $SU(2)$ Whitney force stays $25.5\%$
-wrong on the Berger field. The same Petrov--Galerkin move, with native test variations and
-a covariantly recovered trial, falls to $2.51\%$ at $n=5$ and passes the
-unchanged \BW{} gate. At $n=1$ and $n=2$ its linearised spectrum has no rough modes,
-matching the native operator's, while the one-ring force has hundreds. Its numerical
-range, which bounds transient growth, has its left edge at $-4.66$ against the native
-$-4.68$ at $n=2$, so the strongly non-normal operator hides no transient growth.
-Integrated in time while the Berger metric flows underneath, in a research replica of the
-flow gate, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact trajectory at $n=1,2,3$,
-and from $n=2$ on it stays ahead of the native force ($2.21\%$, then $1.07\%$). The finest
-level is reached with the Cayley step, an implicit Crank--Nicolson rule that needs only
-eight steps over the window.
-
-Every computation runs in \GIGI{}, an open-source geometric engine (PolyForm
-Noncommercial 1.0.0): native Rust transport and mass assembly, checked against the full
-$120$-fold cover; the two-ring recovery itself as an engine verb, which matches the
-research code cell by cell on every mesh; and hash-pinned receipts. We show the code
-alongside the mathematics.
+The construction carries over to $SU(2)$. With neighbouring holonomies turned into
+register by link transport, the recovery converges at second order on the Levi-Civita
+fields of the round and a Berger metric. On the Berger field the native force stays
+$25.5\%$ wrong, while the two-ring force falls to $2.51\%$ at $n=5$ and passes \BW{}, with
+no rough modes and a numerical range matching the native one. Integrated in time as the
+metric follows the Ricci flow, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact
+trajectory at $n=1,2,3$, ahead of the native force from $n=2$; the finest level uses an
+eight-step Cayley (Crank--Nicolson) integrator. Every computation runs in \GIGI{}, an
+open-source geometric engine, with the recovery as a native verb and hash-pinned receipts.
 \end{abstract}
 
 \section{Introduction}

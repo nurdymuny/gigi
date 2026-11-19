@@ -1,0 +1,77 @@
+{
+ "kind": "S4 exploratory addendum (post hoc, not gated)",
+ "rows": [
+  {
+   "n": 1,
+   "A": 3.0,
+   "delta_chord_axis": -0.0003943649187573284,
+   "delta_blend_axis": 2.999088171140585e-07
+  },
+  {
+   "n": 1,
+   "A": 10.0,
+   "delta_chord_axis": -0.009936812705371278,
+   "delta_blend_axis": 0.00019651825964595027
+  },
+  {
+   "n": 1,
+   "A": 30.0,
+   "delta_chord_axis": -0.0687005524813894,
+   "delta_blend_axis": 0.012140913777593187
+  },
+  {
+   "n": 1,
+   "A": 100.0,
+   "delta_chord_axis": -0.22070786287106559,
+   "delta_blend_axis": 0.8586274055299141
+  },
+  {
+   "n": 2,
+   "A": 3.0,
+   "delta_chord_axis": -2.633055149980912e-05,
+   "delta_blend_axis": 1.297732366012383e-09
+  },
+  {
+   "n": 2,
+   "A": 10.0,
+   "delta_chord_axis": -0.0007892244539291493,
+   "delta_blend_axis": 1.1987437684712887e-06
+  },
+  {
+   "n": 2,
+   "A": 30.0,
+   "delta_chord_axis": -0.009845834318748525,
+   "delta_blend_axis": 0.000197218164685653
+  },
+  {
+   "n": 2,
+   "A": 100.0,
+   "delta_chord_axis": -0.05834217305750433,
+   "delta_blend_axis": 0.009055647422863577
+  },
+  {
+   "n": 3,
+   "A": 3.0,
+   "delta_chord_axis": -5.263700757485168e-06,
+   "delta_blend_axis": 5.159850324787385e-11
+  },
+  {
+   "n": 3,
+   "A": 10.0,
+   "delta_chord_axis": -0.00016350834432721228,
+   "delta_blend_axis": 5.1600143269325827e-08
+  },
+  {
+   "n": 3,
+   "A": 30.0,
+   "delta_chord_axis": -0.002567908700542354,
+   "delta_blend_axis": 1.4096305719801805e-05
+  },
+  {
+   "n": 3,
+   "A": 100.0,
+   "delta_chord_axis": -0.02228185087658241,
+   "delta_blend_axis": 0.0011224122409476678
+  }
+ ]
+}

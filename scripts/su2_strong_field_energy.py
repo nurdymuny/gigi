@@ -102,15 +102,15 @@ def main():
         d = r["delta_vs_arc"]
         if r["angle_max"] <= 1.5:
             verdict["P_cancel"].append({"n": r["n"], "A": r["A"],
-                                        "pass": abs(d["blend"]) <= abs(d["chord"]) / 5 and abs(d["blend"]) <= abs(d["tangent"]) / 5})
+                                        "pass": bool(abs(d["blend"]) <= abs(d["chord"]) / 5 and abs(d["blend"]) <= abs(d["tangent"]) / 5)})
         if r["angle_max"] <= 0.6:
             ok = all(abs(d[k] - r["series_prediction"][k]) <= max(0.25 * abs(r["series_prediction"][k]), 1e-6) for k in SERIES)
-            verdict["P_series"].append({"n": r["n"], "A": r["A"], "pass": ok,
+            verdict["P_series"].append({"n": r["n"], "A": r["A"], "pass": bool(ok),
                                         "measured": d, "predicted": r["series_prediction"]})
     n1 = {r["A"]: r for r in rows if r["n"] == 1}
     verdict["P_regime"] = {
-        "A>=30_compactness_exceeds_disc": all(abs(n1[A]["delta_vs_arc"]["chord"]) > abs(n1[A]["e_disc"]) for A in (30.0, 100.0)),
-        "A=3_compactness_below_disc": abs(n1[3.0]["delta_vs_arc"]["chord"]) < abs(n1[3.0]["e_disc"])}
+        "A>=30_compactness_exceeds_disc": bool(all(abs(n1[A]["delta_vs_arc"]["chord"]) > abs(n1[A]["e_disc"]) for A in (30.0, 100.0))),
+        "A=3_compactness_below_disc": bool(abs(n1[3.0]["delta_vs_arc"]["chord"]) < abs(n1[3.0]["e_disc"]))}
     small = [r for r in rows if r["n"] == 2 and r["A"] == 3.0][0]
     controls["C_arc_small_max_spread"] = max(abs(v) for v in small["delta_vs_arc"].values())
     out = {"kind": "S4 research script (not an engine run)", "controls": controls, "rows": rows,

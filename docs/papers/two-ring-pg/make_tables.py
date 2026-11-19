@@ -103,4 +103,30 @@ lines = [r'\begin{table}[t]\centering\small',
          f"\\quad transpose term alone, 1-ring & {sym_cell(1,0,'transpose_term')} & {sym_cell(1,1,'transpose_term')} & --- & \\\\",
          r'\bottomrule\end{tabular}\end{table}']
 (TAB/'removals.tex').write_text('\n'.join(lines)+'\n')
+# ---- hybrid three-ring table (receipt: research/ricci-pg-hybrid-20261119) -------------------
+HY = json.loads((REPO/'research/ricci-pg-hybrid-20261119/diagnostic.json').read_text())
+hrel = [HY['cases'][f'level{l}_q6']['relative_error'] for l in range(4)]
+ho = orders(hrel); hg = HY['numerical_gate']
+lines = [r'\begin{table}[t]\centering\small',
+         r'\caption{The hybrid three-ring reading (Section~\ref{sec:hybrid}) against the published two-ring reading: relative force error (\%, $q6$) and observed orders, computed as in Table~\ref{tab:force}; curvature error of the trial field; largest condition number of the per-cell flux map; S3 and the dissipativity constant $\mu$ of Proposition~\ref{prop:diss}. Dashes: not computed.}',
+         r'\label{tab:hybrid}',
+         r'\begin{tabular}{rrrrrrrrr}\toprule',
+         r' & \multicolumn{2}{c}{two-ring} & \multicolumn{2}{c}{\textbf{hybrid, three rings}} & & & & \\',
+         r'\cmidrule(lr){2-3}\cmidrule(lr){4-5}',
+         r'$n$ & PG & order & \textbf{PG} & \textbf{order} & curvature & cond. & min Re $\lambda$ & $\mu$ \\ \midrule']
+for l in range(4):
+    c = HY['cases'][f'level{l}_q6']
+    s3 = HY['s3'].get(str(l)); nr = HY['numerical_range'].get(str(l))
+    o2s = '' if o2[l] is None else f'{o2[l]:.2f}'
+    hos = '' if ho[l] is None else r'\textbf{' + f'{ho[l]:.2f}' + '}'
+    lines.append(f"{N[l]} & {pct(P2[l])} & {o2s} & \\textbf{{{pct(hrel[l], 3)}}} & {hos} & {pct(c['curvature_relative_error'], 3)} & "
+                 f"{c['max_condition']:.0f} & {'---' if s3 is None else format(s3['min_real_part_physical'], '.3f')} & "
+                 f"{'---' if nr is None else format(nr['min_symmetric_part'], '.3f')} " + r'\\')
+q = hg['quadrature_mass_differences']; li = hg['linear_correction_mass_estimates']
+lines += [r'\midrule',
+          r'\multicolumn{9}{l}{Hybrid gate: \texttt{pass}='+str(hg['pass']).lower()+
+          f"; $q4/q6$ differences {q[0]:.1e}--{q[-1]:.1e}; solver corrections $\\le$ {max(li):.1e}." + r'}\\',
+          r'\bottomrule\end{tabular}\end{table}']
+(TAB/'hybrid.tex').write_text('\n'.join(lines)+'\n')
+
 print('tables written')

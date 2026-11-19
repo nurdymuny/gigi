@@ -22,6 +22,7 @@ METHOD = {   # identity -> (colour, marker, label)
     'pg_two_ring':          ('#1baf7a', 'o', 'PG, two-ring fit'),
     'variational_one_ring': ('#eda100', 'v', 'Variational, one-ring'),
     'variational_two_ring': ('#e87ba4', 'D', 'Variational, two-ring'),
+    'pg_hybrid':            ('#008300', 'P', 'PG, hybrid three-ring'),   # categorical slot 6, validated with 1-5
 }
 plt.rcParams.update({
     'font.family': 'serif', 'font.size': 8.5, 'axes.labelsize': 8.5, 'axes.titlesize': 9,
@@ -56,6 +57,10 @@ for name in ['whitney', 'pg_one_ring', 'pg_two_ring', 'variational_one_ring', 'v
     x, y = series(name, 'relative_error')
     ax.plot(x, y, color=c, lw=1.6 if name == 'pg_two_ring' else 1.1, marker=m, ms=4.5,
             mec=SURF, mew=0.8, label=lab, zorder=3 if name == 'pg_two_ring' else 2)
+HY = json.loads((HERE.parents[2]/'research/ricci-pg-hybrid-20261119/diagnostic.json').read_text())
+c, m, lab = METHOD['pg_hybrid']
+ax.plot(H, [100*HY['cases'][f'level{l}_q6']['relative_error'] for l in range(4)], color=c, lw=1.6, marker=m, ms=5,
+        mec=SURF, mew=0.8, label=lab, zorder=4)
 ax.axhline(5, color=INK2, lw=0.7, ls=(0, (1, 1.5)))
 ax.text(0.0835, 4.35, 'BW05 threshold 5%', color=INK2, fontsize=6.8, ha='left', va='top')
 ax.set_xscale('log'); ax.set_yscale('log')

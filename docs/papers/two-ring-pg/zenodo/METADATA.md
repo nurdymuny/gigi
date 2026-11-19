@@ -4,8 +4,9 @@ Paste-ready fields for the second version of the existing record. Open the first
 Zenodo and use **New version**, so Zenodo links the two under the concept DOI. The description
 is `description.html`, pasted into Zenodo's HTML source view.
 
-**Upload folder:** `~/Documents/reading-the-curve-zenodo-v2/`. It holds exactly the file to
-upload and nothing else. `CHECKSUMS.txt` beside this file records its SHA-256.
+**Upload folder:** `docs/papers/two-ring-pg/zenodo/upload/` (built by `build_package.py` in
+this folder; not committed, because the archives are large). Upload the three files below;
+`MANIFEST.txt` there (copied to `MANIFEST.txt` beside this file) gives their SHA-256.
 
 **Title**
 Reading the Curve, Not Counting the Points: A Consistent, Stable Petrov–Galerkin Curvature
@@ -21,10 +22,18 @@ Force for Discrete Yang–Mills Dynamics on the Poincaré Homology Sphere
 
 **Language** English
 
-**File**
-1. `paper.pdf` — 30 pages; identical to `docs/papers/two-ring-pg/paper.pdf` at git tag
-   `reading-the-curve-v2` on `feat/reading-the-curve`. New version on Zenodo starts with the
-   previous version's files: delete the old PDF there and upload this one.
+**Files** (New version on Zenodo starts with the previous version's files: delete those, then
+upload these three)
+1. `paper.pdf` — the paper, 30 pages; identical to `docs/papers/two-ring-pg/paper.pdf` at git tag
+   `reading-the-curve-v2`.
+2. `reading-the-curve-v2-latex.zip` — the LaTeX source, figures, tables and the shared style
+   file, laid out so `pdflatex` compiles it as is (checked: it reproduces `paper.pdf`'s text).
+3. `reading-the-curve-v2-code-and-data.zip` — the research scripts behind the paper's numbers
+   and every module they import, the figure and table scripts, receipts, frozen inputs, the
+   Cayley step's iteration matrices, and the specification and results of each experiment, at
+   their repository paths. Not the GIGI engine: that stays in the repository. Checked by
+   unzipping into an empty folder and rerunning the n = 2 two-ring flow: it reproduces the
+   committed result to 5×10⁻¹⁴ with the same Newton counts.
 
 **Keywords**
 lattice gauge theory; Yang–Mills; Whitney forms; finite element exterior calculus;

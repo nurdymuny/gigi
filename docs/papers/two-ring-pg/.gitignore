@@ -4,3 +4,6 @@
 *.aux
 *.log
 *.out
+
+# Zenodo upload folder, built by zenodo/build_package.py
+zenodo/upload/

@@ -75,8 +75,9 @@ $25.5\%$ wrong, while the two-ring force falls to $2.51\%$ at $n=5$ and passes \
 no rough modes and a numerical range matching the native one. Integrated in time as the
 metric follows the Ricci flow, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact
 trajectory at $n=1,2,3$, ahead of the native force from $n=2$; the finest level uses an
-eight-step Cayley (Crank--Nicolson) integrator. Every computation runs in \GIGI{}, an
-open-source geometric engine, with the recovery as a native verb and hash-pinned receipts.
+eight-step Cayley (Crank--Nicolson) integrator. The Abelian computations run in \GIGI{}, an
+open-source geometric engine, with the recovery as a native verb and hash-pinned receipts;
+the $SU(2)$ results are research scripts, not yet engine runs.
 \end{abstract}
 
 \section{Introduction}
@@ -920,9 +921,10 @@ the errors reported here. Mixing the two readings is therefore not a source of t
 measured error.
 
 \paragraph{Controls.} Before any result was read, a Python replica reproduced the native
-energy to $1.5\times10^{-16}$ and the native gradient to $4.5\times10^{-10}$; with the face
-defect differentiated in closed form (Section~\ref{sec:su2flow}) the gradient agrees to
-$8\times10^{-15}$. Feeding the cell's
+energy to $1.5\times10^{-16}$ at $n=1$ ($7.3\times10^{-16}$ at $n=2$) and the native
+gradient to $4.5\times10^{-10}$ ($4.8\times10^{-10}$); with the face defect differentiated in
+closed form (Section~\ref{sec:su2flow}) the gradient agrees to $8\times10^{-15}$
+($1.7\times10^{-14}$). Feeding the cell's
 own Whitney field through the new pairing reproduced the native gradient exactly, and the
 native error was recomputed to the recorded $26.2459\%$ at $n=1$.
 
@@ -963,7 +965,13 @@ pre-asymptotic for every recovery.
 \paragraph{Stability.} As in Section~\ref{sec:conditioning}, the object is the generalized
 spectrum of $(K,B)$. Here $K$ is the linearised force at the Berger field, one column per
 right-trivialised link direction by central differences, and $B$ is the native $SU(2)$
-tangent mass. The thresholds were fixed before measurement. A rough mode is an eigenvalue
+tangent mass. The thresholds were written in the specification, which is committed together
+with these results rather than before them, so the record cannot show the order; they do not
+decide anything here, since every cutoff between the two-ring scale (about $-4.5$) and the
+one-ring scale (below $-8{,}000$) gives the same verdict. These operators were built while
+the defect derivative was still a finite difference, whose noise put errors of about
+$5\times10^{-3}$ into each Jacobian column; the count of near-zero eigenvalues moved with the
+column step for that reason, while the gated quantities did not. A rough mode is an eigenvalue
 with $\operatorname{Re}\lambda<-10$; the continuum scale is of order $4$, and the Abelian
 one-ring instability sat above $10^4$ in magnitude. As controls, the cell-by-cell gradient
 reproduces the force of Table~\ref{tab:su2force} to $3\times10^{-14}$, and a cell-local
@@ -988,7 +996,7 @@ removal: one ring & 2 & 3{,}372 & 1{,}451 & $-19{,}829$ & 663 \\
   \centering
   \includegraphics[width=\textwidth]{figures/fig_su2_spectra.pdf}
   \caption{Generalized spectra of the linearised $SU(2)$ force at $n=2$, against the native
-  tangent mass (signed-logarithmic real axis). The shaded band is the pre-registered
+  tangent mass (signed-logarithmic real axis). The shaded band is the specification's
   ``rough'' region, $\operatorname{Re}\lambda<-10$.}
   \label{fig:su2spec}
 \end{figure}
@@ -1010,7 +1018,7 @@ recorded but not gated.
 so we also measured the numerical range $W(\hat G)$ of the force whitened by the native mass,
 $\hat G=L^{-1}KL^{-\top}$ with $B=LL^\top$. Its left edge $\min\operatorname{Re}W(\hat G)=-m$
 bounds the linearised flow, $\norm{e^{-t\hat G}}\le e^{mt}$, with constant one. The gate,
-fixed before measurement, asked for the two-ring left edge to be at least twice the native
+written in a specification committed together with the first-level results, asked for the two-ring left edge to be at least twice the native
 one and at least $-10$. Table~\ref{tab:su2numrange} gives the result.
 
 \begin{table}[t]\centering\small
@@ -1029,19 +1037,20 @@ removal: one ring & 2 & $-19{,}993$ & $-19{,}829$ & 19{,}993 & 0.176 \\
 \bottomrule\end{tabular}
 \end{table}
 
-The two-ring force passes at both levels. Its left edge lies within $0.04$ of its slowest
-eigenvalue and matches the native operator's, so the only growth is the field's own motion:
+The two-ring force passes at both levels. Its left edge lies $0.17$ to the left of its slowest
+eigenvalue at $n=1$ and $0.03$ at $n=2$, and matches the native operator's, so the only growth is the field's own motion:
 over the window $[0,0.02]$ of the time-integration experiment, the envelope is
 $e^{4.664\times0.02}\approx1.098$ for both forces. The one ring fails, as the removal
 requires, with a left edge of $-19{,}993$ at $n=2$. The two-ring operator is non-normal
 ($\eta$ about $0.14$, against $3\times10^{-4}$ native), but its numerical radius stays within
-$1\%$ of its norm, and the left edge sits on its slowest eigenvalue: the lopsidedness lives in
+$1\%$ of its norm, and at $n=2$ the left edge sits on its slowest eigenvalue: the lopsidedness lives in
 fast, strongly damped modes, not where growth would begin. Because the Berger field moves,
 the symmetric part is indefinite for every operator, so the dissipativity certificate of
 Proposition~\ref{prop:diss} does not apply here, and the envelope above is the honest bound.
 For a time stepper, Crouzeix--Palencia~\cite{cp} bounds $k$ steps of any rational rule $r$ by
-$(1+\sqrt2)\sup_{W}|r(hz)|^k$; the explicit-Euler limit it implies at $n=2$,
-$h\approx2.85\times10^{-4}$, agrees with the step sizes used for the flow.
+$(1+\sqrt2)\sup_{W}|r(hz)|^k$. The explicit-Euler limit it implies at $n=2$ is
+$h\approx2.85\times10^{-4}$; the flow at $n=2$ used the fourth-order rule with
+$h=3.125\times10^{-4}$, inside that rule's larger limit of about $3.8\times10^{-4}$.
 
 \subsection{The flow in time}\label{sec:su2flow}
 
@@ -1055,8 +1064,24 @@ by the exact field, and $R=E/D$ is the error over the distance actually moved. T
 fixed before measurement, asked for $R<5\%$ at the finest level with an observed order of at
 least $0.5$, and for halving the step, or changing the quadrature, to move $E$ by less than
 a tenth. Two negative controls were corrected after the $n=1$ results, beside the unchanged
-original gates. This is a Python replica of the programme's flow gate, not an engine run.
-Table~\ref{tab:su2flow} gives the result.
+original gates. As first written, both controls asked for $R\ge10\%$ at every level: the
+frozen-metric control fails that at $n=2$ ($8.07\%$) and $n=3$ ($8.13\%$), and the native
+control fails it at every level. The corrected controls ask instead whether the frozen run's
+gap to the moving run is resolvable and fails to converge, and whether the native force is
+overtaken and stalls; both versions are reported in the results document. This is a Python replica of the programme's flow gate, not an engine run.
+Table~\ref{tab:su2flow} and Figure~\ref{fig:su2flow} give the result.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_su2_flow.pdf}
+  \caption{The $SU(2)$ flow in time. (a) The error over the distance travelled, $E(t)/D(t)$,
+  at the four sample times of each run: native (squares) and two-ring (circles) at
+  $n=1$ (dotted), $2$ (dashed) and $3$ (solid). (b) The final value $R$ against the mesh.
+  The two-ring force overtakes native at $n=2$ and stays ahead at $n=3$; the frozen-metric
+  control stops improving after $n=2$. Every plotted value is in Table~\ref{tab:su2flow} or
+  its receipts; $n\le2$ uses RKMK4 and $n=3$ the Cayley step.}
+  \label{fig:su2flow}
+\end{figure}
 
 \begin{table}[t]\centering\small
 \caption{Time integration of the $SU(2)$ force on the Ricci-flowed Berger metric over
@@ -1069,7 +1094,7 @@ Force & $n$ & steps & $E(0.02)$ & $R$ (\%) & gauge-invariant $R$ (\%) \\ \midrul
 Native $SU(2)$ Whitney & 1 & 32 & 0.0349 & 7.01 & 3.10 \\
 \textbf{Two-ring Petrov--Galerkin} & 1 & 32 & 0.0689 & 13.81 & 10.80 \\
 control: metric frozen at $g(0)$ & 1 & 32 & 0.0699 & 14.02 & 9.39 \\
-removal: one ring & 1 & 32 & diverges & 2541 & -- \\ \midrule
+removal: one ring & 1 & 32 & 12.7 & 2541 & -- \\ \midrule
 Native $SU(2)$ Whitney & 2 & 64 & 0.0113 & 2.21 & 2.10 \\
 \textbf{Two-ring Petrov--Galerkin} & 2 & 64 & 0.0090 & \textbf{1.76} & 1.82 \\
 control: metric frozen at $g(0)$ & 2 & 64 & 0.0412 & 8.07 & 5.70 \\ \midrule
@@ -1088,10 +1113,11 @@ instantaneous force reappears in time: native is better at $n=1$, two rings are 
 $n=2$, in the raw and the gauge-invariant measure alike. The frozen-metric control, the
 programme's known failure, becomes informative at $n=2$. Its gap to the moving run,
 $\Delta\ge|E_f-E_m|=0.032$, exceeds twice the moving run's own error, and its error grows
-linearly in time ($0.006$, $0.015$, $0.027$, $0.041$ at each quarter of the window) while the
+faster in each quarter of the window ($0.006$, $0.015$, $0.027$, $0.041$) while the
 moving run's levels off ($0.004$, $0.006$, $0.008$, $0.009$). The lattice sees the moving
-background, and the two-ring force follows it. The one ring diverges at the two-ring step,
-as its spectrum predicts.
+background, and the two-ring force follows it. The one ring fails at the two-ring step, as
+its spectrum predicts: its error reaches $E=8.8$ in the first quarter of the window and
+$12.7$ at the end, $25$ times the distance the exact field travels.
 
 One prediction failed, and the reason was then measured. The corrected native control
 expected the native error to stall in time, as its instantaneous error stalls near $25\%$;
@@ -1099,7 +1125,7 @@ instead it falls, with observed order $1.63$. To first order the trajectory erro
 $y'=-\hat Gy+\hat r(t)$, where $\hat r=L^\top r$ is the whitened residual, the lattice
 velocity at the exact links minus the exact velocity. Integrated exactly from residuals
 sampled along the exact path, this linear filter predicts every error in
-Table~\ref{tab:su2flow}, for both forces at both levels, to within $6\%$. The split of the
+Table~\ref{tab:su2flow}, for both forces at both levels, to within $6.1\%$. The split of the
 residual between slow directions of $\hat G$ (rate below $1/T=50$) and fast ones then
 explains the failure. At $n=2$ only $0.85\%$ of the native residual lies in slow directions,
 against $7.6\%$ for two rings: the native force's $25\%$ error is real, but it is stiff, and the
@@ -1119,22 +1145,71 @@ exactly on $SU(2)$. Each step is a quasi-Newton solve with one iteration matrix 
 run. The step was checked before use. Its distance from the exponential map falls as
 $|v|^3/12$, the phase lag of the companion paper. Its observed time order is $1.99$. At $n=1$
 and $n=2$, with $8$ steps, it reproduces the RKMK4 errors of Table~\ref{tab:su2flow} to within
-$1.5\%$ for both forces, with a fifth to a third of the force evaluations. The specification fixed
-$8$ steps from those two levels before $n=3$ was run. Getting there needed the derivative of
-the face defect in closed form: a finite-difference derivative had left the force noisy at
-about $10^{-10}$, below which Newton could not converge.
+$1.5\%$ for both forces, using between $0.17$ and $0.36$ of the force evaluations. The
+specification's rule takes the smallest step count passing at both levels, which is $8$.
+The $n=3$ runs were started with both $8$ and $16$ steps before that verdict was committed,
+so the rule could not depend on them; the two differ by $0.75\%$. One criterion was relaxed
+after a failure, and the record keeps both: the first attempt asked Newton for a relative
+increment of $10^{-10}$, and every native run at $n=1$ failed at its first step, because the
+force itself, with a finite-difference defect derivative, was only computable to about
+$3.5\times10^{-10}$. The tolerance was amended to $10^{-8}$, about thirty times above that
+floor and far below every comparison the gates make; the failed receipts are kept. The
+defect derivative was then put in closed form, which lowers the force's noise to about
+$10^{-13}$; every reported run uses both changes.
 
-At $n=3$ every step converged, in at most eight iterations, and the gates set before the
-run hold. The two-ring error is $0.87\%$ of the distance moved, falling by a factor of
-$2.03$ from $n=2$. The mesh size shrinks by $3/2$ between these levels (the link count grows
-by $1.5^3$), so the observed order is $1.74$. Halving the step moves $E$ by $0.75\%$. The
-gap between the moving and frozen-metric runs, now measured exactly from saved final states,
-is $\Delta=0.042$, ten times the moving run's error. The frozen run's error does not
-converge at all ($0.0412$ to $0.0417$, order $-0.03$). The two-ring force stays ahead of
-native, at $0.82$ of its error. The native error still falls (order $1.80$), so the stall
-asked for by the corrected control is again absent, as the filter model explains. That model
-also forecast, without a gate, that the two-ring error would fall faster than the native
-one. At this refinement it did not: the two orders are $1.74$ and $1.80$.
+At $n=3$ every step converged, in at most eight iterations, and every gate set before the run
+holds except the corrected native control's stall, discussed below. The two-ring error is
+$0.87\%$ of the distance moved, falling by a factor of $2.03$ from the $n=2$ Cayley run
+($E=0.00904$; against the RKMK4 value of the table, $2.02$). The mesh size shrinks by $3/2$
+between these levels (the link count grows by $1.5^3$), so the observed order is $1.74$.
+Orders here use the nominal mesh ratios $2$ and $3/2$; with the measured largest edge, as in
+Tables~\ref{tab:su2}--\ref{tab:su2force}, they would be slightly higher ($3.11$ and $1.78$).
+Halving the step moves $E$ by $0.75\%$. The gap between the moving and frozen-metric runs, now
+measured exactly from saved final states, is $\Delta=0.042$, $9.4$ times the moving run's
+error. The frozen run's error does not converge at all ($0.0412$ to $0.0417$, order $-0.03$).
+The two-ring force stays ahead of native, at $0.82$ of its error ($0.80$ at $n=2$). The native
+error still falls (order $1.80$), so the stall asked for by the corrected control is again
+absent, as the filter model explains. That model also forecast, without a gate, that the
+two-ring error would fall faster than the native one. At this refinement it did not: the two
+orders are $1.74$ and $1.80$.
+
+$R$ divides by the whole distance the exact field travels, and most of that motion is the
+Yang--Mills flow at the initial metric, which the frozen run reproduces too. The part of the
+motion that is due to the metric moving is $\Delta$. Measured against it, the two-ring error
+is $0.00446/0.0420=10.6\%$ at $n=3$; at $n=2$, where $\Delta$ is only bounded
+($0.032\le\Delta\le0.050$), it lies between $18\%$ and $28\%$. So the response to the moving
+metric is tracked to about a tenth at the finest level, and that fraction is falling; $R$ alone
+would suggest about a hundredth.
+
+\paragraph{Cost, and a second check of every flow result.} The force was first written cell
+by cell; at $n=3$ one two-ring evaluation took $89$\,s. It was then rewritten to do the same
+arithmetic for every cell at once, under a specification committed before any of the new
+code ran. The specification makes the cell-by-cell code the reference and gates the rewrite
+on parity, at $n=1,2,3$, for both forces, at two link states and two metrics. The native
+gradient comes out identical to the last bit; the two-ring gradient agrees to
+$5.4\times10^{-14}$, the mass to better than $10^{-15}$ and the velocity to
+$1.9\times10^{-13}$.
+An amendment, written after the first timings and before the change, caches the metric
+integrals, which depend on $g$ alone and are the same for every Newton iteration of a step;
+it changes rounding only, and every parity gate was run again with it. The Cayley runs were
+then repeated on the new code: the four at $n=1,2$ with $8$ steps, before and after the
+amendment, and the three at $n=3$. Each reproduces its committed final error to
+$5\times10^{-14}$ or better (the native run at $n=3$ to the last digit), with the same number of Newton iterations at every step. A
+full two-ring run at $n=3$ now takes $133$\,s, of which $74$\,s is setup;
+Figure~\ref{fig:su2cost} gives the cost per evaluation. These are timings of research
+scripts on one laptop, and they matter here for one reason: the flow can now be run again
+by anyone, and longer windows and finer levels are within reach.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_su2_cost.pdf}
+  \caption{Seconds per force evaluation (gradient, mass and the mass solve) for the
+  cell-by-cell code, the batched rewrite, and the batched rewrite with the metric integrals
+  cached, averaged over a whole eight-step Cayley run (which recomputes the metric once per
+  step). One process on one laptop CPU, nothing else running for the first two series. The
+  three versions give the same numbers to rounding.}
+  \label{fig:su2cost}
+\end{figure}
 
 \paragraph{Scope.} Both the covariant recovery and the non-Abelian force are research
 scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
@@ -1248,7 +1323,9 @@ used as evidence in this paper.
   \item The time integration is a research replica at $n\le3$ over $t\in[0,0.02]$, not the
     engine's flow gate. The predicted stall of the native force did not appear at $n=2$ or
     $n=3$; a first-order filter model explains why. The two-ring force keeps its lead over
-    native but does not widen it.
+    native (at $0.80$, then $0.82$ of its error) but does not widen it. $R$ measures the error
+    against all the motion; against the part due to the moving metric alone, the two-ring
+    error is about $10.6\%$ at $n=3$.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item The observed orders $0.73$ and $0.80$ before the last refinement are only
@@ -1289,6 +1366,12 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     \path{scripts/ricci_su2_pg_flow_cayley.py} (Cayley step); receipts in
     \path{research/su2-flow-20261118/}, \path{research/su2-filter-20261118/} and
     \path{research/su2-cayley-20261118/}.
+  \item Batched $SU(2)$ force and its parity gates: \path{scripts/ricci_su2_batched.py};
+    receipts, including the repeated Cayley runs, in \path{research/su2-batched-20261119/}.
+    Figures~\ref{fig:su2flow} and \ref{fig:su2cost}: \path{make_figures_su2flow.py}, which
+    writes \path{data/su2_flow.json} and \path{data/su2_cost.json} from those receipts.
+  \item The native $SU(2)$ baseline of Table~\ref{tab:su2force}:
+    \path{output/ricci-shape-regular-20261117/berger/diagnostic.json}.
 \end{itemize}
 
 \begin{thebibliography}{99}\small

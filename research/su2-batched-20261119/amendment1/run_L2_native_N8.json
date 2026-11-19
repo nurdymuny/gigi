@@ -1,0 +1,65 @@
+{
+ "level": 2,
+ "trial": "native",
+ "stepper": "cayley_midpoint",
+ "N": 8,
+ "h": 0.0025,
+ "status": "ok",
+ "rows": [
+  {
+   "t": 0.005,
+   "E": 0.00339125646103001,
+   "D": 0.15574649930765555,
+   "R": 0.021774206650584514,
+   "gauge_invariant_R": 0.045441226538482635,
+   "newton_iterations": 5,
+   "seconds": 17.4
+  },
+  {
+   "t": 0.01,
+   "E": 0.004351625542978408,
+   "D": 0.2898748812006315,
+   "R": 0.015012082195443876,
+   "gauge_invariant_R": 0.02568361548670658,
+   "newton_iterations": 7,
+   "seconds": 26.2
+  },
+  {
+   "t": 0.015,
+   "E": 0.004975326571694005,
+   "D": 0.4076047231842289,
+   "R": 0.012206253482114977,
+   "gauge_invariant_R": 0.016982962523047283,
+   "newton_iterations": 7,
+   "seconds": 36.0
+  },
+  {
+   "t": 0.02,
+   "E": 0.005465286924309637,
+   "D": 0.5125589928611811,
+   "R": 0.01066274711872986,
+   "gauge_invariant_R": 0.012182177222409805,
+   "newton_iterations": 8,
+   "seconds": 50.5
+  }
+ ],
+ "R_final": 0.01066274711872986,
+ "E_final": 0.005465286924309637,
+ "newton_iterations": [
+  5,
+  5,
+  6,
+  7,
+  7,
+  7,
+  8,
+  8
+ ],
+ "newton_max_iterations": 8,
+ "newton_worst_final_increment": 8.801482448554214e-09,
+ "force_evaluations": 53,
+ "seconds_per_evaluation": 0.3,
+ "setup_seconds": 9.4,
+ "seconds": 50.5,
+ "force": "batched (scripts/ricci_su2_batched.py)"
+}

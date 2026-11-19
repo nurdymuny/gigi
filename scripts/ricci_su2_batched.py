@@ -80,6 +80,7 @@ def take(links, gid, inv):
 
 class BatchedLattice(FL.Lattice):
     def __init__(self, level, trial, order=6):
+        self._mp_key, self._mp = None, None
         super().__init__(level, trial, order)
         cells = self.cells
         self.E = np.array([c["edges"] for c in cells])
@@ -123,6 +124,21 @@ class BatchedLattice(FL.Lattice):
         self.ycell, self.yface, self.yslot = np.array(ycell), np.array(yface), np.array(yslot)
         yl = np.array([[g for g, _ in t] for t in ylinks]), np.array([[iv for _, iv in t] for t in ylinks])
         self.ygid, self.yinv = yl
+
+    def metric_pieces(self, g):
+        """Amendment 1: cached by g (exact), optimised contraction order (rounding only)."""
+        g = np.asarray(g, float)
+        if self._mp_key is not None and np.array_equal(self._mp_key, g):
+            return self._mp
+        G = np.einsum("cqia,i,cqib->cqab", self.maurer, g, self.maurer, optimize=True)
+        det = np.linalg.det(G)
+        meas = self.qweight[None] * np.sqrt(det)
+        w = meas / det
+        m2 = np.einsum("qea,cqab,qfb,cq->cef", self.two, G, self.two, w, optimize=True)
+        m1 = np.einsum("qea,cqab,qfb,cq->cef", self.one, np.linalg.inv(G), self.one, meas, optimize=True)
+        vol = float(np.sum(meas.sum(axis=1) * self.w))
+        self._mp_key, self._mp = g.copy(), {"G": G, "w": w, "m1": m1, "m2": m2, "vol": vol}
+        return self._mp
 
     def _T(self, mp):
         Gw = mp["G"] * mp["w"][:, :, None, None]
@@ -185,17 +201,18 @@ def parity(level, trial):
     for sname, U in states.items():
         for tname, t in (("g(0)", 0.0), ("g(0.02)", FL.T_END)):
             g = met(t)
-            mp = loop.metric_pieces(g)
-            Bl, Bb = loop.mass(U, mp), bat.mass(U, mp)
+            mp, mb = loop.metric_pieces(g), bat.metric_pieces(g)
+            Bl, Bb = loop.mass(U, mp), bat.mass(U, mb)
             row = {"state": sname, "metric": tname,
-                   "P_grad": rel(bat.gradient(U, mp), loop.gradient(U, mp)),
+                   "P_metric": max(rel(mb[k], mp[k]) for k in ("G", "w", "m1", "m2", "vol")),
+                   "P_grad": rel(bat.gradient(U, mb), loop.gradient(U, mp)),
                    "P_mass": float(np.sqrt(abs((Bb - Bl).multiply(Bb - Bl).sum())) / np.sqrt(Bl.multiply(Bl).sum())),
                    "P_vel": rel(bat.velocity(U, g), loop.velocity(U, g)),
                    "P_angles": rel(bat.face_angles(U), loop.face_angles(U))}
             print(json.dumps(row), flush=True)
             rows.append(row)
-    worst = {k: max(r[k] for r in rows) for k in ("P_grad", "P_mass", "P_vel", "P_angles")}
-    thr = {"P_grad": 1e-12, "P_mass": 1e-13, "P_vel": 1e-10, "P_angles": 1e-13}
+    worst = {k: max(r[k] for r in rows) for k in ("P_metric", "P_grad", "P_mass", "P_vel", "P_angles")}
+    thr = {"P_metric": 1e-13, "P_grad": 1e-12, "P_mass": 1e-13, "P_vel": 1e-10, "P_angles": 1e-13}
     return {"level": level, "trial": trial, "rows": rows, "worst": worst,
             "pass": {k: worst[k] <= thr[k] for k in thr}}
 

@@ -169,8 +169,9 @@ at n = 2 is the RKMK4 value; S3 had already found the frozen control informative
 
 - **The two-ring force keeps converging in time.** R goes 13.8% → 1.77% → 0.87% over n = 1, 2, 3.
 - **The metric's motion is what the flow follows.** With the metric frozen, the error sits at
-  0.042 at n = 2 and at n = 3; the gap between the moving and frozen trajectories (0.042) is ten
-  times the moving run's own error.
+  0.042 at n = 2 and at n = 3; the gap between the moving and frozen trajectories (0.042) is 9.4
+  times the moving run's own error. Measured against that gap, the part of the motion due to
+  the moving metric, the two-ring error is 10.6% (against R = 0.87% over all the motion).
 - **Native has still not stalled.** Its trajectory error halves from n = 2 to n = 3, as the
   two-ring error does; the two-ring force stays about 18–20% ahead. The stall was asked for by
   Amendment 1 of S3, from S2a's instantaneous native error, which stays near 25%. S3a explains

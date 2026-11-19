@@ -72,7 +72,8 @@ therefore measures what it was built to measure.
 
 - **Non-normality is real, but harmless here.** η for the two-ring operator is 0.13–0.14,
   about 100–500 times the native value. But F1 = ‖Ĝ‖/w stays within 1% of 1, and the left
-  edge lies within 0.04 of the slowest eigenvalue at both levels. The lopsidedness sits in
+  edge lies 0.17 to the left of the slowest eigenvalue at n = 1 and 0.03 at n = 2
+  (corrected 2026-11-19; this line said "within 0.04 at both levels"). The lopsidedness sits in
   the fast, strongly damped part of the spectrum, not at the left edge where growth would
   come from.
 - **The symmetric part is indefinite for every operator** (242 negative directions for two

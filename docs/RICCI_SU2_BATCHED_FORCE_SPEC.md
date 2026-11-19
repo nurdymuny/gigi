@@ -75,7 +75,7 @@ Rebuilding K₀ with the batched force; n ≥ 4; the engine path (BW08).
 ## Amendment 1 (2026-11-19): the metric pieces
 
 **Written after the CPU parity and timing results, before any change to the metric pieces.**
-No gate changes.
+No existing gate changes; one gate is added.
 
 **What was measured.** At n = 3, one batched force evaluation spends 2.4 s in
 `metric_pieces` and 0.07 s (native) or 0.5 s (two-ring) in the gradient, 0.07 s in the mass

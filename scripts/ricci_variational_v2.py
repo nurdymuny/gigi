@@ -236,9 +236,9 @@ def main():
         b = np.concatenate(b)
         A = coo_matrix((np.concatenate(vv), (np.concatenate(ri), np.concatenate(ci_))), shape=(r0, tot)).tocsr()
         res.update({"constraint_rows": int(r0), "C_unknowns": int(tot), "A_nnz": int(A.nnz)})
-        # primary: lsqr from x0 = 0 (minimum-norm), stop on relative residual 1e-9
+        # primary: lsqr from x0 = 0 (minimum-norm least squares); stops when consistent or LS-optimal
         t2 = time.time()
-        sol = lsqr(A, b, atol=0.0, btol=1e-9, iter_lim=100_000)
+        sol = lsqr(A, b, atol=1e-12, btol=1e-9, iter_lim=20_000)      # Amendment 4
         x1 = sol[0]
         r1 = float(np.linalg.norm(A @ x1 - b) / np.linalg.norm(b))
         res.update({"lsqr_residual": r1, "lsqr_iterations": int(sol[2]), "lsqr_istop": int(sol[1]),

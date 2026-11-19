@@ -163,3 +163,28 @@ From `docs/research/v2-hybrid-base-2026-11-19.md` (base probe, C = 0 only). Noth
   judged separately; none is preferred in advance.
 - **Reported, not gated:** the three-ring Petrov–Galerkin force with the hybrid base (0.85% at n = 2 with
   C = 0), as a lead for *Reading the Curve*.
+
+## Amendment 4 (19 November 2026, after the first n = 1 arm stalled; no V2 result has been read)
+
+**Written before any V2 result exists.** The first n = 1 arm (linear, N2) spent over 45 minutes in
+`lsqr` without finishing, and its receipt was never written. Nothing is relaxed in the gates, and
+nothing changes in what is solved for: still the minimum-norm least-squares C.
+
+- **Why it stalled.** Amendment 2 stops `lsqr` only on ‖r‖ ≤ 10⁻⁹‖b‖ (atol = 0). That test can fire
+  only if the column condition is exactly consistent. V1 at n = 2 already showed it may not be
+  (6.8 × 10⁻⁵). For an inconsistent system the criterion is never met, so `lsqr` runs its full
+  10⁵ iterations: hours per arm at n = 1, and far longer at n = 2.
+- **Change.** `lsqr` (from x₀ = 0, so it still converges to the minimum-norm least-squares solution)
+  stops on either of two tests:
+  - ‖r‖ ≤ 10⁻⁹‖b‖ (btol = 10⁻⁹): the constraints are met.
+  - ‖Aᵀr‖ ≤ 10⁻¹²‖A‖‖r‖ (atol = 10⁻¹²): the least-squares optimum is reached and no smaller residual
+    exists.
+
+  iter_lim becomes 2 × 10⁴.
+- **Reported in every receipt:** which test stopped the solve (istop), the iteration count, and both
+  residuals. The dense eigh of AAᵀ stays the cross-check.
+- **C-solve is unchanged.** The column condition must hold to 10⁻⁸ of its initial size. If the
+  least-squares optimum stops short of that, C-solve fails and is reported as such: the column
+  condition is then inconsistent at this locality, which the V1 spec already names as a finding.
+- **Arms run as separate processes**, one per arm, so that one slow solve does not delay the others.
+

@@ -54,8 +54,40 @@ def defects(u):
     return np.array(D)                                   # 4 faces x 4 components
 
 
+# each face defect as a product of (local edge, inverted?) factors, exactly as in defects():
+# faces 0-2 are u_a u_b u_c^-1; face 3 (face 123) is u_0 (u_3 u_5 u_4^-1) u_0^-1
+DEFECT_FACTORS = ([[(a, False), (b, False), (c, True)] for (a, b, c) in FACE_EDGES[:3]]
+                  + [[(0, False), (FACE_EDGES[3][0], False), (FACE_EDGES[3][1], False),
+                      (FACE_EDGES[3][2], True), (0, True)]])
+
+
 def defect_derivatives(u):
-    """dD[e, k, face, comp] for right-trivialised variations u_e -> u_e exp(t tau_k)."""
+    """dD[e, k, face, comp] for right-trivialised variations u_e -> u_e exp(t tau_k), exactly.
+
+    Product rule: the derivative of u_e is u_e tau_k, and of u_e^-1 its conjugate (on unit
+    quaternions the inverse is the conjugate, which is linear). No finite-difference step, so no
+    rounding amplification; see docs/RICCI_SU2_EXACT_DEFECT_DERIVATIVE_SPEC.md."""
+    u = np.asarray(u, float)
+    out = np.zeros((6, 3, 4, 4))
+    for f, factors in enumerate(DEFECT_FACTORS):
+        plain = [inverse(u[e]) if inv else u[e] for e, inv in factors]
+        for pos, (e, inv) in enumerate(factors):
+            left = ONE
+            for q in plain[:pos]:
+                left = compose(left, q)
+            right = ONE
+            for q in plain[pos + 1:]:
+                right = compose(right, q)
+            for k in range(3):
+                d = compose(u[e], TAU[k])
+                if inv:
+                    d = np.r_[d[0], -d[1:]]
+                out[e, k, f] += compose(compose(left, d), right)
+    return out
+
+
+def defect_derivatives_fd(u):
+    """The former central-difference version (step EPS), kept for comparison only."""
     out = np.zeros((6, 3, 4, 4))
     for e in range(6):
         for k in range(3):

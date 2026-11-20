@@ -243,7 +243,9 @@ Section~\ref{sec:su2force} reviews these and goes beyond them.
   \item A closed form for the bottom of the linearised $SU(2)$ spectrum at the Berger field,
     $(j(j+2)-14)/3$ in the sector of spin $j/2$, an exact eigenvalue on an explicit eigenvector in
     every sector, proved to be the bottom of its sector for $j=0,12,20,24$, with every higher surviving
-    sector bounded above $142$ (Theorem~\ref{thm:gap}); minimality for general $j$ is not proved. On the Poincar\'e sphere the first sector
+    sector bounded above $142$ (Theorem~\ref{thm:gap}); minimality for general $j$ is not proved. The
+    companion paper~\cite{davisberger} develops this as a self-contained spectral theorem, the Floor
+    Theorem. On the Poincar\'e sphere the first sector
     above the left-invariant one therefore begins $168/3$ above the field's growth mode, one third of
     the sphere's first scalar eigenvalue, and both lattice forces resolve it
     (Proposition~\ref{prop:sector}).
@@ -1998,7 +2000,8 @@ converges on a Berger metric that defeats the native force and follows the
 Ricci-flowed metric in time. At that Berger field the low spectrum of the linearised operator is
 exact where it matters: $(j(j+2)-14)/3$ is an eigenvalue in every sector and, by certified computation,
 the bottom of each low sector that survives on the Poincar\'e sphere, where the gap is set by the
-sphere's first scalar eigenvalue. Two problems remain open: a
+sphere's first scalar eigenvalue (the Floor Theorem; see the companion paper~\cite{davisberger}).
+Two problems remain open: a
 force that is also the gradient of an energy, which Lemma~\ref{lem:conflict} shows cannot come from
 exact moment conditions on a per-cell reading, and the mass that a flow built on such a force would
 need.
@@ -2008,8 +2011,8 @@ This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}
 All code, frozen inputs and results are available in the \GIGI{} repository,
-\url{https://github.com/nurdymuny/gigi}; a versioned snapshot will be archived with a DOI on
-publication. Every number and figure in this paper is regenerated from the frozen, hash-checked
+\url{https://github.com/nurdymuny/gigi}; this version, with its source and the code and data behind it, is archived on Zenodo under the
+concept DOI \url{https://doi.org/10.5281/zenodo.24328085}. Every number and figure in this paper is regenerated from the frozen, hash-checked
 inputs of the \GIGI{} Ricci checkpoint, by the following programs.
 \begin{itemize}
   \item Two-ring recovery: \path{scripts/ricci_pg_tworing.py}; its focused tests:

@@ -72,7 +72,8 @@ Nothing arrives ahead of the light cone (W1).
 dominant component at τ = 30.
 
 - Near the tap (θ ≤ 1.0, and along the fibre), the sector contributions all have the same sign and add up. The
-  point's log-slope matches the prediction to within 1%, except at t = 6, θ = 1.5 (3.6849 against 3.7417, −1.5%).
+  point's log-slope matches the prediction to within 1% (worst −0.5%). The intermediate point θ = 1.5 is off by up to 2.8% (t = 8),
+  where the cancellation begins.
 - Far from the tap, at transverse θ = 2.0 and 2.5, consecutive sectors' contributions alternate in sign, and each
   is many times larger than their sum. At t = 8, θ = 2.0, the fractions run
   −0.33, +5.7, −28.8, **+54.8**, −42.0, +13.4, −1.8 for j = 0, …, 6.

@@ -1,0 +1,156 @@
+{
+  "kind": "YM5 flow (Amendment 1): LINK_FLOW through a live gigi-stream",
+  "port": 64102,
+  "binary": {
+    "path": "C:\\Users\\nurdm\\OneDrive\\Documents\\gigi-ym\\target-ym6\\release\\gigi-stream.exe",
+    "sha256": "430bb1985721f3d4e79590a6ff5696ee612f9b97b60eeb4d8ac0bfb256790450"
+  },
+  "cases": {
+    "level0_native": {
+      "F1_rows_max_abs": 0.0,
+      "F1_final_links_max_abs": 0.0,
+      "F2_E_rel_vs_S3b": 3.2297854495584534e-14,
+      "F3_engineK0_vs_researchK0_E_rel": 3.091083006939374e-14,
+      "R_final": 0.07025606975439677,
+      "R_percent": 7.025606975439677,
+      "paper_R_percent": null,
+      "newton_route": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "newton_S3b": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "k0_seconds": 0.0638041,
+      "seconds": 1.4665322,
+      "variational": true
+    },
+    "level0_pg": {
+      "F1_rows_max_abs": 0.0,
+      "F1_final_links_max_abs": 0.0,
+      "F2_E_rel_vs_S3b": 3.914300076013197e-15,
+      "F3_engineK0_vs_researchK0_E_rel": 7.853975592033207e-15,
+      "R_final": 0.1383438850817138,
+      "R_percent": 13.83438850817138,
+      "paper_R_percent": "13.8",
+      "newton_route": [
+        5,
+        5,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6
+      ],
+      "newton_S3b": [
+        5,
+        5,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6
+      ],
+      "k0_seconds": 3.3769109,
+      "seconds": 5.8199733,
+      "variational": false
+    },
+    "level1_native": {
+      "F1_rows_max_abs": 0.0,
+      "F1_final_links_max_abs": 0.0,
+      "F2_E_rel_vs_S3b": 4.0707296734160866e-14,
+      "F3_engineK0_vs_researchK0_E_rel": 6.434541458016052e-15,
+      "R_final": 0.022192495411880418,
+      "R_percent": 2.219249541188042,
+      "paper_R_percent": null,
+      "newton_route": [
+        5,
+        5,
+        6,
+        6,
+        6,
+        7,
+        7,
+        7
+      ],
+      "newton_S3b": [
+        5,
+        5,
+        6,
+        6,
+        6,
+        7,
+        7,
+        7
+      ],
+      "k0_seconds": 0.3939124,
+      "seconds": 26.9087795,
+      "variational": true
+    },
+    "level1_pg": {
+      "F1_rows_max_abs": 0.0,
+      "F1_final_links_max_abs": 0.0,
+      "F2_E_rel_vs_S3b": 6.79673119624215e-14,
+      "F3_engineK0_vs_researchK0_E_rel": 5.157013574887541e-14,
+      "R_final": 0.01772537467079133,
+      "R_percent": 1.7725374670791332,
+      "paper_R_percent": "1.77",
+      "newton_route": [
+        5,
+        5,
+        5,
+        5,
+        6,
+        6,
+        6,
+        6
+      ],
+      "newton_S3b": [
+        5,
+        5,
+        5,
+        5,
+        6,
+        6,
+        6,
+        6
+      ],
+      "k0_seconds": 29.7409654,
+      "seconds": 63.3352197,
+      "variational": false
+    }
+  },
+  "F4_refusals": {
+    "missing_metric_sample": {
+      "status": 422,
+      "body": "{'error': 'LINK_FLOW: no metric sample at t = 0.00125; none is ever substituted'}"
+    },
+    "no_metric": {
+      "status": 422,
+      "body": "{'error': 'LINK_FLOW: metric_step samples are required; none is ever substituted'}"
+    },
+    "unknown_key": {
+      "status": 422,
+      "body": "{'error': 'Failed to deserialize the JSON body into the target type: stepz: unknown field `stepz`, expected one of `links`, `q`, `method`, `order`, `steps`, `t_end`, `metric_step`, `reference` at line"
+    },
+    "missing_bundle": {
+      "status": 404,
+      "body": "{'error': \"Bundle 'no_such' not found\"}"
+    }
+  }
+}

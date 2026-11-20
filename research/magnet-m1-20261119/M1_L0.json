@@ -1,0 +1,48 @@
+{
+ "level": 0,
+ "edges": 142,
+ "cells": 120,
+ "rho": 0.388139515370189,
+ "k": 1,
+ "kind": "M1 (research script, not an engine run)",
+ "seconds_norm": 17.1,
+ "C_curl_max_rel": 4.123017948117215e-08,
+ "seconds_cells": 101.1,
+ "M1_moment_max_rel": 1.150027263454306e-15,
+ "gauge_dimension": 21,
+ "seam_rms_jump_relative": 0.005513061680686068,
+ "seam_points": 1440,
+ "amplification_max": null,
+ "arms": {
+  "unseated": {
+   "bw05_relative_error": 0.3546397720516253,
+   "reconstruction_term": 0.35535899458477677,
+   "poke_term": 0.03072580869532812,
+   "curvature_relative_error": 0.30907131348766004,
+   "asymmetry": 2.0129580510200011e-16,
+   "wobble_count_below_1": 65,
+   "min_physical_eig": 0.019163596676687735,
+   "negative_physical": 0
+  },
+  "seated": {
+   "bw05_relative_error": 2.4726839212733234,
+   "reconstruction_term": 0.35535899458477677,
+   "poke_term": 0.03072580869532812,
+   "curvature_relative_error": 0.30907131348766004,
+   "asymmetry": 1.5092194129826043e-16,
+   "spring_force_share": 2.802501967653851,
+   "wobble_count_below_1": 0,
+   "min_physical_eig": 4.286035814854564,
+   "negative_physical": 0
+  }
+ },
+ "gates_this_level": {
+  "M1-moment (<= 1e-8)": true,
+  "M1-variational (asym <= 1e-12)": true,
+  "M1-wobble (seated: none below 1, none negative)": true,
+  "M1-seam (<= 1%)": true,
+  "M1-poke (n = 2: <= M0/10)": null,
+  "M1-recon (<= 2 x M0)": null
+ },
+ "seconds": 101.1
+}

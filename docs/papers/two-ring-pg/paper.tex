@@ -20,6 +20,7 @@
 \usepackage[hidelinks]{hyperref}
 
 \newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
 \newtheorem{corollary}{Corollary}
 \theoremstyle{definition}
@@ -218,7 +219,8 @@ each failed one of two requirements:
     $25\%$, and a time integration that follows the Ricci-flowed metric to within $0.87\%$
     at $n=3$ (Section~\ref{sec:su2}).
   \item A closed form for the bottom of the linearised $SU(2)$ spectrum at the Berger field,
-    $(j(j+2)-14)/3$ in the sector of spin $j/2$, derived on an explicit eigenvector. On the
+    $(j(j+2)-14)/3$ in the sector of spin $j/2$, derived on an explicit eigenvector and shown to
+    be the bottom of its sector (Theorem~\ref{thm:gap}). On the
     Poincar\'e sphere it places the gap above the field's growth mode at $168/3$, one third of the
     sphere's first scalar eigenvalue, and both lattice forces resolve it
     (Proposition~\ref{prop:sector}).
@@ -1354,8 +1356,53 @@ $b$ up to a factor. Three checks close the argument:
 The computation is symbolic in $j$ (\path{scripts/ricci_su2_sector_formula.py}).
 \end{proof}
 
-That $\lambda(j)$ is the \emph{lowest} gauge-orthogonal value of its sector we have checked, not
-proved: it holds for every $j\le40$ to $2\times10^{-12}$. Taken together, the field's strongest
+Proposition~\ref{prop:sector} gives an eigenvalue in every sector. The next result shows that it is
+the bottom of its sector, and that this makes the gap exact.
+
+\begin{theorem}[The gap on the Poincar\'e sphere]\label{thm:gap}
+At the Berger metric $g=(3,1,1)$:
+\begin{enumerate}
+  \item every gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least
+    $\bigl(\sqrt{j(j+2)/3}-\omega\bigr)^2-12$, with $\omega=5.0332\ldots$, whenever
+    $\sqrt{j(j+2)/3}\ge\omega$;
+  \item for every $j\le120$, $\lambda(j)$ is the lowest gauge-orthogonal eigenvalue of its sector;
+  \item on the Poincar\'e sphere, the gauge-orthogonal spectrum below $142$ consists of the spin-$0$
+    values $-14/3$ (twice), $16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$
+    values from $154/3$ upward; spin $10$ begins exactly at $142$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+On the slice $G^*b=0$, so $\langle b,Hb\rangle=\langle b,(H+GG^*)b\rangle$: adding the gauge term
+changes nothing there.
+
+\emph{The Weitzenb\"ock form.} The operator $H+GG^*$ is a Weitzenb\"ock operator,
+\[
+  H+GG^* \;=\; \sum_i X_i^*X_i + R_0,\qquad X_i=\rho_i/\sqrt{g_i}+\Omega_i,
+\]
+where $X_i$ is the full covariant derivative ($\Omega_i$ acts on the Lie and frame indices) and $R_0$
+is a constant $9\times9$ matrix whose smallest eigenvalue is $-12$. Both facts were checked to
+$10^{-14}$, the same matrix in every sector computed.
+
+\emph{Part (1).} Two inequalities combine:
+\begin{itemize}
+  \item since $g_0=3\ge g_1=g_2=1$ and $-\sum_i\rho_i^2=j(j+2)$ on $V_j$,
+    $\sum_i\norm{\rho_iv}^2/g_i\ge j(j+2)\norm v^2/3$;
+  \item each term satisfies $\norm{X_iv}\ge\bigl|\norm{\rho_iv}/\sqrt{g_i}-\norm{\Omega_iv}\bigr|$.
+\end{itemize}
+The reverse triangle inequality in $\RR^3$ then gives
+$\sum_i\norm{X_iv}^2\ge(\sqrt{j(j+2)/3}-\omega)^2\norm v^2$, with $\omega^2=\sum_i\norm{\Omega_i}^2$.
+
+\emph{Part (2).} The smallest eigenvalue of $H+GG^*$ was computed in double precision in every
+sector $j\le120$. It equals $\lambda(j)$, attained at top and bottom weight, and the next eigenvalue is
+at least $\lambda(j)+2/3$, against a round-off bound below $2\times10^{-5}$. The eigenvector of
+Proposition~\ref{prop:sector} lies in the slice, so $\lambda(j)$ is the minimum there.
+
+\emph{Part (3).} The bound of (1) exceeds $142$ for every $j\ge30$. Part (2) covers the surviving
+sectors $j=0,12,20,24$, and the spin-$0$ slice was computed in exact arithmetic
+(\path{scripts/ricci_su2_sector_minimality.py}).
+\end{proof}
+
+For $j>120$, minimality is not needed for the gap and is not proved. Taken together, the field's strongest
 growth direction and the bottom of every higher sector are one formula (Figure~\ref{fig:ladder}).
 At $j=0$ it gives $-14/3$, the growth mode. The first sector that survives on the Poincar\'e sphere
 is $j=12$, where $j(j+2)=168$ is the first nonzero eigenvalue of the scalar Laplacian on the

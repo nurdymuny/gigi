@@ -139,3 +139,25 @@ for every j from 0 to 40, to 2 × 10⁻¹².
 **Specific to this metric.** At (2, 1, 1), (4, 1, 1) or round, the bottom of the sector is not −λ₀ + j(j+2)/g₀
 (checked numerically). The 3 is tied to g₀ = 3. Whether the circular family stays an exact eigenvector at other
 squashings, and with what value, is not computed.
+
+## Addendum 2: minimality proved for j ≤ 120, and the gap proved
+
+- **Script:** `scripts/ricci_su2_sector_minimality.py`.
+- **Receipt:** `research/su2-left-invariant-sector-20261119/minimality.json`.
+- **In the paper:** Theorem 1.
+
+**The idea.** On the slice, ⟨b, Hb⟩ = ⟨b, (H + GG*)b⟩. And H + GG* = Σᵢ XᵢᴴXᵢ + R₀, where:
+
+- Xᵢ = ρᵢ/√gᵢ + Ωᵢ is the covariant derivative;
+- R₀ is a constant 9 × 9 matrix with smallest eigenvalue −12;
+- ω = (Σ‖Ωᵢ‖²)^½ = 5.0332.
+
+**The pieces:**
+
+- **(1) An all-j bound:** sector j ≥ (√(j(j+2)/3) − ω)² − 12. This is ≥ 142 for every j ≥ 30.
+- **(2) Computed for j = 0 to 120:** the bottom of H + GG* equals λ(j) exactly, twice (top and bottom weight).
+  The next eigenvalue is at least λ(j) + 2/3, against round-off below 2 × 10⁻⁵.
+- **(3) Spin 0, exactly (sympy):** −14/3 (×2), 16 − 2√73, 22/3 (×2), 16 + 2√73.
+
+**The gap is therefore proved.** Below 142 the gauge-orthogonal spectrum is the spin-0 values plus spin 6 from
+154/3 upward, and spin 10 starts at 142. Minimality for j > 120 is open, and the gap does not need it.

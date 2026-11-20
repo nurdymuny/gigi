@@ -1,0 +1,991 @@
+{
+ "weitzenbock_R_is_constant_times_identity": 1.4210854715202004e-14,
+ "weitzenbock_R_j_independent": 1.509903313490213e-14,
+ "omega": 5.033222956847166,
+ "min_eig_R0": -11.999999999999996,
+ "all_j_bound_at_least_142_from_j": 30,
+ "spin0_slice_exact": {
+  "-14/3": 2,
+  "16 - 2*sqrt(73)": 1,
+  "16 + 2*sqrt(73)": 1,
+  "22/3": 2
+ },
+ "range": [
+  0,
+  120
+ ],
+ "all_verified": true,
+ "min_next_margin": 0.6666666666666647,
+ "max_roundoff_tolerance": 1.6879982405255065e-05,
+ "per_j": [
+  {
+   "j": 0,
+   "bottom_minus_lambda": 0.0,
+   "multiplicity": 2,
+   "next_margin": 3.350889359326483,
+   "roundoff_tolerance": 2.9779206741571554e-10,
+   "verified": true
+  },
+  {
+   "j": 1,
+   "bottom_minus_lambda": 0.0,
+   "multiplicity": 2,
+   "next_margin": 0.6666666666666647,
+   "roundoff_tolerance": 7.303930997538922e-10,
+   "verified": true
+  },
+  {
+   "j": 2,
+   "bottom_minus_lambda": -5.329070518200751e-15,
+   "multiplicity": 2,
+   "next_margin": 1.3333333333333308,
+   "roundoff_tolerance": 1.4429006985832103e-09,
+   "verified": true
+  },
+  {
+   "j": 3,
+   "bottom_minus_lambda": 2.9976021664879227e-15,
+   "multiplicity": 2,
+   "next_margin": 1.9999999999999962,
+   "roundoff_tolerance": 2.3705931721511655e-09,
+   "verified": true
+  },
+  {
+   "j": 4,
+   "bottom_minus_lambda": -7.993605777301127e-15,
+   "multiplicity": 2,
+   "next_margin": 2.1145640218188055,
+   "roundoff_tolerance": 3.7187223168267587e-09,
+   "verified": true
+  },
+  {
+   "j": 5,
+   "bottom_minus_lambda": 4.440892098500626e-15,
+   "multiplicity": 2,
+   "next_margin": 3.333333333333334,
+   "roundoff_tolerance": 5.36457696595521e-09,
+   "verified": true
+  },
+  {
+   "j": 6,
+   "bottom_minus_lambda": -5.329070518200751e-15,
+   "multiplicity": 2,
+   "next_margin": 4.0,
+   "roundoff_tolerance": 7.56634369457523e-09,
+   "verified": true
+  },
+  {
+   "j": 7,
+   "bottom_minus_lambda": 3.907985046680551e-14,
+   "multiplicity": 2,
+   "next_margin": 4.666666666666664,
+   "roundoff_tolerance": 1.0148887330913868e-08,
+   "verified": true
+  },
+  {
+   "j": 8,
+   "bottom_minus_lambda": -3.907985046680551e-14,
+   "multiplicity": 2,
+   "next_margin": 5.333333333333325,
+   "roundoff_tolerance": 1.3421139534989715e-08,
+   "verified": true
+  },
+  {
+   "j": 9,
+   "bottom_minus_lambda": -3.907985046680551e-14,
+   "multiplicity": 2,
+   "next_margin": 5.999999999999989,
+   "roundoff_tolerance": 1.7157505154040315e-08,
+   "verified": true
+  },
+  {
+   "j": 10,
+   "bottom_minus_lambda": 3.552713678800501e-14,
+   "multiplicity": 2,
+   "next_margin": 6.666666666666735,
+   "roundoff_tolerance": 2.1716640789978442e-08,
+   "verified": true
+  },
+  {
+   "j": 11,
+   "bottom_minus_lambda": -4.973799150320701e-14,
+   "multiplicity": 2,
+   "next_margin": 7.333333333333272,
+   "roundoff_tolerance": 2.6823408998935487e-08,
+   "verified": true
+  },
+  {
+   "j": 12,
+   "bottom_minus_lambda": -4.973799150320701e-14,
+   "multiplicity": 2,
+   "next_margin": 7.999999999999886,
+   "roundoff_tolerance": 3.2885634402239056e-08,
+   "verified": true
+  },
+  {
+   "j": 13,
+   "bottom_minus_lambda": 4.973799150320701e-14,
+   "multiplicity": 2,
+   "next_margin": 8.666666666666778,
+   "roundoff_tolerance": 3.957913283437416e-08,
+   "verified": true
+  },
+  {
+   "j": 14,
+   "bottom_minus_lambda": -5.684341886080802e-14,
+   "multiplicity": 2,
+   "next_margin": 9.333333333333329,
+   "roundoff_tolerance": 4.736056375842307e-08,
+   "verified": true
+  },
+  {
+   "j": 15,
+   "bottom_minus_lambda": -1.4210854715202004e-14,
+   "multiplicity": 2,
+   "next_margin": 10.0,
+   "roundoff_tolerance": 5.585699128420585e-08,
+   "verified": true
+  },
+  {
+   "j": 16,
+   "bottom_minus_lambda": 1.4210854715202004e-14,
+   "multiplicity": 2,
+   "next_margin": 10.66666666666643,
+   "roundoff_tolerance": 6.557369682616829e-08,
+   "verified": true
+  },
+  {
+   "j": 17,
+   "bottom_minus_lambda": 9.947598300641403e-14,
+   "multiplicity": 2,
+   "next_margin": 11.333333333333414,
+   "roundoff_tolerance": 7.60891812398397e-08,
+   "verified": true
+  },
+  {
+   "j": 18,
+   "bottom_minus_lambda": -1.4210854715202004e-14,
+   "multiplicity": 2,
+   "next_margin": 12.000000000000128,
+   "roundoff_tolerance": 8.795720474403983e-08,
+   "verified": true
+  },
+  {
+   "j": 19,
+   "bottom_minus_lambda": -4.547473508864641e-13,
+   "multiplicity": 2,
+   "next_margin": 12.666666666666288,
+   "roundoff_tolerance": 1.0070783200671336e-07,
+   "verified": true
+  },
+  {
+   "j": 20,
+   "bottom_minus_lambda": -1.7053025658242404e-13,
+   "multiplicity": 2,
+   "next_margin": 13.33333333333286,
+   "roundoff_tolerance": 1.1494320178020464e-07,
+   "verified": true
+  },
+  {
+   "j": 21,
+   "bottom_minus_lambda": -3.694822225952521e-13,
+   "multiplicity": 2,
+   "next_margin": 13.999999999999602,
+   "roundoff_tolerance": 1.301450319182488e-07,
+   "verified": true
+  },
+  {
+   "j": 22,
+   "bottom_minus_lambda": -7.105427357601002e-13,
+   "multiplicity": 2,
+   "next_margin": 14.666666666666544,
+   "roundoff_tolerance": 1.4696376707122864e-07,
+   "verified": true
+  },
+  {
+   "j": 23,
+   "bottom_minus_lambda": -3.694822225952521e-13,
+   "multiplicity": 2,
+   "next_margin": 15.333333333332433,
+   "roundoff_tolerance": 1.6483284332777863e-07,
+   "verified": true
+  },
+  {
+   "j": 24,
+   "bottom_minus_lambda": -9.663381206337363e-13,
+   "multiplicity": 2,
+   "next_margin": 15.999999999999801,
+   "roundoff_tolerance": 1.8445095712365163e-07,
+   "verified": true
+  },
+  {
+   "j": 25,
+   "bottom_minus_lambda": -3.410605131648481e-13,
+   "multiplicity": 2,
+   "next_margin": 16.666666666666714,
+   "roundoff_tolerance": 2.0520331148274846e-07,
+   "verified": true
+  },
+  {
+   "j": 26,
+   "bottom_minus_lambda": -2.842170943040401e-14,
+   "multiplicity": 2,
+   "next_margin": 17.333333333333712,
+   "roundoff_tolerance": 2.2783681334424842e-07,
+   "verified": true
+  },
+  {
+   "j": 27,
+   "bottom_minus_lambda": 2.8421709430404007e-13,
+   "multiplicity": 2,
+   "next_margin": 17.999999999999773,
+   "roundoff_tolerance": 2.516884700018367e-07,
+   "verified": true
+  },
+  {
+   "j": 28,
+   "bottom_minus_lambda": -1.4210854715202004e-12,
+   "multiplicity": 2,
+   "next_margin": 18.666666666666686,
+   "roundoff_tolerance": 2.7755336675726194e-07,
+   "verified": true
+  },
+  {
+   "j": 29,
+   "bottom_minus_lambda": 3.410605131648481e-13,
+   "multiplicity": 2,
+   "next_margin": 19.333333333332575,
+   "roundoff_tolerance": 3.047203443782457e-07,
+   "verified": true
+  },
+  {
+   "j": 30,
+   "bottom_minus_lambda": -7.389644451905042e-13,
+   "multiplicity": 2,
+   "next_margin": 19.99999999999943,
+   "roundoff_tolerance": 3.340326410604992e-07,
+   "verified": true
+  },
+  {
+   "j": 31,
+   "bottom_minus_lambda": -1.8758328224066645e-12,
+   "multiplicity": 2,
+   "next_margin": 20.666666666667254,
+   "roundoff_tolerance": 3.6473095429059586e-07,
+   "verified": true
+  },
+  {
+   "j": 32,
+   "bottom_minus_lambda": -7.389644451905042e-13,
+   "multiplicity": 2,
+   "next_margin": 21.333333333332746,
+   "roundoff_tolerance": 3.9770665466376325e-07,
+   "verified": true
+  },
+  {
+   "j": 33,
+   "bottom_minus_lambda": -1.7621459846850485e-12,
+   "multiplicity": 2,
+   "next_margin": 21.999999999998863,
+   "roundoff_tolerance": 4.3215231516879264e-07,
+   "verified": true
+  },
+  {
+   "j": 34,
+   "bottom_minus_lambda": 1.1368683772161603e-12,
+   "multiplicity": 2,
+   "next_margin": 22.66666666666515,
+   "roundoff_tolerance": 4.6900742208362746e-07,
+   "verified": true
+  },
+  {
+   "j": 35,
+   "bottom_minus_lambda": -1.4210854715202004e-12,
+   "multiplicity": 2,
+   "next_margin": 23.33333333333303,
+   "roundoff_tolerance": 5.074164392804054e-07,
+   "verified": true
+  },
+  {
+   "j": 36,
+   "bottom_minus_lambda": -3.979039320256561e-13,
+   "multiplicity": 2,
+   "next_margin": 23.999999999998863,
+   "roundoff_tolerance": 5.483669549194655e-07,
+   "verified": true
+  },
+  {
+   "j": 37,
+   "bottom_minus_lambda": -9.094947017729282e-13,
+   "multiplicity": 2,
+   "next_margin": 24.66666666666555,
+   "roundoff_tolerance": 5.909553365003376e-07,
+   "verified": true
+  },
+  {
+   "j": 38,
+   "bottom_minus_lambda": -2.3305801732931286e-12,
+   "multiplicity": 2,
+   "next_margin": 25.333333333331893,
+   "roundoff_tolerance": 6.362172625502429e-07,
+   "verified": true
+  },
+  {
+   "j": 39,
+   "bottom_minus_lambda": 1.1368683772161603e-13,
+   "multiplicity": 2,
+   "next_margin": 25.999999999998636,
+   "roundoff_tolerance": 6.832010148663892e-07,
+   "verified": true
+  },
+  {
+   "j": 40,
+   "bottom_minus_lambda": -2.9558577807620168e-12,
+   "multiplicity": 2,
+   "next_margin": 26.66666666666663,
+   "roundoff_tolerance": 7.32990352640927e-07,
+   "verified": true
+  },
+  {
+   "j": 41,
+   "bottom_minus_lambda": 4.547473508864641e-13,
+   "multiplicity": 2,
+   "next_margin": 27.333333333331893,
+   "roundoff_tolerance": 7.845854809870453e-07,
+   "verified": true
+  },
+  {
+   "j": 42,
+   "bottom_minus_lambda": 2.8421709430404007e-12,
+   "multiplicity": 2,
+   "next_margin": 27.9999999999975,
+   "roundoff_tolerance": 8.391182315164988e-07,
+   "verified": true
+  },
+  {
+   "j": 43,
+   "bottom_minus_lambda": -4.320099833421409e-12,
+   "multiplicity": 2,
+   "next_margin": 28.666666666664128,
+   "roundoff_tolerance": 8.95540740345369e-07,
+   "verified": true
+  },
+  {
+   "j": 44,
+   "bottom_minus_lambda": -1.8189894035458565e-12,
+   "multiplicity": 2,
+   "next_margin": 29.333333333332916,
+   "roundoff_tolerance": 9.55032904442221e-07,
+   "verified": true
+  },
+  {
+   "j": 45,
+   "bottom_minus_lambda": 0.0,
+   "multiplicity": 2,
+   "next_margin": 30.000000000000227,
+   "roundoff_tolerance": 1.0164987975285838e-06,
+   "verified": true
+  },
+  {
+   "j": 46,
+   "bottom_minus_lambda": -2.1600499167107046e-12,
+   "multiplicity": 2,
+   "next_margin": 30.666666666667993,
+   "roundoff_tolerance": 1.081166375836433e-06,
+   "verified": true
+  },
+  {
+   "j": 47,
+   "bottom_minus_lambda": -6.821210263296962e-13,
+   "multiplicity": 2,
+   "next_margin": 31.333333333333144,
+   "roundoff_tolerance": 1.1478916564036924e-06,
+   "verified": true
+  },
+  {
+   "j": 48,
+   "bottom_minus_lambda": -1.0231815394945443e-12,
+   "multiplicity": 2,
+   "next_margin": 31.999999999997954,
+   "roundoff_tolerance": 1.217950649434129e-06,
+   "verified": true
+  },
+  {
+   "j": 49,
+   "bottom_minus_lambda": 2.3874235921539366e-12,
+   "multiplicity": 2,
+   "next_margin": 32.66666666666242,
+   "roundoff_tolerance": 1.2901513202534009e-06,
+   "verified": true
+  },
+  {
+   "j": 50,
+   "bottom_minus_lambda": 3.751665644813329e-12,
+   "multiplicity": 2,
+   "next_margin": 33.33333333332996,
+   "roundoff_tolerance": 1.3658177284140291e-06,
+   "verified": true
+  },
+  {
+   "j": 51,
+   "bottom_minus_lambda": -3.410605131648481e-12,
+   "multiplicity": 2,
+   "next_margin": 33.99999999999568,
+   "roundoff_tolerance": 1.4437097918823778e-06,
+   "verified": true
+  },
+  {
+   "j": 52,
+   "bottom_minus_lambda": -7.389644451905042e-12,
+   "multiplicity": 2,
+   "next_margin": 34.66666666666288,
+   "roundoff_tolerance": 1.5251996154983383e-06,
+   "verified": true
+  },
+  {
+   "j": 53,
+   "bottom_minus_lambda": 2.3874235921539366e-12,
+   "multiplicity": 2,
+   "next_margin": 35.33333333333269,
+   "roundoff_tolerance": 1.608999073701143e-06,
+   "verified": true
+  },
+  {
+   "j": 54,
+   "bottom_minus_lambda": -3.979039320256561e-12,
+   "multiplicity": 2,
+   "next_margin": 35.99999999999898,
+   "roundoff_tolerance": 1.6965283130318273e-06,
+   "verified": true
+  },
+  {
+   "j": 55,
+   "bottom_minus_lambda": -1.3642420526593924e-12,
+   "multiplicity": 2,
+   "next_margin": 36.66666666666583,
+   "roundoff_tolerance": 1.7864511677929348e-06,
+   "verified": true
+  },
+  {
+   "j": 56,
+   "bottom_minus_lambda": -2.2737367544323206e-12,
+   "multiplicity": 2,
+   "next_margin": 37.33333333332985,
+   "roundoff_tolerance": 1.8802358230449839e-06,
+   "verified": true
+  },
+  {
+   "j": 57,
+   "bottom_minus_lambda": 0.0,
+   "multiplicity": 2,
+   "next_margin": 37.99999999999409,
+   "roundoff_tolerance": 1.976498075967388e-06,
+   "verified": true
+  },
+  {
+   "j": 58,
+   "bottom_minus_lambda": -9.094947017729282e-13,
+   "multiplicity": 2,
+   "next_margin": 38.66666666666424,
+   "roundoff_tolerance": 2.07675414730494e-06,
+   "verified": true
+  },
+  {
+   "j": 59,
+   "bottom_minus_lambda": -2.7284841053187847e-12,
+   "multiplicity": 2,
+   "next_margin": 39.33333333332985,
+   "roundoff_tolerance": 2.1795717998040004e-06,
+   "verified": true
+  },
+  {
+   "j": 60,
+   "bottom_minus_lambda": -5.9117155615240335e-12,
+   "multiplicity": 2,
+   "next_margin": 39.99999999999409,
+   "roundoff_tolerance": 2.28651528735682e-06,
+   "verified": true
+  },
+  {
+   "j": 61,
+   "bottom_minus_lambda": -1.8189894035458565e-12,
+   "multiplicity": 2,
+   "next_margin": 40.666666666662195,
+   "roundoff_tolerance": 2.396104340687583e-06,
+   "verified": true
+  },
+  {
+   "j": 62,
+   "bottom_minus_lambda": -1.8189894035458565e-12,
+   "multiplicity": 2,
+   "next_margin": 41.333333333329165,
+   "roundoff_tolerance": 2.5099512445574966e-06,
+   "verified": true
+  },
+  {
+   "j": 63,
+   "bottom_minus_lambda": -9.777068044058979e-12,
+   "multiplicity": 2,
+   "next_margin": 42.00000000000091,
+   "roundoff_tolerance": 2.6265276998373297e-06,
+   "verified": true
+  },
+  {
+   "j": 64,
+   "bottom_minus_lambda": -5.4569682106375694e-12,
+   "multiplicity": 2,
+   "next_margin": 42.66666666666333,
+   "roundoff_tolerance": 2.747494020103417e-06,
+   "verified": true
+  },
+  {
+   "j": 65,
+   "bottom_minus_lambda": -1.1368683772161603e-11,
+   "multiplicity": 2,
+   "next_margin": 43.33333333333735,
+   "roundoff_tolerance": 2.8712738783308573e-06,
+   "verified": true
+  },
+  {
+   "j": 66,
+   "bottom_minus_lambda": -4.774847184307873e-12,
+   "multiplicity": 2,
+   "next_margin": 44.000000000002274,
+   "roundoff_tolerance": 2.9995756150536136e-06,
+   "verified": true
+  },
+  {
+   "j": 67,
+   "bottom_minus_lambda": -4.092726157978177e-12,
+   "multiplicity": 2,
+   "next_margin": 44.66666666666515,
+   "roundoff_tolerance": 3.1307748771241636e-06,
+   "verified": true
+  },
+  {
+   "j": 68,
+   "bottom_minus_lambda": -1.0913936421275139e-11,
+   "multiplicity": 2,
+   "next_margin": 45.33333333332757,
+   "roundoff_tolerance": 3.266628030348866e-06,
+   "verified": true
+  },
+  {
+   "j": 69,
+   "bottom_minus_lambda": 5.002220859751105e-12,
+   "multiplicity": 2,
+   "next_margin": 45.99999999999363,
+   "roundoff_tolerance": 3.405462697068306e-06,
+   "verified": true
+  },
+  {
+   "j": 70,
+   "bottom_minus_lambda": -6.139089236967266e-12,
+   "multiplicity": 2,
+   "next_margin": 46.666666666678566,
+   "roundoff_tolerance": 3.5490832668277504e-06,
+   "verified": true
+  },
+  {
+   "j": 71,
+   "bottom_minus_lambda": -3.865352482534945e-12,
+   "multiplicity": 2,
+   "next_margin": 47.33333333332348,
+   "roundoff_tolerance": 3.6957693389233877e-06,
+   "verified": true
+  },
+  {
+   "j": 72,
+   "bottom_minus_lambda": -2.2737367544323206e-12,
+   "multiplicity": 2,
+   "next_margin": 47.99999999999454,
+   "roundoff_tolerance": 3.847373325240177e-06,
+   "verified": true
+  },
+  {
+   "j": 73,
+   "bottom_minus_lambda": -7.503331289626658e-12,
+   "multiplicity": 2,
+   "next_margin": 48.666666666669926,
+   "roundoff_tolerance": 4.002126803370464e-06,
+   "verified": true
+  },
+  {
+   "j": 74,
+   "bottom_minus_lambda": -6.366462912410498e-12,
+   "multiplicity": 2,
+   "next_margin": 49.3333333333328,
+   "roundoff_tolerance": 4.161930206258765e-06,
+   "verified": true
+  },
+  {
+   "j": 75,
+   "bottom_minus_lambda": -4.547473508864641e-13,
+   "multiplicity": 2,
+   "next_margin": 49.999999999995225,
+   "roundoff_tolerance": 4.324967091021462e-06,
+   "verified": true
+  },
+  {
+   "j": 76,
+   "bottom_minus_lambda": 9.777068044058979e-12,
+   "multiplicity": 2,
+   "next_margin": 50.66666666664901,
+   "roundoff_tolerance": 4.493185910488534e-06,
+   "verified": true
+  },
+  {
+   "j": 77,
+   "bottom_minus_lambda": -9.094947017729282e-13,
+   "multiplicity": 2,
+   "next_margin": 51.33333333333894,
+   "roundoff_tolerance": 4.664722202427779e-06,
+   "verified": true
+  },
+  {
+   "j": 78,
+   "bottom_minus_lambda": 6.821210263296962e-12,
+   "multiplicity": 2,
+   "next_margin": 51.99999999999682,
+   "roundoff_tolerance": 4.841572438475256e-06,
+   "verified": true
+  },
+  {
+   "j": 79,
+   "bottom_minus_lambda": -5.4569682106375694e-12,
+   "multiplicity": 2,
+   "next_margin": 52.66666666666197,
+   "roundoff_tolerance": 5.021824138087579e-06,
+   "verified": true
+  },
+  {
+   "j": 80,
+   "bottom_minus_lambda": -4.092726157978177e-12,
+   "multiplicity": 2,
+   "next_margin": 53.3333333333253,
+   "roundoff_tolerance": 5.207521790712465e-06,
+   "verified": true
+  },
+  {
+   "j": 81,
+   "bottom_minus_lambda": -6.366462912410498e-12,
+   "multiplicity": 2,
+   "next_margin": 53.99999999998272,
+   "roundoff_tolerance": 5.396704898452058e-06,
+   "verified": true
+  },
+  {
+   "j": 82,
+   "bottom_minus_lambda": -5.4569682106375694e-12,
+   "multiplicity": 2,
+   "next_margin": 54.666666666669244,
+   "roundoff_tolerance": 5.591465967647539e-06,
+   "verified": true
+  },
+  {
+   "j": 83,
+   "bottom_minus_lambda": -1.318767317570746e-11,
+   "multiplicity": 2,
+   "next_margin": 55.3333333333303,
+   "roundoff_tolerance": 5.789796483930879e-06,
+   "verified": true
+  },
+  {
+   "j": 84,
+   "bottom_minus_lambda": -2.7284841053187847e-12,
+   "multiplicity": 2,
+   "next_margin": 56.0,
+   "roundoff_tolerance": 5.9938369696870935e-06,
+   "verified": true
+  },
+  {
+   "j": 85,
+   "bottom_minus_lambda": 6.821210263296962e-12,
+   "multiplicity": 2,
+   "next_margin": 56.66666666667152,
+   "roundoff_tolerance": 6.201530894896756e-06,
+   "verified": true
+  },
+  {
+   "j": 86,
+   "bottom_minus_lambda": -1.6370904631912708e-11,
+   "multiplicity": 2,
+   "next_margin": 57.333333333335304,
+   "roundoff_tolerance": 6.4150667972013655e-06,
+   "verified": true
+  },
+  {
+   "j": 87,
+   "bottom_minus_lambda": 1.8189894035458565e-12,
+   "multiplicity": 2,
+   "next_margin": 57.99999999999409,
+   "roundoff_tolerance": 6.632340131689648e-06,
+   "verified": true
+  },
+  {
+   "j": 88,
+   "bottom_minus_lambda": -1.6370904631912708e-11,
+   "multiplicity": 2,
+   "next_margin": 58.66666666665287,
+   "roundoff_tolerance": 6.855587450528299e-06,
+   "verified": true
+  },
+  {
+   "j": 89,
+   "bottom_minus_lambda": -3.183231456205249e-12,
+   "multiplicity": 2,
+   "next_margin": 59.33333333331484,
+   "roundoff_tolerance": 7.082656194620213e-06,
+   "verified": true
+  },
+  {
+   "j": 90,
+   "bottom_minus_lambda": 6.821210263296962e-12,
+   "multiplicity": 2,
+   "next_margin": 59.99999999998499,
+   "roundoff_tolerance": 7.315830929976969e-06,
+   "verified": true
+  },
+  {
+   "j": 91,
+   "bottom_minus_lambda": 5.9117155615240335e-12,
+   "multiplicity": 2,
+   "next_margin": 60.66666666664696,
+   "roundoff_tolerance": 7.5529110839728425e-06,
+   "verified": true
+  },
+  {
+   "j": 92,
+   "bottom_minus_lambda": -1.8189894035458565e-12,
+   "multiplicity": 2,
+   "next_margin": 61.33333333333849,
+   "roundoff_tolerance": 7.796229235830526e-06,
+   "verified": true
+  },
+  {
+   "j": 93,
+   "bottom_minus_lambda": -1.2278178473934531e-11,
+   "multiplicity": 2,
+   "next_margin": 61.99999999999909,
+   "roundoff_tolerance": 8.043536800008536e-06,
+   "verified": true
+  },
+  {
+   "j": 94,
+   "bottom_minus_lambda": 0.0,
+   "multiplicity": 2,
+   "next_margin": 62.66666666664332,
+   "roundoff_tolerance": 8.297214368348964e-06,
+   "verified": true
+  },
+  {
+   "j": 95,
+   "bottom_minus_lambda": -2.7284841053187847e-12,
+   "multiplicity": 2,
+   "next_margin": 63.33333333331166,
+   "roundoff_tolerance": 8.554965342967047e-06,
+   "verified": true
+  },
+  {
+   "j": 96,
+   "bottom_minus_lambda": -1.8189894035458565e-12,
+   "multiplicity": 2,
+   "next_margin": 64.00000000000273,
+   "roundoff_tolerance": 8.819218327771355e-06,
+   "verified": true
+  },
+  {
+   "j": 97,
+   "bottom_minus_lambda": 2.7284841053187847e-12,
+   "multiplicity": 2,
+   "next_margin": 64.66666666664923,
+   "roundoff_tolerance": 9.087628713069207e-06,
+   "verified": true
+  },
+  {
+   "j": 98,
+   "bottom_minus_lambda": 9.094947017729282e-12,
+   "multiplicity": 2,
+   "next_margin": 65.33333333331848,
+   "roundoff_tolerance": 9.362673114318044e-06,
+   "verified": true
+  },
+  {
+   "j": 99,
+   "bottom_minus_lambda": 1.3642420526593924e-12,
+   "multiplicity": 2,
+   "next_margin": 65.99999999997817,
+   "roundoff_tolerance": 9.641958910518636e-06,
+   "verified": true
+  },
+  {
+   "j": 100,
+   "bottom_minus_lambda": 5.4569682106375694e-12,
+   "multiplicity": 2,
+   "next_margin": 66.66666666665105,
+   "roundoff_tolerance": 9.92801072819218e-06,
+   "verified": true
+  },
+  {
+   "j": 101,
+   "bottom_minus_lambda": -5.4569682106375694e-12,
+   "multiplicity": 2,
+   "next_margin": 67.3333333333203,
+   "roundoff_tolerance": 1.0218387935503404e-05,
+   "verified": true
+  },
+  {
+   "j": 102,
+   "bottom_minus_lambda": 0.0,
+   "multiplicity": 2,
+   "next_margin": 67.99999999999409,
+   "roundoff_tolerance": 1.0515663169581722e-05,
+   "verified": true
+  },
+  {
+   "j": 103,
+   "bottom_minus_lambda": -4.547473508864641e-13,
+   "multiplicity": 2,
+   "next_margin": 68.66666666665287,
+   "roundoff_tolerance": 1.0817347788197487e-05,
+   "verified": true
+  },
+  {
+   "j": 104,
+   "bottom_minus_lambda": -7.275957614183426e-12,
+   "multiplicity": 2,
+   "next_margin": 69.33333333331984,
+   "roundoff_tolerance": 1.1126062438660441e-05,
+   "verified": true
+  },
+  {
+   "j": 105,
+   "bottom_minus_lambda": -6.821210263296962e-12,
+   "multiplicity": 2,
+   "next_margin": 69.99999999995862,
+   "roundoff_tolerance": 1.1439270468762097e-05,
+   "verified": true
+  },
+  {
+   "j": 106,
+   "bottom_minus_lambda": 2.7284841053187847e-12,
+   "multiplicity": 2,
+   "next_margin": 70.66666666667379,
+   "roundoff_tolerance": 1.175964053558965e-05,
+   "verified": true
+  },
+  {
+   "j": 107,
+   "bottom_minus_lambda": -1.546140993013978e-11,
+   "multiplicity": 2,
+   "next_margin": 71.3333333333162,
+   "roundoff_tolerance": 1.2084587977346783e-05,
+   "verified": true
+  },
+  {
+   "j": 108,
+   "bottom_minus_lambda": -2.3646862246096134e-11,
+   "multiplicity": 2,
+   "next_margin": 71.99999999999045,
+   "roundoff_tolerance": 1.2416829460518919e-05,
+   "verified": true
+  },
+  {
+   "j": 109,
+   "bottom_minus_lambda": -5.4569682106375694e-12,
+   "multiplicity": 2,
+   "next_margin": 72.66666666668561,
+   "roundoff_tolerance": 1.275373231409056e-05,
+   "verified": true
+  },
+  {
+   "j": 110,
+   "bottom_minus_lambda": -2.091837814077735e-11,
+   "multiplicity": 2,
+   "next_margin": 73.33333333333303,
+   "roundoff_tolerance": 1.3098061213587397e-05,
+   "verified": true
+  },
+  {
+   "j": 111,
+   "bottom_minus_lambda": -9.094947017729282e-13,
+   "multiplicity": 2,
+   "next_margin": 73.99999999998545,
+   "roundoff_tolerance": 1.344713547912263e-05,
+   "verified": true
+  },
+  {
+   "j": 112,
+   "bottom_minus_lambda": -1.546140993013978e-11,
+   "multiplicity": 2,
+   "next_margin": 74.66666666666697,
+   "roundoff_tolerance": 1.3803767794924408e-05,
+   "verified": true
+  },
+  {
+   "j": 113,
+   "bottom_minus_lambda": -1.8189894035458565e-11,
+   "multiplicity": 2,
+   "next_margin": 75.33333333333394,
+   "roundoff_tolerance": 1.4165229472563505e-05,
+   "verified": true
+  },
+  {
+   "j": 114,
+   "bottom_minus_lambda": 4.092726157978177e-11,
+   "multiplicity": 2,
+   "next_margin": 76.00000000000637,
+   "roundoff_tolerance": 1.4534381204650796e-05,
+   "verified": true
+  },
+  {
+   "j": 115,
+   "bottom_minus_lambda": -9.094947017729282e-12,
+   "multiplicity": 2,
+   "next_margin": 76.66666666667606,
+   "roundoff_tolerance": 1.4908446294525435e-05,
+   "verified": true
+  },
+  {
+   "j": 116,
+   "bottom_minus_lambda": -7.275957614183426e-12,
+   "multiplicity": 2,
+   "next_margin": 77.3333333332821,
+   "roundoff_tolerance": 1.5290333442879063e-05,
+   "verified": true
+  },
+  {
+   "j": 117,
+   "bottom_minus_lambda": -5.093170329928398e-11,
+   "multiplicity": 2,
+   "next_margin": 77.99999999999,
+   "roundoff_tolerance": 1.5677217945113328e-05,
+   "verified": true
+  },
+  {
+   "j": 118,
+   "bottom_minus_lambda": -2.091837814077735e-11,
+   "multiplicity": 2,
+   "next_margin": 78.66666666663787,
+   "roundoff_tolerance": 1.6072056509714342e-05,
+   "verified": true
+  },
+  {
+   "j": 119,
+   "bottom_minus_lambda": -1.3642420526593924e-11,
+   "multiplicity": 2,
+   "next_margin": 79.33333333332303,
+   "roundoff_tolerance": 1.6471976424425203e-05,
+   "verified": true
+  },
+  {
+   "j": 120,
+   "bottom_minus_lambda": -1.0913936421275139e-11,
+   "multiplicity": 2,
+   "next_margin": 79.99999999999,
+   "roundoff_tolerance": 1.6879982405255065e-05,
+   "verified": true
+  }
+ ],
+ "seconds": 137.1
+}

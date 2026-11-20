@@ -1148,16 +1148,20 @@ measured eigenvalues.
 on the Poincar\'e sphere, against the real part of the nearest measured lattice eigenvalue.
 Spin $0$ is the left-invariant sector, spin $6$ the next allowed one. The measured doubles carry
 imaginary parts of at most $0.09$: the lattice linearises the force in link coordinates at a field
-that is not at rest, where the Jacobian is not symmetric. Dashes: not resolved at that level.}
+that is not at rest, where the Jacobian is not symmetric. Dashes: not resolved at that level.
+Gauge content of the exact eigenvectors: $^{\mathrm g}$ a pure gauge direction; $^{\mathrm m}$ a mixture
+($40\%$ gauge for the negative pair, $60\%$ for the positive one); unmarked spin-$0$ values are exactly
+orthogonal to the gauge directions. Spin-$6$ values are those of the full Hessian; on the
+gauge-orthogonal slice they are $154/3$ and $59.504$.}
 \label{tab:su2exact}
 \begin{tabular}{lcrrrr}\toprule
 Exact & mult. & native $n=1$ & native $n=2$ & native $n=3$ & two-ring $n=3$ \\ \midrule
 \multicolumn{6}{l}{\emph{spin $0$}}\\
 $-14/3=-4.6667$ & 2 & $-4.475$ & $-4.651$ & $-4.661$ & $-4.651$ \\
-$(29-\sqrt{1345})/3=-2.5581$ & 2 & $-2.191$ & $-2.504$ & $-2.529$ & $-2.529$ \\
+$(29-\sqrt{1345})/3=-2.5581^{\mathrm m}$ & 2 & $-2.191$ & $-2.504$ & $-2.529$ & $-2.529$ \\
 $16-2\sqrt{73}=-1.0880$ & 1 & $-0.536$ & $-1.041$ & $-1.088$ & $-1.084$ \\
-$8$ & 1 & $7.083$ & $7.869$ & $7.954$ & $7.931$ \\
-$(29+\sqrt{1345})/3=21.891$ & 2 & $20.71$ & $21.77$ & $21.86$ & $21.80$ \\
+$8^{\mathrm g}$ & 1 & $7.083$ & $7.869$ & $7.954$ & $7.931$ \\
+$(29+\sqrt{1345})/3=21.891^{\mathrm m}$ & 2 & $20.71$ & $21.77$ & $21.86$ & $21.80$ \\
 $16+2\sqrt{73}=33.088$ & 1 & $32.64$ & $33.44$ & $33.29$ & $33.16$ \\ \midrule
 \multicolumn{6}{l}{\emph{spin $6$}}\\
 $51.33$ & 2 & --- & $53.41$ & $52.27$ & $49.27$ \\
@@ -1170,17 +1174,25 @@ values from $n=1$ to $n=3$. The spin-$6$ sector matches the measured band that b
 the native force approaches it from above, and the two-ring force lies a little below it at $n=3$.
 No rate is claimed from three levels. Three facts follow:
 \begin{itemize}
-  \item \emph{The field's growth directions are exactly five:} $-14/3$ (twice), $-2.558$ (twice)
-    and $-1.088$. They all come from the field acting on itself. Without the commutator, the same
-    sector on the Berger metric is $4/3$ (six times) and $12$ (three times), all positive.
+  \item \emph{The field's growth directions are exactly three:} $-14/3$ (twice) and
+    $16-2\sqrt{73}=-1.088$, each exactly orthogonal to the gauge directions. The background is
+    not at rest, so gauge directions are tilted rather than zero, and the left-invariant sector
+    contains three of them, $b_i=[M_i,\xi]$ for constant $\xi$, on which the Hessian takes the
+    values $8$, $12$ and $12$. The value $8$ is a pure gauge direction, and the pairs at $-2.558$
+    and $21.891$ are $40\%$ and $60\%$ gauge. On the gauge-orthogonal slice the sector reads
+    $-14/3$ (twice), $-1.088$, $22/3$ (twice) and $33.088$. All of the growth comes from the field
+    acting on itself: without the commutator, the same sector on the Berger metric is $4/3$ (six
+    times) and $12$ (three times), all positive.
   \item \emph{The other negative eigenvalues are gauge-type.} Each higher sector of spin $j/2$
     carries $j+3$ negative eigenvalues, gauge directions tilted by the background, shrinking
     like $1/j$ ($-2.35$ at spin $6$, $-1.73$ at spin $10$). Below $-1$ the exact count is $41$;
     the lattice shows $9$ at $n=2$ and $13$ at $n=3$, resolving the sectors one by one. On gauge
     directions the lattice Jacobian differs from the Hessian by a term proportional to the
     nonzero gradient, so this comparison is indicative, not a gate.
-  \item \emph{The physical spectrum has an exact gap.} The spin-$0$ sector ends at $33.09$, spin
-    $6$ begins at $51.33$, and nothing else lies below $142$, where spin $10$ begins. On this
+  \item \emph{The physical spectrum has an exact gap.} On the gauge-orthogonal slice, the
+    spin-$0$ sector ends at $33.088$, spin $6$ begins at $154/3=51.33$, and nothing else lies below
+    $142$, where spin $10$ begins (spin $12$ begins at $610/3$). In every higher sector the negative
+    eigenvalues are pure gauge, with overlap at least $0.999$. On this
     manifold and this background the low spectrum is therefore fixed by symmetry. That makes it
     an exactly solvable control for any future spectral observable, not a test of one.
 \end{itemize}
@@ -1558,7 +1570,8 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     certificate, \path{scripts/ricci_su2_exact_stability.py} with receipts in\newline
     \path{research/su2-exact-stability-20261119/}; the exact sectors,\newline
     \path{scripts/ricci_su2_left_invariant_sector.py} and\newline
-    \path{scripts/ricci_su2_spin_sector.py}, with receipts in\newline
+    \path{scripts/ricci_su2_spin_sector.py}, their gauge content\newline
+    \path{scripts/ricci_su2_sector_gauge_check.py}, with receipts in\newline
     \path{research/su2-left-invariant-sector-20261119/}.
   \item Cayley start-up experiments: \path{scripts/ricci_su2_pg_flow_cayley.py}
     (\texttt{--startup}); receipts in \path{research/su2-startup-20261119/} and\newline

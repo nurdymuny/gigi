@@ -261,7 +261,8 @@ sampled, and no twist or other mode goes soft on it.
 ## Result 8: the floor is a lowest Landau level
 
 See [`spectral-skeleton-2026-11-20.md`](spectral-skeleton-2026-11-20.md), §6. The twist satisfies X₊b = 0 and has
-definite fibre charge q = j − 2(t − 2), and
+definite fibre <del>charge q = j − 2(t − 2)</del><ins>momentum −2(q − t), with q = j/2 + 2 the conserved fibre
+charge (spectral-skeleton §7); X₊ annihilates no other mode (control, `landau_control.json`)</ins>, and
 
   λ_t(j) = (j − 2(t−2))²/t + 2(j + t) + (12 − 8t)  (fibre + Landau + curvature),
 

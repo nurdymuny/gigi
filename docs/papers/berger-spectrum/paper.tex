@@ -18,6 +18,16 @@
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
 
+% Redline of the review of 20 November 2026. \redlinetrue shows the changes (insertions blue, deletions red and
+% struck out); \redlinefalse gives the accepted text. To revert one change, delete its \redins{...} and unwrap its
+% \reddel{...}. paper.pdf is the version-2 build and is not regenerated from the redline; the marked-up build is
+% paper_redline.pdf (pdflatex -jobname=paper_redline paper.tex).
+\usepackage[normalem]{ulem}
+\newif\ifredline
+\redlinetrue
+\newcommand{\redins}[1]{\ifredline{\color{blue}#1}\else#1\fi}
+\newcommand{\reddel}[1]{\ifredline{\color{red}\sout{#1}}\fi}
+
 \newcommand{\su}{\mathfrak{su}(2)}
 \newcommand{\norm}[1]{\lVert #1\rVert}
 \newcommand{\RR}{\mathbb{R}}
@@ -51,7 +61,7 @@ Berger sphere $(t,1,1)$ the same field is an exact gauge-orthogonal eigenvector 
 $[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$. An interval-in-$t$ version of the certificate proves that it is the floor of
 its sector for every $t\in[2.75,10]$ in the sectors $j\le12$, $20$ and $24$. At $t=4$ the low spectrum on the
 Poincar\'e sphere is classified below $136$. To our knowledge, these are the first exact eigenvalues of a
-Yang--Mills Hessian on a squashed three-sphere.
+Yang--Mills Hessian \redins{at a non-flat connection }on a squashed three-sphere.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Poincar\'e homology sphere; spectral
@@ -73,8 +83,10 @@ fluctuation operator sector by sector in closed form. On Berger spheres, closed-
 for the scalar Laplacian~\cite{lauret2019}, the Dirac operator~\cite{bar1992,klingschueth2022} and
 the Hodge Laplacian on $1$-forms~\cite{henkellauret2026}.
 
-We found no exact result for the Yang--Mills Hessian on a squashed three-sphere, nor at a connection
-that is not a Yang--Mills field. This paper supplies one, at the natural candidate: the Levi-Civita
+We found no exact result for the Yang--Mills Hessian \redins{at a non-flat connection }on a squashed
+three-sphere, nor at a connection that is not a Yang--Mills field. \redins{At the flat connection the Hessian
+on coexact $\su$-valued $1$-forms is $d^*d$ tensored with $\su$, so its spectrum on a Berger sphere follows
+from the Hodge spectrum of~\cite{henkellauret2026}.} This paper supplies one, at the natural candidate: the Levi-Civita
 connection of a Berger metric, viewed as an $SU(2)$ connection (the \emph{Berger field}). It arises as
 the instantaneous state of a homogeneous gauge field transported along the Ricci flow of the
 metric~\cite{davisrtc}, and it is the background on which lattice Yang--Mills forces on the
@@ -418,12 +430,17 @@ $t\le2$ the branch is the floor of no sector. None of this is certified.
 Where $\lambda_t(j)$ is the floor:
 \begin{enumerate}
   \item \emph{The floor gap.} On the Poincar\'e sphere, $\lambda_t(12)-\lambda_t(0)=(240-24t)/t$: $168/3$ at
-    $t=3$, $36$ at $t=4$, and $0$ at $t=10$. The relation to the first scalar eigenvalue holds at $t=3$ only.
+    $t=3$, $36$ at $t=4$, and $0$ at $t=10$. The relation to the first scalar eigenvalue holds at $t=3$
+    only\reddel{.}\redins{, and characterises it (Remark~\ref{rem:casimir}).}
   \item \emph{Where a twist goes free.} $\lambda_t(j)=0$ exactly at
     \[
       t_j=\tfrac12\Bigl(\sqrt{(j+2)^2+2(j+4)^2}-(j+2)\Bigr),
     \]
-    and $\lambda_t(j)<0$ for $t>t_j$. The values are $t_0=2$, $t_2=2.69$, $t_3=3.045$, $t_4=3.403$. At stretch
+    and $\lambda_t(j)<0$ for $t>t_j$. The values are \reddel{$t_0=2$, $t_2=2.69$, }$t_3=3.045$,
+    $t_4=3.403$\redins{, inside the range of Theorem~\ref{thm:range}. The same formula gives $t_0=2$,
+    $t_1=2.341$ and $t_2=2.690$. These are zeros of the branch $\lambda_t(j)$ outside the certified range: at
+    $t_0$ the branch is not the floor (Remark~\ref{rem:tstar}), the double-precision scan already finds a lower
+    eigenvalue in the sector $j=1$ at $t=2.5>t_1$, and at $t_2$ that the branch is the floor is numerical only}. At stretch
     $t$, every sector with $j<(t-4)+\sqrt{3t^2-4t}$ has negative floor. Each floor crosses zero linearly in
     $t-t_j$.
   \item \emph{The softest sector moves.} Over $j$, $\lambda_t(j)$ is smallest near $j=t-4$.
@@ -433,6 +450,19 @@ Where $\lambda_t(j)$ is the floor:
 Algebra on the formula of Proposition~\ref{prop:family}; the statements about floors hold where
 Theorem~\ref{thm:range} or Theorem~\ref{thm:t4} applies.
 \end{proof}
+
+\redins{\begin{remark}[The Casimir point]\label{rem:casimir}
+The cost of lifting the twist from the left-invariant sector to the sector of spin $j/2$ splits as
+\[
+  \lambda_t(j)-\lambda_t(0)=\Bigl(\frac{j^2}{t}+2j\Bigr)-\frac{4(t-2)}{t}\,j .
+\]
+The first term is the eigenvalue of the scalar Laplacian of $(t,1,1)$ on the top-weight vector $f$
+(since $-\rho_0^2f=j^2f$ and $-\sum_i\rho_i^2=j(j+2)$); the second couples the weight along the long axis to the
+stretch. The lift equals the round Casimir divided by the stretch, $j(j+2)/t$, for every $j$ if and only if
+$t=3$. So at $t=3$ the floor gap on the Poincar\'e sphere is $\lambda_1(\Delta_{S^3/2I})/3$ because there the
+lift depends on $j$ only through the Casimir. At $t=2$ the coupling vanishes: the lift is exactly the scalar
+Laplacian on $f$, and $\lambda_2(0)=0$.
+\end{remark}}
 
 \begin{figure}[t]
   \centering
@@ -508,9 +538,11 @@ quantum theory and not a Yang--Mills mass gap.
 circular eigenvector uses only the rotation symmetry about the long axis and the top weight, so it is an
 exact eigenvector at every squashing (Proposition~\ref{prop:family}), with the stretch entering the formula
 rationally. Whether it is the \emph{floor} depends on $t$. It is the floor throughout $[2.75,10]$ in the
-certified sectors, and (numerically) not below $t^*\approx2.698$. At the round metric and at $(2,1,1)$ other
-modes are lower. The relation to the Poincar\'e sphere's first scalar eigenvalue, $168/3$, is special to
-$t=3$; in general the floor gap is $(240-24t)/t$.
+certified sectors, and (numerically) not \redins{the floor of every sector }below
+$t^*\approx2.698$\redins{, where the sector $j=4$ is the first to have a lower eigenvalue}. At the round metric
+and at $(2,1,1)$ other modes are lower. The relation to the Poincar\'e sphere's first scalar eigenvalue, $168/3$,
+is special to $t=3$\redins{, the unique stretch at which the lift of the twist depends only on the Casimir
+(Remark~\ref{rem:casimir})}; in general the floor gap is $(240-24t)/t$.
 
 \paragraph{The landscape and the flow.} The Berger field is not at rest, and under the Yang--Mills flow it
 slides towards a flat field faster than any twist grows (Section~\ref{sec:family}). So the floor law is a

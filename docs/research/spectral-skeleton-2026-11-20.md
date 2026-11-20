@@ -160,25 +160,43 @@ fibre from X₁, X₂ on the base sphere of the Hopf fibration.
 
 - **Lowest Landau level.** X₊b = (X₁ + iX₂)b = 0, to 1.7 × 10⁻¹². The holomorphic covariant derivative annihilates
   the twist. That is the defining property of a lowest-Landau-level state.
-- **Definite fibre charge.** X₀b = iκb with κ = (2t − 4 − j)/√t. The twist carries the definite fibre charge
-  q = j − 2(t − 2).
+- **Definite fibre <del>charge</del><ins>momentum</ins>.** X₀b = iκb with κ = (2t − 4 − j)/√t. The twist carries
+  the definite fibre <del>charge q = j − 2(t − 2)</del><ins>momentum √t·κ = −2(q − t), where q = j/2 + 2 is its
+  conserved fibre charge (§7). The charge q is quantized. The −2t is the connection's own component along the fibre:
+  a continuous shift of the momentum, not of the charge (redline, review of 20 November)</ins>.
 - **The energy is exactly fibre + Landau + curvature**, each term matching to 4 × 10⁻¹⁴:
 
   **λ_t(j) = (j − 2(t−2))²/t  +  2(j + t)  +  (12 − 8t)**
 
-  - **(j − 2(t−2))²/t** is the fibre kinetic energy of the charge q.
+  - **(j − 2(t−2))²/t** is the fibre kinetic energy of <del>the charge q</del><ins>the fibre momentum, 4(q − t)²/t</ins>.
   - **2(j + t)** is the Landau energy on the base sphere. It is linear in the charge, the signature of a lowest
     Landau level.
   - **12 − 8t** is the lowest eigenvalue of R₀, a constant curvature shift.
 - The three terms sum to the proved formula identically. The split itself is verified numerically, not
-  symbolically.
+  symbolically.<ins> X₊b = 0 and X₀b = iκb are statements at the top weight, polynomial in j and t, so they can be
+  proved symbolically in the same way as the floor law (`scripts/ricci_su2_sector_formula_squashed.py`); until then
+  they stay Numerical.</ins>
+
+<ins>**Control (the removal arm)** (`scripts/ricci_su2_landau_control.py`, `landau_control.json`; the same 90
+cases). The decomposition into fibre, base and curvature holds for any vector, so it is not by itself evidence. What
+could fail is X₊b = 0. It singles out the twist:
+
+- the twist: |X₊b| ≤ 1.4 × 10⁻¹²;
+- its conjugate copy (bottom weight): annihilated by X₋ instead (≤ 2.4 × 10⁻¹²), with |X₊b′| ≥ 3.16;
+- every other eigenvector of H + GG* in the sector: |X₊v| ≥ 0.52, and none is annihilated.
+
+So the two copies of λ_t(j) are a chirality pair, and the lowest-Landau-level property belongs to the twist alone.</ins>
 
 **What this does for the theory.**
 
 - The skeleton has a mechanism. The floor mode is the lowest Landau level of a charge moving over the base sphere,
-  with the stretch setting both the fibre charge and the field.
+  with the stretch setting both the fibre <del>charge</del><ins>momentum</ins> and the field.
 - It is not a coincidence of one formula. It is the same structure that organises a charged particle in a magnetic
-  field on a sphere (monopole harmonics).
+  field on a sphere (monopole harmonics).<ins> That structure is classical: Wu and Yang's monopole harmonics
+  (T. T. Wu, C. N. Yang, *Nucl. Phys. B* 107 (1976) 365–380) and Haldane's Landau levels on the sphere
+  (F. D. M. Haldane, *Phys. Rev. Lett.* 51 (1983) 605–608). What is new here is that it survives inside the
+  Yang–Mills Hessian, with the frame and gauge indices folded into the fibre charge, at a field that is not at
+  rest.</ins>
 - **Test 1 passes.**
 
 **A bound that does not work (recorded as a lead).**

@@ -176,3 +176,48 @@ dominate. The frozen control answers what P1 meant to ask.
   on t, whose Hessian has a twist going soft at some critical t. That is the natural next search: non-flat
   homogeneous Yang–Mills fields on the Berger spheres, the squashed relatives of the meron. There the soft-mode
   picture, a stiffness crossing zero linearly at a critical stretch, would be a genuine dynamical bifurcation.
+
+## Result 6: the resting fields on the stretched spheres, and no soft mode on them (t from 0.05 to 10)
+
+**Scripts:** `scripts/ricci_su2_resting_fields.py` (multistart search) and `scripts/ricci_su2_meron_family_soft.py`
+(continuation and sector spectra). **Receipts:** `research/su2-floor-family-20261119/resting_fields.json` and
+`meron_family_soft.json`.
+
+**The search.**
+
+- Left-invariant SU(2) fields on g = (t, 1, 1) have 9 parameters. Their energy, gradient and Hessian are exact
+  polynomials.
+- By symmetric criticality (Palais), a critical point among left-invariant fields is a Yang–Mills field.
+- Newton was run from 400 random starts at t = 1, 1.5, 2, 2.5, 3, 3.5, 4 and 5, and the solutions classified up to
+  constant gauge rotation. Each time it found exactly three:
+  - the trivial flat field (energy 0);
+  - a Maurer–Cartan-type flat field (energy 0, singular values 2, 2, 2/√t);
+  - **one non-flat resting field, the squashed meron.**
+- This is a multistart search, not a proof that there are no others.
+
+**The squashed meron.**
+
+- It fits the ansatz m₀ = x·e₀, m₁ = y·e₁, m₂ = y·e₂, with every point checked critical in all nine directions.
+- At t = 1 it is the meron (x = y = 1, energy 3/2).
+- It continues smoothly in both directions: energy 1.13 at t = 1.5, 0.653 at t = 3 (x = 0.4741, y = 1.0858), 0.420 at
+  t = 5, 0.223 at t = 10.
+- Its left-invariant index is 1 throughout.
+
+**Its spectrum** (H + GG* by spin sector, j ≤ 12, t ∈ [0.05, 10]).
+
+- The Morse index is exactly 1 everywhere: one negative direction, in the left-invariant sector, inherited from the
+  meron (Laquer's index 1 for a group manifold).
+- **No sector crosses zero.** There is no soft mode and no bifurcation along this family in the range searched.
+- All higher sectors soften as the sphere stretches. The j = 1 floor goes 1.00, 0.76, 0.62, 0.45, 0.28 at t = 1, 2,
+  3, 5, 10. It falls more slowly than 1/t (t × floor rises from 1.0 to 2.8), so it reaches zero only in the limit,
+  if at all.
+
+**Reading.**
+
+- The resting relative of the Berger field exists, but it does not breathe in and out with the stretch. It stays a
+  one-way saddle with every other direction stiff.
+- The twist law at the Berger field (Results 1–5) and this resting family are different objects. The twist goes
+  free on a landscape that is not at rest. The resting field never lets a twist go free.
+- Two places remain where a true soft-mode transition could live:
+  - resting fields that are **not** left-invariant (the search above sees only left-invariant ones);
+  - other squashings (t₁, t₂, t₃ all different), where the symmetry is lower.

@@ -78,9 +78,11 @@ $25.5\%$ wrong, while the two-ring force falls to $2.51\%$ at $n=5$ and passes \
 no rough modes and a numerical range matching the native one at $n\le3$. Integrated in time as the
 metric follows the Ricci flow, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact
 trajectory at $n=1,2,3$, ahead of the native force from $n=2$; the finest level uses an
-eight-step Cayley (Crank--Nicolson) integrator. The Abelian computations run in \GIGI{}, an
-open-source geometric engine, with the recovery as a native verb and hash-pinned receipts;
-the $SU(2)$ results are research scripts, not yet engine runs.
+eight-step Cayley (Crank--Nicolson) integrator. The computations run in \GIGI{}, an
+open-source geometric engine, with hash-pinned receipts: the Abelian recovery is a native verb,
+and the $SU(2)$ recovery, force, linearisation and Cayley flow are engine verbs that reproduce the
+research computations to $10^{-13}$ through the engine's query surfaces. The fourth-order runs at
+$n\le2$ and the eigenvalue solves remain scripts, the latter on operators the engine also builds.
 
 We also prove the exact low spectrum of the linearised $SU(2)$ Yang--Mills operator at the Berger
 field. To our knowledge it is the first closed form for the Yang--Mills Hessian on a squashed
@@ -418,8 +420,35 @@ accurate to rounding on these small matrices.
 
 \paragraph{Scope of the code.}
 The transport, masses and curvature recovery are \GIGI{} engine code; the recovery is
-reachable as a query verb. The Petrov--Galerkin force assembly and the \BW{} gate remain
-research scripts in the repository.
+reachable as a query verb. The \BW{} measure stays an independent script: it is the oracle
+the engine is judged against, so it is deliberately not engine code.
+
+\paragraph{The $SU(2)$ verbs.} The non-Abelian computations of Section~\ref{sec:su2} are engine
+verbs too, on the branch \texttt{feat/ym-engine}. \texttt{RECOVER\_CURVATURE \dots{} GROUP SU2} is the
+covariant reading; \texttt{LINK\_FORCE} returns the force on every link, two-ring or native, and
+states in every answer whether the force is the gradient of an energy (only the native one is);
+\texttt{LINK\_FLOW} integrates the flow with the Cayley step, refuses a missing metric sample by
+naming its time, and builds its own Newton preconditioner from the engine's linearisation. Each
+was held to a gate fixed before it was built, against the research code on the same meshes:
+\begin{itemize}
+  \item the covariant reading, to $1.1\times10^{-13}$ at $n\le3$;
+  \item the force, to $1.2\times10^{-13}$ at $n\le5$ for two rings, native and the removal without
+    register, and every entry of Table~\ref{tab:su2force} recomputed from it to the printed digit;
+  \item the linearisation, to $2.5\times10^{-11}$ against the research matrices at $n\le3$;
+  \item every Cayley run at $n\le3$, including the frozen-metric control, to $1.4\times10^{-13}$
+    in $E$, with identical Newton iteration counts;
+  \item the same results through a running \texttt{gigi-stream}, by \texttt{GQL} and HTTP, from a
+    binary identified by its hash.
+\end{itemize}
+Each mechanism, removed, turns its gate red in the same run that passes: without register the
+reading is off by $0.30$ and the force error returns to $39.02\%$; a finite-difference defect
+derivative moves the linearisation by $2\times10^{-6}$; evaluating the Cayley step at its end
+instead of its midpoint moves $E$ by $6\%$; a round metric substituted for the Berger one gives
+$26.81\%$ instead of $36.25\%$, which is why the engine refuses a missing metric rather than
+assume one. The engine is also faster: the two-ring force at $n=5$ takes $10$\,s against
+$1{,}512$\,s for the research loop, and its linearisation at $n=3$ takes $105$\,s against
+$6{,}672$\,s on twelve processes. The preconditioner is a dense factorisation, so the engine flow
+stops at $n=3$ and refuses larger meshes by name.
 
 \section{Where the error comes from}\label{sec:decomp}
 
@@ -1541,7 +1570,10 @@ original gates. As first written, both controls asked for $R\ge10\%$ at every le
 frozen-metric control fails that at $n=2$ ($8.07\%$) and $n=3$ ($8.13\%$), and the native
 control fails it at every level. The corrected controls ask instead whether the frozen run's
 gap to the moving run is resolvable and fails to converge, and whether the native force is
-overtaken and stalls; both versions are reported in the results document. This is a Python replica of the programme's flow gate, not an engine run.
+overtaken and stalls; both versions are reported in the results document. The runs were first
+made by a Python replica of the programme's flow gate. The engine's Cayley flow reproduces every
+Cayley run at $n\le3$, to $1.4\times10^{-13}$ in $E$ with identical Newton iteration counts; the
+fourth-order runs at $n\le2$ remain script runs.
 Table~\ref{tab:su2flow} and Figure~\ref{fig:su2flow} give the result.
 
 \begin{figure}[t]
@@ -1800,13 +1832,16 @@ used as evidence in this paper.
 \paragraph{Limitations.}
 \begin{itemize}
   \item The Abelian results concern a single control on a single round quotient.
-  \item The covariant recovery of Section~\ref{sec:su2rec} is a research script, tested on
-    two exact left-invariant fields with sampled cells. The $SU(2)$ force passes \BW{} on
+  \item The covariant recovery of Section~\ref{sec:su2rec} is tested on two exact left-invariant
+    fields with sampled cells; it is an engine verb, equal to the research script to
+    $1.1\times10^{-13}$. The $SU(2)$ force passes \BW{} on
     the Berger metric only, and its stability and numerical range are measured at $n\le3$;
     the imaginary extent of its spectrum grows with refinement ($104$, $150$, $418$), and
     whether it keeps growing at $n=5$ is not measured.
-  \item The time integration is a research replica at $n\le3$ over $t\in[0,0.02]$, not the
-    engine's flow gate. The predicted stall of the native force did not appear at $n=2$ or
+  \item The time integration covers $n\le3$ over $t\in[0,0.02]$. Its Cayley runs are reproduced
+    by the engine; the fourth-order runs at $n\le2$ are scripts; and none of it is yet the
+    programme's release flow gate on a merged build. The engine flow stops at $n=3$ until a sparse
+    preconditioner is built. The predicted stall of the native force did not appear at $n=2$ or
     $n=3$; a first-order filter model explains why. The two-ring force keeps its lead over
     native (at $0.80$, then $0.82$ of its error) but does not widen it. $R$ measures the error
     against all the motion; against the part due to the moving metric alone, the two-ring
@@ -1865,6 +1900,11 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     \path{scripts/ricci_su2_sector_gauge_check.py}, the eigenvector identification\newline
     \path{scripts/ricci_su2_sector_eigvec_check.py}, with receipts in\newline
     \path{research/su2-left-invariant-sector-20261119/}.
+  \item $SU(2)$ engine verbs, on the branch \texttt{feat/ym-engine}: the specification
+    \path{docs/YANG_MILLS_ENGINE_SPEC.md}; the code \path{src/gauge/curvature_recovery.rs},
+    \path{src/gauge/ricci_pg_force.rs} and \path{src/gauge/ricci_link_flow.rs}; the parity, live
+    and removal harnesses in \path{e2e/probes/}; receipts in\newline \path{research/ym1-parity-20261119/}
+    through\newline \path{research/ym7-spectrum-20261119/}.
   \item Cayley start-up experiments: \path{scripts/ricci_su2_pg_flow_cayley.py}
     (\texttt{--startup}); receipts in \path{research/su2-startup-20261119/} and\newline
     \path{research/su2-startup-sdirk-20261119/}.

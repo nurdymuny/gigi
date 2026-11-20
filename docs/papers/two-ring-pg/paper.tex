@@ -30,7 +30,7 @@
 
 \newcommand{\DAVIS}{\textsc{Davis}}
 \newcommand{\GIGI}{\textsc{GIGI}}
-\newcommand{\BW}{\textsc{BW05}}
+\newcommand{\BW}{Criterion~C}
 \newcommand{\RR}{\mathbb{R}}
 \newcommand{\Hb}{\mathbb{H}}
 \newcommand{\T}{\mathcal{T}}
@@ -41,7 +41,7 @@
 
 \title{Reading the Curve, Not Counting the Points:\\[2pt]
 \large A Two-Ring Petrov--Galerkin Curvature Force\\ for Discrete Yang--Mills Dynamics on the Poincar\'e Homology Sphere}
-\author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}}
+\author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt] {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
 \date{November 2026}
 
 \begin{document}
@@ -149,13 +149,33 @@ Lattice gauge theory and geometric flows meet in a single question. Given a smoo
 connection $A$ on a closed Riemannian $3$-manifold, and only its integrals along the edges
 of a mesh, can a discrete force be computed from that data alone so that it converges to
 the continuum Yang--Mills force $-\delta F_A$, uniformly over all discrete variations?
-For the homogeneous $SU(2)$ backgrounds of the \DAVIS{}--Wilson programme, a continuum
-statement is in hand for a specific class: for positive diagonal left-invariant metrics,
-the Ricci velocity mapped through the Levi-Civita connection equals the negative
-Yang--Mills gradient exactly, with the clock fixed to one rather than fitted. That
-statement is instantaneous and homogeneous. It is not a general Ricci-flow result, and
-fixed-background trajectory equivalence fails in the tested non-round cases. Any lattice
-realisation of the programme also needs something more basic: a discrete Yang--Mills
+This question belongs to a programme that combines the heat-kernel methods of spectral
+geometry with Wilson's lattice gauge theory~\cite{wilson1974}, and asks whether lattice gauge
+dynamics computed from coarse edge data reproduce the geometric flows they discretize. For
+homogeneous $SU(2)$ backgrounds a continuum statement is in hand.
+
+\begin{proposition}[Instantaneous correspondence]\label{prop:corr}
+Let $g=\operatorname{diag}(p^2,q^2,r^2)$, $p,q,r>0$, be a left-invariant metric on $SU(2)$ in a frame
+with $[e_a,e_b]=2\varepsilon_{abc}e_c$, and write $(g_0,g_1,g_2)=(p^2,q^2,r^2)$ with indices mod $3$.
+The Levi-Civita connection of $g$ has axial coefficients
+$x_i=(g_{i+1}+g_{i+2}-g_i)/\sqrt{g_{i+1}g_{i+2}}$, and on diagonal connections $y$ the Yang--Mills
+energy is $E(y)=\tfrac12\sum_i(y_{i+1}y_{i+2}-2y_i)^2/(g_{i+1}g_{i+2})$. If $g$ moves by the Ricci
+flow, $\dot g_i=-4\bigl(g_i^2-(g_{i+1}-g_{i+2})^2\bigr)/(g_{i+1}g_{i+2})$, then
+\[
+  \dot x_i \;=\; -g_i\,\frac{\partial E}{\partial y_i}\Big|_{y=x},\qquad i=0,1,2:
+\]
+the Levi-Civita connection moves by the negative Yang--Mills gradient, with unit clock.
+\end{proposition}
+\begin{proof}
+Both sides are rational functions of $p,q,r$. Their difference, put over a common denominator,
+vanishes identically in exact symbolic arithmetic, and the off-diagonal derivatives of the full
+nine-coordinate energy vanish on diagonal connections, so the diagonal ansatz is invariant
+(\path{e2e/probes/ricci_wilson_oracle.py}, \texttt{symbolic\_certificate}).
+\end{proof}
+
+The statement is instantaneous and homogeneous. It is not a general Ricci-flow result: with
+the background metric held fixed instead of flowing, the trajectories separate in every tested
+non-round case. Any lattice realisation of the programme also needs something more basic: a discrete Yang--Mills
 force that converges to its continuum counterpart. That prerequisite is the subject of
 this paper: first for an Abelian control, then for an $SU(2)$ connection on a flowing
 Berger metric.
@@ -207,7 +227,7 @@ Section~\ref{sec:su2force} reviews these and goes beyond them.
     the reciprocal of a small singular value (Section~\ref{sec:conditioning}).
   \item A two-ring, equality-constrained least-squares recovery. It is exact on closed
     linear curvature, has mesh-uniform amplification, and gives a force that passes the
-    unchanged \BW{} convergence gate and the stability test. At $n=1,2$ its symmetric part
+    unchanged \BW{} and the stability test. At $n=1,2$ its symmetric part
     is positive definite, so there the semi-discrete flow is dissipative.
   \item Mechanism removals and a quantitative account of why symmetrized and variational
     variants of the same recovery fail (Section~\ref{sec:removals}).
@@ -280,13 +300,13 @@ $dW_\eta=W_{D\eta}$. The native mass is $B_h=(\ip{W_e}{W_{e'}})$, in the $L^2$ p
 of the round metric. We write $\ip{\cdot}{\cdot}$ for that product on $2$-forms and
 $j f=W_f$ for the Whitney field with fluxes $f$.
 
-\paragraph{Force laws and the \BW{} gate.}
+\paragraph{Force laws and the convergence criterion.}
 A discrete force law assigns to the data a covector $g(a)\in\RR^E$, and the discrete
 velocity is $v=-B_h^{-1}g(a)$. The relative force error is
 \begin{equation}
   \varepsilon_n \;=\; \frac{\norm{v+4a}_{B_h}}{\norm{4a}_{B_h}},\qquad \norm{x}_{B_h}^2=x^\top B_hx/|M|.
 \end{equation}
-\BW{} requires the following, with all quantities fixed in advance and none fitted:
+\BW{} (denoted BW05 in the code) requires the following, with all quantities fixed in advance and none fitted:
 \begin{itemize}
   \item $\varepsilon_5<5\%$;
   \item observed orders $p_i=\log(\varepsilon_i/\varepsilon_{i+1})/\log(h_i/h_{i+1})$
@@ -821,7 +841,7 @@ printed digit; for example $29.8111\%$ and $4.8414\%$ at $n=1$.
 Table~\ref{tab:force} and Figure~\ref{fig:force} give the relative force error.
 \begin{itemize}
   \item The two-ring Petrov--Galerkin force falls from $6.22\%$ to $1.45\%$, with observed
-    orders $0.73$, $0.80$ and $1.29$, and passes the unchanged \BW{} gate.
+    orders $0.73$, $0.80$ and $1.29$, and passes the unchanged \BW{}.
   \item The $q4$/$q6$ velocity differences are $2.3\times10^{-7}$, $8.2\times10^{-9}$,
     $1.4\times10^{-9}$ and $1.0\times10^{-10}$, at least five orders below the error.
   \item The solver corrections are of order $10^{-12}$.
@@ -1057,7 +1077,7 @@ was probed first, then measured under a specification that fixed every gate befo
 \begin{itemize}
   \item \emph{Consistency.} The force error falls to $5.47\%$, $0.848\%$, $0.401\%$ and
     $0.158\%$ at $n=1,2,3,5$, with observed orders $2.84$, $1.88$ and $1.83$. It passes the
-    unchanged \BW{} gate, and it is below the two-ring force's at every level: $9.2$ times
+    unchanged \BW{}, and it is below the two-ring force's at every level: $9.2$ times
     below at $n=5$.
   \item \emph{Stability.} S3 holds at $n\le3$: the small-eigenvalue counts equal the gauge
     dimensions, and the smallest physical real parts are $4.016$, $4.005$ and $4.002$.
@@ -1780,7 +1800,7 @@ by anyone, and longer windows and finer levels are within reach.
 
 \paragraph{Scope.} The covariant recovery and the non-Abelian force are engine verbs that
 reproduce the research scripts to $10^{-13}$; the fourth-order flow runs at $n\le2$ and the
-eigenvalue solves remain scripts. The force result is the instantaneous \BW{} gate on one
+eigenvalue solves remain scripts. The force result is the instantaneous \BW{} on one
 metric, with the spectrum of Table~\ref{tab:su2stab}. The time integration is a research
 replica on one metric and one window, at $n\le3$, and stability and the numerical range are
 measured at $n\le3$. A reciprocal version remains the open problem of
@@ -1915,7 +1935,8 @@ this paper.
     not a numerical one.
   \item No Ricci-flow claim is made. The targets are the instantaneous Yang--Mills force
     and, for $SU(2)$, one short window of the flow on one metric; the results are a
-    prerequisite for a lattice \DAVIS{}--Wilson correspondence, not an instance of one.
+    prerequisite for a lattice correspondence between geometric flow and gauge dynamics, not an
+    instance of one.
 \end{itemize}
 
 \section{Conclusion}\label{sec:conclusion}
@@ -1932,6 +1953,9 @@ Poincar\'e sphere it is set by the sphere's first scalar eigenvalue. Two problem
 force that is also the gradient of an energy, which Lemma~\ref{lem:conflict} shows cannot come from
 exact moment conditions on a per-cell reading, and the mass that a flow built on such a force would
 need.
+
+\section*{Funding and competing interests}
+This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}
 All code, frozen inputs and results are available in the \GIGI{} repository,

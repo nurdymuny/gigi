@@ -40,7 +40,7 @@ V1, V2 = col('variational_one_ring'), col('variational_two_ring')
 o2 = orders(P2); o1 = orders(P1)
 gate = G['numerical_gate']
 lines = [r'\begin{table}[t]\centering\small',
-         r'\caption{Relative instantaneous force error $\varepsilon_n$ (\%, $q6$). Orders are observed orders between consecutive levels, computed as in \BW{} from the absolute mass-norm error. The two-ring Petrov--Galerkin column passes \BW{} as evaluated by the unchanged gate function.}',
+         r'\caption{Relative instantaneous force error $\varepsilon_n$ (\%, $q6$). Orders are observed orders between consecutive levels, computed as in \BW{} from the absolute mass-norm error. The two-ring Petrov--Galerkin column satisfies \BW{}, evaluated by the unchanged criterion.}',
          r'\label{tab:force}',
          r'\begin{tabular}{rrrrrrrrr}\toprule',
          r'$n$ & $h_{\max}$ & Whitney & PG 1-ring & order & \textbf{PG 2-ring} & \textbf{order} & Var.\ 1-ring & Var.\ 2-ring \\ \midrule']
@@ -51,7 +51,7 @@ for l in range(4):
     lines.append(f"{N[l]} & {H[l]:.4f} & {pct(W[l])} & {pct(P1[l])} & {s1} & {p2} & {s2} & {pct(V1[l],1)} & {pct(V2[l],1)} " + r'\\')
 q = gate['quadrature_mass_differences']; li = gate['linear_correction_mass_estimates']
 lines += [r'\midrule',
-          r'\multicolumn{9}{l}{Two-ring gate: \texttt{pass}='+str(gate['pass']).lower()+
+          r'\multicolumn{9}{l}{Two-ring: \BW{} '+('satisfied' if gate['pass'] else 'not satisfied')+
           f"; $q4/q6$ differences {q[0]:.1e}--{q[-1]:.1e}; solver corrections $\\le$ {max(li):.1e}." + r'}\\',
           r'\bottomrule\end{tabular}\end{table}']
 (TAB/'force.tex').write_text('\n'.join(lines)+'\n')
@@ -124,7 +124,7 @@ for l in range(4):
                  f"{'---' if nr is None else format(nr['min_symmetric_part'], '.3f')} " + r'\\')
 q = hg['quadrature_mass_differences']; li = hg['linear_correction_mass_estimates']
 lines += [r'\midrule',
-          r'\multicolumn{9}{l}{Hybrid gate: \texttt{pass}='+str(hg['pass']).lower()+
+          r'\multicolumn{9}{l}{Hybrid: \BW{} '+('satisfied' if hg['pass'] else 'not satisfied')+
           f"; $q4/q6$ differences {q[0]:.1e}--{q[-1]:.1e}; solver corrections $\\le$ {max(li):.1e}." + r'}\\',
           r'\bottomrule\end{tabular}\end{table}']
 (TAB/'hybrid.tex').write_text('\n'.join(lines)+'\n')

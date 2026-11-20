@@ -1145,10 +1145,16 @@ measured eigenvalues.
 
 \begin{table}[t]\centering\small
 \caption{The exact low spectrum of the linearised $SU(2)$ Yang--Mills operator at the Berger field
-on the Poincar\'e sphere, against the real part of the nearest measured lattice eigenvalue.
-Spin $0$ is the left-invariant sector, spin $6$ the next allowed one. The measured doubles carry
-imaginary parts of at most $0.09$: the lattice linearises the force in link coordinates at a field
-that is not at rest, where the Jacobian is not symmetric. Dashes: not resolved at that level.
+on the Poincar\'e sphere, against the real part of the measured lattice eigenvalue.
+Spin $0$ is the left-invariant sector, spin $6$ the next allowed one. At $n=1,2$ every spin-$0$ entry
+is identified by its eigenvector, as the eigenvalue whose eigenvector has the largest overlap
+(in the native mass) with the nine discrete left-invariant directions: $0.76$ to $0.999$, except for
+$16-2\sqrt{73}$. The lattice splits that mode: at $n=1$ it is a complex pair ($0.44$ each), and at
+$n=2$ it is shared between a real eigenvalue ($0.50$) and a complex pair at $-1.087\pm0.18i$
+($0.34$ each). The entries at $n=3$, and the spin-$6$ entries, are matched by nearest value. The
+measured eigenvalues carry imaginary parts of up to $0.80$ (the split mode at $n=1$) and $0.42$ (the
+$21.891$ pair at $n=2$): the lattice linearises the force in link coordinates at a field that is not
+at rest, where the Jacobian is not symmetric. Dashes: not resolved at that level.
 Gauge content of the exact eigenvectors: $^{\mathrm g}$ a pure gauge direction; $^{\mathrm m}$ a mixture
 ($40\%$ gauge for the negative pair, $60\%$ for the positive one); unmarked spin-$0$ values are exactly
 orthogonal to the gauge directions. Spin-$6$ values are those of the full Hessian; on the
@@ -1159,7 +1165,7 @@ Exact & mult. & native $n=1$ & native $n=2$ & native $n=3$ & two-ring $n=3$ \\ \
 \multicolumn{6}{l}{\emph{spin $0$}}\\
 $-14/3=-4.6667$ & 2 & $-4.475$ & $-4.651$ & $-4.661$ & $-4.651$ \\
 $(29-\sqrt{1345})/3=-2.5581^{\mathrm m}$ & 2 & $-2.191$ & $-2.504$ & $-2.529$ & $-2.529$ \\
-$16-2\sqrt{73}=-1.0880$ & 1 & $-0.536$ & $-1.041$ & $-1.088$ & $-1.084$ \\
+$16-2\sqrt{73}=-1.0880$ & 1 & $-0.674\pm0.80i$ & $-1.041$ & $-1.088$ & $-1.084$ \\
 $8^{\mathrm g}$ & 1 & $7.083$ & $7.869$ & $7.954$ & $7.931$ \\
 $(29+\sqrt{1345})/3=21.891^{\mathrm m}$ & 2 & $20.71$ & $21.77$ & $21.86$ & $21.80$ \\
 $16+2\sqrt{73}=33.088$ & 1 & $32.64$ & $33.44$ & $33.29$ & $33.16$ \\ \midrule
@@ -1170,7 +1176,10 @@ $59.52$ & 2 & --- & $61.92$ & $60.69$ & $57.50$ \\
 \end{table}
 
 Every value of the spin-$0$ sector is matched by both forces, and the real parts approach the exact
-values from $n=1$ to $n=3$. The spin-$6$ sector matches the measured band that begins near $50$:
+values from $n=1$ to $n=3$. At $n=1$ and $2$ the matches were checked by eigenvector, not only by
+value. That check corrected one entry: at $n=1$ the nearest real eigenvalue to $16-2\sqrt{73}$
+($-0.536$) has overlap $0.15$ with the sector, and the sector mode is the complex pair at
+$-0.674\pm0.80i$. The spin-$6$ sector matches the measured band that begins near $50$:
 the native force approaches it from above, and the two-ring force lies a little below it at $n=3$.
 No rate is claimed from three levels. Three facts follow:
 \begin{itemize}
@@ -1571,7 +1580,8 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     \path{research/su2-exact-stability-20261119/}; the exact sectors,\newline
     \path{scripts/ricci_su2_left_invariant_sector.py} and\newline
     \path{scripts/ricci_su2_spin_sector.py}, their gauge content\newline
-    \path{scripts/ricci_su2_sector_gauge_check.py}, with receipts in\newline
+    \path{scripts/ricci_su2_sector_gauge_check.py}, the eigenvector identification\newline
+    \path{scripts/ricci_su2_sector_eigvec_check.py}, with receipts in\newline
     \path{research/su2-left-invariant-sector-20261119/}.
   \item Cayley start-up experiments: \path{scripts/ricci_su2_pg_flow_cayley.py}
     (\texttt{--startup}); receipts in \path{research/su2-startup-20261119/} and\newline

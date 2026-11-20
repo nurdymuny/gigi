@@ -124,6 +124,52 @@ fn components(q: GroupElement) -> [f64; 4] {
     }
 }
 
+/// The four face defects of a cell (holonomy − 1, face 123 carried to root 0 by
+/// u₀, exactly as in [`cell_action`]) and their derivatives with respect to the
+/// 18 right-trivialized link variations. Used by the two-ring Petrov–Galerkin
+/// force (`ricci_pg_force`), which pairs the defect derivatives with a recovered
+/// field instead of the native face mass. `cell_action` is unchanged.
+pub struct CellDefects {
+    /// `value[face][component]`.
+    pub value: [[f64; 4]; 4],
+    /// `derivative[face][component][dof]`, dof = 3 · edge + axis.
+    pub derivative: [[[f64; 18]; 4]; 4],
+}
+
+pub fn cell_defects(links: [[f64; 4]; 6]) -> Result<CellDefects, String> {
+    if links.iter().any(|q| {
+        q.iter().any(|x| !x.is_finite())
+            || (q.iter().map(|x| x * x).sum::<f64>() - 1.).abs() > 1e-12
+    }) {
+        return Err("simplicial defects: finite unit links required".into());
+    }
+    let u: [Q; 6] = std::array::from_fn(|edge| {
+        let derivatives: [[f64; 4]; 3] = std::array::from_fn(|axis| {
+            let mut eta = [0.; 4];
+            eta[axis + 1] = 1.;
+            components(group(links[edge]).compose(&group(eta)))
+        });
+        std::array::from_fn(|component| {
+            let mut q = Jet::constant(links[edge][component]);
+            for axis in 0..3 {
+                q.d[3 * edge + axis] = derivatives[axis][component];
+            }
+            q
+        })
+    });
+    let mut defects: [Q; 4] = std::array::from_fn(|face| {
+        let (a, b, c) = [(0, 3, 1), (0, 4, 2), (1, 5, 2), (3, 5, 4)][face];
+        let mut h = product(product(u[a], u[b]), inverse(u[c]));
+        h[0] = h[0] - Jet::constant(1.);
+        h
+    });
+    defects[3] = product(product(u[0], defects[3]), inverse(u[0]));
+    Ok(CellDefects {
+        value: std::array::from_fn(|f| std::array::from_fn(|c| defects[f][c].v)),
+        derivative: std::array::from_fn(|f| std::array::from_fn(|c| defects[f][c].d)),
+    })
+}
+
 /// Full cell action and all 18 right-trivialized derivatives, including the
 /// root-to-face transport. Edges: 01,02,03,12,13,23. Faces: 012,013,023,123.
 pub fn cell_action(links: [[f64; 4]; 6], mass: SMatrix<f64, 4, 4>) -> Result<CellAction, String> {

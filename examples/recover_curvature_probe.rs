@@ -68,6 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let su = Su2Mechanism {
                 register: input.register.unwrap_or(true),
                 abelianised: input.abelianised.unwrap_or(false),
+                flux: gigi::gauge::curvature_recovery::Su2Flux::Log,
             };
             let out = recover_curvature_su2_with(&cells, &input.links, input.rings, Mechanism::FULL, su)?;
             ("recover_curvature_su2_probe_v1", out

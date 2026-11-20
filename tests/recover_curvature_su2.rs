@@ -13,7 +13,7 @@
 
 use gigi::gauge::curvature_recovery::{
     recover_curvature, recover_curvature_su2, recover_curvature_su2_with, vertex_ids, Cell,
-    Mechanism, RecoveryError, Su2CellRecovery, Su2Mechanism, EDGES,
+    Mechanism, RecoveryError, Su2CellRecovery, Su2Flux, Su2Mechanism, EDGES,
 };
 use nalgebra::Vector3;
 use std::collections::HashMap;
@@ -189,7 +189,7 @@ fn g1_gauge_covariance_and_m1_register_removal() {
     let g: Vec<[f64; 4]> = (0..nv).map(|_| qexp(random_vec(&mut rng, 1.0))).collect();
     let moved = gauge_transform(&cells, &links, &g);
     for (register, must_hold) in [(true, true), (false, false)] {
-        let su = Su2Mechanism { register, abelianised: false };
+        let su = Su2Mechanism { register, abelianised: false, flux: Su2Flux::Log };
         let r0 = recover_curvature_su2_with(&cells, &links, 2, Mechanism::FULL, su).unwrap();
         let r1 = recover_curvature_su2_with(&cells, &moved, 2, Mechanism::FULL, su).unwrap();
         let want: Vec<[[f64; 11]; 3]> = r0
@@ -217,7 +217,7 @@ fn g1_gauge_covariance_and_m1_register_removal() {
 fn m2_abelianised_flux_matches_only_on_abelian_data() {
     let mut rng = Lcg(13);
     let (cells, ne) = six_hundred_cell(&mut rng);
-    let abel = Su2Mechanism { register: true, abelianised: true };
+    let abel = Su2Mechanism { register: true, abelianised: true, flux: Su2Flux::Log };
     let a: Vec<f64> = (0..ne).map(|_| (rng.next() * 2.0 - 1.0) * 0.1).collect();
     let links: Vec<[f64; 4]> = a.iter().map(|&x| qexp(Vector3::new(0.0, 0.0, x))).collect();
     let full = recover_curvature_su2(&cells, &links, 2).unwrap();

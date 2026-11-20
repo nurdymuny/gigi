@@ -28,6 +28,11 @@ name = "recover_curvature_probe"
 path = "examples/recover_curvature_probe.rs"
 required-features = ["gauge"]
 
+[[example]]
+name = "link_force_probe"
+path = "examples/link_force_probe.rs"
+required-features = ["gauge"]
+
 # ── Feature flags ──
 #
 # `kahler` — opt-in Kähler-geometry substrate (catalog.md §1, the

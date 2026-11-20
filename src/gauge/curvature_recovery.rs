@@ -340,6 +340,11 @@ impl Chart {
 
 /// Basis of closed linear fields c + B z with tr B = 0: three constants, six
 /// off-diagonal B entries in (i, j) order, then diag(1,−1,0) and diag(0,1,−1).
+/// The closed linear basis, public for the force (`ricci_pg_force`).
+pub fn closed_linear_basis() -> [(Vector3<f64>, Matrix3<f64>); 11] {
+    basis()
+}
+
 fn basis() -> [(Vector3<f64>, Matrix3<f64>); 11] {
     let mut out = [(Vector3::zeros(), Matrix3::zeros()); 11];
     for i in 0..3 {
@@ -526,6 +531,8 @@ struct Fit {
     fmap: DMatrix<f64>,
     condition: f64,
     rank: usize,
+    chart_j: Matrix3<f64>,
+    chart_t0: Vector3<f64>,
 }
 
 fn fit_map(
@@ -591,7 +598,12 @@ fn fit_map(
     } else {
         pinv(&rows)
     };
-    Ok(Fit { own: own_rows.len(), nb, faces: read, am, rows, fmap, condition, rank })
+    // z = J ξ + t0, ξ the barycentric λ₁..λ₃ of the cell's own vertices (as pg.chart).
+    let k = nb[0].1;
+    let orth = |p: Vector4<f64>| Vector3::new(ch.q[0].dot(&p), ch.q[1].dot(&p), ch.q[2].dot(&p)) / ch.diam;
+    let chart_j = Matrix3::from_columns(&[orth(k[1] - k[0]), orth(k[2] - k[0]), orth(k[3] - k[0])]);
+    let chart_t0 = orth(k[0] - ch.cen);
+    Ok(Fit { own: own_rows.len(), nb, faces: read, am, rows, fmap, condition, rank, chart_j, chart_t0 })
 }
 
 /// Recover every cell of a closed mesh from a cochain of edge integrals.
@@ -650,10 +662,22 @@ pub struct Su2Mechanism {
     pub register: bool,
     /// Replace log(holonomy) by the sum of the three edge logarithms.
     pub abelianised: bool,
+    /// What a face contributes: log(holonomy) (the recovery, S1), or the
+    /// holonomy's vector part, the native action's face defect (the force, S2a).
+    pub flux: Su2Flux,
+}
+
+/// The face quantity the SU(2) reading fits.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Su2Flux {
+    /// log(U_ij U_jk U_ki): the curvature reading (RECOVER_CURVATURE GROUP SU2).
+    Log,
+    /// vec(U_ij U_jk U_ki): the face defect, as the two-ring force reads it.
+    Defect,
 }
 
 impl Su2Mechanism {
-    pub const FULL: Su2Mechanism = Su2Mechanism { register: true, abelianised: false };
+    pub const FULL: Su2Mechanism = Su2Mechanism { register: true, abelianised: false, flux: Su2Flux::Log };
 }
 
 /// The covariant curvature of one cell: one closed linear field per su(2)
@@ -673,6 +697,10 @@ pub struct Su2CellRecovery {
     pub own_residual: f64,
     /// Global vertex id whose fibre frame the coefficients are expressed in.
     pub frame_vertex: usize,
+    /// The cell's chart as an affine map from reference coordinates ξ (the
+    /// barycentric λ₁..λ₃) to chart coordinates: z = J ξ + t0.
+    pub chart_j: Matrix3<f64>,
+    pub chart_t0: Vector3<f64>,
 }
 
 const ONE: [f64; 4] = [1.0, 0.0, 0.0, 0.0];
@@ -814,7 +842,11 @@ pub fn recover_cell_su2(
             let l = |q: &Vector4<f64>| qlog(q).ok_or_else(|| near.clone());
             l(&uij)? + l(&ujk)? + l(&uki)?
         } else {
-            qlog(&lmul(&lmul(&uij, &ujk), &uki)).ok_or(near)?
+            let h = lmul(&lmul(&uij, &ujk), &uki);
+            match su.flux {
+                Su2Flux::Log => qlog(&h).ok_or(near)?,
+                Su2Flux::Defect => Vector3::new(h[1], h[2], h[3]),
+            }
         };
         let x = if su.register { ad(&w[&vid[*nj][*i]], &x) } else { x };
         for comp in 0..3 {
@@ -839,6 +871,8 @@ pub fn recover_cell_su2(
         cells: fit.nb.len(),
         own_residual: own_res,
         frame_vertex: root,
+        chart_j: fit.chart_j,
+        chart_t0: fit.chart_t0,
     })
 }
 

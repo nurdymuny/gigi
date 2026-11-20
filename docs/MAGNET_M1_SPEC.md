@@ -134,3 +134,34 @@ by construction.
 - No criterion is loosened after a result.
 - BW05 is reported unchanged. Any weak-consistency or trajectory measure added later is a separate, pre-registered
   gate, never a replacement.
+
+## Part 1 results (run after this specification was committed, at 4bc4477)
+
+Receipts: `research/magnet-m1-20261119/audit_L0.json`, `audit_L1.json`. Per-edge moments and poke vectors are in
+`moments_L{0,1}.npz`.
+
+| | n = 1 | n = 2 |
+| --- | --- | --- |
+| Poke term recomputed from t (M0 receipt at n = 2: 51.15045%) | 46.53% | 51.15045% |
+| Poke term predicted from p = 4 z⁰ | 46.37% | 51.35% |
+| Cosine between t and p, dual mass norm | 0.9978 | 0.9993 |
+| Best scale t/p | 1.0014 | 0.9955 |
+| Residual ‖t − p‖ / ‖t‖ | **6.6%** | 3.8% |
+| Median \|z_e\| / ‖W_e‖_L¹ | 19.5% | 31.1% |
+| Median per frame component | 6.0% | 12.7% |
+
+- **A1: pass.** The n = 2 recomputation equals M0's receipt to 1e-15.
+- **A2: passes at n = 2, fails at n = 1 as written.**
+  - At n = 2: cosine 0.9993 and residual 3.8%, both inside the lines.
+  - At n = 1: cosine 0.998 and best scale 1.001, but the residual is 6.6%, over the 5% line written for both
+    levels.
+  - The residual falls with the seam jumps (0.46% at n = 1, 0.034% at n = 2), consistent with the interface terms
+    that Lemma A omits for a reading that is seamless only to that accuracy. This is an explanation, not a pass.
+    The decision rule ties building M1 to A2, so the n = 1 miss is reported to Bee for the decision.
+- **A3: pass.** The defect is O(1) and grows from n = 1 to n = 2. It does not fall like h.
+- **Not a check.** The "constants_check_sum_z" field in the receipts (4e-17 at n = 1, 0.011 at n = 2) sums z over
+  all edges. That is the reading of data equal to one on every edge, not of a left-invariant field. It is not the
+  constants identity of Part 2 and is ignored here.
+
+**Reading.** At n = 2 the poke term that M0 left flat is, to within 4%, its bumps' zeroth-moment defect contracted
+with the constant δF. That is Lemma B's mechanism, and it is what M1 corrects.

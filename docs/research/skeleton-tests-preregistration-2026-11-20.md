@@ -221,7 +221,8 @@ testable is the scoped reading below.
 1. **The squashed meron** (the resting field of Result 6). Ansatz m₀ = x e₀, m₁ = y e₁, m₂ = y e₂, so it is
    circle-invariant.<ins> Checked: the ansatz is invariant under the joint rotation about axis 0 of the frame and
    Lie indices.</ins> Range t ∈ [0.05, 10]; sectors j ≤ 12. Existing code: `ricci_su2_meron_family_soft.py`.
-   Not yet classified.
+   <del>Not yet classified.</del><ins>Classified **N** under the protocol below. The code control passed (Berger
+   T_all = {2.70, …, 10.00}). Results: [`skeleton-test2-family1-results-2026-11-20.md`](skeleton-test2-family1-results-2026-11-20.md).</ins>
 
 <ins>**Protocol for family 1, fixed before it is run (20 November).** Script `scripts/ricci_su2_test2_family.py`.
 

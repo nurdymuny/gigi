@@ -318,13 +318,13 @@ The stability test \emph{S3} requires that the generalized spectrum of $(K,B_h)$
 the assembled force operator $g(a)=Ka$, have exactly as many eigenvalues of modulus
 below one as the Whitney gauge kernel, and all others with strictly positive real part.
 
-\section{The computation in GIGI}\label{sec:gigi}
+\section{Implementation in GIGI}\label{sec:gigi}
 
 The computations in this paper run in \GIGI{}, a source-available geometric database and
 computation engine, released under the PolyForm Noncommercial License 1.0.0 at
-\url{https://github.com/nurdymuny/gigi}. The mathematics above is only half of the
-result. The other half is a code path that anyone can rebuild, rerun and check against
-pinned hashes. That path has three layers.
+\url{https://github.com/nurdymuny/gigi}. \GIGI{} is not described elsewhere, so this section
+says what it computes here, how each part was verified, and which parts remain research code.
+The implementation has three layers.
 
 \paragraph{Native layer (Rust).}
 \GIGI{}'s gauge library supplies the geometry: the Levi-Civita transport along each edge
@@ -343,9 +343,8 @@ if (0..4).any(|j| (local[e][j] - expected[j]).abs() > 2e-12) {
 let mass   = tetra_mass(cell.vertices, input.metric, input.order)?;
 let action = cell_action(local, mass.face_mass)?;
 \end{lstlisting}
-The binary used here is pinned by SHA-256 (\texttt{71fb30db\ldots b196ad}) in the
-checkpoint manifest, together with the hashes of the Rust sources it was built from. Two
-native tests run against that pinned binary. The first compares the cell action, masses
+The executable used here is identified by a hash in the archived inputs, together with the
+sources it was built from. Two native tests run against it. The first compares the cell action, masses
 and every derivative with an independent Python implementation. The second assembles the
 operator once on the quotient $M$ and once on the entire cover $S^3$ ($120$ copies), and
 requires the quotient's energy, volume, gradient and Hessian blocks to equal the cover's
@@ -354,24 +353,15 @@ the check that the deck transformations of Section~\ref{sec:setting} are handled
 correctly before any curvature is recovered.
 
 \paragraph{Research layer (Python).}
-The recovery, the force and the gates are Python in the same repository:
+The recovery, the force and the convergence tests are Python in the same repository:
 \path{scripts/ricci_pg_curvature.py} (chart, transport, one-ring fit),
 \path{scripts/ricci_pg_tworing.py} (two-ring fit) and
 \path{scripts/ricci_pg_tworing_gate.py} (\BW{} and S3). The two-ring neighbourhood
 carries each new cell onto $K$'s sheet by the left multiplication fixed at the face it
-was reached through, and refuses if the shared vertices do not coincide. This is the
-alignment step of the introduction (Python excerpts here are lightly condensed from the
-source; the Rust excerpt is verbatim):
-\begin{lstlisting}[style=py]
-h = qmul(C[ck[k0]], qconj(V[cn[k0]]))      # deck transform fixed by a shared vertex
-V = np.array([qmul(h, v) for v in V])      # carry the neighbour onto K's sheet
-gap = max(abs(C[ck[k]] - V[cn[k]]).max() for k in ck)
-if gap > COINCIDE:                         # 1e-12
-    raise ValueError("cell does not coincide after transport")
-\end{lstlisting}
+was reached through, and refuses if the shared vertices do not coincide. This is the alignment step of the introduction.
 The fit~\eqref{eq:fit} is then assembled as one linear map from all neighbourhood fluxes
 to the eleven coefficients, by the null-space method: $K$'s own faces are held exactly,
-and the rest pull through least squares.
+and the rest pull through least squares (the excerpt is lightly condensed from the source):
 \begin{lstlisting}[style=py]
 Ap   = np.linalg.pinv(A)                   # own faces: exact
 N    = null_space(A)                       # freedom left after the own faces
@@ -381,21 +371,13 @@ fmap = np.hstack([Ap - N @ RNp @ R @ Ap, N @ RNp])
 The code refuses a cell whose flux map has rank below eleven, whose condition number
 exceeds a fixed cap, or whose own fluxes are not reproduced to $10^{-12}$.
 
-\paragraph{Evidence layer.}
-The meshes, edge data and native outputs are frozen in the \GIGI{} Ricci checkpoint:
-zip archives whose manifest lists every file with its SHA-256, and whose receipts refuse
-to overwrite. The gate writes its own receipt. Its verdict fields read, verbatim:
-\begin{lstlisting}[style=json]
-"numerical_gate": {"pass": true,
-  "relative_errors": [0.06223, 0.03834, 0.02788, 0.01452],
-  "observed_orders": [0.7275, 0.7960, 1.2859], ...},
-"berger": "NOT_RUN",
-"release_gate": "OPEN"
-\end{lstlisting}
-The last two fields are as much a part of the result as the first: this Abelian gate was
-not run on the Berger metrics (the $SU(2)$ force of Section~\ref{sec:su2force} is a separate
-research replica with its own receipts), and the programme's release gate stays open. Table~\ref{tab:evidence} maps
-each table and figure to the script that regenerates it.
+\paragraph{Frozen inputs and recorded outputs.}
+The meshes, edge data and native outputs are frozen in an archived checkpoint whose manifest lists
+every file with its SHA-256 hash, and every program that writes a result refuses to overwrite an
+earlier one. Criterion~C was evaluated on the Abelian control only; the Berger metric is treated by
+the $SU(2)$ force of Section~\ref{sec:su2force}, which has its own recorded outputs. The programme's
+release criterion, a flow test on a merged build, is not yet met. Table~\ref{tab:evidence} maps each
+table and figure to the program that regenerates it.
 
 \begin{table}[t]\centering\small
 \caption{Where each result lives in the \GIGI{} repository.}
@@ -414,7 +396,7 @@ $SU(2)$ time integration, Table~\ref{tab:su2flow} & \path{scripts/ricci_su2_pg_f
 Cayley step, $n=3$ rows & \path{scripts/ricci_su2_pg_flow_cayley.py} \\
 Slow and fast residual & \path{scripts/ricci_su2_pg_flow_filter.py} \\
 Engine verb \path{RECOVER_CURVATURE} & \path{src/gauge/curvature_recovery.rs} \\
-Verb gates, parity, live run & \path{tests/recover_curvature.rs}, \path{e2e/probes/*recover_curvature*} \\
+Verb tests, parity, live run & \path{tests/recover_curvature.rs}, \path{e2e/probes/*recover_curvature*} \\
 \bottomrule\end{tabular}
 \end{table}
 
@@ -426,7 +408,6 @@ curvature and the diagnostics reported here (amplification, condition, neighbour
 size):
 \begin{lstlisting}[style=json]
 RECOVER_CURVATURE cells FROM edges ON a RINGS 2;
-POST /v1/bundles/cells/recover_curvature  {"edges": "edges", "field": "a", "rings": 2}
 \end{lstlisting}
 Like the research layer, it refuses rather than guesses. It names the cell when the mesh
 is not closed, when a neighbour fails to coincide after transport, when a flux map is
@@ -436,8 +417,7 @@ cell: coefficients to $1.0\times10^{-14}$ relative, amplification to $2.1\times1
 condition number to $2.0\times10^{-14}$, with identical neighbourhoods. On the finest mesh
 ($\T_5$, 15000 cells) the native recovery takes 8.7\,s. A live
 \texttt{gigi-stream} built from this tree, with $\T_1$ ingested over HTTP, returns the
-same values through both surfaces. Its refusals fire with HTTP status 422, or 404 for a
-missing bundle. One implementation note: \texttt{nalgebra}'s singular value
+same values through both of its query surfaces. One implementation detail matters: \texttt{nalgebra}'s singular value
 decomposition reconstructed the rank-deficient own-face matrix to only $2.6\times10^{-3}$,
 which broke the equality constraint, so the verb uses a one-sided Jacobi decomposition,
 accurate to rounding on these small matrices.
@@ -448,12 +428,12 @@ reachable as a query verb. The \BW{} measure stays an independent script: it is 
 the engine is judged against, so it is deliberately not engine code.
 
 \paragraph{The $SU(2)$ verbs.} The non-Abelian computations of Section~\ref{sec:su2} are engine
-verbs too, on the branch \texttt{feat/ym-engine}. \texttt{RECOVER\_CURVATURE \dots{} GROUP SU2} is the
+verbs too. \texttt{RECOVER\_CURVATURE \dots{} GROUP SU2} is the
 covariant reading; \texttt{LINK\_FORCE} returns the force on every link, two-ring or native, and
 states in every answer whether the force is the gradient of an energy (only the native one is);
 \texttt{LINK\_FLOW} integrates the flow with the Cayley step, refuses a missing metric sample by
 naming its time, and builds its own Newton preconditioner from the engine's linearisation. Each
-was held to a gate fixed before it was built, against the research code on the same meshes:
+was held to a criterion fixed before it was built, against the research code on the same meshes:
 \begin{itemize}
   \item the covariant reading, to $1.1\times10^{-13}$ at $n\le3$;
   \item the force, to $1.2\times10^{-13}$ at $n\le5$ for two rings, native and the removal without
@@ -461,10 +441,10 @@ was held to a gate fixed before it was built, against the research code on the s
   \item the linearisation, to $2.5\times10^{-11}$ against the research matrices at $n\le3$;
   \item every Cayley run at $n\le3$, including the frozen-metric control, to $1.4\times10^{-13}$
     in $E$, with identical Newton iteration counts;
-  \item the same results through a running \texttt{gigi-stream}, by \texttt{GQL} and HTTP, from a
-    binary identified by its hash.
+  \item the same results through a running engine, by both of its query surfaces, from a binary
+    identified by its hash.
 \end{itemize}
-Each mechanism, removed, turns its gate red in the same run that passes: without register the
+Each mechanism, removed, makes its test fail in the same run that passes: without register the
 reading is off by $0.30$ and the force error returns to $39.02\%$; a finite-difference defect
 derivative moves the linearisation by $2\times10^{-6}$; evaluating the Cayley step at its end
 instead of its midpoint moves $E$ by $6\%$; a round metric substituted for the Berger one gives
@@ -796,7 +776,7 @@ keeps the uniform two-ring rule (repository: \path{docs/RING_FOLD_FORCE_RESULTS.
   illustrative, not physical distances. Each cell is drawn in its own chart, with a common
   camera and scale within each row. The saved geometry is in \texttt{data/rings\_3d.json};
   \texttt{make\_polished\_plates.py} renders Figures~\ref{fig:schematic}--\ref{fig:rings3d}
-  from the saved geometry and measurement receipts.}
+  from the saved geometry and measurement records.}
   \label{fig:rings3d}
 \end{figure}
 
@@ -1070,7 +1050,7 @@ reach the reading only through the sherd's own edge. That is why, unlike the two
 result no longer depends on how much far edge each sherd happens to have.
 
 The construction came out of the variational investigation of Section~\ref{sec:removals}. It
-was probed first, then measured under a specification that fixed every gate before the run
+was probed first, then measured against criteria fixed before the run
 (repository: \path{docs/RICCI_PG_HYBRID_SPEC.md}).
 
 \paragraph{Result.} Table~\ref{tab:hybrid} and Figure~\ref{fig:force} give the result.
@@ -1085,7 +1065,7 @@ was probed first, then measured under a specification that fixed every gate befo
     $\mu=4.010$ and $4.002$. These sit closer to the continuum value $4$ than the two-ring
     force's $3.998$ and $3.969$.
   \item \emph{Controls.} The $q4/q6$ velocity differences are at most $2\times10^{-7}$. The
-    gated values reproduce the exploratory probe to $10^{-12}$.
+    final values reproduce the exploratory probe to $10^{-12}$.
 \end{itemize}
 The recovered curvature still converges at second order (orders $2.13$, $2.08$, $2.05$), but
 with a constant $2.8$ times smaller at $n=5$ ($0.056\%$ against $0.155\%$).
@@ -1149,8 +1129,8 @@ linear field. The paper's fit map $\cR_K$ depends only on geometry, so it applie
 to the three components of the registered fluxes. Amplification and conditioning are
 exactly those of Section~\ref{sec:conditioning}.
 
-\paragraph{Gates.} The prototype (\path{scripts/ricci_su2_recovery.py}) passes three
-gates.
+\paragraph{Tests.} The prototype (\path{scripts/ricci_su2_recovery.py}) passes three
+tests.
 \begin{itemize}
   \item \emph{Embedded U(1).} The paper's Abelian data, wrapped as $SU(2)$ links along one
     axis, return the Abelian coefficients to $1.4\times10^{-15}$.
@@ -1266,7 +1246,7 @@ pre-asymptotic for every recovery.
 \paragraph{Stability.} As in Section~\ref{sec:conditioning}, the object is the generalized
 spectrum of $(K,B)$. Here $K$ is the linearised force at the Berger field, one column per
 right-trivialised link direction by central differences, and $B$ is the native $SU(2)$
-tangent mass. The thresholds were written in the specification, which is committed together
+tangent mass. The thresholds were fixed together
 with these results rather than before them, so the record cannot show the order; they do not
 decide anything here, since every cutoff between the two-ring scale (about $-4.5$) and the
 one-ring scale (below $-8{,}000$) gives the same verdict; the thresholds for $n=3$ were
@@ -1304,7 +1284,7 @@ removal: one ring & 3 & 11{,}358 & 4{,}437 & $-45{,}543$ & 1{,}306 \\
   \centering
   \includegraphics[width=\textwidth]{figures/fig_su2_spectra.pdf}
   \caption{Generalized spectra of the linearised $SU(2)$ force at $n=2$, against the native
-  tangent mass (signed-logarithmic real axis). The shaded band is the specification's
+  tangent mass (signed-logarithmic real axis). The shaded band is the
   ``rough'' region, $\operatorname{Re}\lambda<-10$.}
   \label{fig:su2spec}
 \end{figure}
@@ -1328,7 +1308,7 @@ operator's stay below $1$. That extent grows with refinement; the numerical rang
 that it stays harmless at every level measured.
 That is the cost of a force that is not the gradient of an energy. Gauge directions are
 not exact zero modes at a field that is not at rest, so the count of small eigenvalues was
-recorded but not gated; the exact check below says which they are.
+recorded but not used as a criterion; the exact check below says which they are.
 
 \paragraph{Exact spectra on three-spheres: what is known.} Exact spectral results for Yang--Mills
 fields on three-spheres exist in three forms. None of them reaches the operator studied here.
@@ -1373,7 +1353,7 @@ with the known multiplicities). On the round metric with the commutator, the con
 $-2$, $1$, $6$, $7$ and $10$ in spins $0$ to $2$, the published fluctuation spectrum of the meron
 on the round $S^3$~\cite{klc2021}; at the Berger metric the same method goes beyond what is in the
 literature. These exact values were computed after the lattice spectra had
-been measured, so they are a check, not a gate. Table~\ref{tab:su2exact} compares them with the
+been measured, so they are a check, not a criterion fixed in advance. Table~\ref{tab:su2exact} compares them with the
 measured eigenvalues.
 
 \begin{table}[t]\centering\small
@@ -1430,7 +1410,7 @@ No rate is claimed from three levels. Three facts follow:
     like $1/j$ ($-2.35$ at spin $6$, $-1.73$ at spin $10$). Below $-1$ the exact count is $41$;
     the lattice shows $9$ at $n=2$ and $13$ at $n=3$, resolving the sectors one by one. On gauge
     directions the lattice Jacobian differs from the Hessian by a term proportional to the
-    nonzero gradient, so this comparison is indicative, not a gate.
+    nonzero gradient, so this comparison is indicative, not a criterion.
   \item \emph{The physical spectrum has an exact gap.} On the gauge-orthogonal slice, the
     spin-$0$ sector ends at $33.088$, spin $6$ begins at $154/3=51.33$, and nothing else lies below
     $142$, where spin $10$ begins (spin $12$ begins at $610/3$). In every higher sector the negative
@@ -1587,8 +1567,8 @@ not of this form.
 \paragraph{Numerical range.} Eigenvalues alone do not rule out transient non-normal growth,
 so we also measured the numerical range $W(\hat G)$ of the force whitened by the native mass,
 $\hat G=L^{-1}KL^{-\top}$ with $B=LL^\top$. Its left edge $\min\operatorname{Re}W(\hat G)=-m$
-bounds the linearised flow, $\norm{e^{-t\hat G}}\le e^{mt}$, with constant one. The gate,
-written in a specification committed together with the first-level results, asked for the two-ring left edge to be at least twice the native
+bounds the linearised flow, $\norm{e^{-t\hat G}}\le e^{mt}$, with constant one. The criterion,
+fixed together with the first-level results, asked for the two-ring left edge to be at least twice the native
 one and at least $-10$. Table~\ref{tab:su2numrange} gives the result.
 
 \begin{table}[t]\centering\small
@@ -1636,16 +1616,16 @@ $g(t)$ follows the Ricci flow of the Berger metric, by a fourth-order
 Runge--Kutta--Munthe-Kaas step~\cite{munthekaas1998,iserles2000} that keeps every link on $SU(2)$. At $t=0.02$ the links are
 compared with the exact links of the flowed metric: $E$ is the mass-weighted distance
 $\sqrt{\delta^\top B\delta/\mathrm{Vol}}$ between them, $D$ is the same distance travelled
-by the exact field, and $R=E/D$ is the error over the distance actually moved. The gates,
+by the exact field, and $R=E/D$ is the error over the distance actually moved. The criteria,
 fixed before measurement, asked for $R<5\%$ at the finest level with an observed order of at
 least $0.5$, and for halving the step, or changing the quadrature, to move $E$ by less than
 a tenth. Two negative controls were corrected after the $n=1$ results, beside the unchanged
-original gates. As first written, both controls asked for $R\ge10\%$ at every level: the
+original criteria. As first written, both controls asked for $R\ge10\%$ at every level: the
 frozen-metric control fails that at $n=2$ ($8.07\%$) and $n=3$ ($8.13\%$), and the native
 control fails it at every level. The corrected controls ask instead whether the frozen run's
 gap to the moving run is resolvable and fails to converge, and whether the native force is
 overtaken and stalls; both versions are reported in the results document. The runs were first
-made by a Python replica of the programme's flow gate. The engine's Cayley flow reproduces every
+made by a Python replica of the programme's flow test. The engine's Cayley flow reproduces every
 Cayley run at $n\le3$, to $1.4\times10^{-13}$ in $E$ with identical Newton iteration counts; the
 fourth-order runs at $n\le2$ remain script runs.
 Table~\ref{tab:su2flow} and Figure~\ref{fig:su2flow} give the result.
@@ -1658,7 +1638,7 @@ Table~\ref{tab:su2flow} and Figure~\ref{fig:su2flow} give the result.
   $n=1$ (dotted), $2$ (dashed) and $3$ (solid). (b) The final value $R$ against the mesh.
   The two-ring force overtakes native at $n=2$ and stays ahead at $n=3$; the frozen-metric
   control stops improving after $n=2$. Every plotted value is in Table~\ref{tab:su2flow} or
-  its receipts; $n\le2$ uses RKMK4 and $n=3$ the Cayley step.}
+  its recorded outputs; $n\le2$ uses RKMK4 and $n=3$ the Cayley step.}
   \label{fig:su2flow}
 \end{figure}
 
@@ -1726,7 +1706,7 @@ run. The step was checked before use. Its distance from the exponential map fall
 $|v|^3/12$, the phase lag of the companion paper. Its observed time order is $1.99$. At $n=1$
 and $n=2$, with $8$ steps, it reproduces the RKMK4 errors of Table~\ref{tab:su2flow} to within
 $1.5\%$ for both forces, using between $0.17$ and $0.36$ of the force evaluations. The
-specification's rule takes the smallest step count passing at both levels, which is $8$.
+rule fixed in advance takes the smallest step count passing at both levels, which is $8$.
 Four steps fail at $n=2$, and a later experiment, with its predictions committed first, traced
 the failure to stiff modes. Crank--Nicolson is A-stable but not L-stable: it flips the sign of
 a stiff component instead of damping it. Replacing the first step by an L-stable second-order
@@ -1740,11 +1720,11 @@ after a failure, and the record keeps both: the first attempt asked Newton for a
 increment of $10^{-10}$, and every native run at $n=1$ failed at its first step, because the
 force itself, with a finite-difference defect derivative, was only computable to about
 $3.5\times10^{-10}$. The tolerance was amended to $10^{-8}$, about thirty times above that
-floor and far below every comparison the gates make; the failed receipts are kept. The
+floor and far below every comparison the criteria make; the failed runs are kept. The
 defect derivative was then put in closed form, which lowers the force's noise to about
 $10^{-13}$; every reported run uses both changes.
 
-At $n=3$ every step converged, in at most eight iterations, and every gate set before the run
+At $n=3$ every step converged, in at most eight iterations, and every criterion set before the run
 holds except the corrected native control's stall, discussed below. The two-ring error is
 $0.87\%$ of the distance moved, falling by a factor of $2.03$ from the $n=2$ Cayley run
 ($E=0.00904$; against the RKMK4 value of the table, $2.02$). The mesh size shrinks by $3/2$
@@ -1756,7 +1736,7 @@ measured exactly from saved final states, is $\Delta=0.042$, $9.4$ times the mov
 error. The frozen run's error does not converge at all ($0.0412$ to $0.0417$, order $-0.03$).
 The two-ring force stays ahead of native, at $0.82$ of its error ($0.80$ at $n=2$). The native
 error still falls (order $1.80$), so the stall asked for by the corrected control is again
-absent, as the filter model explains. That model also forecast, without a gate, that the
+absent, as the filter model explains. That model also forecast, without a criterion, that the
 two-ring error would fall faster than the native one. At this refinement it did not: the two
 orders are $1.74$ and $1.80$.
 
@@ -1770,15 +1750,14 @@ would suggest about a hundredth.
 
 \paragraph{Cost, and a second check of every flow result.} The force was first written cell
 by cell; at $n=3$ one two-ring evaluation took $89$\,s. It was then rewritten to do the same
-arithmetic for every cell at once, under a specification committed before any of the new
-code ran. The specification makes the cell-by-cell code the reference and gates the rewrite
-on parity, at $n=1,2,3$, for both forces, at two link states and two metrics. The native
+arithmetic for every cell at once, under criteria fixed before any of the new code ran. They
+make the cell-by-cell code the reference and test the rewrite for parity, at $n=1,2,3$, for both forces, at two link states and two metrics. The native
 gradient comes out identical to the last bit; the two-ring gradient agrees to
 $5.4\times10^{-14}$, the mass to better than $10^{-15}$ and the velocity to
 $1.9\times10^{-13}$.
 An amendment, written after the first timings and before the change, caches the metric
 integrals, which depend on $g$ alone and are the same for every Newton iteration of a step;
-it changes rounding only, and every parity gate was run again with it. The Cayley runs were
+it changes rounding only, and every parity test was run again with it. The Cayley runs were
 then repeated on the new code: the four at $n=1,2$ with $8$ steps, before and after the
 amendment, and the three at $n=3$. Each reproduces its committed final error to
 $5\times10^{-14}$ or better (the native run at $n=3$ to the last digit), with the same number of Newton iterations at every step. A
@@ -1913,7 +1892,7 @@ this paper.
     whether it keeps growing at $n=5$ is not measured.
   \item The time integration covers $n\le3$ over $t\in[0,0.02]$. Its Cayley runs are reproduced
     by the engine; the fourth-order runs at $n\le2$ are scripts; and none of it is yet the
-    programme's release flow gate on a merged build. The engine flow stops at $n=3$ until a sparse
+    programme's release flow test on a merged build. The engine flow stops at $n=3$ until a sparse
     preconditioner is built. The predicted stall of the native force did not appear at $n=2$ or
     $n=3$; a first-order filter model explains why. The two-ring force keeps its lead over
     native (at $0.80$, then $0.82$ of its error) but does not widen it. $R$ measures the error
@@ -1965,55 +1944,55 @@ inputs of the \GIGI{} Ricci checkpoint, by the following programs.
 \begin{itemize}
   \item Two-ring recovery: \path{scripts/ricci_pg_tworing.py}; its focused tests:
     \path{scripts/test_ricci_pg_tworing.py}.
-  \item \BW{} and stability gate: \path{scripts/ricci_pg_tworing_gate.py}.
+  \item \BW{} and stability tests: \path{scripts/ricci_pg_tworing_gate.py}.
   \item Hybrid three-ring reading: \path{scripts/ricci_pg_hybrid.py}; its \BW{}, S3 and
-    numerical-range gate: \path{scripts/ricci_pg_hybrid_gate.py}; specification
-    \path{docs/RICCI_PG_HYBRID_SPEC.md}; receipt in\newline
-    \path{research/ricci-pg-hybrid-20261119/}; the exploratory probe's receipts in\newline
+    numerical-range tests: \path{scripts/ricci_pg_hybrid_gate.py}; design document
+    \path{docs/RICCI_PG_HYBRID_SPEC.md}; recorded output in\newline
+    \path{research/ricci-pg-hybrid-20261119/}; the exploratory probe's recorded outputs in\newline
     \path{research/variational-baseprobe-20261119/}.
   \item Figures, data and tables: \path{make_data.py}, \path{numerical_range.py},
     \path{make_figures.py} and \path{make_tables.py} in the paper's directory;
     \path{make_polished_plates.py} renders Figures~\ref{fig:schematic}--\ref{fig:rings3d}
-    from the saved drawing coordinates and measurement receipts. Its focused rendering
+    from the saved drawing coordinates and measurement recorded outputs. Its focused rendering
     checks are in \path{test_polished_plates.py}.
   \item Engine verb: \path{src/gauge/curvature_recovery.rs}, with parity and live-run
-    receipts in \path{research/recover-curvature-parity-20261117/}.
-  \item Covariant $SU(2)$ recovery: \path{scripts/ricci_su2_recovery.py}; its gates:\newline
+    recorded outputs in \path{research/recover-curvature-parity-20261117/}.
+  \item Covariant $SU(2)$ recovery: \path{scripts/ricci_su2_recovery.py}; its tests:\newline
     \path{scripts/test_ricci_su2_recovery.py} and\newline
     \path{scripts/ricci_su2_g2_probe.py};\newline
-    receipts in \path{research/recover-curvature-su2-20261117/}.
-  \item $SU(2)$ force:\newline \path{scripts/ricci_su2_pg_force.py};\newline receipts in
+    recorded outputs in \path{research/recover-curvature-su2-20261117/}.
+  \item $SU(2)$ force:\newline \path{scripts/ricci_su2_pg_force.py};\newline recorded outputs in
     \path{research/su2-pg-force-20261117/}.
-  \item $SU(2)$ stability:\newline \path{scripts/ricci_su2_pg_stability.py};\newline receipts,
+  \item $SU(2)$ stability:\newline \path{scripts/ricci_su2_pg_stability.py};\newline recorded outputs,
     with every eigenvalue, in\newline \path{research/su2-pg-stability-20261117/}; at $n=3$,
-    \path{scripts/ricci_su2_pg_spectrum.py} with receipts in\newline
+    \path{scripts/ricci_su2_pg_spectrum.py} with recorded outputs in\newline
     \path{research/su2-spectrum-n3-20261119/}; the exact-derivative rebuild and the sparse
-    certificate, \path{scripts/ricci_su2_exact_stability.py} with receipts in\newline
+    certificate, \path{scripts/ricci_su2_exact_stability.py} with recorded outputs in\newline
     \path{research/su2-exact-stability-20261119/}; the exact sectors,\newline
     \path{scripts/ricci_su2_left_invariant_sector.py} and\newline
     \path{scripts/ricci_su2_spin_sector.py}, their gauge content\newline
     \path{scripts/ricci_su2_sector_gauge_check.py}, the eigenvector identification\newline
-    \path{scripts/ricci_su2_sector_eigvec_check.py}, with receipts in\newline
+    \path{scripts/ricci_su2_sector_eigvec_check.py}, with recorded outputs in\newline
     \path{research/su2-left-invariant-sector-20261119/}.
-  \item $SU(2)$ engine verbs, on the branch \texttt{feat/ym-engine}: the specification
+  \item $SU(2)$ engine verbs, the design document
     \path{docs/YANG_MILLS_ENGINE_SPEC.md}; the code \path{src/gauge/curvature_recovery.rs},
     \path{src/gauge/ricci_pg_force.rs} and \path{src/gauge/ricci_link_flow.rs}; the parity, live
-    and removal harnesses in \path{e2e/probes/}; receipts in\newline \path{research/ym1-parity-20261119/}
+    and removal harnesses in \path{e2e/probes/}; recorded outputs in\newline \path{research/ym1-parity-20261119/}
     through\newline \path{research/ym7-spectrum-20261119/}.
   \item Cayley start-up experiments: \path{scripts/ricci_su2_pg_flow_cayley.py}
-    (\texttt{--startup}); receipts in \path{research/su2-startup-20261119/} and\newline
+    (\texttt{--startup}); recorded outputs in \path{research/su2-startup-20261119/} and\newline
     \path{research/su2-startup-sdirk-20261119/}.
-  \item $SU(2)$ numerical range:\newline \path{scripts/ricci_su2_pg_numrange.py};\newline receipts in
+  \item $SU(2)$ numerical range:\newline \path{scripts/ricci_su2_pg_numrange.py};\newline recorded outputs in
     \path{research/su2-numrange-20261118/}.
   \item $SU(2)$ flow: \path{scripts/ricci_su2_pg_flow.py} (RKMK4),
     \path{scripts/ricci_su2_pg_flow_filter.py} (slow and fast residual) and
-    \path{scripts/ricci_su2_pg_flow_cayley.py} (Cayley step); receipts in
+    \path{scripts/ricci_su2_pg_flow_cayley.py} (Cayley step); recorded outputs in
     \path{research/su2-flow-20261118/}, \path{research/su2-filter-20261118/} and
     \path{research/su2-cayley-20261118/}.
-  \item Batched $SU(2)$ force and its parity gates: \path{scripts/ricci_su2_batched.py};
-    receipts, including the repeated Cayley runs, in \path{research/su2-batched-20261119/}.
+  \item Batched $SU(2)$ force and its parity tests: \path{scripts/ricci_su2_batched.py};
+    recorded outputs, including the repeated Cayley runs, in \path{research/su2-batched-20261119/}.
     Figures~\ref{fig:su2flow} and \ref{fig:su2cost}: \path{make_figures_su2flow.py}, which
-    writes \path{data/su2_flow.json} and \path{data/su2_cost.json} from those receipts.
+    writes \path{data/su2_flow.json} and \path{data/su2_cost.json} from those recorded outputs.
   \item The native $SU(2)$ baseline of Table~\ref{tab:su2force}:
     \path{output/ricci-shape-regular-20261117/berger/diagnostic.json}.
 \end{itemize}

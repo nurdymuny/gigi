@@ -82,6 +82,31 @@ long windows in the Q2 fresh run. Every Q3 gate reads the jackknifed error. The 
 vector is fixed from the full sample and not re-solved per jackknife sample (standard; recorded as
 such).
 
+## Amendment 2 (adopted by Bee 2026-11-19, after a peek at k0 and k2, before k1, k3–k6 are read)
+
+What prompted it (recorded in the run log): at k0 and k2 the 0⁺⁺ signal stays above 3σ only to
+t = 3. m_eff(t) uses C(t+1), so under Q1-1 only t = 2 is admissible and the rule refuses, although
+m_eff(2) and m_eff(3) agree with each other and with LTW. Separately, at k0 the flux-loop GEVP chose a
+noise-dominated vector (mostly smearing level 0, whose t = 1 signal is ~10σ against 50–70σ for the
+other levels); the condition number (~4.5e3) was far below the refusal threshold.
+
+- **Q1-4, two-slice plateau.** If the three-slice rule (Q1-1, Q1-2, MIN_LEN 3) finds no window, a
+  window of two consecutive slices (t, t+1) is accepted when t passes Q1-1 (C(t−1), C(t), C(t+1) each
+  ≥ 3σ), m_eff(t+1) is defined in every jackknife sample with a finite positive error (it need not pass
+  the correlator floor; its jackknife error carries that noise), the two agree within 2σ (Q1-2), and the
+  constant fit has χ²/dof ≤ 2. For two points χ²/dof ≤ 2 binds first: the two must agree within √2
+  combined σ. The earliest such window is taken. The error is the jackknife of the fit (Q1-3). This
+  becomes the verb's rule; the as-fixed rule is still returned beside it. The null protection is the
+  floor on the first slice, unchanged.
+- **Q3-B, operator selection before the GEVP.** For each operator, the t = 1 signal-to-noise
+  C_aa(1)/σ_aa(1) (blocked jackknife). Operators below half of the best are dropped before the solve;
+  the kept indices are reported and the vector is reported over all operators with zeros for the
+  dropped ones. After projection, if the projected C(1) is less than 3σ from zero, the GEVP refuses
+  ("noise-level mode at t = 1"). Applies to the verb (EFFECTIVE_MASS ... GEVP) and the probe alike.
+- **Where it is judged.** Only on k1, k3, k4, k5, k6, none of which has been read. k0 and k2 are
+  scored by the harness like the others but the amendment's success is not claimed from them. Q3-n
+  (nulls refuse) and Q3-r (removal) stand unchanged and test the amendment against its failure mode.
+
 ## Order of work
 
 1. Sampler and its Q3-0 tests.

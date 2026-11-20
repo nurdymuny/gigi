@@ -36,3 +36,16 @@ beta = 2.5115 is not run unless the first three betas pass Q3-a and Q3-v (decide
   the verb refuses sigma at a point where aL sqrt(sigma) < 3.
 - m0++/sqrt(sigma) = am0++ / sqrt(a^2 sigma), errors by the same jackknife blocks (the two channels
   come from the same configurations).
+
+## Peek before the harness (2026-11-19, 22:1x)
+
+At Bee's request, k0 and k2 were looked at with the fixed settings (GEVP 1,2 over the four levels,
+blocks of 100) while k1, k3-k6 were still running. No gate was scored and nothing was changed. The
+other five points were not looked at. Any amendment prompted by this peek is judged on points not
+peeked at, never on k0 or k2.
+
+## Amendment 2 adopted (Bee, 2026-11-19), before k1, k3-k6 are read
+
+Q1-4 (two-slice window) and Q3-B (operator selection before the GEVP, refusal of a noise-level
+projected mode); text in docs/HALCYON_Q3_RUN_SPEC.md. The harness runs with the probe rebuilt from
+this commit: correlator_probe.exe sha256 prefix 733b08b6980fce43. The sampler binary is unchanged.

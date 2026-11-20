@@ -11185,21 +11185,21 @@ fn effective_mass_rows(
     block: usize,
     gevp: Option<(usize, usize)>,
 ) -> Result<ExecResult, String> {
-    use crate::gauge::correlator::{effective_mass_blocked, gevp as solve_gevp, matrix_correlator, project, read_series_bundle};
+    use crate::gauge::correlator::{effective_mass_blocked, gevp_selected, read_series_bundle};
     use crate::types::Value as V;
     let ops = read_series_bundle(engine, bundle, fields)?;
     let mut row = crate::types::Record::new();
     let series = match gevp {
         None => ops.into_iter().next().unwrap(),
         Some((t0, t1)) => {
-            let c = matrix_correlator(&ops)?;
-            let g = solve_gevp(&c, t0, t1)?;
+            let (g, kept, series) = gevp_selected(&ops, t0, t1, block)?;
+            row.insert("gevp_kept".into(), V::Vector(kept.iter().map(|&a| a as f64).collect()));
             row.insert("gevp_t0".into(), V::Float(t0 as f64));
             row.insert("gevp_t1".into(), V::Float(t1 as f64));
             row.insert("gevp_condition".into(), V::Float(g.condition_t0));
             row.insert("gevp_vector".into(), V::Vector(g.vector.clone()));
             row.insert("gevp_eigenvalues".into(), V::Vector(g.eigenvalues.clone()));
-            project(&ops, &g.vector)
+            series
         }
     };
     let r = effective_mass_blocked(&series, block)?;
@@ -11210,7 +11210,7 @@ fn effective_mass_rows(
     row.insert("t_hi".into(), V::Float(p.t_hi as f64));
     row.insert("chi2_dof".into(), V::Float(p.chi2_dof));
     row.insert("block".into(), V::Float(block as f64));
-    row.insert("rule".into(), V::Text("Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error".into()));
+    row.insert("rule".into(), V::Text("Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error; Q1-4 two-slice window; Q3-B operator selection".into()));
     match r.plateau_as_fixed {
         Ok(a) => {
             row.insert("as_fixed_mass".into(), V::Float(a.mass));

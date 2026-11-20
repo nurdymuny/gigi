@@ -35,6 +35,13 @@
 //! about 25% too small (Q2 fresh run, β = 8). χ²/dof in the rule is unchanged. The as-fixed plateau
 //! keeps the fit's error, as it was pre-registered.
 //!
+//! **Amendments Q1-4 and Q3-B (adopted 2026-11-19, docs/HALCYON_Q3_RUN_SPEC.md Amendment 2).** In
+//! 4D the 0++ signal can be above 3σ only to t = 3, which leaves one admissible slice. Q1-4: when no
+//! three-slice window exists, two slices (t, t+1) are accepted if t passes Q1-1, m_eff(t+1) is
+//! jackknife-defined, and they agree (Q1-2, and χ²/dof ≤ 2, i.e. within √2 σ). Q3-B: before the GEVP,
+//! operators with t = 1 signal-to-noise below half the best are dropped, and a projected mode with
+//! C(1) under 3σ is refused.
+//!
 //! Errors are a (blocked) jackknife: leave out each block of `block` consecutive
 //! configurations; `block = 1` is the plain leave-one-out jackknife.
 
@@ -54,13 +61,17 @@ pub struct PlateauRule {
     pub agree_sigma: f64,
     /// if set, C(t−1), C(t), C(t+1) must each be at least this many errors above zero
     pub min_signal_sigma: Option<f64>,
+    /// Amendment Q1-4: if no three-slice window exists, accept two slices (t, t+1) where t passes
+    /// the floor and m_eff(t+1) is jackknife-defined
+    pub two_slice: bool,
 }
 
 impl PlateauRule {
     /// The rule as first fixed in the spec, before any data.
-    pub const AS_FIXED: PlateauRule = PlateauRule { agree_sigma: 1.0, min_signal_sigma: None };
-    /// The rule with amendments Q1-1 and Q1-2; the verb's rule.
-    pub const AMENDED: PlateauRule = PlateauRule { agree_sigma: AGREE_SIGMA, min_signal_sigma: Some(MIN_SIGNAL_SIGMA) };
+    pub const AS_FIXED: PlateauRule = PlateauRule { agree_sigma: 1.0, min_signal_sigma: None, two_slice: false };
+    /// The rule with amendments Q1-1, Q1-2 and Q1-4; the verb's rule.
+    pub const AMENDED: PlateauRule =
+        PlateauRule { agree_sigma: AGREE_SIGMA, min_signal_sigma: Some(MIN_SIGNAL_SIGMA), two_slice: true };
 }
 
 fn check(p: &[Vec<f64>]) -> Result<usize, String> {
@@ -354,6 +365,19 @@ pub fn plateau_with(
             hi -= 1;
         }
     }
+    // Amendment Q1-4: two consecutive slices, the first passing the floor, the second only
+    // jackknife-defined; the earliest such window
+    if rule.two_slice {
+        let defined = |u: usize| m[u].is_some() && err[u] > 0.0 && err[u].is_finite();
+        for t in 0..m.len().saturating_sub(1) {
+            if ok(t) && defined(t + 1) && agree(t) {
+                let (mass, error, chi2_dof) = fit(&[m[t].unwrap(), m[t + 1].unwrap()], &[err[t], err[t + 1]]);
+                if chi2_dof <= MAX_CHI2_DOF {
+                    return Ok(Plateau { t_lo: t, t_hi: t + 1, mass, error, chi2_dof });
+                }
+            }
+        }
+    }
     if let Some(b) = first_break {
         return Err(b);
     }
@@ -422,6 +446,59 @@ pub struct Gevp {
     pub vector: Vec<f64>,
     /// condition number of C(t0)
     pub condition_t0: f64,
+}
+
+/// Amendment Q3-B: operators whose t = 1 signal-to-noise is below this fraction of the best are
+/// dropped before the GEVP.
+pub const OPERATOR_KEEP_FRACTION: f64 = 0.5;
+
+/// Amendment Q3-B (docs/HALCYON_Q3_RUN_SPEC.md): the operators kept for the GEVP, by t = 1
+/// signal-to-noise C_aa(1)/σ_aa(1) with the blocked jackknife; at least one is always kept.
+pub fn select_operators(ops: &[Vec<Vec<f64>>], block: usize) -> Result<(Vec<usize>, Vec<f64>), String> {
+    let snr: Vec<f64> = ops
+        .iter()
+        .map(|o| {
+            let (c, e) = jackknife_correlator_blocked(o, block)?;
+            if c.len() < 2 {
+                return Err("GEVP: needs at least two time slices".to_string());
+            }
+            Ok(if e[1] > 0.0 && e[1].is_finite() { c[1] / e[1] } else { f64::NEG_INFINITY })
+        })
+        .collect::<Result<_, String>>()?;
+    let best = snr.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    if !(best > 0.0) {
+        return Err("GEVP: no operator has a positive t = 1 signal".into());
+    }
+    let kept = (0..ops.len()).filter(|&a| snr[a] >= OPERATOR_KEEP_FRACTION * best).collect();
+    Ok((kept, snr))
+}
+
+/// The GEVP as the verb runs it (Amendment Q3-B): select operators, solve on the kept ones, project,
+/// and refuse a mode whose projected C(1) is less than `MIN_SIGNAL_SIGMA` errors from zero. The
+/// returned vector covers all operators, zero for the dropped ones.
+pub fn gevp_selected(
+    ops: &[Vec<Vec<f64>>],
+    t0: usize,
+    t1: usize,
+    block: usize,
+) -> Result<(Gevp, Vec<usize>, Vec<Vec<f64>>), String> {
+    let (kept, _) = select_operators(ops, block)?;
+    let sub: Vec<Vec<Vec<f64>>> = kept.iter().map(|&a| ops[a].clone()).collect();
+    let mut g = gevp(&matrix_correlator(&sub)?, t0, t1)?;
+    let mut full = vec![0.0; ops.len()];
+    for (i, &a) in kept.iter().enumerate() {
+        full[a] = g.vector[i];
+    }
+    g.vector = full;
+    let series = project(ops, &g.vector);
+    let (c, e) = jackknife_correlator_blocked(&series, block)?;
+    if !(e[1] > 0.0 && c[1] >= MIN_SIGNAL_SIGMA * e[1]) {
+        return Err(format!(
+            "GEVP: noise-level mode at t = 1 (projected C(1) is {:.2} standard errors from zero, below {MIN_SIGNAL_SIGMA})",
+            c[1] / e[1]
+        ));
+    }
+    Ok((g, kept, series))
 }
 
 /// Largest admissible condition number of C(t0); above it the GEVP refuses.
@@ -784,11 +861,15 @@ mod tests {
         assert!(plateau_with(&m, &e, &c, &ce, PlateauRule::AS_FIXED).is_err());
         let p = plateau_with(&m, &e, &c, &ce, PlateauRule::AMENDED).unwrap();
         assert_eq!((p.t_lo, p.t_hi), (1, 4));
-        // the same masses where C(3) is only 2 sigma from zero: amended refuses, naming t = 2
+        // the same masses where C(3) is only 2 sigma from zero: Q1-1/Q1-2 alone refuse, naming t = 2;
+        // with Q1-4 the two-slice window (1, 2) is accepted (t = 1 passes the floor, m_eff(2) is defined)
         let mut ce2 = ce.clone();
         ce2[3] = 0.03;
-        let r = plateau_with(&m, &e, &c, &ce2, PlateauRule::AMENDED).unwrap_err();
+        let no4 = PlateauRule { two_slice: false, ..PlateauRule::AMENDED };
+        let r = plateau_with(&m, &e, &c, &ce2, no4).unwrap_err();
         assert_eq!(r.t, 2, "{r}");
+        let p2 = plateau_with(&m, &e, &c, &ce2, PlateauRule::AMENDED).unwrap();
+        assert_eq!((p2.t_lo, p2.t_hi), (1, 2));
     }
 
     #[test]
@@ -846,5 +927,45 @@ mod tests {
         // a singular C(t0) refuses
         let sing: Vec<Vec<Vec<f64>>> = (0..l).map(|t| vec![vec![c[t][0][0]; 2]; 2]).collect();
         assert!(gevp(&sing, 1, 2).is_err());
+    }
+
+    #[test]
+    fn two_slice_window_when_the_signal_is_short_and_never_on_noise() {
+        // signal to t = 3 only: C(4) is 2.5 sigma, so under Q1-1 only t = 2 is admissible
+        let c = [100.0, 30.0, 10.0, 3.6, 1.0, 0.3, 0.1];
+        let ce = [1.0, 0.5, 0.4, 0.4, 0.4, 0.4, 0.4];
+        let m = [None, Some(1.36), Some(1.04), Some(0.99), Some(1.2), None, None];
+        let e = [0.0, 0.013, 0.038, 0.10, 0.30, 0.0, 0.0];
+        let p = plateau_with(&m, &e, &c, &ce, PlateauRule::AMENDED).unwrap();
+        assert_eq!((p.t_lo, p.t_hi), (2, 3));
+        assert!((p.mass - 1.0337).abs() < 1e-3, "{p:?}");
+        // without Q1-4 the same data refuse
+        let no4 = PlateauRule { two_slice: false, ..PlateauRule::AMENDED };
+        assert!(plateau_with(&m, &e, &c, &ce, no4).is_err());
+        // two slices that disagree refuse
+        let m2 = [None, Some(1.36), Some(1.04), Some(1.30), Some(1.2), None, None];
+        assert!(plateau_with(&m2, &e, &c, &ce, PlateauRule::AMENDED).is_err());
+        // noise: the first slice must pass the floor, so nothing is accepted
+        let cn = [1.0, 0.2, -0.1, 0.1, 0.05, 0.0, 0.1];
+        assert!(plateau_with(&m, &e, &cn, &ce, PlateauRule::AMENDED).is_err());
+    }
+
+    #[test]
+    fn operator_selection_drops_a_noise_operator_and_refuses_a_noise_mode() {
+        let sig = cosh_ensemble(0.5, 16, 2000, 3);
+        let mut s = 99u64;
+        let noise: Vec<Vec<f64>> = (0..2000).map(|_| (0..16).map(|_| lcg(&mut s) * 4.0).collect()).collect();
+        let (kept, snr) = select_operators(&[sig.clone(), noise.clone()], 20).unwrap();
+        assert_eq!(kept, vec![0], "snr {snr:?}");
+        let (g, k2, series) = gevp_selected(&[sig.clone(), noise.clone()], 1, 2, 20).unwrap();
+        assert_eq!(k2, vec![0]);
+        assert_eq!(g.vector.len(), 2);
+        assert_eq!(g.vector[1], 0.0);
+        assert!(effective_mass_blocked(&series, 20).unwrap().plateau.is_ok());
+        // noise alone: selection keeps something, the projected mode is noise, refused by name
+        let mut s2 = 7u64;
+        let n2: Vec<Vec<f64>> = (0..2000).map(|_| (0..16).map(|_| lcg(&mut s2)).collect()).collect();
+        let r = gevp_selected(&[noise, n2], 1, 2, 20);
+        assert!(r.is_err(), "noise accepted");
     }
 }

@@ -7,9 +7,9 @@
 //! input: {"p": [[p(0), .., p(L-1)], ..], "block": b}   one row per configuration; block
 //!        (default 1) is the jackknife block length. The Halcyon-normalisation error is block 1 only.
 //!    or: {"ops": [op][cfg][t], "t0": 1, "t1": 2, "block": b}   a GEVP over the operators at
-//!        (t0, t1); the series projected on the lowest-state vector goes through EFFECTIVE_MASS.
+//!        (t0, t1) after operator selection (Q3-B); the projected series goes through EFFECTIVE_MASS.
 use gigi::gauge::correlator::{
-    effective_mass_blocked, gevp, jackknife_effective_mass_halcyon, matrix_correlator, project, NoPlateau, Plateau,
+    effective_mass_blocked, gevp_selected, jackknife_effective_mass_halcyon, NoPlateau, Plateau,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -48,12 +48,11 @@ fn main() {
     let (series, gevp_json) = match (inp.p, inp.ops) {
         (Some(p), None) => (p, json!(null)),
         (None, Some(ops)) => {
-            let c = matrix_correlator(&ops).unwrap();
-            match gevp(&c, inp.t0, inp.t1) {
-                Ok(g) => {
+            match gevp_selected(&ops, inp.t0, inp.t1, inp.block) {
+                Ok((g, kept, series)) => {
                     let gj = json!({"t0": g.t0, "t1": g.t1, "eigenvalues": g.eigenvalues, "vector": g.vector,
-                                    "condition_t0": g.condition_t0});
-                    (project(&ops, &g.vector), gj)
+                                    "condition_t0": g.condition_t0, "kept": kept});
+                    (series, gj)
                 }
                 Err(e) => {
                     let out = json!({"gevp": {"refused": e}, "seconds": t0.elapsed().as_secs_f64()});

@@ -1,0 +1,489 @@
+{
+ "summary": {
+  "W1_all": true,
+  "W2_all": false,
+  "W3_all": true
+ },
+ "runs": [
+  {
+   "t": 3.0,
+   "lambda_min": -4.666666666666667,
+   "predicted_rate": 2.160246899469287,
+   "points": [
+    {
+     "kind": "transverse",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      0.5
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 0.02,
+     "late_log_slope": 2.1590355402594343,
+     "twist_share_at_end": 0.9999951722010488,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      1.0
+     ],
+     "W1_pre_arrival_ratio": 1.6902121003790195e-07,
+     "arrival_time": 0.54,
+     "late_log_slope": 2.1594992803673936,
+     "twist_share_at_end": 0.9999970262539882,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.5,
+     "distance_bounds": [
+      1.5,
+      1.5
+     ],
+     "W1_pre_arrival_ratio": 9.71013382456556e-08,
+     "arrival_time": 1.07,
+     "late_log_slope": 2.160148685332386,
+     "twist_share_at_end": 0.9999996104134617,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.0,
+     "distance_bounds": [
+      2.0,
+      2.0
+     ],
+     "W1_pre_arrival_ratio": 7.191137939160113e-08,
+     "arrival_time": 1.58,
+     "late_log_slope": 2.160826743504344,
+     "twist_share_at_end": 1.0000022934892143,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.5,
+     "distance_bounds": [
+      2.5,
+      2.5
+     ],
+     "W1_pre_arrival_ratio": 6.094455471250316e-08,
+     "arrival_time": 2.09,
+     "late_log_slope": 2.161366338166115,
+     "twist_share_at_end": 1.0000044176974385,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      0.8660254037844386
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 0.39,
+     "late_log_slope": 2.159033453081642,
+     "twist_share_at_end": 0.9999951739681865,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      1.7320508075688772
+     ],
+     "W1_pre_arrival_ratio": 1.1064296604023143e-08,
+     "arrival_time": 1.27,
+     "late_log_slope": 2.1594927932373205,
+     "twist_share_at_end": 0.9999970317004343,
+     "twist_takeover_time": 0.01
+    }
+   ],
+   "W1": true,
+   "W2": true,
+   "W3_twist_share_L2": 0.9999999999823026,
+   "W3": true,
+   "carrying_sectors_at_end": [
+    [
+     0,
+     0.9999990201843394
+    ],
+    [
+     1,
+     9.79815660623086e-07
+    ],
+    [
+     2,
+     2.284984049251599e-19
+    ],
+    [
+     3,
+     1.1991895721408031e-54
+    ]
+   ]
+  },
+  {
+   "t": 4.5,
+   "lambda_min": -9.444444444444445,
+   "predicted_rate": 3.073181485764296,
+   "points": [
+    {
+     "kind": "transverse",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      0.5
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 0.07,
+     "late_log_slope": 3.0637332894127947,
+     "twist_share_at_end": 0.9999983698828152,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      1.0
+     ],
+     "W1_pre_arrival_ratio": 3.1035904338982126e-08,
+     "arrival_time": 0.62,
+     "late_log_slope": 3.06829430900687,
+     "twist_share_at_end": 0.9999986152917913,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.5,
+     "distance_bounds": [
+      1.5,
+      1.5
+     ],
+     "W1_pre_arrival_ratio": 1.9553124425083825e-08,
+     "arrival_time": 1.1500000000000001,
+     "late_log_slope": 3.0730257140588066,
+     "twist_share_at_end": 0.9999996582295105,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.0,
+     "distance_bounds": [
+      2.0,
+      2.0
+     ],
+     "W1_pre_arrival_ratio": 1.667494617533085e-08,
+     "arrival_time": 1.6600000000000001,
+     "late_log_slope": 3.0517381267339334,
+     "twist_share_at_end": 1.0000094869207237,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.5,
+     "distance_bounds": [
+      2.5,
+      2.5
+     ],
+     "W1_pre_arrival_ratio": 1.8128258920626202e-08,
+     "arrival_time": 2.16,
+     "late_log_slope": 3.1533642419540446,
+     "twist_share_at_end": 0.9999877349662686,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      1.0606601717798212
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 0.68,
+     "late_log_slope": 3.0637038810395176,
+     "twist_share_at_end": 0.9999989042717866,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      2.1213203435596424
+     ],
+     "W1_pre_arrival_ratio": 3.667951711781458e-08,
+     "arrival_time": 1.7,
+     "late_log_slope": 3.0687924206196526,
+     "twist_share_at_end": 1.000000443714629,
+     "twist_takeover_time": 0.01
+    }
+   ],
+   "W1": true,
+   "W2": false,
+   "W3_twist_share_L2": 0.9999999999942636,
+   "W3": true,
+   "carrying_sectors_at_end": [
+    [
+     1,
+     0.6488384437931557
+    ],
+    [
+     0,
+     0.3391630681143391
+    ],
+    [
+     2,
+     0.011996662492278334
+    ],
+    [
+     3,
+     1.8255991500395918e-06
+    ]
+   ]
+  },
+  {
+   "t": 6.0,
+   "lambda_min": -14.0,
+   "predicted_rate": 3.7416573867739413,
+   "points": [
+    {
+     "kind": "transverse",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      0.5
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 0.12,
+     "late_log_slope": 3.723030142488758,
+     "twist_share_at_end": 0.9999998834236385,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      1.0
+     ],
+     "W1_pre_arrival_ratio": 1.0327914994811565e-08,
+     "arrival_time": 0.68,
+     "late_log_slope": 3.72353887118763,
+     "twist_share_at_end": 0.9999998140593112,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.5,
+     "distance_bounds": [
+      1.5,
+      1.5
+     ],
+     "W1_pre_arrival_ratio": 6.996730196194895e-09,
+     "arrival_time": 1.22,
+     "late_log_slope": 3.684862157024741,
+     "twist_share_at_end": 0.9999997404722102,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.0,
+     "distance_bounds": [
+      2.0,
+      2.0
+     ],
+     "W1_pre_arrival_ratio": 6.283936160962619e-09,
+     "arrival_time": 1.73,
+     "late_log_slope": 3.670324644866517,
+     "twist_share_at_end": 1.000015529408399,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.5,
+     "distance_bounds": [
+      2.5,
+      2.5
+     ],
+     "W1_pre_arrival_ratio": 7.492360376428543e-09,
+     "arrival_time": 2.21,
+     "late_log_slope": 3.8893628071746438,
+     "twist_share_at_end": 1.0000020443921296,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      1.224744871391589
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 0.92,
+     "late_log_slope": 3.725428502481079,
+     "twist_share_at_end": 1.000000004448946,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      2.449489742783178
+     ],
+     "W1_pre_arrival_ratio": 2.4427584579882993e-08,
+     "arrival_time": 2.2,
+     "late_log_slope": 3.736564417290818,
+     "twist_share_at_end": 1.000000140069321,
+     "twist_takeover_time": 0.01
+    }
+   ],
+   "W1": true,
+   "W2": false,
+   "W3_twist_share_L2": 0.9999999999999512,
+   "W3": true,
+   "carrying_sectors_at_end": [
+    [
+     2,
+     0.6544088949434407
+    ],
+    [
+     3,
+     0.21841934420658027
+    ],
+    [
+     1,
+     0.12150267736090144
+    ],
+    [
+     4,
+     0.004540004309487095
+    ]
+   ]
+  },
+  {
+   "t": 8.0,
+   "lambda_min": -20.0,
+   "predicted_rate": 4.47213595499958,
+   "points": [
+    {
+     "kind": "transverse",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      0.5
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 0.19,
+     "late_log_slope": 4.453197943973881,
+     "twist_share_at_end": 0.999999997417316,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      1.0
+     ],
+     "W1_pre_arrival_ratio": 3.461887061683971e-09,
+     "arrival_time": 0.76,
+     "late_log_slope": 4.449112819896047,
+     "twist_share_at_end": 0.9999999906240976,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 1.5,
+     "distance_bounds": [
+      1.5,
+      1.5
+     ],
+     "W1_pre_arrival_ratio": 2.443263461701596e-09,
+     "arrival_time": 1.31,
+     "late_log_slope": 4.346430364681259,
+     "twist_share_at_end": 0.9999999278412804,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.0,
+     "distance_bounds": [
+      2.0,
+      2.0
+     ],
+     "W1_pre_arrival_ratio": 2.2347136493399652e-09,
+     "arrival_time": 1.82,
+     "late_log_slope": 4.8627386304275015,
+     "twist_share_at_end": 0.9999971708256035,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "transverse",
+     "theta": 2.5,
+     "distance_bounds": [
+      2.5,
+      2.5
+     ],
+     "W1_pre_arrival_ratio": 2.974938545689525e-09,
+     "arrival_time": 2.3000000000000003,
+     "late_log_slope": 4.756579755374155,
+     "twist_share_at_end": 1.000000515885521,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 0.5,
+     "distance_bounds": [
+      0.5,
+      1.4142135623730951
+     ],
+     "W1_pre_arrival_ratio": null,
+     "arrival_time": 1.23,
+     "late_log_slope": 4.458709921917759,
+     "twist_share_at_end": 1.0000000016925477,
+     "twist_takeover_time": 0.01
+    },
+    {
+     "kind": "fibre",
+     "theta": 1.0,
+     "distance_bounds": [
+      1.0,
+      2.8284271247461903
+     ],
+     "W1_pre_arrival_ratio": 6.390098775409778e-09,
+     "arrival_time": 2.72,
+     "late_log_slope": 4.47823350227683,
+     "twist_share_at_end": 0.9999999986868126,
+     "twist_takeover_time": 0.01
+    }
+   ],
+   "W1": true,
+   "W2": false,
+   "W3_twist_share_L2": 0.9999999999999999,
+   "W3": true,
+   "carrying_sectors_at_end": [
+    [
+     4,
+     0.5193474756378645
+    ],
+    [
+     5,
+     0.2543788117323085
+    ],
+    [
+     3,
+     0.1912075395577711
+    ],
+    [
+     6,
+     0.022399349169589217
+    ]
+   ]
+  }
+ ]
+}

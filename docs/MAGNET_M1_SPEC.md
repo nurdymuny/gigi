@@ -239,3 +239,28 @@ again leaves (Gᵀ)^k z. The median leftover after k rounds:
 - M1-variational, M1-wobble, M1-seam.
 
 **Script.** `scripts/ricci_magnet_m1b.py LEVEL OUTDIR --neumann 8` writes `M1c_L{n}.json`.
+
+## Amendment 3: M1d, the seat spring scaled with h² (Bee's instruction; written before any M1d run)
+
+**Why.** The seat spring compares the reading's own-wall fluxes with the measured ones under a Whitney-stiff
+penalty. For smooth data the misfit is O(h²). The penalty's stiffness grows like 1/h², so the spring's force error
+stays O(1). Its measured force share does not fall with refinement:
+
+- M1b: 13.5% at n = 1, 14.0% at n = 2;
+- M1c: 18.5% at n = 1, 17.0% at n = 2.
+
+**M1d.** M1c with σ_n = (h_n/h₁)², so σ = 1 at n = 1 and the spring scales like h². Nothing else changes: the same
+reading, correction, K = 8 and arms. The gates are those of Amendment 2, judged on the seated arm.
+- M1-wobble checks that the scaled spring still removes the wobble modes. The scaled spring adds stiffness
+  σ·O(1/h²) = O(1) on them, so it should.
+
+**Implementation.**
+- `scripts/ricci_magnet_m1c_fast.py` assembles M1c without widening each cell to the columns of Q = I − G:
+  K = K₀ − QᵀX − XᵀQ + QᵀBQ, and the same pattern for the spring and the force vectors.
+- Validated before use: at n = 1 it reproduces `M1c_L0.json` to 2 × 10⁻¹³ on every reported quantity, four times
+  faster.
+- M1d is the same script with `M1_SIGMA_H2=1` and `--tag M1d`.
+
+**M1c at n = 3** (Amendment 2, σ = 1) also runs with the fast assembly, so that Amendment 2 is judged as specified.
+The original-assembly n = 3 runs of M1b and M1c were stopped (too slow: about a day). M1b had already failed
+M1-poke at n = 2.

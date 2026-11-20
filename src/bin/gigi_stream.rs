@@ -9690,6 +9690,93 @@ fn default_force_order() -> usize { 6 }
 #[cfg(feature = "gauge")]
 fn default_force_method() -> String { "pg2".into() }
 
+/// Request for `POST /v1/bundles/{name}/link_flow` (YM5 flow, spec Amendment 1).
+/// Unknown keys are rejected; the metric has no default.
+#[cfg(feature = "gauge")]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LinkFlowRequest {
+    links: String,
+    q: String,
+    #[serde(default = "default_force_method")]
+    method: String,
+    #[serde(default = "default_force_order")]
+    order: usize,
+    steps: usize,
+    t_end: f64,
+    /// [t, [g1, g2, g3]] at t = 0 and every step midpoint. Required; a missing time refuses.
+    #[serde(default)]
+    metric_step: Vec<(f64, [f64; 3])>,
+    /// Optional exact reference: an edge-point bundle and [t, g] at the sample times.
+    #[serde(default)]
+    reference: Option<LinkFlowReference>,
+}
+#[cfg(feature = "gauge")]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LinkFlowReference {
+    edge_points: String,
+    metric_ref: Vec<(f64, [f64; 3])>,
+}
+
+/// POST /v1/bundles/{name}/link_flow
+///
+/// LINK_FLOW: the SU(2) lattice in time with the Cayley midpoint step
+/// (docs/YANG_MILLS_ENGINE_SPEC.md, YM4 and Amendment 1). The engine builds its
+/// own preconditioner K₀; the dense-LU preconditioner refuses above 12,000 unknowns.
+#[cfg(feature = "gauge")]
+async fn bundle_link_flow(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    ApiJson(req): ApiJson<LinkFlowRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::gauge::curvature_recovery::{link_flow_from_bundles, BundleRecoveryError};
+    use gigi::gauge::ricci_pg_force::ForceMethod;
+    let method = match req.method.to_ascii_lowercase().as_str() {
+        "pg2" => ForceMethod::Pg2 { rings: 2, register: true },
+        "native" => ForceMethod::Native,
+        m => {
+            return Err((StatusCode::UNPROCESSABLE_ENTITY,
+                        Json(ErrorResponse { error: format!("LINK_FLOW: method must be pg2 or native (got {m})") })))
+        }
+    };
+    let has_ref = req.reference.is_some();
+    let reference = req.reference.map(|r| (r.edge_points, r.metric_ref));
+    let engine = state.engine_read();
+    let t = std::time::Instant::now();
+    let out = link_flow_from_bundles(&engine, &name, &req.links, &req.q, method, req.order, req.steps, req.t_end,
+                                     req.metric_step, reference)
+        .map_err(|e| match e {
+            BundleRecoveryError::NotFound(m) => (StatusCode::NOT_FOUND, Json(ErrorResponse { error: m })),
+            BundleRecoveryError::Refused(m) => (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: m })),
+        })?;
+    let rows: Vec<serde_json::Value> = out.rows.iter().map(|r| serde_json::json!({
+        "t": r.t, "E": r.e, "D": r.d, "R": r.r, "newton_iterations": r.newton_iterations,
+    })).collect();
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "links": req.links,
+        "method": req.method.to_ascii_lowercase(),
+        "variational": out.variational,
+        "steps": req.steps,
+        "t_end": req.t_end,
+        "status": out.status,
+        "rows": rows,
+        "reference": if has_ref { "exact Levi-Civita links of metric_ref" } else { "none supplied" },
+        "newton_iterations": out.newton_iterations,
+        "newton_worst_final_increment": out.worst_final_increment,
+        "force_evaluations": out.force_evaluations,
+        "k0": "built by the engine (central differences, eps 1e-6, exact defect derivative)",
+        "k0_seconds": out.k0_seconds,
+        "seconds": t.elapsed().as_secs_f64(),
+        "final_links": out.final_links,
+        "notes": [
+            "The exact reference links are a comparison only; they never enter a step.",
+            "variational says whether the force is the gradient of an energy.",
+        ],
+    })))
+}
+
 /// POST /v1/bundles/{name}/link_force
 ///
 /// LINK_FORCE: the SU(2) force on every link. `{name}` is the cell bundle (with a
@@ -17099,6 +17186,8 @@ async fn main() {
     let app = app.route("/v1/bundles/{name}/recover_curvature", post(bundle_recover_curvature));
     #[cfg(feature = "gauge")]
     let app = app.route("/v1/bundles/{name}/link_force", post(bundle_link_force));
+    #[cfg(feature = "gauge")]
+    let app = app.route("/v1/bundles/{name}/link_flow", post(bundle_link_flow));
 
     let app = app
         // GQL endpoint

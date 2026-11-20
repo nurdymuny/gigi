@@ -178,6 +178,8 @@ pub struct FlowResult {
     pub force_evaluations: usize,
     pub final_links: Vec<[f64; 4]>,
     pub variational: bool,
+    /// Seconds spent building K₀ when the engine built it (Amendment 1).
+    pub k0_seconds: Option<f64>,
 }
 
 fn exact_links(edge_points: &[[[f64; 4]; 2]], g: [f64; 3]) -> Result<Vec<[f64; 4]>, String> {
@@ -249,6 +251,30 @@ pub fn link_flow_with(
     k0: (&[usize], &[usize], &[f64]),
     evaluation: StepEvaluation,
 ) -> Result<FlowResult, String> {
+    if edge_points.len() != links0.len() {
+        return Err("LINK_FLOW: one edge-point pair per link required (for the exact reference)".into());
+    }
+    link_flow_general(cells, weights, links0, order, method, n_steps, t_end, metric_step,
+                      Some((edge_points, metric_ref)), Some(k0), evaluation)
+}
+
+/// The general form (the HTTP route's): the exact reference is optional, and
+/// with `k0 = None` the engine builds K₀ itself (YM3: ε = 10⁻⁶, exact defect
+/// derivative) at the initial links and g(0) (Amendment 1).
+#[allow(clippy::too_many_arguments)]
+pub fn link_flow_general(
+    cells: &[Cell],
+    weights: &[f64],
+    links0: &[[f64; 4]],
+    order: usize,
+    method: ForceMethod,
+    n_steps: usize,
+    t_end: f64,
+    metric_step: &MetricSamples,
+    reference: Option<(&[[[f64; 4]; 2]], &MetricSamples)>,
+    k0: Option<(&[usize], &[usize], &[f64])>,
+    evaluation: StepEvaluation,
+) -> Result<FlowResult, String> {
     let n = 3 * links0.len();
     if n > DENSE_LU_MAX {
         return Err(format!(
@@ -258,17 +284,35 @@ pub fn link_flow_with(
     if n_steps == 0 || !(t_end > 0.0) {
         return Err("LINK_FLOW: positive step count and end time required".into());
     }
-    if edge_points.len() != links0.len() {
-        return Err("LINK_FLOW: one edge-point pair per link required (for the exact reference)".into());
+    if let Some((ep, _)) = reference {
+        if ep.len() != links0.len() {
+            return Err("LINK_FLOW: one edge-point pair per link required (for the exact reference)".into());
+        }
     }
     let h = t_end / n_steps as f64;
     let g0 = metric_step.at(0.0)?;
+    // the preconditioner's Jacobian: given, or built by the engine (Amendment 1)
+    let t_k0 = std::time::Instant::now();
+    let built;
+    let (k0r, k0c, k0v): (&[usize], &[usize], &[f64]) = match k0 {
+        Some(k) => k,
+        None => {
+            let j = super::ricci_pg_force::link_force_jacobian(cells, weights, links0, g0, order, method, 1e-6)?;
+            built = (
+                j.rows.iter().map(|&x| x as usize).collect::<Vec<_>>(),
+                j.cols.iter().map(|&x| x as usize).collect::<Vec<_>>(),
+                j.vals,
+            );
+            (&built.0, &built.1, &built.2)
+        }
+    };
+    let k0_seconds = if k0.is_none() { Some(t_k0.elapsed().as_secs_f64()) } else { None };
     let mut ctx = ForceContext::new(cells, weights, links0.len(), g0, order, method)?;
     let (r, c, v) = ctx.tangent_mass(cells, links0)?;
     let b0 = Csr::from_triplets(n, &r, &c, &v);
     let mut a = DMatrix::<f64>::zeros(n, n);
     b0.add_dense_into(1.0, &mut a);
-    Csr::from_triplets(n, k0.0, k0.1, k0.2).add_dense_into(0.5 * h, &mut a);
+    Csr::from_triplets(n, k0r, k0c, k0v).add_dense_into(0.5 * h, &mut a);
     let lu = a.lu();
 
     let velocity = |ctx: &mut ForceContext, u: &[[f64; 4]], g: [f64; 3]| -> Result<Vec<f64>, String> {
@@ -330,7 +374,7 @@ pub fn link_flow_with(
                 q.map(|x| x / s)
             })
             .collect();
-        if samples.contains(&(k + 1)) {
+        if let (true, Some((edge_points, metric_ref))) = (samples.contains(&(k + 1)), reference) {
             let t = (k + 1) as f64 * h;
             let gt = metric_ref.at(t)?;
             let l = exact_links(edge_points, gt)?;
@@ -348,5 +392,6 @@ pub fn link_flow_with(
         force_evaluations: evals,
         final_links: u,
         variational: method.variational(),
+        k0_seconds,
     })
 }

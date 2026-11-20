@@ -1156,6 +1156,71 @@ pub fn recover_curvature_su2_from_bundles(
     recover_curvature_su2(&cells, &links, rings).map_err(|e| BundleRecoveryError::Refused(e.to_string()))
 }
 
+/// Read edge endpoints (for the exact reference) from `bundle`: numeric `edge`
+/// and fields `p0_0..p0_3`, `p1_0..p1_3` (unit quaternions).
+pub fn read_edge_points_bundle(
+    engine: &crate::engine::Engine,
+    bundle: &str,
+) -> Result<Vec<[[f64; 4]; 2]>, BundleRecoveryError> {
+    let store = engine
+        .bundle(bundle)
+        .ok_or_else(|| BundleRecoveryError::NotFound(format!("Bundle '{bundle}' not found")))?;
+    let recs: Vec<crate::types::Record> = store.records().collect();
+    if recs.is_empty() {
+        return Err(refuse(format!("edge-point bundle '{bundle}' is empty")));
+    }
+    let n = recs.len();
+    let mut out: Vec<Option<[[f64; 4]; 2]>> = vec![None; n];
+    for r in &recs {
+        let id = index_field(r, "edge", "edge-point", n)?;
+        if out[id].is_some() {
+            return Err(refuse(format!("edge id {id} appears more than once in '{bundle}'")));
+        }
+        let mut p = [[0.0; 4]; 2];
+        for (a, end) in p.iter_mut().enumerate() {
+            for (k, x) in end.iter_mut().enumerate() {
+                *x = number_field(r, &format!("p{a}_{k}"), "edge-point")?;
+            }
+        }
+        out[id] = Some(p);
+    }
+    Ok(out.into_iter().map(|x| x.expect("every id filled once")).collect())
+}
+
+/// LINK_FLOW over bundles (Amendment 1): K₀ is built by the engine; the
+/// metric is samples (a missing time refuses); the reference is optional.
+#[allow(clippy::too_many_arguments)]
+pub fn link_flow_from_bundles(
+    engine: &crate::engine::Engine,
+    cells_bundle: &str,
+    links_bundle: &str,
+    q: &str,
+    method: super::ricci_pg_force::ForceMethod,
+    order: usize,
+    steps: usize,
+    t_end: f64,
+    metric_step: Vec<(f64, [f64; 3])>,
+    reference: Option<(String, Vec<(f64, [f64; 3])>)>,
+) -> Result<super::ricci_link_flow::FlowResult, BundleRecoveryError> {
+    use super::ricci_link_flow::{link_flow_general, MetricSamples, StepEvaluation};
+    if metric_step.is_empty() {
+        return Err(BundleRecoveryError::Refused(
+            "LINK_FLOW: metric_step samples are required; none is ever substituted".into(),
+        ));
+    }
+    let links = read_links_bundle(engine, links_bundle, q)?;
+    let (cells, weights) = read_cells_bundle(engine, cells_bundle, links.len(), true)?;
+    let reference = match reference {
+        None => None,
+        Some((bundle, samples)) => Some((read_edge_points_bundle(engine, &bundle)?, MetricSamples(samples))),
+    };
+    link_flow_general(
+        &cells, &weights, &links, order, method, steps, t_end, &MetricSamples(metric_step),
+        reference.as_ref().map(|(ep, ms)| (ep.as_slice(), ms)), None, StepEvaluation::Midpoint,
+    )
+    .map_err(BundleRecoveryError::Refused)
+}
+
 /// LINK_FORCE over bundles. A missing metric refuses (BW08): none is ever substituted.
 pub fn link_force_from_bundles(
     engine: &crate::engine::Engine,

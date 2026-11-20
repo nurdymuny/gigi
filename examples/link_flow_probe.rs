@@ -9,7 +9,7 @@
 //!         "cells": [{"vertices", "edges", "reverse", "weight"}, ..]}
 //! The final links are written beside the output as raw f64 (output.final.bin).
 use gigi::gauge::curvature_recovery::Cell;
-use gigi::gauge::ricci_link_flow::{link_flow_with, MetricSamples, StepEvaluation};
+use gigi::gauge::ricci_link_flow::{link_flow_general, MetricSamples, StepEvaluation};
 use gigi::gauge::ricci_pg_force::ForceMethod;
 use serde::Deserialize;
 use std::{fs::File, io::BufReader};
@@ -37,7 +37,9 @@ struct Input {
     t_end: f64,
     metric_step: Vec<(f64, [f64; 3])>,
     metric_ref: Vec<(f64, [f64; 3])>,
-    k0: K0,
+    /// The preconditioner's Jacobian as triplet files; absent = built by the engine (Amendment 1).
+    #[serde(default)]
+    k0: Option<K0>,
     /// YM6 removal only: "endpoint" evaluates the velocity at the step's end.
     #[serde(default)]
     evaluation: Option<String>,
@@ -70,16 +72,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into_iter()
         .map(|c| Cell { vertices: c.vertices, edges: c.edges, reverse: c.reverse })
         .collect();
-    let (kr, kc, kv) = (read_u32(&input.k0.rows)?, read_u32(&input.k0.cols)?, read_f64(&input.k0.vals)?);
+    let k0 = match &input.k0 {
+        Some(k) => Some((read_u32(&k.rows)?, read_u32(&k.cols)?, read_f64(&k.vals)?)),
+        None => None,
+    };
     let t = std::time::Instant::now();
     let evaluation = match input.evaluation.as_deref() {
         None | Some("midpoint") => StepEvaluation::Midpoint,
         Some("endpoint") => StepEvaluation::Endpoint,
         Some(e) => return Err(format!("unknown evaluation '{e}'").into()),
     };
-    let out = link_flow_with(
-        &cells, &weights, &input.links, &input.edge_points, input.order, method, input.steps, input.t_end,
-        &MetricSamples(input.metric_step), &MetricSamples(input.metric_ref), (&kr, &kc, &kv), evaluation,
+    let metric_ref = MetricSamples(input.metric_ref);
+    let out = link_flow_general(
+        &cells, &weights, &input.links, input.order, method, input.steps, input.t_end,
+        &MetricSamples(input.metric_step), Some((&input.edge_points, &metric_ref)),
+        k0.as_ref().map(|(r, c, v)| (r.as_slice(), c.as_slice(), v.as_slice())), evaluation,
     )?;
     let secs = t.elapsed().as_secs_f64();
     let base = std::path::Path::new(&args[2]);
@@ -98,6 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             "rows": rows, "newton_iterations": out.newton_iterations,
                             "newton_worst_final_increment": out.worst_final_increment,
                             "force_evaluations": out.force_evaluations, "variational": out.variational,
+                            "k0_seconds": out.k0_seconds,
                             "seconds": secs}),
     )?;
     Ok(())

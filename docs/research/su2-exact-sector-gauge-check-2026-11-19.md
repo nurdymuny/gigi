@@ -190,3 +190,23 @@ Laquer (symmetric spaces). Neither appears to reach squashed metrics.
 **Control reproduced.** On the round metric with the commutator, our construction gives −2, 1, 6, 7, 10 in
 spins 0 to 2. That is exactly Kumar et al.'s published meron spectrum {−2, 1, 6, 7, 10, …}. The paper now
 states this, with the citation.
+
+## Addendum 4: the hand reading, finished as far as access allows
+
+- **Laquer**, *Stability properties of the Yang–Mills functional near the canonical connection*, Michigan
+  Math. J. 31 (1984) 139–159. The citation and its content were confirmed through Ohnita and Pan (MPI preprint
+  89-49, 1989, read in full, §6, Theorem 6.1).
+  - It determines the index and nullity of the canonical connection on simply connected compact irreducible
+    **symmetric** spaces.
+  - For a group manifold the index is 1 and the nullity 0. Our round-metric spin-0 sector has exactly one
+    negative eigenvalue (−2), so index 1, which agrees with Laquer.
+  - Berger metrics are not symmetric, so Laquer does not reach our object.
+- **Bourguignon–Lawson**, CMP 79 (1981) 189–230. The full text is behind Springer's login. The abstract and
+  catalogue record cover Yang–Mills fields over the round sphere and other locally homogeneous spaces, at
+  critical points (stability and isolation). The Berger field is not a critical point.
+  - We did not use an unverified third-party copy.
+  - Before deposit, Bee should read §8 through Brown's access to be certain.
+- **Ohnita–Pan 1989:** pinched manifolds and symmetric spaces only.
+
+**Verdict.** No source found or read contains the Yang–Mills Hessian on a squashed S³, or at a non-critical
+connection. The paper now has a background paragraph citing all of the above, and the result is in the abstract.

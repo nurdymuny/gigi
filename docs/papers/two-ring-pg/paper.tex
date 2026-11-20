@@ -78,11 +78,15 @@ $25.5\%$ wrong, while the two-ring force falls to $2.51\%$ at $n=5$ and passes \
 no rough modes and a numerical range matching the native one at $n\le3$. Integrated in time as the
 metric follows the Ricci flow, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact
 trajectory at $n=1,2,3$, ahead of the native force from $n=2$; the finest level uses an
-eight-step Cayley (Crank--Nicolson) integrator. Its low spectrum is exact: the bottom of every spin
-sector is $(j(j+2)-14)/3$, which puts the gap above the field's growth mode at $168/3$, one third
-of the Poincar\'e sphere's first scalar eigenvalue. The Abelian computations run in \GIGI{}, an
+eight-step Cayley (Crank--Nicolson) integrator. The Abelian computations run in \GIGI{}, an
 open-source geometric engine, with the recovery as a native verb and hash-pinned receipts;
 the $SU(2)$ results are research scripts, not yet engine runs.
+
+We also prove the exact low spectrum of the linearised $SU(2)$ Yang--Mills operator at the Berger
+field. To our knowledge it is the first closed form for the Yang--Mills Hessian on a squashed
+three-sphere. In the sector of spin $j/2$ the bottom is $(j(j+2)-14)/3$, on an explicit
+eigenvector. On the Poincar\'e sphere, the gap above the field's growth mode is therefore exactly
+$168/3$, one third of the sphere's first scalar eigenvalue, and both lattice forces resolve it.
 \end{abstract}
 
 \section{Introduction}
@@ -1240,6 +1244,32 @@ That is the cost of a force that is not the gradient of an energy. Gauge directi
 not exact zero modes at a field that is not at rest, so the count of small eigenvalues was
 recorded but not gated; the exact check below says which they are.
 
+\paragraph{Exact spectra on three-spheres: what is known.} Exact spectral results for Yang--Mills
+fields on three-spheres exist in three forms. None of them reaches the operator studied here.
+\begin{itemize}
+  \item \emph{Stability at critical points.} Bourguignon and Lawson~\cite{bl1981} studied the second
+    variation of the Yang--Mills functional at Yang--Mills fields over the round sphere and other locally
+    homogeneous spaces. Laquer~\cite{laquer1984} determined the index and nullity of the canonical
+    connection over every simply connected compact irreducible symmetric space; for a group manifold
+    such as $S^3=SU(2)$ the index is one (see also~\cite{ohnitapan1989}). These results concern critical
+    points and symmetric metrics. The Berger field is neither: it is not at rest, and the Berger metric
+    is not symmetric.
+  \item \emph{Fluctuation spectra on the round sphere.} Kumar, Lechtenfeld and Pican\c{c}o
+    Costa~\cite{klc2021} diagonalized the Yang--Mills fluctuation operator around homogeneous
+    backgrounds on the round $S^3$, sector by sector, in closed form. The meron's spectrum there begins
+    $-2,1,6,7,10$. There is no squashing and no quotient.
+  \item \emph{Closed forms on Berger spheres for other operators.} On Berger spheres, exact spectra are
+    known for the scalar Laplacian~\cite{lauret2019}, the Dirac operator~\cite{bar1992,klingschueth2022}
+    and, recently, the Hodge Laplacian on $1$-forms~\cite{henkellauret2026}. None of them is the
+    Yang--Mills Hessian, and none is taken at a connection.
+\end{itemize}
+On the Poincar\'e sphere, the selection rule that keeps only the spins $j/2$ with icosahedral invariants
+goes back to Klein~\cite{klein1884}; its first nonzero scalar eigenvalue, $168$, is standard in the
+literature on cosmic topology~\cite{lachiezerey2004}. We found no exact result for the Yang--Mills
+Hessian on a squashed three-sphere, nor at a connection that is not a Yang--Mills field. The rest of
+this section supplies one, and checks it against both results above that it can be compared with: the
+round-sphere spectrum of~\cite{klc2021} and Laquer's index.
+
 \paragraph{An exact check of the spectrum.} The Berger field, its metric and the energy are all
 invariant under left translations of $S^3$, so the linearised Yang--Mills operator splits by
 representation, and each piece is a finite matrix that can be computed exactly. The smallest
@@ -1857,17 +1887,24 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
 \bibitem{afgt2014} D.~N.~Arnold, R.~S.~Falk, J.~Guzm\'an, G.~Tsogtgerel, On the consistency of the combinatorial codifferential, \emph{Trans.\ Amer.\ Math.\ Soc.} 366 (2014) 5487--5502.
 \bibitem{afw2006} D.~N.~Arnold, R.~S.~Falk, R.~Winther, Finite element exterior calculus, homological techniques, and applications, \emph{Acta Numerica} 15 (2006) 1--155.
 \bibitem{afw2010} D.~N.~Arnold, R.~S.~Falk, R.~Winther, Finite element exterior calculus: from Hodge theory to numerical stability, \emph{Bull.\ Amer.\ Math.\ Soc.} 47 (2010) 281--354.
+\bibitem{bar1992} C.~B\"ar, The Dirac operator on homogeneous spaces and its spectrum on $3$-dimensional lens spaces, \emph{Arch.\ Math.} 59 (1992) 65--79.
 \bibitem{bossavit1988} A.~Bossavit, Whitney forms: a class of finite elements for three-dimensional computations in electromagnetism, \emph{IEE Proc.\ A} 135 (1988) 493--500.
+\bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230.
 \bibitem{cdl2013} A.~Cohen, M.~A.~Davenport, D.~Leviatan, On the stability and accuracy of least squares approximations, \emph{Found.\ Comput.\ Math.} 13 (2013) 819--834.
 \bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
 \bibitem{threeways} B.~R.~Davis, Three ways across a turn: chord, arc and tangent, Zenodo,
 2026, \url{https://doi.org/10.5281/zenodo.24375338}.
 \bibitem{gp2018} E.~H.~Georgoulis, T.~Pryer, Recovered finite element methods, \emph{Comput.\ Methods Appl.\ Mech.\ Engrg.} 332 (2018) 303--324.
+\bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
 \bibitem{hiptmair2002} R.~Hiptmair, Finite elements in computational electromagnetism, \emph{Acta Numerica} 11 (2002) 237--339.
 \bibitem{higham2002} N.~J.~Higham, \emph{Accuracy and Stability of Numerical Algorithms}, 2nd ed., SIAM, Philadelphia, 2002.
 \bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
+\bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.
 \bibitem{klc2021} S.~Kumar, O.~Lechtenfeld, G.~Pican\c{c}o Costa, Instability of cosmic Yang--Mills fields, \emph{Nucl.\ Phys.\ B} 973 (2021) 115583, \href{https://arxiv.org/abs/2102.08401}{arXiv:2102.08401}.
 \bibitem{lachiezerey2004} M.~Lachi\`eze-Rey, Eigenmodes of dodecahedral space, 2004, \href{https://arxiv.org/abs/gr-qc/0402035}{arXiv:gr-qc/0402035}.
+\bibitem{laquer1984} H.~T.~Laquer, Stability properties of the Yang--Mills functional near the canonical connection, \emph{Michigan Math.\ J.} 31 (1984) 139--159.
+\bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
+\bibitem{ohnitapan1989} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, preprint MPI/89-49, Max-Planck-Institut f\"ur Mathematik, Bonn, 1989.
 \bibitem{whitney1957} H.~Whitney, \emph{Geometric Integration Theory}, Princeton University Press, 1957.
 \bibitem{zz1992} O.~C.~Zienkiewicz, J.~Z.~Zhu, The superconvergent patch recovery and a posteriori error estimates, \emph{Int.\ J.\ Numer.\ Methods Eng.} 33 (1992) 1331--1364.
 \end{thebibliography}

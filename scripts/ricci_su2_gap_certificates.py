@@ -13,12 +13,15 @@ CERTIFICATE 1 (all j, exact). The Weitzenbock identity H + G G^* = sum_i X_i^* X
 
 CERTIFICATE 2 (j = 0, 12, 20, 24: the sectors below 30 that survive on the Poincare sphere). The smallest eigenvalue of
   A = H + G G^* is exactly lambda(j) = (j(j+2)-14)/3, and the next is at least lambda(j) + 1/3.
-  * A - mu I (mu = lambda(j) -+ 1/3) is assembled in interval arithmetic (mpmath.iv, 200 bits), realified (C^n -> R^2n),
-    in a band-preserving order. Its midpoint M and radius r enclose the exact matrix: ||exact - M||_2 <= ||r||_F.
+  * A - mu I (mu = lambda(j) -+ 1/3) is assembled in interval arithmetic (the mpmath.iv context: outward-rounded
+    endpoints, 200 bits), realified (C^n -> R^2n, [[Re, -Im], [Im, Re]], so every eigenvalue appears twice), in a
+    band-preserving order. M = the symmetric midpoint matrix of its lower triangle; rho = sqrt(sum_diag r^2 +
+    2 sum_lower r^2) bounds ||exact - M||_2.
   * M is factored LDL^T without pivoting at 200 bits. By Higham (Accuracy and Stability of Numerical Algorithms,
     2nd ed., Thm 9.3), L D L^T = M + dM with |dM| <= gamma_n |L||D||L^T|, gamma_n = n u / (1 - n u), u = 2^-200.
-  * Sylvester's law: the number of negative pivots is the number of negative eigenvalues of M + dM. With
-    eps = ||r||_F + gamma_n || |L||D||L^T| ||_F and Weyl's inequality, A has no eigenvalue below mu - eps if the count is
+  * Sylvester's law: L D L^T is congruent to D, so M + dM has exactly as many negative eigenvalues as D has negative
+    pivots, and no zero eigenvalue (no pivot is zero; all pivots are recorded). With
+    eps = rho + gamma_n || |L||D||L^T| ||_F and Weyl's inequality, A has no eigenvalue below mu - eps if the count is
     0, and at most k eigenvalues below mu - eps if the count is k.
   * Counts 0 at lambda - 1/3 and 4 (two complex eigenvalues, doubled by realification) at lambda + 1/3, with eps << 1/3,
     together with lambda(j) being an eigenvalue of multiplicity >= 2 (Proposition: the top-weight eigenvector b; the real
@@ -278,13 +281,19 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
         for x in range(N):
             Ar[(x, x)] = Ar.get((x, x), 0) - mu_iv
         band = 0
+        # M is the symmetric matrix built from the LOWER triangle (and diagonal) of the enclosure: that is exactly
+        # what the factorization reads. The exact matrix is symmetric and each lower interval encloses its entry, so
+        # ||exact - M||_2 <= ||exact - M||_F <= sqrt(sum_diag r^2 + 2 sum_lower r^2) =: rho.
         for (r_, c_), v in Ar.items():
+            band = max(band, abs(r_ - c_))
+            if r_ < c_:
+                continue
             v = v if not isinstance(v, int) else iv.mpf(v)
             a_, b_ = mpmath.mpf(v.a), mpmath.mpf(v.b)          # exact endpoints
             mid[(r_, c_)] = (a_ + b_) / 2
             # radius rounded up: (b - a)/2 computed at PREC bits, inflated by one part in 2^(PREC-8)
-            rad2 += (((b_ - a_) / 2) * (1 + mpmath.mpf(2) ** (8 - PREC))) ** 2
-            band = max(band, abs(r_ - c_))
+            rr = (((b_ - a_) / 2) * (1 + mpmath.mpf(2) ** (8 - PREC))) ** 2
+            rad2 += rr if r_ == c_ else 2 * rr
         # LDL^T without pivoting, banded, at PREC bits
         Lrows = [dict() for _ in range(N)]
         dvals = []
@@ -293,7 +302,7 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
             dk = mid.get((k, k), mpmath.mpf(0)) - mpmath.fsum(Lrows[k].get(t, 0) ** 2 * dvals[t] for t in range(lo, k))
             dvals.append(dk)
             if dk == 0:
-                raise RuntimeError("zero pivot")
+                raise RuntimeError("zero pivot: refusing to certify")
             for i2 in range(k + 1, min(N, k + band + 1)):
                 aik = mid.get((i2, k), mpmath.mpf(0))
                 sm = mpmath.fsum(Lrows[i2].get(t, 0) * Lrows[k].get(t, 0) * dvals[t] for t in range(max(lo, i2 - band), k))
@@ -313,8 +322,12 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
         gamma = N * u / (1 - N * u)
         eps = mpmath.sqrt(rad2) + gamma * frob
         neg = sum(1 for dv in dvals if dv < 0)
-        results[str(off)] = {"mu": str(mu), "negative_pivots_realified": neg, "eps": mpmath.nstr(eps, 5),
-                             "min_abs_pivot": mpmath.nstr(min(abs(dv) for dv in dvals), 5), "band": band, "N": N}
+        results[str(off)] = {"mu": str(mu), "negative_pivots_realified": neg,
+                             "eps": mpmath.nstr(eps, 5), "rho_enclosure": mpmath.nstr(mpmath.sqrt(rad2), 5),
+                             "backward_error_bound": mpmath.nstr(gamma * frob, 5),
+                             "min_abs_pivot": mpmath.nstr(min(abs(dv) for dv in dvals), 5),
+                             "negative_pivot_positions": [k for k, dv in enumerate(dvals) if dv < 0],
+                             "pivots": [mpmath.nstr(dv, 8) for dv in dvals], "band": band, "N": N}
     lo_ok = results[str(mu_offsets[0])]["negative_pivots_realified"] == 0
     hi_ok = results[str(mu_offsets[1])]["negative_pivots_realified"] == 4
     eps_ok = all(mpmath.mpf(r["eps"]) < mpmath.mpf(1) / 3 for r in results.values())

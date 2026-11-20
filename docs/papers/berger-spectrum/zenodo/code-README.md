@@ -21,11 +21,11 @@ Every script takes an output path; write to a fresh name and compare it with the
 | Gauge content of each sector; Figure 1's ticks | `python scripts/ricci_su2_sector_gauge_check.py out/gauge_check.json` | `…/gauge_check.json` | seconds |
 | Prop. 4.1 (the floor formula), symbolic in j | `python scripts/ricci_su2_sector_formula.py > out/sector_formula.txt` | `…/sector_formula.txt` | seconds |
 | Prop. 3.1(3) exactly; the double-precision range j ≤ 120 (Remark) | `python scripts/ricci_su2_sector_minimality.py out/minimality.json 120` | `…/minimality.json` | about 2 min |
-| Lemma 5.1 (Weitzenböck) and Theorem 5.2 (certified inertia) | `python scripts/ricci_su2_gap_certificates.py out/gap_certificates.json` | `…/gap_certificates.json` | about 20 s |
+| Lemma 5.1 (Weitzenböck), Theorem 5.2 and Table 1 (certified inertia: every pivot, ρ, the backward bound, ε) | `python scripts/ricci_su2_gap_certificates.py out/gap_certificates.json` | `…/gap_certificates.json` | about 20 s |
 
 ## What does not rerun from this folder alone
 
-- **The lattice comparison** (Table 1, the squares and circles in Figure 1). The eigenvalues are included
+- **The lattice comparison** (Table 2, the squares and circles in Figure 1). The eigenvalues are included
   (`research/su2-pg-stability-20261117/`, `research/su2-spectrum-n3-20261119/`), as are the eigenvector
   identifications (`research/su2-left-invariant-sector-20261119/eigvec_*.json`) and the script that made them
   (`scripts/ricci_su2_sector_eigvec_check.py`).

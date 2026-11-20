@@ -264,3 +264,31 @@ reading, correction, K = 8 and arms. The gates are those of Amendment 2, judged 
 **M1c at n = 3** (Amendment 2, σ = 1) also runs with the fast assembly, so that Amendment 2 is judged as specified.
 The original-assembly n = 3 runs of M1b and M1c were stopped (too slow: about a day). M1b had already failed
 M1-poke at n = 2.
+
+### M1d at n = 2 (result, 20 November)
+
+Receipt `research/magnet-m1-20261119/M1d_L1.json` (σ = 0.270 at n = 2). Fast assembly, so reading, correction and
+moments are those of M1c; only the seated arm changes.
+
+| | M1c n = 2 (σ = 1) | M1d n = 2 (σ ∝ h²) |
+| --- | --- | --- |
+| leftover moment, median | 0.38% | 0.38% |
+| poke term | 2.49% | 2.49% |
+| reconstruction term | 11.48% | 11.48% |
+| seam (RMS jump, relative) | 0.034% | 0.034% |
+| seated: spring force share | 17.0% | **4.6%** |
+| seated: wobble modes below 1 | 0 | 0 |
+| seated: smallest physical eigenvalue | 3.91 | 3.91 |
+| seated: BW05 (reported, not gated) | 15.0% | **9.9%** |
+| unseated: BW05 | 11.3% | 11.3% |
+
+- **Gates at n = 2: all pass**, as for M1c: moment ≤ 6.2%, poke ≤ 5.1%, reconstruction ≤ 2 × M0's, symmetric to
+  2 × 10⁻¹⁶, wobble-free, seam.
+- Scaling the spring with h² cut its force share from 17% to 4.6%. The seated BW05 fell from 15.0% to 9.9%, below
+  the unseated arm and well below Whitney's 26.0%.
+- The scaled spring still removes every wobble mode at n = 2.
+- **The trend gates are decided at n = 3** (M1c and M1d at n = 3, both running).
+  - Pass 1 already predicts a leftover-moment median of 0.70% at n = 3, larger than 0.38% at n = 2.
+  - So **the M1b-moment trend gate ("smaller at n = 3") will fail** for both, unless the cell pass contradicts its
+    own prediction. It has matched the prediction to 10⁻¹³ at every level so far.
+  - The poke and reconstruction trend gates are still open.

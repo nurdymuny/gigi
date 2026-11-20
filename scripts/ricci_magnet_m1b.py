@@ -24,7 +24,9 @@ import ricci_magnet_m0 as M                      # noqa: E402
 import ricci_magnet_m1 as M1                     # noqa: E402
 from ricci_consistency_math import solve_rhs     # noqa: E402
 
-pg, ein, ORDER, SIGMA = M.pg, M.ein, M.ORDER, M.SIGMA
+pg, ein, ORDER = M.pg, M.ein, M.ORDER
+import os as _os
+SIGMA = float(_os.environ.get("M1_SIGMA", M.SIGMA))   # seat-spring weight (default 1, as M0)
 ARMS = ("unseated", "seated")
 M0_RECEIPTS = M1.M0_RECEIPTS
 _W = {}

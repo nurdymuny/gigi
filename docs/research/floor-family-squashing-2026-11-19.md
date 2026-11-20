@@ -46,6 +46,36 @@ Script: `scripts/ricci_su2_floor_family_scan.py`; receipt: `research/su2-floor-f
   is evidence, not a theorem. The Floor Theorem's certificate machinery (Weitzenböck bound plus interval inertia)
   could certify any fixed t; only t = 3 is certified.
 
+## Result 3 (certified): the floor theorem at a second squashing, t = 4
+
+`scripts/ricci_su2_gap_certificates_t.py` is the Floor Theorem's certificate script with the squashing as a
+parameter. Run at t = 3 it reproduces the published receipt exactly: the same counts, the same R₀ and ω², the same
+tail margin. Run at t = 4 (receipt `research/su2-floor-family-20261119/gap_certificates_t4.json`) it certifies the
+following.
+
+At the Berger metric g = (4, 1, 1):
+
+1. **Every sector is bounded below.** In every sector of spin j/2, every gauge-orthogonal eigenvalue is at least
+   (√(j(j+2)/4) − 6)² − 20 whenever √(j(j+2)/4) ≥ 6.
+   - The Weitzenböck identity holds exactly in U(su(2)).
+   - R₀ has eigenvalues −20 (twice), −8 (twice), 12 (three times) and 10 ± 2√33.
+   - ω² = 36.
+2. **The floor is exact in six sectors.** For j = 0, 12, 20, 24, 30, 32, the lowest gauge-orthogonal eigenvalue
+   is λ₄(j) = j²/4 − 8: that is −8, 28, 92, 136, 217 and 248, each with multiplicity two. Every other eigenvalue
+   of H + GG* is at least λ₄(j) + 1/3 − ε, with ε ≤ 8.7 × 10⁻⁵⁴ and smallest pivot 0.65.
+3. **The low spectrum on the Poincaré sphere is fully known.** The gauge-orthogonal spectrum below 136 consists of:
+   - the spin-0 values −8 (twice), 22 − 2√129 ≈ −0.716, 29/5 (twice) and 22 + 2√129 ≈ 44.72, computed exactly
+     (`spin0_slice_t4.txt`);
+   - the spin-6 values from 28 upward;
+   - the spin-10 values from 92 upward.
+
+   Spin 12 begins exactly at 136. The tail bound clears 136 from j = 36 on: exactly, √342 − 6 > √156, a margin of
+   0.0032 in that form.
+
+So at t = 4 there are still exactly three growth directions, −8 (twice) and 22 − 2√129, and the floor gap is
+λ₄(12) − λ₄(0) = 36 = (240 − 24·4)/4. Unlike t = 3, spin 6 begins (at 28) below the top of the spin-0 spectrum
+(44.72), so at t = 4 the sectors interleave rather than being separated by a gap.
+
 ## Consequences that follow from the formula (on the branch, for t ≥ t*)
 
 - **The floor gap on the Poincaré sphere** is λ_t(12) − λ_t(0) = (240 − 24t)/t.
@@ -67,5 +97,5 @@ Script: `scripts/ricci_su2_floor_family_scan.py`; receipt: `research/su2-floor-f
 
 ## Natural next steps
 
-1. Certify a second squashing, say t = 4 (floor j²/4 − 8), with the existing certificate script parametrised in t.
+1. ~~Certify a second squashing.~~ Done for t = 4 (Result 3). Any other rational t runs the same way.
 2. Characterise t* exactly. It is where a second eigenvalue branch crosses λ_t(4); find that branch in closed form.

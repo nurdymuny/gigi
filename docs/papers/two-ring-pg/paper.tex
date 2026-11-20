@@ -1343,7 +1343,8 @@ undamped error that survives falls from $0.29$ to $0.095$ for native between $n=
 The stall prediction was therefore about the wrong quantity. Over a window this short, what
 carries into the trajectory is the slow part of the error, $2.28\%$ for native against $2.05\%$
 for two rings at $n=2$, falling with observed orders $1.17$ and $2.62$. On a longer window
-more directions count as slow, and the native force's stiff error begins to matter.
+more directions count as slow, and the native force's stiff error begins to matter: on
+$[0,0.1]$ its order between $n=1$ and $2$ falls from $1.63$ to $1.32$ (Limitations).
 
 \paragraph{The third level.} At $n=3$ ($11{,}358$ unknowns) the explicit step needs too
 many force evaluations, so the flow is stepped by the Cayley map of the companion
@@ -1545,7 +1546,12 @@ used as evidence in this paper.
     $n=3$; a first-order filter model explains why. The two-ring force keeps its lead over
     native (at $0.80$, then $0.82$ of its error) but does not widen it. $R$ measures the error
     against all the motion; against the part due to the moving metric alone, the two-ring
-    error is about $10.6\%$ at $n=3$.
+    error is about $10.6\%$ at $n=3$. On a five-times-longer window, $[0,0.1]$ at $n\le2$, the
+    two-ring force stays ahead of native at every sample time, but its lead shrinks from
+    $20\%$ to $2\%$. By $t=0.1$ the two error vectors point the same way (cosine $0.988$ in the
+    mass norm at $n=2$), so the late error comes from what the two flows share, the Whitney
+    mass and the target it defines, not from the force. A better force cannot remove it; a
+    mass built from the same reading as the force might, and that is untested.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item For the two-ring force, the observed orders $0.73$ and $0.80$ before the last

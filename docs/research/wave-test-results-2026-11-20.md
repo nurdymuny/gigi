@@ -37,7 +37,7 @@ tap does not ring forever. It grows, and the fastest-growing global patterns tak
 | | t = 3 | t = 4.5 | t = 6 | t = 8 |
 | --- | --- | --- | --- | --- |
 | **W1** causality: pre-arrival signal ≤ 10⁻⁴ of the post-arrival signal | pass (≤ 1.7 × 10⁻⁷) | pass (≤ 3.7 × 10⁻⁸) | pass (≤ 2.4 × 10⁻⁸) | pass (≤ 6.4 × 10⁻⁹) |
-| **W2** pointwise late growth rate = √(−min_j λ_t(j)) ± 2% | **pass** (all 7 points within 0.05%) | **fail** (range 3.052–3.153, predicted 3.073; worst +2.6%) | **fail** (3.670–3.889, predicted 3.742; worst +3.9%) | **fail** (4.346–4.863, predicted 4.472; worst +8.7%) |
+| **W2** pointwise late growth rate = √(−min_j λ_t(j)) ± 2% | **pass** (all 7 points within 0.06%) | **fail** (range 3.052–3.153, predicted 3.073; worst +2.6%) | **fail** (3.670–3.889, predicted 3.742; worst +3.9%) | **fail** (4.346–4.863, predicted 4.472; worst +8.7%) |
 | **W3** ≥ 99% of the late L² norm in twist pairs | pass (1.000000) | pass (1.000000) | pass (1.000000) | pass (1.000000) |
 
 **W2 failed at three of the four stretches.** That is the pre-registered outcome, and it stands.
@@ -60,9 +60,9 @@ growth rates nearly tie.
 **Arrival.** Here "arrival" is the first τ where the signal exceeds 10⁻³ of its level just after the light-travel
 time.
 
-- Transverse points arrive at d − 0.46 to d − 0.20, for d = 1.0 to 2.5. The early edge is the width of the smoothed
-  tap (its tail reaches 10⁻³ about 0.5 ahead of the front).
-- Fibre points arrive between the bounds θ and √t θ, consistent with the fibre arc length √t θ.
+- Transverse points, where the distance d = θ is exact, arrive 0.18 to 0.48 ahead of d. The lead shrinks as t
+  grows. The early edge is the width of the smoothed tap, whose tail reaches 10⁻³ about 0.53 ahead of the front.
+- Fibre points arrive 0.11 to 0.48 ahead of the fibre arc length √t θ.
 
 Nothing arrives ahead of the light cone (W1).
 
@@ -72,7 +72,7 @@ Nothing arrives ahead of the light cone (W1).
 dominant component at τ = 30.
 
 - Near the tap (θ ≤ 1.0, and along the fibre), the sector contributions all have the same sign and add up. The
-  point's log-slope matches the prediction to within 1%.
+  point's log-slope matches the prediction to within 1%, except at t = 6, θ = 1.5 (3.6849 against 3.7417, −1.5%).
 - Far from the tap, at transverse θ = 2.0 and 2.5, consecutive sectors' contributions alternate in sign, and each
   is many times larger than their sum. At t = 8, θ = 2.0, the fractions run
   −0.33, +5.7, −28.8, **+54.8**, −42.0, +13.4, −1.8 for j = 0, …, 6.

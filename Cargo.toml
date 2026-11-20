@@ -43,6 +43,11 @@ name = "correlator_probe"
 path = "examples/correlator_probe.rs"
 required-features = ["gauge"]
 
+[[example]]
+name = "lattice2d_ensemble"
+path = "examples/lattice2d_ensemble.rs"
+required-features = ["gauge"]
+
 # ── Feature flags ──
 #
 # `kahler` — opt-in Kähler-geometry substrate (catalog.md §1, the

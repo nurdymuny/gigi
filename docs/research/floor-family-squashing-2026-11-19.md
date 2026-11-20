@@ -44,7 +44,7 @@ Script: `scripts/ricci_su2_floor_family_scan.py`; receipt: `research/su2-floor-f
 - **Threshold.** Below t* ≈ 2.69803 a lower eigenvalue appears, first in the sector j = 4 (found by bisection).
 - **Not a proof.** Above t*, the branch is the bottom of every sector up to j = 40 at every t tested up to 10. That
   is evidence, not a theorem. The Floor Theorem's certificate machinery (Weitzenböck bound plus interval inertia)
-  could certify any fixed t; only t = 3 is certified.
+  certifies any fixed t; so far t = 3 (the paper) and t = 4 (Result 3) are certified.
 
 ## Result 3 (certified): the floor theorem at a second squashing, t = 4
 
@@ -90,8 +90,8 @@ So at t = 4 there are still exactly three growth directions, −8 (twice) and 22
 
 ## What this is not
 
-- It does not extend the Floor Theorem's certified statement. That remains t = 3, sectors j = 0, 12, 20, 24, plus
-  the tail bound.
+- Certified statements exist at t = 3 (the paper) and t = 4 (Result 3) only. Minimality at other t, and the
+  threshold t*, are double-precision evidence.
 - It is not a claim about Ricci flow along the family. The flow moves t, and how the spectrum moves with it needs
   the moving-slice bookkeeping that Sol's note warns about.
 

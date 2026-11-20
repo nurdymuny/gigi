@@ -13,7 +13,7 @@ factored LDL^T. With rho = min(Frobenius, max row sum) of the radii and the back
 and eps < eta give lambda_min(B(t)) >= lambda_t(j) + eta - eps > lambda_t(j) for every t in the slice. Together:
 lambda_t(j) is the lowest eigenvalue of H + G G^* in sector j, multiplicity exactly two (the two twist blocks).
 
-usage: python scripts/ricci_su2_block_interval_cert.py OUT.json TMIN TMAX JMAX [NPROC]
+usage: python scripts/ricci_su2_block_interval_cert.py OUT.json TMIN TMAX JMAX [NPROC] [JMIN]
 """
 import json
 import multiprocessing as mp
@@ -225,15 +225,16 @@ def task(arg):
 def main():
     out = Path(sys.argv[1]); tmin, tmax, jmax = float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4])
     nproc = int(sys.argv[5]) if len(sys.argv) > 5 else 4
+    jmin = int(sys.argv[6]) if len(sys.argv) > 6 else 0
     rows = []
     with mp.get_context("spawn").Pool(nproc) as pool:
-        for r in pool.imap_unordered(task, [(j, tmin, tmax) for j in range(jmax, -1, -1)]):
+        for r in pool.imap_unordered(task, [(j, tmin, tmax) for j in range(jmax, jmin - 1, -1)]):
             rows.append(r)
             print(f"j={r['j']}: {r['blocks']} blocks, {r['slices']} certified slices, fails {len(r['fails'])}, "
                   f"min margin {r['min_margin_eta_minus_eps']:.3g}, {r['seconds']} s", flush=True)
-            out.write_text(json.dumps({"t_range": [tmin, tmax], "jmax": jmax, "rows": sorted(rows, key=lambda x: x["j"])}, indent=1) + "\n")
-    allok = len(rows) == jmax + 1 and all(not r["fails"] for r in rows)
-    out.write_text(json.dumps({"t_range": [tmin, tmax], "jmax": jmax, "all_certified": allok,
+            out.write_text(json.dumps({"t_range": [tmin, tmax], "jmin": jmin, "jmax": jmax, "rows": sorted(rows, key=lambda x: x["j"])}, indent=1) + "\n")
+    allok = len(rows) == jmax - jmin + 1 and all(not r["fails"] for r in rows)
+    out.write_text(json.dumps({"t_range": [tmin, tmax], "jmin": jmin, "jmax": jmax, "all_certified": allok,
                                "rows": sorted(rows, key=lambda x: x["j"])}, indent=1) + "\n")
     print("ALL CERTIFIED" if allok else "NOT ALL CERTIFIED")
 

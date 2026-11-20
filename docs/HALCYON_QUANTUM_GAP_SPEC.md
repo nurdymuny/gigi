@@ -59,6 +59,12 @@ them.
 
 ### Q2: an exact quantum answer to measure against
 
+> **Amended by `docs/HALCYON_Q2_RUN_SPEC.md` (2026-11-19, before any data).** The stored "3β/8"
+> has the convention inverted: with the standard β = 4/(g²a²) the heat-kernel string tension is
+> 3/(2β), which tracks the Wilson value and converges to it. The exact gap lives in the Polyakov
+> loop (m = 3N_s/(2β)), not in the plaquette channel, which becomes a null control. The β grid
+> moves to {3, 4, 6, 8}. The text below is kept as written.
+
 The 2D heat-kernel theory has an exact gap: the Casimir of the lowest non-trivial representation,
 m = 3β/8 per unit area for SU(2). It plays the part BW05's exact velocity plays for the force.
 

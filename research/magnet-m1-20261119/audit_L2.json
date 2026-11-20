@@ -1,0 +1,25 @@
+{
+ "level": 2,
+ "edges": 3786,
+ "cells": 3240,
+ "rho": 0.13545926022811192,
+ "kind": "M1 Part 1 audit (research script)",
+ "poke_term_from_t": 0.5105870214614711,
+ "poke_term_from_p": 0.5119948341901652,
+ "cosine_t_p_dual_mass": 0.9997448910063537,
+ "best_scale_t_over_p": 0.9969959304914845,
+ "residual_rel": 0.022786556870987608,
+ "residual_rel_after_best_scale": 0.0225865647386729,
+ "zeroth_moment_defect_rel": {
+  "median": 0.32456925915753776,
+  "p95": 0.5797099376537622,
+  "max": 0.5853048756149847,
+  "per_component_median": [
+   0.12660204753405896,
+   0.12660204753405951,
+   0.12660204753405818
+  ]
+ },
+ "constants_check_sum_z": 0.014971828178499484,
+ "seconds": 5050.8
+}

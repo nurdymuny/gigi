@@ -364,7 +364,6 @@ def run(level, objective="change"):
 if __name__ == "__main__":
     args = sys.argv[1:]
     objective = "change"
-    global GENERATORS
     if "--generators" in args:          # V1c: "constants" enforces only the 3 right-invariant constants
         i = args.index("--generators"); GENERATORS = args[i + 1]; del args[i:i + 2]
         assert GENERATORS in ("all", "constants")

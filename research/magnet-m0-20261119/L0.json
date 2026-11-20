@@ -1,0 +1,72 @@
+{
+ "level": 0,
+ "edges": 142,
+ "cells": 120,
+ "h_max": 0.388139515370189,
+ "k": 1,
+ "kind": "M0 (research script, not an engine run)",
+ "kappa": 1.0,
+ "rho": 0.388139515370189,
+ "vote_min_weighted_edges": 105,
+ "vote_required": 24,
+ "cond_max": 439.7901910030345,
+ "reach_ok": true,
+ "rings_median_max": [
+  8.0,
+  8
+ ],
+ "candidate_edges_median": 142.0,
+ "C_copies_cells": 120,
+ "seconds_cells": 13.7,
+ "C_poly_max": 1.6845205785820383e-12,
+ "C_orient_max": 2.7755575615628914e-17,
+ "C_deriv_max_rel": 1.3397070214687778e-09,
+ "gauge_dimension": 21,
+ "seconds_eig": 0.0,
+ "seam_rms_jump_relative": 0.004595642901883758,
+ "seam_points": 1440,
+ "seconds_seam": 1.7,
+ "arms": {
+  "unseated": {
+   "bw05_relative_error": 0.4354626180989927,
+   "reconstruction_term": 0.07250704472947865,
+   "poke_term": 0.46531221349112145,
+   "curvature_relative_error": 0.0743899281651834,
+   "asymmetry": 4.031071844461768e-16,
+   "seconds_assembly": 11.0,
+   "wobble_count_below_1": 63,
+   "min_physical_eig": 0.01654134835697711,
+   "negative_physical": 0,
+   "gauge_rayleigh_max": 2.174567614569451,
+   "gauge_rayleigh_over_min_physical": 2.171843529571576
+  },
+  "frozen": {
+   "bw05_relative_error": 0.4706606554623638,
+   "reconstruction_term": 0.08854676739691493,
+   "poke_term": 0.48616096700773237,
+   "curvature_relative_error": 0.08225011866628539,
+   "asymmetry": 3.6981273520311333e-16,
+   "seconds_assembly": 1.5,
+   "wobble_count_below_1": 67,
+   "min_physical_eig": 0.00014264201150235252,
+   "negative_physical": 0,
+   "gauge_rayleigh_max": 2.2292270553342193,
+   "gauge_rayleigh_over_min_physical": 2.1718590155645017
+  },
+  "seated": {
+   "bw05_relative_error": 0.3127480074938035,
+   "reconstruction_term": 0.07250704472947865,
+   "poke_term": 0.46531221349112145,
+   "curvature_relative_error": 0.0743899281651834,
+   "asymmetry": 1.5098000183864546e-16,
+   "spring_force_share": 0.16297970776158513,
+   "seconds_assembly": 11.6,
+   "wobble_count_below_1": 0,
+   "min_physical_eig": 3.6093075502261183,
+   "negative_physical": 0,
+   "gauge_rayleigh_max": 2.8205977062900116,
+   "gauge_rayleigh_over_min_physical": 0.7814789033739463
+  }
+ },
+ "seconds": 40.9
+}

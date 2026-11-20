@@ -104,3 +104,60 @@ sector.
   flow experiment an exact spectral trajectory to compare with, alongside the exact links.
 - **Altitude:** STRUCTURAL. This is the operator the lattice discretises, restricted to an invariant subspace.
   It is not an analogy.
+
+## The spin-6 sector (added the same evening)
+
+Script: `scripts/ricci_su2_spin_sector.py`. Receipt: `research/su2-left-invariant-sector-20261119/spin_sectors.json`.
+
+**How.** A sector of spin j/2 consists of su(2)-valued 1-forms whose coefficient functions lie in the V_j
+component of L²(S³). Left-invariant vector fields act on it through the spin-j/2 representation matrices,
+normalised to the frame's bracket [e_i, e_j] = 2e_k. So the Hessian, now with its derivative term
+ê_i b_j − ê_j b_i, is an exact finite matrix of size 9(j+1). On S³/2I, sector j appears with the multiplicity of
+icosahedral invariants in V_j. That multiplicity comes from the Molien series (1 + t³⁰)/((1 − t¹²)(1 − t²⁰)):
+it is 1 for j = 0, 12, 20, 24, 30, … and 0 for j = 1 to 11.
+
+**Controls, both passed.**
+- At j = 0 the construction reproduces the 9 × 9 sector to 8 × 10⁻¹⁵.
+- The round metric without the commutator gives exactly the coexact 1-form spectrum of the unit S³. Sector j
+  has j² (×3(j−1)), (j+2)² (×3(j+3)) and gauge zeros (×3(j+1)). At j = 12 that is 144 (×33), 196 (×45) and
+  0 (×39), and summed over copies it reproduces the known multiplicity 2k(k+2) for each Lie-algebra direction.
+- Further checks: the round metric with the commutator has exact gauge zeros (its field is at rest), and the
+  Berger metric without the commutator has no negative eigenvalue.
+
+**The physical spectrum above the left-invariant sector.** Berger, full SU(2), j = 12 (spin 6), against the
+measured lattice:
+
+| exact (spin 6) | n = 2 (native) | n = 3 (native) | n = 3 (two-ring) |
+| --- | ---: | ---: | ---: |
+| 51.33 (×2) | 53.41 | 52.27 | 49.27 |
+| 59.52 (×2) | 61.92 / 62.03 | 60.69 / 60.75 | 57.50 |
+| 67.85 (×2) | 67.47 / 68.60 | 67.88 / 68.16 | 65.04 |
+| 69.73 (×2) | 69.57 / 71.12 | 69.76 / 70.41 | 67.35 / 67.64 |
+| 71.31 (×2) | 73.51 / 74.20 | 72.69 / 72.91 | 69.13 / 69.25 |
+
+- The native force approaches these values from above, and the two-ring force sits below them at n = 3.
+  Its rate is not measured.
+- The next allowed sectors start far higher: spin 10 at **142**, spin 12 at **203.3**, spin 15 at **315.3**.
+
+So the exact physical spectrum of the Berger field on Poincaré's sphere is:
+- the left-invariant sector, from −14/3 up to 33.09;
+- **a gap to 51.33**, where the spin-6 sector begins;
+- nothing else below 142.
+
+**The gauge-type modes.**
+- Each sector j > 0 carries **j + 3** negative eigenvalues and no exact zeros. These are gauge directions tilted by
+  the background, which is not at rest. Their size shrinks like 1/j: the most negative is −2.35 at spin 6, −1.73 at
+  spin 10, −1.52 at spin 12 and −1.28 at spin 15.
+- So the continuum Hessian has infinitely many negative eigenvalues, accumulating at 0 from below. All but five are
+  gauge-type.
+- Below −1.0 the exact count is **41**: the 5 physical, plus 36 from spins 6 to 20. The lattice shows 9 at n = 2
+  and 13 at n = 3. That is consistent with it resolving the sectors one by one as the mesh refines.
+- **Caveat.** On gauge-type directions the lattice linearises the force's Jacobian in link coordinates. That
+  differs from the Hessian by a term proportional to the nonzero gradient, and gauge-type directions are exactly
+  where that term matters. So these counts are a prediction for the Hessian, and a strong *hint* for the lattice:
+  measured −1.86, −1.45, −1.14 and −1.02 against exact −1.81, −1.47, −1.11 and −1.03 at spin 6. They are not a gate.
+
+**For the mass-gap observable.** The exact Berger spectrum on S³/2I now has a computable gap at every level of
+detail: −14/3 … 33.09 | 51.33 … | 142 …. Any proposed observable must reproduce this exactly solvable structure
+on this background first. A dynamical claim would have to be about something this representation-theoretic
+structure does not already fix.

@@ -14,13 +14,14 @@
 //! a = 4 Σ_face Σ_comp dD[face][comp] h[face][comp], lifted to stored edges by
 //! −Ad(U) on reversed edges and summed with the cell weights.
 use super::curvature_recovery::{
-    build_face_index, recover_cell_su2, vertex_ids, Cell, Mechanism, Su2Flux, Su2Mechanism,
+    build_face_index, prepare_su2_cell, read_prepared_su2, vertex_ids, Cell, FaceIndex, Mechanism,
+    Su2Flux, Su2Mechanism, Su2Prepared,
 };
 use super::ricci_simplicial::{adjoint, cell_defects};
-use super::ricci_whitney::tetra_mass;
+use super::ricci_whitney::{tetra_mass, TetraMass};
 use nalgebra::{DMatrix, Matrix3, Matrix4, SMatrix, Vector3, Vector4};
 
-const EDGES: [(usize, usize); 6] = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)];
+
 const FACES: [(usize, usize, usize); 4] = [(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)];
 
 /// Which force.
@@ -119,40 +120,74 @@ fn basis() -> [(Vector3<f64>, Matrix3<f64>); 11] {
     super::curvature_recovery::closed_linear_basis()
 }
 
-/// The force on every stored edge.
-pub fn link_force(
-    cells: &[Cell],
-    weights: &[f64],
-    links: &[[f64; 4]],
-    metric: [f64; 3],
-    order: usize,
+/// Everything about a mesh that does not depend on the links: per cell the mass
+/// matrices, the quadrature data and (two-ring) the prepared reading; and which
+/// cells read each link. Built once; used for the force and for every Jacobian
+/// column.
+pub struct ForceContext {
     method: ForceMethod,
-) -> Result<LinkForce, String> {
-    if cells.len() != weights.len() {
-        return Err("LINK_FORCE: one weight per cell required".into());
-    }
-    if !metric.iter().all(|g| g.is_finite() && *g > 0.0) {
-        return Err("LINK_FORCE: a positive metric (g1, g2, g3) is required; none is ever substituted".into());
-    }
-    for (ci, c) in cells.iter().enumerate() {
-        if !(weights[ci].is_finite() && weights[ci] > 0. && weights[ci] <= 1.) {
-            return Err(format!("LINK_FORCE: cell {ci} has an invalid weight {}", weights[ci]));
+    weights: Vec<f64>,
+    mass: Vec<TetraMass>,
+    quad: Vec<Vec<QuadPoint>>,
+    prepared: Vec<Option<Su2Prepared>>,
+    vid: Vec<[usize; 4]>,
+    /// readers[edge]: the cells whose contribution depends on that link.
+    readers: Vec<Vec<usize>>,
+}
+
+impl ForceContext {
+    pub fn new(
+        cells: &[Cell],
+        weights: &[f64],
+        n_links: usize,
+        metric: [f64; 3],
+        order: usize,
+        method: ForceMethod,
+    ) -> Result<Self, String> {
+        if cells.len() != weights.len() {
+            return Err("LINK_FORCE: one weight per cell required".into());
         }
-        if let Some(&e) = c.edges.iter().find(|&&e| e >= links.len()) {
-            return Err(format!("LINK_FORCE: cell {ci} names edge {e}, but only {} links are given", links.len()));
+        if !metric.iter().all(|g| g.is_finite() && *g > 0.0) {
+            return Err("LINK_FORCE: a positive metric (g1, g2, g3) is required; none is ever substituted".into());
         }
+        for (ci, c) in cells.iter().enumerate() {
+            if !(weights[ci].is_finite() && weights[ci] > 0. && weights[ci] <= 1.) {
+                return Err(format!("LINK_FORCE: cell {ci} has an invalid weight {}", weights[ci]));
+            }
+            if let Some(&e) = c.edges.iter().find(|&&e| e >= n_links) {
+                return Err(format!("LINK_FORCE: cell {ci} names edge {e}, but only {n_links} links are given"));
+            }
+        }
+        let mass = cells.iter().map(|c| tetra_mass(c.vertices, metric, order)).collect::<Result<Vec<_>, _>>()?;
+        let (quad, prepared, vid) = match method {
+            ForceMethod::Native => (vec![], (0..cells.len()).map(|_| None).collect(), vec![]),
+            ForceMethod::Pg2 { rings, .. } => {
+                let faces: FaceIndex = build_face_index(cells).map_err(|e| e.to_string())?;
+                let quad = cells.iter().map(|c| quadrature_points(c.vertices, metric, order)).collect::<Result<Vec<_>, _>>()?;
+                let prepared = (0..cells.len())
+                    .map(|ci| prepare_su2_cell(cells, &faces, ci, rings, Mechanism::FULL).map(Some).map_err(|e| e.to_string()))
+                    .collect::<Result<Vec<_>, _>>()?;
+                (quad, prepared, vertex_ids(cells))
+            }
+        };
+        let mut readers = vec![Vec::new(); n_links];
+        for ci in 0..cells.len() {
+            let mut reads: Vec<usize> = match &prepared[ci] {
+                None => cells[ci].edges.to_vec(),
+                Some(p) => p.neighbourhood().iter().flat_map(|&nj| cells[nj].edges).collect(),
+            };
+            reads.sort_unstable();
+            reads.dedup();
+            for e in reads {
+                readers[e].push(ci);
+            }
+        }
+        Ok(ForceContext { method, weights: weights.to_vec(), mass, quad, prepared, vid, readers })
     }
-    let (faces, vid) = match method {
-        ForceMethod::Native => (None, None),
-        ForceMethod::Pg2 { .. } => (
-            Some(build_face_index(cells).map_err(|e| e.to_string())?),
-            Some(vertex_ids(cells)),
-        ),
-    };
-    let basis = basis();
-    let mut gradient = vec![Vector3::<f64>::zeros(); links.len()];
-    let (mut energy, mut volume) = (0.0, 0.0);
-    for (ci, cell) in cells.iter().enumerate() {
+
+    /// One cell's weighted contribution to its six stored edges.
+    fn cell(&self, cells: &[Cell], links: &[[f64; 4]], ci: usize) -> Result<([Vector3<f64>; 6], f64), String> {
+        let cell = &cells[ci];
         let local: [[f64; 4]; 6] = std::array::from_fn(|e| {
             let mut q = links[cell.edges[e]];
             if cell.reverse[e] {
@@ -162,27 +197,24 @@ pub fn link_force(
             }
             q
         });
-        let mass = tetra_mass(cell.vertices, metric, order)?;
         let d = cell_defects(local)?;
-        let m = mass.face_mass;
-        volume += weights[ci] * mass.volume;
-        // native face response h = M D, and the native energy
+        let m = self.mass[ci].face_mass;
         let mut h = [[0.0; 4]; 4];
         for i in 0..4 {
             for c in 0..4 {
                 h[i][c] = (0..4).map(|j| m[(i, j)] * d.value[j][c]).sum();
             }
         }
-        energy += weights[ci] * 2.0 * (0..4).map(|i| (0..4).map(|c| h[i][c] * d.value[i][c]).sum::<f64>()).sum::<f64>();
-        if let ForceMethod::Pg2 { rings, register } = method {
+        let energy = 2.0 * (0..4).map(|i| (0..4).map(|c| h[i][c] * d.value[i][c]).sum::<f64>()).sum::<f64>();
+        if let ForceMethod::Pg2 { register, .. } = self.method {
             let su = Su2Mechanism { register, abelianised: false, flux: Su2Flux::Defect };
-            let rec = recover_cell_su2(cells, faces.as_ref().unwrap(), vid.as_ref().unwrap(), links, ci, rings, Mechanism::FULL, su)
+            let rec = read_prepared_su2(self.prepared[ci].as_ref().unwrap(), cells, &self.vid, links, su)
                 .map_err(|e| e.to_string())?;
             let jinv = rec.chart_j.try_inverse().ok_or("LINK_FORCE: singular chart")?;
             let detj = rec.chart_j.determinant();
-            let quad = quadrature_points(cell.vertices, metric, order)?;
+            let basis = basis();
             let mut hvec = [[0.0; 3]; 4];
-            for q in &quad {
+            for q in &self.quad[ci] {
                 let z = rec.chart_j * q.xi + rec.chart_t0;
                 for comp in 0..3 {
                     let mut pc = Vector3::zeros();
@@ -201,27 +233,113 @@ pub fn link_force(
                 }
             }
         }
-        let mut a = [0.0; 18];
-        for (dof, slot) in a.iter_mut().enumerate() {
-            let mut s = 0.0;
-            for f in 0..4 {
-                for c in 0..4 {
-                    s += d.derivative[f][c][dof] * h[f][c];
+        let w = self.weights[ci];
+        let out = std::array::from_fn(|e| {
+            let mut ae = Vector3::zeros();
+            for axis in 0..3 {
+                let dof = 3 * e + axis;
+                let mut s = 0.0;
+                for f in 0..4 {
+                    for c in 0..4 {
+                        s += d.derivative[f][c][dof] * h[f][c];
+                    }
                 }
+                ae[axis] = 4.0 * s;
             }
-            *slot = 4.0 * s;
-        }
-        for e in 0..6 {
             let lift = if cell.reverse[e] { -adjoint(links[cell.edges[e]]) } else { Matrix3::identity() };
-            let ae = Vector3::new(a[3 * e], a[3 * e + 1], a[3 * e + 2]);
-            gradient[cell.edges[e]] += weights[ci] * (lift.transpose() * ae);
+            w * (lift.transpose() * ae)
+        });
+        Ok((out, w * energy))
+    }
+}
+
+/// The force on every stored edge.
+pub fn link_force(
+    cells: &[Cell],
+    weights: &[f64],
+    links: &[[f64; 4]],
+    metric: [f64; 3],
+    order: usize,
+    method: ForceMethod,
+) -> Result<LinkForce, String> {
+    let ctx = ForceContext::new(cells, weights, links.len(), metric, order, method)?;
+    let mut gradient = vec![Vector3::<f64>::zeros(); links.len()];
+    let mut energy = 0.0;
+    for ci in 0..cells.len() {
+        let (contrib, e) = ctx.cell(cells, links, ci)?;
+        energy += e;
+        for (k, v) in contrib.iter().enumerate() {
+            gradient[cells[ci].edges[k]] += v;
         }
     }
-    let _ = EDGES;
+    let volume = ctx.mass.iter().zip(&ctx.weights).map(|(m, w)| w * m.volume).sum();
     Ok(LinkForce {
         gradient: gradient.into_iter().map(|v| [v[0], v[1], v[2]]).collect(),
         energy,
         volume,
         variational: method.variational(),
     })
+}
+
+/// The linearised force K (YM3): column (g, k) is the central difference of the
+/// force under U_g → U_g exp(±ε τ_k), right-trivialised, with only the cells that
+/// read link g recomputed. Returned as sparse triplets (row = 3·edge + axis);
+/// entries that are exactly zero are dropped.
+pub struct Jacobian {
+    pub n: usize,
+    pub rows: Vec<u32>,
+    pub cols: Vec<u32>,
+    pub vals: Vec<f64>,
+}
+
+/// Link product, stored-link convention (as curvature_recovery's).
+fn lmul4(a: [f64; 4], b: [f64; 4]) -> [f64; 4] {
+    let (av, bv) = (Vector3::new(a[1], a[2], a[3]), Vector3::new(b[1], b[2], b[3]));
+    let v = bv * a[0] + av * b[0] - av.cross(&bv);
+    [a[0] * b[0] - av.dot(&bv), v[0], v[1], v[2]]
+}
+
+pub fn link_force_jacobian(
+    cells: &[Cell],
+    weights: &[f64],
+    links: &[[f64; 4]],
+    metric: [f64; 3],
+    order: usize,
+    method: ForceMethod,
+    eps: f64,
+) -> Result<Jacobian, String> {
+    if !(eps.is_finite() && eps > 0.0) {
+        return Err("LINK_FORCE JACOBIAN: a positive step is required".into());
+    }
+    let ctx = ForceContext::new(cells, weights, links.len(), metric, order, method)?;
+    let n = 3 * links.len();
+    let (mut rows, mut cols, mut vals) = (Vec::new(), Vec::new(), Vec::new());
+    let mut work = links.to_vec();
+    for g in 0..links.len() {
+        for k in 0..3 {
+            let mut col: std::collections::BTreeMap<usize, f64> = std::collections::BTreeMap::new();
+            for sign in [1.0_f64, -1.0] {
+                let mut step = [(sign * eps).cos(), 0.0, 0.0, 0.0];
+                step[1 + k] = (sign * eps).sin();
+                work[g] = lmul4(links[g], step);
+                for &ci in &ctx.readers[g] {
+                    let (contrib, _) = ctx.cell(cells, &work, ci)?;
+                    for (e, v) in contrib.iter().enumerate() {
+                        for axis in 0..3 {
+                            *col.entry(3 * cells[ci].edges[e] + axis).or_insert(0.0) += sign * v[axis] / (2.0 * eps);
+                        }
+                    }
+                }
+            }
+            work[g] = links[g];
+            for (r, v) in col {
+                if v != 0.0 {
+                    rows.push(r as u32);
+                    cols.push((3 * g + k) as u32);
+                    vals.push(v);
+                }
+            }
+        }
+    }
+    Ok(Jacobian { n, rows, cols, vals })
 }

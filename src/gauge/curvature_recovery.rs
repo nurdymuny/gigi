@@ -795,6 +795,35 @@ fn local_link(cell: &Cell, links: &[[f64; 4]], i: usize, j: usize) -> Vector4<f6
     if i < j { u } else { linv(&u) }
 }
 
+/// The link-independent part of one cell's SU(2) reading: its neighbourhood,
+/// chart and fit map (geometry only). Built once, read with many link sets
+/// (the Jacobian's columns).
+pub struct Su2Prepared {
+    fit: Fit,
+    amplification: f64,
+    ci: usize,
+}
+
+impl Su2Prepared {
+    /// Cells in the neighbourhood (the cell itself first).
+    pub fn neighbourhood(&self) -> Vec<usize> {
+        self.fit.nb.iter().map(|(nj, _)| *nj).collect()
+    }
+}
+
+/// Prepare one cell's reading (geometry only).
+pub fn prepare_su2_cell(
+    cells: &[Cell],
+    faces: &FaceIndex,
+    ci: usize,
+    rings: usize,
+    mech: Mechanism,
+) -> Result<Su2Prepared, RecoveryError> {
+    let fit = fit_map(cells, faces, ci, rings, mech)?;
+    let amplification = singular_values(&fit.fmap).into_iter().fold(0.0_f64, f64::max);
+    Ok(Su2Prepared { fit, amplification, ci })
+}
+
 /// Recover one cell from SU(2) links.
 #[allow(clippy::too_many_arguments)]
 pub fn recover_cell_su2(
@@ -807,7 +836,20 @@ pub fn recover_cell_su2(
     mech: Mechanism,
     su: Su2Mechanism,
 ) -> Result<Su2CellRecovery, RecoveryError> {
-    let fit = fit_map(cells, faces, ci, rings, mech)?;
+    let prep = prepare_su2_cell(cells, faces, ci, rings, mech)?;
+    read_prepared_su2(&prep, cells, vid, links, su)
+}
+
+/// Read a prepared cell with a set of links.
+pub fn read_prepared_su2(
+    prep: &Su2Prepared,
+    cells: &[Cell],
+    vid: &[[usize; 4]],
+    links: &[[f64; 4]],
+    su: Su2Mechanism,
+) -> Result<Su2CellRecovery, RecoveryError> {
+    let fit = &prep.fit;
+    let ci = prep.ci;
 
     // Transport W[v]: fibre at v → fibre at the cell's vertex 0, along a
     // breadth-first tree over the neighbourhood's edges (sorted adjacency).
@@ -861,10 +903,9 @@ pub fn recover_cell_su2(
     // closed field cannot match exactly. It is reported, as the research script
     // implies by never checking it.
     let own_res = (&fit.am * &coef - y.rows(0, fit.own)).amax();
-    let amplification = singular_values(&fit.fmap).into_iter().fold(0.0_f64, f64::max);
     Ok(Su2CellRecovery {
         coefficients: std::array::from_fn(|a| std::array::from_fn(|k| coef[(k, a)])),
-        amplification,
+        amplification: prep.amplification,
         condition: fit.condition,
         rank: fit.rank,
         faces: fit.faces.len(),

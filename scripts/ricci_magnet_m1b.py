@@ -111,8 +111,11 @@ def main():
     args = sys.argv[1:]
     do_eig = "--no-eig" not in args
     args = [x for x in args if x != "--no-eig"]
+    K = 0
+    if "--neumann" in args:
+        i = args.index("--neumann"); K = int(args[i + 1]); del args[i:i + 2]
     level, outdir = int(args[0]), Path(args[1])
-    receipt = outdir / f"M1b_L{level}.json"
+    receipt = outdir / (f"M1c_L{level}.json" if K else f"M1b_L{level}.json")
     if receipt.exists():
         raise SystemExit(f"refusing to overwrite {receipt}")
     outdir.mkdir(parents=True, exist_ok=True)
@@ -131,7 +134,8 @@ def main():
     nproc = int(os.environ.get("M0_PROCS", "8"))
     ctx = mp.get_context("spawn")
     out = {"level": level, "edges": ne, "cells": len(cells), "rho": rho, "k": 1,
-           "kind": "M1b (research script, not an engine run)"}
+           "kind": "M1b (research script, not an engine run)" if not K else "M1c = M1b with K Neumann rounds (Amendment 2)",
+           "neumann_K": K}
     N = np.zeros(ne); G = np.zeros((ne, ne)); cnt = np.zeros(ne)
     with ctx.Pool(nproc, initializer=_init, initargs=(level, rho, None, None)) as pool:
         for re, nv, own, edges, Lm in pool.imap_unordered(_w_pass1, range(len(cells)), chunksize=2):
@@ -140,8 +144,12 @@ def main():
                 G[g, edges] += Lm[k]; cnt[g] += 1
     G /= cnt[:, None]
     Q = np.eye(ne) - G
-    coef = z / N[:, None]
-    left = np.linalg.norm(G.T @ z, axis=1) / l1
+    zk, acc = z.copy(), z.copy()
+    for _ in range(K):                                   # Amendment 2 (M1c): z' = sum_{k<=K} (G^T)^k z
+        zk = G.T @ zk; acc = acc + zk
+    coef = acc / N[:, None]
+    pred_left = G.T @ zk                                 # (G^T)^(K+1) z
+    left = np.linalg.norm(pred_left, axis=1) / l1
     out.update({"seconds_pass1": round(time.time() - t00, 1),
                 "G_reproduction_rel_on_data": float(np.linalg.norm(G @ a - a) / np.linalg.norm(a)),
                 "predicted_leftover_moment_median": float(np.median(left)),
@@ -166,11 +174,12 @@ def main():
                 seam.setdefault(key, []).append(val)
             if (k + 1) % 200 == 0:
                 print(f"  {k + 1}/{len(cells)} cells, {time.time() - t00:.0f} s", flush=True)
-    zt = z - mom
+    zt = z - mom                                         # mom = moments of the correction = (I - G^T) z'
+
     zr = np.linalg.norm(zt, axis=1) / l1
     out.update({"seconds_cells": round(time.time() - t00, 1),
                 "leftover_moment_median": float(np.median(zr)), "leftover_moment_max": float(zr.max()),
-                "leftover_vs_prediction_rel": float(np.linalg.norm(zt - G.T @ z) / max(np.linalg.norm(G.T @ z), 1e-300))})
+                "leftover_vs_prediction_rel": float(np.linalg.norm(zt - pred_left) / max(np.linalg.norm(pred_left), 1e-300))})
     norm = lambda v: float(np.sqrt(max(0., v @ (mass @ v)) / vol))     # noqa: E731
     r4 = norm(-4 * a)
     rel = lambda K: norm(solve_rhs(mass, -(K @ a)) + 4 * a) / r4         # noqa: E731

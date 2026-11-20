@@ -202,3 +202,40 @@ gates are unchanged.
   **M1-wobble** and **M1-seam** are unchanged.
 
 **Script:** `scripts/ricci_magnet_m1b.py`, with the same reading, reach, quadrature and arms as M1.
+
+## Amendment 2: M1c (written after M1b's gated n = 2 result and before any M1c run)
+
+**What M1b did at n = 2.**
+
+- Passes: M1b-moment (leftover median 5.02%), M1-recon (8.23%), variational, wobble and seam.
+- Fails: M1-poke (10.42% > 5.1%).
+- Reported BW05: 11.2% unseated, 14.0% seated. That is below Whitney's 26.0%, the first variational force to get
+  there.
+- The leftover moment grew from n = 1 to n = 2 (1.7% → 5.0%), and the poke term with it.
+
+**Pre-check** (`scripts/ricci_magnet_m1_neumann_precheck.py`, run before this amendment). Applying the correction
+again leaves (Gᵀ)^k z. The median leftover after k rounds:
+
+| k | 0 (M0) | 1 (M1b) | 2 | 3 | 4 | 5 | 6 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| n = 1 | 19.5% | 1.7% | 1.9% | 1.7% | 1.6% | 1.5% | 1.4% |
+| n = 2 | 31.1% | 5.0% | 2.7% | 1.7% | 0.98% | 0.74% | 0.58% |
+
+- What does not decay lies along G's top three eigenvectors: eigenvalue 0.966 at n = 1, 0.990 at n = 2. That is the
+  near-left-invariant data, which G nearly reproduces: Lemma C's barrier, made explicit.
+
+**M1c.** M1b with the correction coefficients summed over K + 1 rounds:
+
+  c_e = z'_e / N_e,  z' = Σ_{k=0}^{K} (Gᵀ)^k z,  **K = 8, fixed here.**
+
+- The reading is still R̃¹a = R¹a − Z′(a − Ga). Rows stay exact, and the force stays an energy gradient.
+- The leftover moment is (Gᵀ)^{K+1} z. The receipt checks this against the assembled moments.
+
+**Gates.** Unchanged from Amendment 1:
+
+- M1b-moment: median leftover ≤ 6.2% at n = 2, and smaller at n = 3;
+- M1-poke: ≤ 5.1% at n = 2, no larger at n = 3;
+- M1-recon: ≤ 2 × M0's, not growing;
+- M1-variational, M1-wobble, M1-seam.
+
+**Script.** `scripts/ricci_magnet_m1b.py LEVEL OUTDIR --neumann 8` writes `M1c_L{n}.json`.

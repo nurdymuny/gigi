@@ -1,0 +1,13 @@
+coupling of the plane block to the rest (should vanish): Matrix([[-4*t, 0, 0, 0, 0], [I*j, 0, 0, 0, 0], [-I*j, 0, 0, 0, 0], [-4*t, 0, 0, 0, 0]])
+4x4 block:
+
+eigenvalue: -(-j**2 - 4*j*t + 8*j + 2*t**2 + 4*t - 16)/t  x 1
+eigenvalue: -(-j**2 + 2*j*t - 8*j + 2*t**2 + 4*t - 16)/t  x 1
+eigenvalue: (j**2 + j*t + 5*t**2 - t*sqrt(j**2 + t**2) - 4*t)/t  x 1
+eigenvalue: (j**2 + j*t + 5*t**2 + t*sqrt(j**2 + t**2) - 4*t)/t  x 1
+eigenvector for lambda_t(j): [-1, -I, -I, 1]
+H(rest, plane) v = Matrix([[0, 0, 0, 0, 0]])  -> exact eigenvector of the 9x9 top-weight block: True
+overlap with gauge directions at the same weight (G^H v): Matrix([[0, 0, 0]])
+leak into the next weight, <D(g e_k), D v>: Matrix([[0, 0, 0, 0, 0, 0, 0, 0, 0]])  zero: True
+Rayleigh check: j**2/t - 2*j + 8*j/t - 2*t - 4 + 16/t
+Rayleigh value minus the family formula: 0

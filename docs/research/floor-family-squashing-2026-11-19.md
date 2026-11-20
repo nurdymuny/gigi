@@ -99,3 +99,45 @@ So at t = 4 there are still exactly three growth directions, −8 (twice) and 22
 
 1. ~~Certify a second squashing.~~ Done for t = 4 (Result 3). Any other rational t runs the same way.
 2. Characterise t* exactly. It is where a second eigenvalue branch crosses λ_t(4); find that branch in closed form.
+
+## Result 4: the soft-mode flow test (exact sector flow, no lattice)
+
+**Script:** `scripts/ricci_su2_soft_mode_flow.py`, with predictions P1–P3 committed before the first run.
+**Receipts:** `research/su2-floor-family-20261119/soft_mode_flow.json` and `soft_mode_controls.txt`.
+
+**Crossings.** Each twist goes free where λ_t(j) = 0, at t_j = [√((j+2)² + 2(j+4)²) − (j+2)] / 2. That is
+t₃ = 3.0453 and t₄ = 3.4031. At stretch t, every twist with j < (t − 4) + √(3t² − 4t) has negative cost.
+
+**Setup.** The left-invariant background flows by the Yang–Mills gradient at fixed metric (t, 1, 1), starting from
+the Berger field. A random spin-j disturbance flows by the gauge-fixed linearised flow, −(H + GG*)(A(τ)). Left
+invariance keeps the sectors separate for all τ.
+
+**Frozen background (the operator at the Berger field, held fixed).** The soft-mode law holds exactly in all six
+runs (j = 3, 4; t = t_j − 0.05, t_j + 0.05, t_j + 0.5):
+
+- **Sign.** The disturbance decays below t_j and grows above it, at rate −λ_t(j). The sign flips at the crossing.
+- **Direction.** From a random start, the direction locks onto the twist: overlap 1.000 at τ = 2 in every run.
+
+**Moving background (the actual flow).** The predictions P1 and P2 fail.
+
+- The background is not at rest, and it collapses almost at once. At j = 3, t = 3.545, its energy falls from 34.6
+  to 0.73 by τ = 0.1 and to about 0.02 by τ = 2, toward a flat field.
+- The sector's floor flips from −3.27 to +3.98 within τ = 0.1.
+- The twist overlap rises briefly (0.32 → 0.51 at τ = 0.1), then everything decays: log|b| falls by 7.5–10.6 over
+  τ = 2 in all six runs.
+- The strongest twist growth tested (rate 3.3, about 0.3 per e-fold) is several times slower than the background's
+  collapse.
+
+**P1 as written was ill-posed.** A random start's initial rate is its Rayleigh quotient, which the stiff modes
+dominate. The frozen control answers what P1 meant to ask.
+
+**Reading.**
+
+- The twist law is a law of the *landscape* at the Berger field, and it holds there exactly: the frozen flow is the
+  linearisation at that point.
+- It is not, by itself, a dynamical transition. Starting from the Berger field, the background slides downhill
+  faster than any twist can grow. This is Sol's caveat, now measured.
+- A true phase-transition analogue needs a background **at rest**: a family of Yang–Mills critical points depending
+  on t, whose Hessian has a twist going soft at some critical t. That is the natural next search: non-flat
+  homogeneous Yang–Mills fields on the Berger spheres, the squashed relatives of the meron. There the soft-mode
+  picture, a stiffness crossing zero linearly at a critical stretch, would be a genuine dynamical bifurcation.

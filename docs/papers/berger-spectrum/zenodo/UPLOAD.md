@@ -43,7 +43,7 @@ Fill in the form from `metadata.json`:
 | --- | --- |
 | Resource type | Publication, then Preprint |
 | Title | The Floor Theorem for the Yang–Mills Hessian at the Berger Field: The Low Spectrum on the Poincaré Homology Sphere |
-| Creator | Davis, Bee Rosa. ORCID 0009-0009-8034-4308. Affiliation: see the note below |
+| Creator | Davis, Bee Rosa. ORCID 0009-0009-8034-4308. Affiliation: Davis Geometric |
 | Description | paste `description.html`, using the editor's **Source code** button so the headings and lists survive |
 | Licence | Creative Commons Attribution 4.0 International |
 | Keywords | the ten in `metadata.json` |
@@ -53,8 +53,7 @@ Fill in the form from `metadata.json`:
 | Software | Repository URL https://github.com/nurdymuny/gigi/tree/floor-theorem-v1; language Python |
 | Notes (optional) | MSC 2020: 58J50, 81T13, 58E15, 53C30, 65G30. No funding; no competing interests. |
 
-**Affiliation.** The paper prints *Davis Geometric*, and `metadata.json` follows the paper. The *Reading the
-Curve* record lists *Brown University*. Choose one and use it in both places.
+**Affiliation.** Davis Geometric, as printed in the paper. The *Reading the Curve* record still lists Brown University; Zenodo lets you edit a published record's metadata (Edit, then Publish) without making a new version.
 
 ## 4. Publish
 

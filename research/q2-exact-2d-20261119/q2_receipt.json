@@ -1,0 +1,456 @@
+{
+ "kind": "Q2: EFFECTIVE_MASS against the exact 2D SU(2) answer",
+ "spec": "docs/HALCYON_Q2_RUN_SPEC.md",
+ "lattice": {
+  "ns": 2,
+  "nt": 32
+ },
+ "run": {
+  "n_therm": 2000,
+  "n_meas": 20000,
+  "every": 5,
+  "jackknife_block": 100,
+  "two_j_max": 59
+ },
+ "gates": {
+  "Q2-a_beta3": true,
+  "Q2-a'_beta3": true,
+  "Q2-n_heat_kernel_beta3": true,
+  "Q2-w_beta3": true,
+  "Q2-w'_beta3": true,
+  "Q2-n_wilson_beta3": true,
+  "Q2-r_beta3": true,
+  "Q2-a_beta4": true,
+  "Q2-a'_beta4": true,
+  "Q2-n_heat_kernel_beta4": true,
+  "Q2-w_beta4": true,
+  "Q2-w'_beta4": true,
+  "Q2-n_wilson_beta4": true,
+  "Q2-r_beta4": false,
+  "Q2-a_beta6": true,
+  "Q2-a'_beta6": true,
+  "Q2-n_heat_kernel_beta6": true,
+  "Q2-w_beta6": true,
+  "Q2-w'_beta6": true,
+  "Q2-n_wilson_beta6": true,
+  "Q2-r_beta6": true,
+  "Q2-a_beta8": true,
+  "Q2-a'_beta8": true,
+  "Q2-n_heat_kernel_beta8": true,
+  "Q2-w_beta8": true,
+  "Q2-w'_beta8": true,
+  "Q2-n_wilson_beta8": true,
+  "Q2-r_beta8": true
+ },
+ "all_pass": false,
+ "rows": [
+  {
+   "beta": 3,
+   "action": "heat_kernel",
+   "acceptance": 0.582156015625,
+   "eps": 1.1547005383792517,
+   "seconds_ensemble": 148.4570704,
+   "seed": 202611193,
+   "m_leading_exact": {
+    "heat_kernel": 1.0,
+    "wilson": 1.131536579059762
+   },
+   "plateau": {
+    "t_lo": 3,
+    "t_hi": 5,
+    "mass": 0.9857488658614139,
+    "error": 0.024038151351269164,
+    "chi2_dof": 0.44500369018528035
+   },
+   "max_pull_C": 1.2938141748106704,
+   "pulls_C": [
+    0.7539410166053266,
+    0.7653738416177062,
+    0.5535858988626642,
+    0.2607349201955874,
+    0.02150529718360485,
+    0.4997668637155751,
+    0.2811838778929718,
+    1.2938141748106704,
+    0.6942806654785709,
+    0.8687995995356146,
+    0.811204592009183,
+    0.516072065427114,
+    0.7859974531541685,
+    0.00931473560114687,
+    0.15491108614741228,
+    0.6105879037149391,
+    0.2621645429253112
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 14)",
+    "t": 14
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 7)",
+    "t": 7
+   },
+   "m_exact_window_heat_kernel": 1.0000000000000018,
+   "m_exact_window_wilson": 1.1315365790597622,
+   "pull_vs_own_exact": -0.5928548302378289,
+   "pull_vs_heat_kernel_exact": -0.5928548302378289
+  },
+  {
+   "beta": 3,
+   "action": "wilson",
+   "acceptance": 0.6112548046875,
+   "eps": 1.1547005383792517,
+   "seconds_ensemble": 15.5330928,
+   "seed": 202611194,
+   "m_leading_exact": {
+    "heat_kernel": 1.0,
+    "wilson": 1.131536579059762
+   },
+   "plateau": {
+    "t_lo": 1,
+    "t_hi": 7,
+    "mass": 1.1355959030706586,
+    "error": 0.0034350380944177697,
+    "chi2_dof": 0.18287415474735544
+   },
+   "max_pull_C": 2.480570758892818,
+   "pulls_C": [
+    0.4602941352698147,
+    0.839213308157795,
+    1.0136558412198236,
+    0.20284481364532528,
+    0.3189426336320349,
+    0.2039012658242604,
+    0.6133399910865547,
+    0.3321186834121896,
+    0.25481163489171854,
+    0.19883772345161824,
+    2.480570758892818,
+    0.7343874810550814,
+    0.2614559412099269,
+    1.402914612817606,
+    2.2896240273913953,
+    1.2614381580641465,
+    1.3062321676989483
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+   },
+   "m_exact_window_heat_kernel": 1.0000000000000064,
+   "m_exact_window_wilson": 1.131536579059762,
+   "pull_vs_own_exact": 1.1817406093671394,
+   "pull_vs_heat_kernel_exact": 39.47435205769831
+  },
+  {
+   "beta": 4,
+   "action": "heat_kernel",
+   "acceptance": 0.563377734375,
+   "eps": 1.0,
+   "seconds_ensemble": 143.1025753,
+   "seed": 202611194,
+   "m_leading_exact": {
+    "heat_kernel": 0.7499999999999999,
+    "wilson": 0.8369570306883569
+   },
+   "plateau": {
+    "t_lo": 1,
+    "t_hi": 7,
+    "mass": 0.7482839920877077,
+    "error": 0.0023582202191108543,
+    "chi2_dof": 0.6127440912590901
+   },
+   "max_pull_C": 1.9866614858284959,
+   "pulls_C": [
+    0.24911803270540425,
+    0.39185895127648274,
+    0.8702224899057229,
+    0.9305223666589666,
+    0.15602668339301393,
+    0.4696646913590956,
+    0.1851880906202486,
+    0.061236141725417415,
+    1.2556749304107724,
+    0.6488820924437336,
+    0.6767926073801477,
+    0.6731351708747417,
+    0.7245576673336018,
+    1.590991258120555,
+    1.9866614858284959,
+    1.3335652055905185,
+    0.8265211743226539
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+   },
+   "m_exact_window_heat_kernel": 0.7500000000150536,
+   "m_exact_window_wilson": 0.8369570306892306,
+   "pull_vs_own_exact": -0.7276707719828418,
+   "pull_vs_heat_kernel_exact": -0.7276707719828418
+  },
+  {
+   "beta": 4,
+   "action": "wilson",
+   "acceptance": 0.5855111328125,
+   "eps": 1.0,
+   "seconds_ensemble": 17.0580081,
+   "seed": 202611195,
+   "m_leading_exact": {
+    "heat_kernel": 0.7499999999999999,
+    "wilson": 0.8369570306883569
+   },
+   "plateau": {
+    "t_lo": 5,
+    "t_hi": 9,
+    "mass": 0.7067136363297838,
+    "error": 0.06933160859760464,
+    "chi2_dof": 0.058501577788566336
+   },
+   "max_pull_C": 1.4652865821888192,
+   "pulls_C": [
+    0.9317723344359132,
+    0.1660368478346579,
+    0.7588449642300993,
+    0.832621708614177,
+    0.3055832108940647,
+    1.4652865821888192,
+    1.0654297053109063,
+    0.5643234922484416,
+    0.4923050130614876,
+    0.49860152819562925,
+    1.0352870537050818,
+    0.75654455884768,
+    0.632097371453142,
+    0.23882374455184333,
+    0.11858864875905,
+    0.6068597478135207,
+    0.08419026356715811
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 12)",
+    "t": 12
+   },
+   "m_exact_window_heat_kernel": 0.7500000000019658,
+   "m_exact_window_wilson": 0.8369570306884846,
+   "pull_vs_own_exact": -1.8785572265404014,
+   "pull_vs_heat_kernel_exact": -0.6243380839958975
+  },
+  {
+   "beta": 6,
+   "action": "heat_kernel",
+   "acceptance": 0.5457173828125,
+   "eps": 0.8164965809277261,
+   "seconds_ensemble": 143.0020576,
+   "seed": 202611196,
+   "m_leading_exact": {
+    "heat_kernel": 0.5,
+    "wilson": 0.5417126433200896
+   },
+   "plateau": {
+    "t_lo": 3,
+    "t_hi": 8,
+    "mass": 0.5021975065758992,
+    "error": 0.005150846008933564,
+    "chi2_dof": 0.3574972306481275
+   },
+   "max_pull_C": 1.6611936552916429,
+   "pulls_C": [
+    1.4154438919504257,
+    1.303968481897224,
+    1.6611936552916429,
+    1.1489528606876305,
+    1.1415546981245488,
+    1.074351310199032,
+    0.9300746787456023,
+    1.025592709780933,
+    0.8782590588783404,
+    1.0574417125722693,
+    0.6929181005701559,
+    0.23557731676406998,
+    0.3388188599008503,
+    0.5953088308213332,
+    0.2516885326034363,
+    0.1393358886180962,
+    0.10040811837668012
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 8)",
+    "t": 8
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+    "t": 0
+   },
+   "m_exact_window_heat_kernel": 0.5000000166169807,
+   "m_exact_window_wilson": 0.5417126476270687,
+   "pull_vs_own_exact": 0.4266269958580111,
+   "pull_vs_heat_kernel_exact": 0.4266269958580111
+  },
+  {
+   "beta": 6,
+   "action": "wilson",
+   "acceptance": 0.55994791015625,
+   "eps": 0.8164965809277261,
+   "seconds_ensemble": 8.0116535,
+   "seed": 202611197,
+   "m_leading_exact": {
+    "heat_kernel": 0.5,
+    "wilson": 0.5417126433200896
+   },
+   "plateau": {
+    "t_lo": 1,
+    "t_hi": 3,
+    "mass": 0.5413586505760017,
+    "error": 0.0017327601468170794,
+    "chi2_dof": 0.38077473004586504
+   },
+   "max_pull_C": 3.113002948748637,
+   "pulls_C": [
+    0.10956135805309751,
+    0.22680749585828144,
+    0.32814753990815754,
+    0.42811072149330015,
+    1.1762692925559581,
+    1.416879967254677,
+    1.2208103622543478,
+    0.7789265797302798,
+    1.0262627862658946,
+    1.0939102708249218,
+    1.3580560182625598,
+    1.5325488184315348,
+    2.056173138422187,
+    2.8967640779899133,
+    3.113002948748637,
+    2.659824120700884,
+    2.470433909469621
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 13)",
+    "t": 13
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+    "t": 0
+   },
+   "m_exact_window_heat_kernel": 0.5000000340405899,
+   "m_exact_window_wilson": 0.5417126522133501,
+   "pull_vs_own_exact": -0.20429927246341728,
+   "pull_vs_heat_kernel_exact": 23.868633296641665
+  },
+  {
+   "beta": 8,
+   "action": "heat_kernel",
+   "acceptance": 0.5374282421875,
+   "eps": 0.7071067811865475,
+   "seconds_ensemble": 133.0164967,
+   "seed": 202611198,
+   "m_leading_exact": {
+    "heat_kernel": 0.37499999999999994,
+    "wilson": 0.39873342228055936
+   },
+   "plateau": {
+    "t_lo": 5,
+    "t_hi": 10,
+    "mass": 0.38039100776315854,
+    "error": 0.006966474812363364,
+    "chi2_dof": 0.7922424869520819
+   },
+   "max_pull_C": 3.0919657766085544,
+   "pulls_C": [
+    2.18807844788648,
+    1.9920637600307929,
+    1.9800356947999609,
+    1.4965935462334095,
+    1.372976495639363,
+    0.8401748014800685,
+    0.9027598595322142,
+    1.1181047899125538,
+    1.4421934500834541,
+    1.6730491086695234,
+    1.9490476991778378,
+    2.3876457513735985,
+    2.754014695546128,
+    3.0505319924207743,
+    3.0919657766085544,
+    3.0572446863590246,
+    3.0452176483453433
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+    "t": 0
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+   },
+   "m_exact_window_heat_kernel": 0.3750005084438608,
+   "m_exact_window_wilson": 0.39873365613910117,
+   "pull_vs_own_exact": 0.7737771921217972,
+   "pull_vs_heat_kernel_exact": 0.7737771921217972
+  },
+  {
+   "beta": 8,
+   "action": "wilson",
+   "acceptance": 0.5477108984375,
+   "eps": 0.7071067811865475,
+   "seconds_ensemble": 13.6951099,
+   "seed": 202611199,
+   "m_leading_exact": {
+    "heat_kernel": 0.37499999999999994,
+    "wilson": 0.39873342228055936
+   },
+   "plateau": {
+    "t_lo": 1,
+    "t_hi": 3,
+    "mass": 0.3977656974264842,
+    "error": 0.0015816722131787406,
+    "chi2_dof": 0.0915429856094415
+   },
+   "max_pull_C": 1.8519363050211282,
+   "pulls_C": [
+    0.6138374523057639,
+    0.4892413599919879,
+    0.3461792110703882,
+    0.17912084066675638,
+    0.1417116395966365,
+    0.041597008760364616,
+    0.03355136421726541,
+    0.06944431989623666,
+    0.28665030022804827,
+    0.4725937584627839,
+    0.6941637085955206,
+    1.0536376061258745,
+    1.3488656846643834,
+    1.739217870201479,
+    1.8519363050211282,
+    1.652997159087907,
+    1.7417009249735902
+   ],
+   "plaquette_channel": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 12)",
+    "t": 12
+   },
+   "shuffled": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+   },
+   "m_exact_window_heat_kernel": 0.3750014727195666,
+   "m_exact_window_wilson": 0.398734118199823,
+   "pull_vs_own_exact": -0.6122765294033579,
+   "pull_vs_heat_kernel_exact": 14.392504665152837
+  }
+ ]
+}

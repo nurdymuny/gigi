@@ -34,7 +34,7 @@ $2\sin(\theta/2)$, $\theta$ and $2\tan(\theta/2)$, and they are always in that o
 of this is classical, from Archimedes through Snellius and Huygens. This paper collects
 what the three paths mean when the turn is read as a complex number $U=e^{i\theta}$ or a
 unit quaternion. The chord is $U-1$, and its square is Wilson's lattice energy. The arc is
-the logarithm, and its square is the continuum energy. The tangent leg $\tan(\theta/2)$ is
+the logarithm, and its square is the continuum energy to leading order. The tangent leg $\tan(\theta/2)$ is
 the Cayley parameter that builds $U$ algebraically, and read as a time step it is the
 Crank--Nicolson rule. The chord and the tangent miss the arc in opposite directions, the
 tangent by exactly twice as much at leading order. So the Snellius--Huygens weights
@@ -242,7 +242,8 @@ A^2=\theta^2,\qquad
 T^2=\theta^2+\tfrac16\theta^4+\tfrac{17}{720}\theta^6+\dots
 \]
 $C^2$ is Wilson's action (up to normalisation), and $A^2$ is Manton's geodesic action
-\cite{manton}, which is the continuum energy of the face. The tangent energy again misses on
+\cite{manton}, which is the continuum energy of the face to leading order in its size (the
+holonomy alone does not fix the curvature inside a face). The tangent energy again misses on
 the other side, and again by exactly twice as much at leading order. So the same
 Snellius--Huygens weights cancel it.
 
@@ -299,8 +300,8 @@ U=(1+v)(1-v)^{-1}\ \text{with}\ v=\frac{\operatorname{Im}U}{1+\operatorname{Re}U
 The quaternion $U$ rotates three-space by $2a$, so the chord, arc and outside path of the
 quaternion live on the double cover of the rotation they describe. The Cayley vector $v$
 again reaches everything except $U=-1$, the other sheet's copy of the identity.
-\texttt{verify.py} checks all three on $2{,}000$ random quaternions. The chord and arc
-agree to $10^{-14}$. The Cayley reconstruction agrees to $10^{-10}$; its conditioning
+\texttt{verify.py} checks all three on $2{,}000$ random quaternions. The computed chord and
+arc agree with their closed-form values to $10^{-14}$. The Cayley reconstruction agrees to $10^{-10}$; its conditioning
 grows like $1/(1+\cos a)$ near the half turn.
 
 \begin{plain}
@@ -548,8 +549,9 @@ must be spent in full, so every walk has length exactly one. With one whole tick
 can only land on the circle of radius one around $A$. Unless $B$ stands exactly there
 (at $\theta=60^\circ$), $A$ overshoots or falls short. With two whole tickets, $A$ can
 reach any point within distance two, but the corner where $A$ turns must lie one ticket
-from $A$ and one ticket from $B$. Two circles of radius one around $A$ and $B$ meet in
-exactly two points, symmetric across the chord. One is the centre $O$; the other is its
+from $A$ and one ticket from $B$. For $0<\theta<\pi$, two circles of radius one around $A$ and $B$ meet in
+exactly two points, symmetric across the chord (at $\theta=\pi$ they touch only at $O$; at
+$\theta=0$ they coincide). One is the centre $O$; the other is its
 reflection through the chord's midpoint, the point $A+B$. So there are exactly two
 two-ticket routes:
 \begin{itemize}
@@ -648,8 +650,8 @@ different directions. How does one get back to the other? Walking the curve cost
 ticket only if they are at most about $57^\circ$ apart. Cutting straight across costs one
 ticket if they are at most $60^\circ$ apart. Counting the way physicists count energy,
 the straight crossing costs one ticket at exactly $90^\circ$, the same as walking back to
-the middle and out again; that is Pythagoras. If tickets must be spent whole, there are
-always exactly two ways to do it in two trips: turn at the middle of the room, or turn at
+the middle and out again; that is Pythagoras. If tickets must be spent whole, then for any two points short of opposite there are
+exactly two ways to do it in two trips: turn at the middle of the room, or turn at
 its mirror-image corner on the far side of the crossing. Those two corners are twins. At
 $120^\circ$ the twin corner lands on the circle itself, and at $90^\circ$ it becomes the
 corner of a perfect square, where the two edge lines meet and the outside path is exactly
@@ -690,10 +692,13 @@ it.}
 \end{figure}
 
 The angles shrink roughly like the face area, and the chord--arc energy gap is below
-$0.08\%$ everywhere. The force errors measured there are $2.5\%$ to $36\%$. So the
-chord-versus-arc choice is not what limits that work, and the two readings used there
-(the arc, through $\log U$, for the covariant recovery; the chord, $U-1$, for the force)
-agree to well within the measured error. Where the three paths do matter for that
+$0.08\%$ everywhere. A small energy gap does not by itself bound the gap between forces, which
+are derivatives: for one face, differentiating $2(1-\cos a)$ and $a^2$ gives the ratio
+$\sin a/a$, not the energy ratio. So the force was measured directly. That work reads the arc,
+through $\log U$, in its recovery tests and the chord, $U-1$, throughout its force; with the arc
+in the force's recovery instead, its $SU(2)$ force changes by $0.090\%$, $0.0084\%$ and
+$0.0021\%$ of its norm at $n=1,2,3$, and its error (between $4.7\%$ and $36\%$) by at most
+$0.011$ percentage points. The chord-versus-arc choice is not what limits that work. Where the three paths do matter for that
 programme is in time: its finest flow level is stepped with the Cayley rule of
 Section~\ref{sec:time}.
 

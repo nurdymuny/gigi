@@ -61,9 +61,9 @@ mesh-uniform and gives a Petrov--Galerkin force with no growing modes at every l
 error falls to $1.45\%$ on the finest mesh. Reading three rings to second order, with each cell's own
 fluxes held exact, lowers it to $0.158\%$, with observed orders near two. The force is not the
 gradient of an energy, and we identify the obstruction. The construction carries over to $SU(2)$: on a Berger metric the force converges where the native one stalls at $25.5\%$, and
-its time integration follows the Ricci-flowed metric to within $0.87\%$. We prove that the
-bottom of the spin-$j/2$ sector of the linearised $SU(2)$ Yang--Mills operator at the Berger field
-is $(j(j+2)-14)/3$. On the Poincar\'e sphere the first sector above the left-invariant one therefore
+its time integration follows the Ricci-flowed metric to within $0.87\%$. In the spin-$j/2$ sector of the linearised $SU(2)$ Yang--Mills operator at the Berger field,
+$(j(j+2)-14)/3$ is an exact eigenvalue, and we prove that it is the bottom of its sector in the four low
+sectors that survive on the Poincar\'e sphere. There the first sector above the left-invariant one
 begins $168/3$ above the field's growth mode, one third of the sphere's first scalar eigenvalue.
 \end{abstract}
 
@@ -241,8 +241,9 @@ Section~\ref{sec:su2force} reviews these and goes beyond them.
     $25\%$, and a time integration that follows the Ricci-flowed metric to within $0.87\%$
     at $n=3$ (Section~\ref{sec:su2}).
   \item A closed form for the bottom of the linearised $SU(2)$ spectrum at the Berger field,
-    $(j(j+2)-14)/3$ in the sector of spin $j/2$, derived on an explicit eigenvector and shown to
-    be the bottom of its sector (Theorem~\ref{thm:gap}). On the Poincar\'e sphere the first sector
+    $(j(j+2)-14)/3$ in the sector of spin $j/2$, an exact eigenvalue on an explicit eigenvector in
+    every sector, proved to be the bottom of its sector for $j=0,12,20,24$, with every higher surviving
+    sector bounded above $142$ (Theorem~\ref{thm:gap}); minimality for general $j$ is not proved. On the Poincar\'e sphere the first sector
     above the left-invariant one therefore begins $168/3$ above the field's growth mode, one third of
     the sphere's first scalar eigenvalue, and both lattice forces resolve it
     (Proposition~\ref{prop:sector}).
@@ -252,9 +253,9 @@ Section~\ref{sec:su2force} reviews these and goes beyond them.
 holonomy, and there are three honest ways to read how far it turned: straight across, by
 the chord $U-1$ that lattice gauge theory has used since Wilson~\cite{wilson1974}; along the way it went, by
 the arc $\log U$ that the continuum uses; and out and back along the tangents, whose leg is
-the Cayley parameter. This paper reads the same faces two of those ways at once, the arc in
-the recovery and the chord in the action, and Section~\ref{sec:su2force} shows the
-difference is far too small to matter here. Why the three readings miss one another in a
+the Cayley parameter. This paper reads the same faces two of those ways, the arc in the recovery tests and
+the chord in the force, and Section~\ref{sec:su2force} measures the difference in the force
+itself: far too small to matter here. Why the three readings miss one another in a
 fixed ratio of two to one, why the same ratio comes back in energy and in time stepping,
 and which of them the flow should step with, is the subject of the companion paper
 \emph{Three Ways Across a Turn}~\cite{threeways}.
@@ -310,11 +311,12 @@ velocity is $v=-B_h^{-1}g(a)$. The relative force error is
 \BW{} (denoted BW05 in the code) requires the following, with all quantities fixed in advance and none fitted:
 \begin{itemize}
   \item $\varepsilon_5<5\%$;
-  \item observed orders $p_i=\log(\varepsilon_i/\varepsilon_{i+1})/\log(h_i/h_{i+1})$
-    of at least $\tfrac12$ for the final two refinements;
-  \item quadrature ($q4$ vs.\ $q6$) and solver errors below $\varepsilon/10$ at every
-    level.
+  \item observed orders $p_i=\log(e_i/e_{i+1})/\log(h_i/h_{i+1})$ of the absolute error
+    $e_n=\norm{v+4a}_{B_h}$, of at least $\tfrac12$ for the final two refinements;
+  \item quadrature ($q4$ vs.\ $q6$) and solver errors below $e_n/10$ at every level.
 \end{itemize}
+This is the convention the gate implements (\path{e2e/probes/ricci_shape_evidence.py},
+\texttt{numerical\_gate}).
 The stability test \emph{S3} requires that the generalized spectrum of $(K,B_h)$, for
 the assembled force operator $g(a)=Ka$, have exactly as many eigenvalues of modulus
 below one as the Whitney gauge kernel, and all others with strictly positive real part.
@@ -481,8 +483,11 @@ Let $\Phi_F=Da$ be the fluxes of $F$. For every variation $\eta$,
 Add and subtract $\ip{F}{\mathcal{S}D\eta}$ in $g(a)[\eta]-\ip{F}{jD\eta}$.
 \end{proof}
 
-On shape-regular meshes the curl of a Whitney variation obeys the inverse estimate
-$\norm{W_{D\eta}}\le C_{\mathrm{inv}}h^{-1}\norm{W_\eta}$~\cite{hiptmair2002}. Three
+On a quasi-uniform family of meshes, shape-regular with $h_{\max}\le c\,h_{\min}$, the curl of a
+Whitney variation obeys the inverse estimate
+$\norm{W_{D\eta}}\le C_{\mathrm{inv}}h^{-1}\norm{W_\eta}$~\cite{hiptmair2002}; on a shape-regular
+family alone it holds with the local sizes $h_K$ in place of $h$. The meshes used here are
+quasi-uniform: $h_{\max}/h_{\min}\le1.14$ at every level. Three
 consequences follow, matching the measurements in Section~\ref{sec:results}:
 \begin{itemize}
   \item \emph{Whitney} ($\cR=\mathcal{S}=j$). The test-variation term vanishes, but the
@@ -533,10 +538,10 @@ exactly.
 If $X_K$ has full column rank, then $\cR_KX_K=I_{11}$: the recovery reproduces every
 closed linear curvature exactly. Let $\Lambda_K=\norm{\cR_K}_2$. For smooth closed $F$,
 \[
-  \norm{P_K[\cR_K\Phi_F]-F}_{L^\infty(K)} \;\le\; C\,(1+\Lambda_K)\,h^2\,|F|_{W^{2,\infty}(\mathcal{N}(K))},
+  \norm{P_K[\cR_K\Phi_F]-F}_{L^\infty(K)} \;\le\; C\,(1+\Lambda_K)\,h^2\,\norm{F}_{W^{2,\infty}(\mathcal{N}(K))},
 \]
-where both fields are compared in $K$'s chart, and $C$ depends only on the shape-regularity
-constant of the mesh and on the number of rings.
+where both fields are compared in $K$'s chart, $\Lambda_K$ is measured in the scaled units of the
+proof, and $C$ depends only on the shape-regularity constant of the mesh and on the number of rings.
 \end{lemma}
 \begin{proof}
 \emph{Exactness.} For data $X_Kx$, the constraint $A_Kx'=f_{\mathrm{own}}$ and the residual
@@ -563,7 +568,9 @@ zero, so $F_1\in\Pone$. By exactness,
 \[
   P_K[\cR_K\Phi_F]-\tilde F \;=\; P_K\bigl[\cR_K(\Phi_F-X_KF_1)\bigr]+(F_1-\tilde F).
 \]
-On $\mathcal N(K)$, whose diameter is at most $c_1d$ for a fixed number of rings,
+On a conforming shape-regular mesh, cells that share a vertex have comparable diameters, with a
+ratio bounded in terms of the shape-regularity constant; so $\mathcal N(K)$, for a fixed number of
+rings, has diameter at most $c_1d$, and
 $|F_1-\tilde F|\le\tfrac12 c_1^2d^2|\tilde F|_{W^{2,\infty}}$. That bounds the second term on $K$.
 It also bounds each flux defect, $|(\Phi_F-X_KF_1)_f|\le\operatorname{area}(f)\,\tfrac12c_1^2d^2|\tilde
 F|_{W^{2,\infty}}$, where every face has area at most $c_2d^2$ and there are at most $c_3$ faces. In
@@ -579,14 +586,18 @@ $d\le h$.
 
 \emph{Back to the sphere.} The inverse chart is smooth. On a region of size $O(h)$ near the point
 of tangency, its derivatives up to second order are bounded by constants that again depend only
-on shape regularity. So $|\tilde F|_{W^{2,\infty}}\le C|F|_{W^{2,\infty}}$, and the chart norm on $K$
-is equivalent to the metric norm with constants of the same kind. This conversion costs a bounded
+on shape regularity. Second derivatives of the pull-back mix derivatives of $F$ of orders zero to
+two, so the bound is in the full norm, $|\tilde F|_{W^{2,\infty}}\le C\norm{F}_{W^{2,\infty}}$, and
+the chart norm on $K$ is equivalent to the metric norm with constants of the same kind. This conversion costs a bounded
 factor, not an additional power of $h$. That gives the stated bound.
 \end{proof}
 
 Combining Lemma~\ref{lem:acc} with~\eqref{eq:pgbound} gives a consistency error of order
 $\Lambda h$, where $\Lambda=\max_K\Lambda_K$. Consistency requires only that $\Lambda$ be
-bounded. Stability is another matter.
+bounded uniformly over the mesh family. Full column rank on each patch does not give that; it is a
+hypothesis, measured on the meshes computed here (Section~\ref{sec:conditioning}), not proved for a
+general family. The convergence results below are finite-level evidence under it, not a theorem
+about every refinement. Stability is another matter.
 
 \section{Conditioning: why one ring is unstable}\label{sec:conditioning}
 
@@ -1123,12 +1134,28 @@ along a fixed breadth-first tree of the neighbourhood. In the Abelian case, regi
 only the deck transformation between sheets; here it also carries the gauge frame, as the
 covariant Bianchi identity $D_AF=0$ requires.
 
-\paragraph{Why the same fit applies.} In Fock--Schwinger gauge at the cell's centre,
-$A(0)=0$ and $dF=-[A\wedge F]$ vanishes at the centre, entering only at the next order. To
+\paragraph{Why the same fit applies, to leading order.} In Fock--Schwinger gauge at the cell's
+centre, $A(0)=0$ and $dF=-[A\wedge F]$ vanishes at the centre, entering only at the next order. To
 the order of a linear model, each $\mathfrak{su}(2)$ component of $F$ is therefore a closed
-linear field. The paper's fit map $\cR_K$ depends only on geometry, so it applies unchanged
+linear field. The paper's fit map $\cR_K$ depends only on geometry, so it is applied unchanged
 to the three components of the registered fluxes. Amplification and conditioning are
-exactly those of Section~\ref{sec:conditioning}.
+exactly those of Section~\ref{sec:conditioning}. This is a leading-order argument, and it is
+used as one. Register runs along a fixed breadth-first tree, which agrees with radial
+Fock--Schwinger transport only to leading order.
+
+\paragraph{The own faces in $SU(2)$.} In the Abelian case the cell's own faces are held exactly.
+In $SU(2)$ they cannot be. The four own-face fluxes of a closed linear field sum to zero (its flux
+map has rank three), but the Bianchi identity of a lattice field is multiplicative: neither the
+logarithms nor the vector parts of the registered face holonomies sum to zero on a finite cell. No
+closed linear field matches all four readings, and the fit, whose own-face step is a
+pseudoinverse, matches them in least squares instead. We measured the residual on every cell
+(\path{scripts/ricci_su2_ownface_residual.py}). It equals, to rounding, the smallest residual
+any closed linear field can achieve, the component of the readings along the flux map's null
+direction, and it falls like $h^2$: its median over cells is $2.53\%$, $0.60\%$ and $0.27\%$
+of the own readings at $n=1,2,3$ (maxima $4.3\%$, $0.82\%$, $0.37\%$), the same for both
+readings of the face. So in $SU(2)$ the own faces are held exactly only in the Abelian sense; the
+non-Abelian readings are held up to this residual, a relative perturbation of order $h^2$ in the
+data. The convergence results below include it; they do not rest on exact preservation.
 
 \paragraph{Tests.} The prototype (\path{scripts/ricci_su2_recovery.py}) passes three
 tests.
@@ -1194,13 +1221,18 @@ variation exactly and replaces the trial's vector part by
 $h_i=\int_K\langle P_K,W_i\rangle_g$, where $P_K$ is the covariant two-ring recovery of
 the registered defects and $W_i$ the Whitney face function.
 
-The recovery and the native action read each face's turn differently. The recovery
-reads it by its arc, $\log U_f$; the native action reads it by its chord, $U_f-1$, which is
-Wilson's. The companion paper~\cite{threeways} works out what separates the two readings,
-together with a third, the tangent. On these meshes the face angles are at most $0.094$,
-and the relative chord--arc energy gap $a^2/12$ is below $0.08\%$ at every face, far below
-the errors reported here. Mixing the two readings is therefore not a source of the
-measured error.
+\paragraph{Which reading of the face.} In the force both steps read each face by its chord,
+Wilson's $U_f-1$: the action through the defect, and the recovery through the defect's vector
+part (\texttt{flux="defect"} in the code). The recovery tests of Section~\ref{sec:su2rec} read
+the arc, $\log U_f$. The companion paper~\cite{threeways} works out what separates the readings,
+together with a third, the tangent. On these meshes the face angles are at most $0.094$, and the
+chord--arc energy gap $a^2/12$ is below $0.08\%$ at every face. A small energy gap does not by
+itself bound the gap between forces, which are derivatives (for one face the ratio of the two
+derivatives is $\sin a/a$, not the energy ratio), so we measured the force directly
+(\path{scripts/ricci_su2_force_log_vs_defect.py}). With the arc in the recovery instead of the
+chord, the two-ring force changes by $0.090\%$, $0.0084\%$ and $0.0021\%$ of its norm at
+$n=1,2,3$, and its error by at most $0.011$ percentage points ($36.25\%$, $7.43\%$, $4.69\%$
+either way). The choice of reading is not a source of the measured error.
 
 \paragraph{Controls.} Before any result was read, a Python replica reproduced the native
 energy to $1.5\times10^{-16}$ at $n=1$ ($7.3\times10^{-16}$ at $n=2$) and the native
@@ -1415,7 +1447,8 @@ No rate is claimed from three levels. Three facts follow:
   \item \emph{The physical spectrum has an exact gap.} On the gauge-orthogonal slice, the
     spin-$0$ sector ends at $33.088$, spin $6$ begins at $154/3=51.33$, and nothing else lies below
     $142$, where spin $10$ begins (spin $12$ begins at $610/3$). In every higher sector the negative
-    eigenvalues are pure gauge, with overlap at least $0.999$. On this
+    eigenvalues are gauge-dominated, with overlap at least $0.999$ with the gauge directions; they
+    are not exactly gauge, since off a critical point $H$ does not preserve the slice. On this
     manifold and this background the low spectrum is therefore fixed by symmetry. That makes it
     an exactly solvable control for any future spectral observable, not a test of one.
 \end{itemize}
@@ -1434,7 +1467,7 @@ $b_i\in V_j\otimes\mathfrak{su}(2)$. $H$ is the Hessian of $E=\tfrac12\norm{F}^2
 mass. The gauge map is $G\xi=(\hat e_i\xi+[M_i,\xi])_i$ for $\xi\in V_j\otimes\mathfrak{su}(2)$, with
 $L^2$ adjoint $G^*$.
 
-\paragraph{The floor of every sector.} The spectrum has a closed form at its floor. Write $f\in V_j$ for the top
+\paragraph{The floor formula.} The spectrum has a closed form at its floor in the sectors that matter. Write $f\in V_j$ for the top
 weight along the long axis of the Berger metric, $J_0f=\tfrac j2f$, and $\hat\theta^i$ for the
 orthonormal coframe.
 
@@ -1472,7 +1505,8 @@ The computation is symbolic in $j$ (\path{scripts/ricci_su2_sector_formula.py}).
 \end{proof}
 
 Proposition~\ref{prop:sector} gives an eigenvalue in every sector. The next result shows that it is
-the bottom of its sector, and that this makes the gap exact.
+the bottom of its sector in the four low sectors that survive on the Poincar\'e sphere, and that this
+makes the gap exact; for general $j$ minimality is not proved.
 
 Here the \emph{gauge-orthogonal spectrum} of a sector is the spectrum of the Hessian compressed to
 the slice, $PHP$ with $P$ the $L^2$ projection onto $\ker G^*$: the field is not at rest, so $H$ does
@@ -1487,8 +1521,8 @@ At the Berger metric $g=(3,1,1)$:
     $\bigl(\sqrt{j(j+2)/3}-\omega\bigr)^2-12$, with $\omega=\sqrt{76/3}=5.0332\ldots$, whenever
     $\sqrt{j(j+2)/3}\ge\omega$;
   \item for $j=0,12,20,24$, $\lambda(j)$ is the lowest gauge-orthogonal eigenvalue of its sector, and
-    no other eigenvalue of $H+GG^*$ lies below $\lambda(j)+1/3$; numerically the same holds for
-    every $j\le120$;
+    every other eigenvalue of $H+GG^*$ is at least $\lambda(j)+1/3-10^{-53}$; numerically the same
+    picture holds for every $j\le120$;
   \item on the Poincar\'e sphere, the gauge-orthogonal spectrum below $142$ consists of the spin-$0$
     values $-14/3$ (twice), $16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$
     values from $154/3$ upward; spin $10$ begins exactly at $142$.
@@ -1524,14 +1558,21 @@ $\sum_i\norm{X_iv}^2\ge(\sqrt{j(j+2)/3}-\omega)^2\norm v^2$, with $\omega^2=\sum
 \emph{Part (2).} $\lambda(j)$ is an eigenvalue of $H+GG^*$ of multiplicity at least two: the
 eigenvector of Proposition~\ref{prop:sector} at the top weight, and its image at the bottom weight
 under the real structure of the integer-spin representation, which commutes with $H+GG^*$ because
-every coefficient is real. For $j=0,12,20,24$ the remaining eigenvalues are certified by inertia.
-The matrix $H+GG^*-\mu$, $\mu=\lambda(j)\mp1/3$, is assembled in interval arithmetic at 200 bits (the \texttt{iv} context of mpmath, with
-$\sqrt3$ and every entry enclosed) and
-factored $LDL^\top$ without pivoting. Its backward error is bounded by
-$\gamma_n\,\bigl|L\bigr|\bigl|D\bigr|\bigl|L^\top\bigr|$ \cite[Thm.~9.3]{higham2002}, and the total
-perturbation is below $3\times10^{-54}$ in every case, far inside $1/3$. Sylvester's law of inertia
-then counts no eigenvalue below $\lambda(j)-1/3$ and exactly two below $\lambda(j)+1/3$, so the
-lowest eigenvalue is exactly $\lambda(j)$, twice, and the next is at least $\lambda(j)+1/3$. The
+every coefficient is real. For $j=0,12,20,24$ the rest is a rigorous count of the eigenvalues below
+$\mu=\lambda(j)+1/3$. The matrix $H+GG^*-\mu$ is enclosed in interval arithmetic (mpmath's \texttt{iv}
+context: outward-rounded endpoints, $200$ bits, $\sqrt3$ and every entry enclosed) and realified, which
+doubles every eigenvalue. The symmetric midpoint matrix $M$ of its lower triangle lies within $\rho$ of
+the exact matrix; $M$ is factored $LDL^\top=M+\Delta M$ without pivoting, with
+$|\Delta M|\le\gamma_N|L||D||L^\top|$~\cite[Thm.~9.3]{higham2002}. Since $LDL^\top$ is congruent to $D$,
+Sylvester's law gives the exact inertia of $M+\Delta M$, and Weyl's inequality with
+$\varepsilon=\rho+\norm{\gamma_N|L||D||L^\top|}_F$ transfers it: $k$ negative pivots allow at most $k/2$
+eigenvalues of $H+GG^*$ below $\mu-\varepsilon$. In every case $D$ has four negative pivots, the
+smallest pivot has absolute value at least $0.63$, and $\varepsilon<3\times10^{-54}$. So at most two
+eigenvalues lie below $\lambda(j)+1/3-\varepsilon$; both copies of $\lambda(j)$ are among them, so
+$\lambda(j)$ is the lowest eigenvalue, twice, and every other is at least $\lambda(j)+1/3-\varepsilon$.
+At $\mu=\lambda(j)-1/3$ no pivot is negative, a consistency check. Every pivot is recorded, and the
+script refuses to certify on a zero pivot, a different count, or $\varepsilon\ge1/3$; the companion
+paper~\cite{davisberger} tabulates the data. The
 eigenvector of Proposition~\ref{prop:sector} lies in the slice, so $\lambda(j)$ is the minimum there.
 For every $j\le120$ the same picture holds in double precision, with the next eigenvalue at least
 $\lambda(j)+2/3$; that wider range is evidence, and the theorem does not rely on it.
@@ -1556,7 +1597,7 @@ sector. On the Poincar\'e sphere the floors of the first two surviving sectors d
 $\lambda_1(\Delta_{S^3/2I})/3=168/3$.
 
 Taken together, the field's strongest
-growth direction and the bottom of every higher sector are one formula (Figure~\ref{fig:ladder}).
+growth direction and the bottom of each surviving sector below $j=30$ are one formula (Figure~\ref{fig:ladder}).
 At $j=0$ it gives $-14/3$, the growth mode. The first sector that survives on the Poincar\'e sphere
 is $j=12$, where $j(j+2)=168$ is the first nonzero eigenvalue of the scalar Laplacian on the
 Poincar\'e sphere~\cite{lachiezerey2004}. So the first surviving sector above the left-invariant one
@@ -1608,15 +1649,21 @@ removal: one ring & 3 & $-45{,}922$ & $-45{,}543$ & --- & --- \\
 \end{table}
 
 The two-ring force passes at all three levels. Its left edge lies $0.17$ to the left of its slowest
-eigenvalue at $n=1$, $0.03$ at $n=2$ and $0.015$ at $n=3$, and matches the native operator's, so the only growth is the field's own motion:
-over the window $[0,0.02]$ of the time-integration experiment, the envelope is
-$e^{4.664\times0.02}\approx1.098$ for both forces. The one ring fails, as the removal
+eigenvalue at $n=1$, $0.03$ at $n=2$ and $0.015$ at $n=3$, and matches the native operator's, so the only growth is the field's own motion.
+For the operator frozen at the initial Berger field, with the mass held fixed, the envelope over the
+window $[0,0.02]$ of the time-integration experiment is $e^{4.664\times0.02}\approx1.098$ for both
+forces. This is a bound for the frozen linearization only. Along the actual flow the mass $B(t)$
+changes with the metric, and even the linear energy identity gains a term,
+$\tfrac{d}{dt}\tfrac12\xi^\top B\xi=-\xi^\top\operatorname{sym}(K)\xi+\tfrac12\xi^\top\dot B\xi$;
+linearizing along the moving trajectory adds others. The envelope therefore does not certify the
+nonlinear moving-metric run; the agreement measured over that window (Section~\ref{sec:su2flow}) is a
+separate, empirical result. The one ring fails, as the removal
 requires, with a left edge of $-19{,}993$ at $n=2$ and $-45{,}922$ at $n=3$. The two-ring operator is non-normal
 ($\eta$ about $0.14$, against $3\times10^{-4}$ native), but its numerical radius stays within
 $1\%$ of its norm, and at $n=2$ the left edge sits on its slowest eigenvalue: the lopsidedness lives in
 fast, strongly damped modes, not where growth would begin. Because the Berger field moves,
 the symmetric part is indefinite for every operator, so the dissipativity certificate of
-Proposition~\ref{prop:diss} does not apply here, and the envelope above is the honest bound.
+Proposition~\ref{prop:diss} does not apply here, and the frozen envelope above is the honest bound.
 For a time stepper, Crouzeix--Palencia~\cite{cp} bounds $k$ steps of any rational rule $r$ by
 $(1+\sqrt2)\sup_{W}|r(hz)|^k$. The explicit-Euler limit it implies at $n=2$ is
 $h\approx2.85\times10^{-4}$; the flow at $n=2$ used the fourth-order rule with
@@ -1715,8 +1762,12 @@ $[0,0.1]$ its order between $n=1$ and $2$ falls from $1.63$ to $1.32$ (Limitatio
 many force evaluations, so the flow is stepped by the Cayley map of the companion
 paper~\cite{threeways}: $U_{k+1}=U_k\,\mathrm{cay}(\Omega)$, with $\Omega$ solving
 $\Omega=h\,\xi(U_k\,\mathrm{cay}(\Omega/2),t_k+h/2)$, the Lie form of the implicit midpoint
-rule. Its linearisation is Crank--Nicolson, stable for any step, and every update stays
-exactly on $SU(2)$. Each step is a quasi-Newton solve with one iteration matrix factored per
+rule. Its linearisation is Crank--Nicolson, which is A-stable: stable for any step on the
+dissipative modes. On the field's few growing modes ($\dot a=-\lambda a$ with $\lambda<0$) its factor
+$(1-h\lambda/2)/(1+h\lambda/2)$ is singular at $h=-2/\lambda$, so the step must stay well below that.
+For the strongest growing mode, $\lambda=-4.66$, that is $h=0.43$; the step used, $h=0.0025$ (eight steps
+over the window), is about $170$ times smaller. Every update stays exactly on $SU(2)$,
+which is group membership, not a statement about accuracy or stability. Each step is a quasi-Newton solve with one iteration matrix factored per
 run. The step was checked before use. Its distance from the exponential map falls as
 $|v|^3/12$, the phase lag of the companion paper. Its observed time order is $1.99$. At $n=1$
 and $n=2$, with $8$ steps, it reproduces the RKMK4 errors of Table~\ref{tab:su2flow} to within
@@ -1808,8 +1859,8 @@ choice, and it has no choice but to read every rough flux pattern as a linear fi
 the recovery is given more information than it strictly needs, rough patterns are
 averaged rather than interpolated. Exactness on the model space is untouched, so
 consistency survives. Stability follows without any damping parameter, filter or
-regularization: the only change is a neighbourhood radius, and only radii one and two
-were ever run. The same count, taken one order higher, gives the hybrid reading of
+regularization: the only change is a neighbourhood radius, and for the linear fit
+only radii one and two were run. The same count, taken one order higher, gives the hybrid reading of
 Section~\ref{sec:hybrid}: three rings, read to second order, raise the observed order of the
 force from about $0.8$ to about $1.85$.
 
@@ -1881,12 +1932,12 @@ literature and the two probes it led to, including the symmetric projection laye
 the floor to about $6\%$, are recorded in \path{docs/RICCI_PROJECTION_LAYER_RESULTS.md}.
 
 \paragraph{Chord, arc and tangent.} Building the $SU(2)$ force put two readings of one turn
-side by side, the arc $\log U$ in the recovery and the chord $U-1$ in the action. Asking what
+side by side, the arc $\log U$ in the recovery tests and the chord $U-1$ in the force. Asking what
 separates them, and what the third, outside path means, became the companion
 paper~\cite{threeways}. It finds the chord and the outside path missing the arc in a fixed
 ratio of two to one, in length, in energy and in time stepping. For this paper it settles
-two points: the chord--arc gap on our meshes is too small to matter
-(Section~\ref{sec:su2force}), and the Cayley map is the integrator that carried the flow to
+two points: the chord--arc gap on our meshes is too small to matter, measured in the force
+itself (Section~\ref{sec:su2force}), and the Cayley map is the integrator that carried the flow to
 $n=3$, where the explicit step became unaffordable.
 
 \paragraph{What grew from this work.} Two research notes in the repository record further ideas that
@@ -1915,9 +1966,11 @@ this paper.
     error is about $10.6\%$ at $n=3$. On a five-times-longer window, $[0,0.1]$ at $n\le2$, the
     two-ring force stays ahead of native at every sample time, but its lead shrinks from
     $20\%$ to $2\%$. By $t=0.1$ the two error vectors point the same way (cosine $0.988$ in the
-    mass norm at $n=2$), so the late error comes from what the two flows share, the Whitney
-    mass and the target it defines, not from the force. A better force cannot remove it; a
-    mass built from the same reading as the force might, and that is untested.
+    mass norm at $n=2$), so the two flows share an error direction. Nearly parallel
+    error vectors show a shared direction, not its cause: the dynamics can map different force
+    errors into the same slow direction, and shared target, mass, time or geometric errors can align
+    them too. Our hypothesis is that the shared Whitney mass and the target it defines dominate; a
+    mass built from the same reading as the force would test it, and that test has not been run.
   \item The S3 spectrum is decomposed at $n\le 3$ and the numerical range at $n\le 2$;
     the finest level is not decomposed.
   \item For the two-ring force, the observed orders $0.73$ and $0.80$ before the last
@@ -1940,10 +1993,12 @@ removed by reading curvature from a neighbourhood rather than from a single cell
 is exactly determined and therefore unstable; a two-ring reading that holds each cell's own faces
 exactly and lets the rest vote is consistent and, at every level computed, stable, and a three-ring
 reading to second order raises the observed order to about two. The same reading carries over to
-$SU(2)$, where it converges on a Berger metric that defeats the native force and follows the
+$SU(2)$, with the own faces held up to a non-Abelian residual that falls like $h^2$, where it
+converges on a Berger metric that defeats the native force and follows the
 Ricci-flowed metric in time. At that Berger field the low spectrum of the linearised operator is
-exact: the bottom of every sector is $(j(j+2)-14)/3$, proved with certified computation, and on the
-Poincar\'e sphere it is set by the sphere's first scalar eigenvalue. Two problems remain open: a
+exact where it matters: $(j(j+2)-14)/3$ is an eigenvalue in every sector and, by certified computation,
+the bottom of each low sector that survives on the Poincar\'e sphere, where the gap is set by the
+sphere's first scalar eigenvalue. Two problems remain open: a
 force that is also the gradient of an energy, which Lemma~\ref{lem:conflict} shows cannot come from
 exact moment conditions on a per-cell reading, and the mass that a flow built on such a force would
 need.

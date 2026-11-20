@@ -161,3 +161,32 @@ squashings, and with what value, is not computed.
 
 **The gap is therefore proved.** Below 142 the gauge-orthogonal spectrum is the spin-0 values plus spin 6 from
 154/3 upward, and spin 10 starts at 142. Minimality for j > 120 is open, and the gap does not need it.
+
+## Addendum 3: literature check, and a published control reproduced
+
+**Literature.** A search on 19 November found no prior publication of:
+
+- the closed form (j(j+2) − 14)/3;
+- the spin-0 slice values;
+- the Weitzenböck form with R₀;
+- the 168/3 gap.
+
+What it did find:
+
+- **The nearest work** is Kumar, Lechtenfeld and Picanço Costa, *Instability of cosmic Yang–Mills fields*, Nucl.
+  Phys. B 973 (2021) 115583, arXiv:2102.08401. It uses the same sector method on the **round** S³: no squashing,
+  no quotients.
+- **Berger-sphere closed forms exist for scalar, Dirac and Hodge Laplacians only:**
+  - Lauret, arXiv:1801.04259;
+  - Kling and Schueth, arXiv:2204.12990;
+  - Henkel and Lauret, arXiv:2605.05406;
+  - Bär (1992).
+- **The Poincaré-sphere selection rule and the eigenvalue 168 are standard** (Lachièze-Rey, arXiv:gr-qc/0402035,
+  after Ikeda).
+
+**Not yet checked by hand:** Bourguignon–Lawson 1981 §8 (round S³/Γ at critical points, from its abstract) and
+Laquer (symmetric spaces). Neither appears to reach squashed metrics.
+
+**Control reproduced.** On the round metric with the commutator, our construction gives −2, 1, 6, 7, 10 in
+spins 0 to 2. That is exactly Kumar et al.'s published meron spectrum {−2, 1, 6, 7, 10, …}. The paper now
+states this, with the citation.

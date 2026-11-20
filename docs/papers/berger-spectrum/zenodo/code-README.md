@@ -1,7 +1,7 @@
 # The Floor Theorem at the Berger Field: code and data
 
-These are the scripts and receipts behind *The Floor Theorem for the Yang–Mills Hessian at the Berger Field: The
-Low Spectrum on the Poincaré Homology Sphere* (B. R. Davis, 2026), at their paths in the GIGI repository
+These are the scripts and receipts behind *The Floor Theorem for the Yang–Mills Hessian at the Berger Field: A
+Floor Law Across the Squashed Three-Spheres* (B. R. Davis, 2026), at their paths in the GIGI repository
 (<https://github.com/nurdymuny/gigi>, tag `floor-theorem-v2`).
 
 ## What reruns from this folder

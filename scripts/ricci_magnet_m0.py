@@ -271,8 +271,14 @@ def _w_cell(ci):
     out = {"ci": ci, "edges": c.edges, "own": [c.edges[i] for i in c.own], "rings": c.rings, "copies": c.copies,
            "ncand": len(c.edges), "vote": int(n_.min()), "cond": float(k_.max()), "arms": {}}
     uF = ein("qfa,qab,qb,q->f", c.two, c.g, c.Pex, c.w)
+    cm_seamless = None
     for arm in ARMS:
-        Cm = c.curl_map(c.xq, rho, arm == "frozen")
+        if arm == "frozen":
+            Cm = c.curl_map(c.xq, rho, True)
+        else:                                   # unseated and seated share the same seamless curl map
+            if cm_seamless is None:
+                cm_seamless = c.curl_map(c.xq, rho, False)
+            Cm = cm_seamless
         Pr = ein("ab,pbe->pae", c.piola, Cm)
         wt = c.weight
         P = ein("pae,e->pa", Pr, a[c.edges]); diff = P - c.Pex

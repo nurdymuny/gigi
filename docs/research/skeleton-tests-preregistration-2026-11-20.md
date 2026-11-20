@@ -61,8 +61,9 @@ A(ε) = A₀ + εA₁ + ε²A₂ + …, estimated by central differences at ε =
   ε² = 10⁻⁶.
 - In general, order n can change the charge by at most 2n. That is all the prediction below uses.<ins> This is a
   structural fact, not only a measurement. The perturbation δg = ε e¹⊗e¹ is a quadrupole about the long axis: its
-  charge content is 0 and ±2. Every term of A(ε) is a polynomial or rational function of the metric components, so
-  its n-th order term carries charge at most 2n. That covers A₃ and beyond, which the A₁ and A₂ measurements do not
+  charge content is 0 and ±2. Every term of A(ε) is a<del> polynomial or rational</del><ins>n analytic</ins> function
+  of the metric components<ins> (square roots included, e.g. c_ij^k = 2ε_ijk √g_k/√(g_i g_j); its n-th Taylor term is
+  of degree n in δg)</ins>, so its n-th order term carries charge at most 2n. That covers A₃ and beyond, which the A₁ and A₂ measurements do not
   (review, 20 November).</ins>
 
 **Kramers.** At odd j every eigenvalue of A₀ is doubly degenerate. Measured: pair spacing ≤ 7 × 10⁻¹⁴. This is
@@ -221,6 +222,27 @@ testable is the scoped reading below.
    circle-invariant.<ins> Checked: the ansatz is invariant under the joint rotation about axis 0 of the frame and
    Lie indices.</ins> Range t ∈ [0.05, 10]; sectors j ≤ 12. Existing code: `ricci_su2_meron_family_soft.py`.
    Not yet classified.
+
+<ins>**Protocol for family 1, fixed before it is run (20 November).** Script `scripts/ricci_su2_test2_family.py`.
+
+- **Grid.** t = 0.05, 0.10, …, 10.00 (step 0.05, 200 points). The squashed meron is continued by Newton from the
+  meron at t = 1 in both directions, every point checked critical, as in `ricci_su2_meron_family_soft.py`.
+- **Operator.** The gauge-orthogonal spectrum: H compressed to ker G* (an orthonormal basis from the SVD of G), in
+  each sector j = 0, …, 12.
+- **The extremal state.** The unique eigenvector of Q with charge j/2 + 2. Before it is used, its residual
+  ‖Hb − ⟨b, Hb⟩b‖ ≤ 10⁻⁹‖H‖ and ‖G*b‖ ≤ 10⁻⁹‖G‖ are checked at every (t, j); a failure stops the run (the
+  circle invariance or the counting argument would be wrong there).
+- **Floor test.** At (t, j) the extremal state is the floor if ⟨b, Hb⟩ ≤ μ_min + 10⁻⁹ max(1, |μ_min|), with μ_min
+  the lowest gauge-orthogonal eigenvalue in the sector.
+- **Class.** T_all is the set of grid points where the extremal state is the floor in **every** sector j ≤ 12.
+  - E: T_all is the whole grid.
+  - P: T_all contains at least two consecutive grid points but is not the whole grid.
+  - N: otherwise.
+  - Per-sector sets are reported alongside.
+- **Code control (must hold before family 1 is read).** The same script on the Berger family, with the
+  Levi-Civita field at each grid point, must give T_all = {2.70, 2.75, …, 10.00} exactly. That is the known
+  class P: the floor for t ≥ t* ≈ 2.698 numerically, with j = 4 the first to fail below. Any other T_all stops the
+  run.</ins>
 2. **SU(3).** The design is open, and the choice of background is Bee's to make before any build. The Levi-Civita
    connection of a squashed SU(3) takes values in so(8), not in su(3), so the Berger-field construction does not
    carry over. A background (for example, a multiple of the Maurer–Cartan form on a squashed metric) and its circle

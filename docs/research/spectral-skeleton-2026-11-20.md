@@ -133,9 +133,13 @@ The twist is the cheapest disturbance in its sector, with multiplicity exactly t
 3. **Weak symmetry breaking.** <del>Perturb the space so the sectors no longer separate, and follow the floor mode. If it
    persists continuously and stays lowest, the skeleton is structure, not an artefact of exact symmetry.</del><ins>As
    first written this cannot fail: an isolated floor persists and stays lowest under any small perturbation, skeleton
-   or not (pre-registration §0). Restated so that it can fail: break the circle with (t, 1 + ε, 1). The skeleton
+   or not (pre-registration §0). <del>Restated so that it can fail: break the circle with (t, 1 + ε, 1). The skeleton
    predicts that the floor pair splits as ε^((j+4)/2), later than every other pair in its sector, which split as
-   ε^(q′). Gates A-code to A-rank: pre-registration §2. Breaking left-invariance (sectors mixing) is §3, not yet
+   ε^(q′).</del><ins>Breaking the circle with (t, 1 + ε, 1) makes the floor pair split as ε^((j+4)/2), later than
+   every other pair (which split as ε^(q′)). That follows from the charge selection rule, the antiunitary pairing and
+   degenerate perturbation theory for any operator with this symmetry, so it verifies the selection rule, not the
+   skeleton. The controls C1 (abelianised) and C2 (random circle-invariant) make that explicit.</ins> Gates A-code to
+   <del>A-rank</del><ins>A-ctrl</ins>: pre-registration §2. Breaking left-invariance (sectors mixing) is §3, not yet
    designed.</ins>
 
 **What would count against it.**
@@ -144,9 +148,11 @@ The twist is the cheapest disturbance in its sector, with multiplicity exactly t
 - <del>other symmetric families whose floors are not extremal modes;</del><ins>any independent circle-invariant family
   in which the extremal mode is the floor nowhere in its pre-set range (class N; pre-registration §4). The Berger
   family itself is class P: the floor only for t ≥ t*;</ins>
-- <del>the floor mode disappearing under arbitrarily small symmetry breaking.</del><ins>Test 3A: the floor pair
-  splitting earlier than ε^((j+4)/2), or not being the last pair in its sector to split (gates A-exp and A-rank (i)).
-  Disappearance under small breaking is not on this list because it cannot happen.</ins>
+- <del>the floor mode disappearing under arbitrarily small symmetry breaking.</del><ins><del>Test 3A: the floor pair
+  splitting earlier than ε^((j+4)/2), or not being the last pair in its sector to split (gates A-exp and A-rank (i)).</del>
+  Nothing in Test 3A: its outcomes verify the charge selection rule or reveal a code error (pre-registration §2,
+  review). Disappearance under small breaking is not on this list because it cannot happen. The falsifiable content
+  is Test 2.</ins>
 
 **The phase-transition reading (point 3 of my theory).** It is established for the landscape, as a stiffness
 crossing zero linearly at an exact t_j. It is not established as a dynamical transition: the Berger field moves

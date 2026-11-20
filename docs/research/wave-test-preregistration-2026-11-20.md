@@ -65,3 +65,22 @@ competitor the theorem does not exclude)
 
 Script: `scripts/ricci_su2_wave_test.py` (to be written after this commit). Receipt:
 `research/su2-floor-family-20261119/wave_test.json`.
+
+## Amendment 1 (20 November, after writing the script and before any run)
+
+Two design errors in W1, found while writing the code. Neither result had been computed.
+
+1. **The reference was useless.** Dividing by max_{τ ≤ 30}|a| compares with a field that has grown about e^{65}
+   (t = 3) or more, so W1 would pass trivially.
+2. **The tail was too large.** The smoothed tap is not compactly supported. Its heat-kernel tail at distance δ is
+   about e^{−δ²/(4σ)}: 4% at δ = 0.5 with σ = 0.02, so W1 at 10⁻⁶ would fail even with perfect code.
+
+Changes:
+
+- **Smoothing and truncation.** σ = 0.01; sectors j ≤ 60 (heat factor at j = 60 below 10⁻¹⁵).
+- **W1.** At each point, max_{τ ≤ d_low − 0.75}|a| ≤ 10⁻⁴ · max_{τ ∈ [d_high, d_high + 1]}|a|. At δ = 0.75 the tail
+  e^{−δ²/(4σ)} is about 10⁻⁶; the threshold allows for truncation. Points with d_low − 0.75 ≤ 0 are exempt.
+- **More listening points.** Transverse θ ∈ {0.5, 1.0, 1.5, 2.0, 2.5}. There the distance is exactly θ for θ ≤ π:
+  the round distance is a lower bound and the arc length an upper bound. Fibre θ ∈ {0.5, 1.0}.
+- **Arrival time.** The first τ where |a| exceeds 10⁻³ of max_{τ ∈ [d_high, d_high + 1]}|a|.
+- **Unchanged:** W2 and W3, their thresholds, the stretches and the time window.

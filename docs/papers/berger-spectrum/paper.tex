@@ -1,0 +1,367 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.1in,headsep=18pt]{geometry}
+\usepackage{amsmath, amsthm, amssymb}
+\newcommand{\dgshorttitle}{The Yang--Mills Hessian at the Berger Field}
+\newcommand{\dgauthorshort}{B. R. Davis}
+\input{../dgstyle}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\su}{\mathfrak{su}(2)}
+\newcommand{\norm}[1]{\lVert #1\rVert}
+\newcommand{\RR}{\mathbb{R}}
+
+\title{The Low Spectrum of the Yang--Mills Hessian\\ at the Berger Field\\[4pt]
+\large and Its Gap on the Poincar\'e Homology Sphere}
+\author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
+{\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Let $A$ be the Levi-Civita connection of the Berger metric $g=(3,1,1)$ on $S^3=SU(2)$, viewed as an
+$SU(2)$ connection. It is not a Yang--Mills critical point. We compute the low spectrum of the Hessian
+of the Yang--Mills energy at $A$, compressed to the gauge-orthogonal slice. The operator splits into
+finite sectors by the Peter--Weyl decomposition. In the sector of spin $j/2$, the field
+$f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$, with $f$ the top weight along the long axis,
+is an exact eigenvector with eigenvalue $(j(j+2)-14)/3$, orthogonal to every gauge direction. A
+Weitzenb\"ock identity, proved in the universal enveloping algebra, bounds every sector from below.
+Together with certified inertia counts in interval arithmetic, it shows that this value is the bottom of
+its sector for every sector that matters on the Poincar\'e homology sphere $S^3/2I$. There, the
+gauge-orthogonal spectrum below $142$ consists of the left-invariant values $-14/3$ (twice),
+$16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$ values from $154/3$ upward. The
+first sector above the left-invariant one begins $168/3$ above the field's growth mode, one third of
+the sphere's first scalar eigenvalue. The construction reproduces the published fluctuation spectrum
+of the meron on the round sphere and Laquer's index. To our knowledge, these are the first exact
+eigenvalues of a Yang--Mills Hessian on a squashed three-sphere.
+\end{abstract}
+
+\noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Poincar\'e homology sphere; spectral
+gap; Peter--Weyl decomposition; Weitzenb\"ock identity; computer-assisted proof.
+
+\noindent\textbf{MSC 2020.} 58J50, 81T13, 58E15, 53C30, 65G30.
+
+\section{Introduction}\label{sec:intro}
+
+The second variation of the Yang--Mills energy decides whether a connection is a local minimum, how
+fast nearby fields grow or decay under the gradient flow, and what spectral observables a lattice
+discretization must reproduce. At Yang--Mills fields on round spheres and symmetric spaces it is
+classical. Bourguignon and Lawson~\cite{bl1981} studied stability and isolation over the round
+sphere and other locally homogeneous spaces. Laquer~\cite{laquer1984} computed the index and nullity
+of the canonical connection over every simply connected compact irreducible symmetric space; for a
+group manifold the index is one (see also~\cite{ohnitapan1989}). Around homogeneous backgrounds on
+the round $S^3$, Kumar, Lechtenfeld and Pican\c{c}o Costa~\cite{klc2021} diagonalized the
+fluctuation operator sector by sector in closed form. On Berger spheres, closed-form spectra are known
+for the scalar Laplacian~\cite{lauret2019}, the Dirac operator~\cite{bar1992,klingschueth2022} and
+the Hodge Laplacian on $1$-forms~\cite{henkellauret2026}.
+
+We found no exact result for the Yang--Mills Hessian on a squashed three-sphere, nor at a connection
+that is not a Yang--Mills field. This paper supplies one, at the natural candidate: the Levi-Civita
+connection of a Berger metric, viewed as an $SU(2)$ connection (the \emph{Berger field}). It arises as
+the instantaneous state of a homogeneous gauge field transported along the Ricci flow of the
+metric~\cite{davisrtc}, and it is the background on which lattice Yang--Mills forces on the
+Poincar\'e homology sphere were tested there. Its exact spectrum gives those computations a target.
+
+\paragraph{Main results.} Section~\ref{sec:setting} fixes the operator: the Hessian $H$ of the energy
+at the Berger field, against the $L^2$ mass, compressed to the gauge-orthogonal slice. The field is not
+at rest, so gauge directions are not zero modes, and the compression $PHP$ is the object studied.
+\begin{itemize}
+  \item \emph{The left-invariant sector} (Section~\ref{sec:spin0}) is computed exactly. Three of its
+    nine directions are gauge directions. Its slice spectrum is $-14/3$ (twice), $16-2\sqrt{73}$,
+    $22/3$ (twice) and $16+2\sqrt{73}$. All three growth directions come from the commutator.
+  \item \emph{The bottom of every sector} (Proposition~\ref{prop:bottom}) is $(j(j+2)-14)/3$ on an
+    explicit eigenvector.
+  \item \emph{A Weitzenb\"ock identity} (Lemma~\ref{lem:weitz}), proved in $U(\su)$, gives a lower
+    bound for every sector at once.
+  \item \emph{The gap on the Poincar\'e sphere} (Theorem~\ref{thm:gap}) follows, with certified
+    inertia counts in the four sectors that matter.
+\end{itemize}
+Section~\ref{sec:checks} checks the construction against the published round-sphere results and
+against lattice computations. Section~\ref{sec:discussion} states the scope.
+
+\section{Setting}\label{sec:setting}
+
+\paragraph{Frame and metric.} On $S^3=SU(2)$ let $e_0,e_1,e_2$ be a left-invariant frame with
+$[e_a,e_b]=2\varepsilon_{abc}e_c$. The Berger metric is diagonal in it, with $g_0=3$ and $g_1=g_2=1$;
+$\hat e_i=e_i/\sqrt{g_i}$ is orthonormal, with coframe $\hat\theta^i$ and structure constants
+$[\hat e_i,\hat e_j]=\sum_kc_{ij}^{\,k}\hat e_k$, $c_{ij}^{\,k}=2\varepsilon_{ijk}\sqrt{g_k}/\sqrt{g_ig_j}$.
+
+\paragraph{The Berger field.} The Levi-Civita connection has Christoffel symbols
+$\Gamma_{ijk}=\tfrac12(c_{ij}^{\,k}-c_{jk}^{\,i}+c_{ki}^{\,j})$ in the orthonormal frame. Identifying
+$\mathfrak{so}(3)$ with $\su$, write it as the $\su$-valued $1$-form $A=\sum_iM_i\hat\theta^i$ with
+constant $M_i$, where $\tau_0,\tau_1,\tau_2$ is a basis of $\su$ with the same brackets as the frame,
+$\tau_0$ along the long axis.
+Its curvature $F$ has components $F_{ij}=[M_i,M_j]-\sum_kc_{ij}^{\,k}M_k$. At the round metric $A$ is
+a Yang--Mills field; at $g=(3,1,1)$ it is not.
+
+\paragraph{The Hessian and the slice.} A variation is $b=\sum_ib_i\hat\theta^i$. The second variation
+of $E=\tfrac12\norm{F}^2$ is the quadratic form
+\begin{equation}\label{eq:Q}
+  Q(b)=\sum_{i<j}\norm{D_{ij}b}^2+2\langle F_{ij},[b_i,b_j]\rangle,\qquad
+  D_{ij}b=\hat e_ib_j-\hat e_jb_i+[M_i,b_j]-[M_j,b_i]-\textstyle\sum_kc_{ij}^{\,k}b_k,
+\end{equation}
+and $H$ is its operator against the $L^2$ mass $\sum_i\norm{b_i}^2$. The gauge map is
+$G\xi=(\hat e_i\xi+[M_i,\xi])_i$ with $L^2$ adjoint $G^*$. Because $A$ is not at rest, $H$ does not
+preserve $\ker G^*$. The \emph{gauge-orthogonal spectrum} is the spectrum of $PHP$ on $\ker G^*$, with
+$P$ the $L^2$ projection.
+
+\paragraph{Sectors.} Everything is invariant under left translations, so by Peter--Weyl the operators
+split into sectors indexed by $j\ge0$. In the sector of spin $j/2$, $b_i\in V_j\otimes\su$, where
+$V_j$ is the spin-$j/2$ representation (dimension $j+1$) on which $e_i$ acts by an anti-Hermitian
+$\rho_i$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$. So $H$ is a finite Hermitian matrix of size
+$9(j+1)$. Write $J_0=\tfrac i2\rho_0$, with weights $-\tfrac j2,\dots,\tfrac j2$.
+
+\paragraph{The Poincar\'e sphere.} The binary icosahedral group $2I$ acts by left translations, and
+the frame, the metric and $A$ descend to $S^3/2I$. The sector of spin $j/2$ survives with
+multiplicity $\dim V_j^{2I}$, given by the Molien series $(1+t^{30})/((1-t^{12})(1-t^{20}))$ of
+Klein's invariants~\cite{klein1884}: the surviving sectors are $j=0,12,20,24,30,32,\dots$. The first
+nonzero eigenvalue of the scalar Laplacian on the unit Poincar\'e sphere is $j(j+2)=168$ at
+$j=12$~\cite{lachiezerey2004}.
+
+\section{The left-invariant sector}\label{sec:spin0}
+
+At $j=0$ the Hessian is a $9\times9$ matrix with entries in $\mathbb{Q}(\sqrt3)$, computed in exact
+arithmetic.
+
+\begin{proposition}\label{prop:spin0}
+At $j=0$:
+\begin{enumerate}
+  \item the spectrum of $H$ is $-14/3$ $(\times2)$, $(29-\sqrt{1345})/3$ $(\times2)$, $16-2\sqrt{73}$,
+    $8$, $(29+\sqrt{1345})/3$ $(\times2)$, $16+2\sqrt{73}$;
+  \item the gauge directions are $b_i=[M_i,\xi]$, $\xi\in\su$, a three-dimensional space on which $H$
+    takes the values $8$, $12$, $12$;
+  \item the gauge-orthogonal spectrum is $-14/3$ $(\times2)$, $16-2\sqrt{73}$, $22/3$ $(\times2)$,
+    $16+2\sqrt{73}$.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+Exact symbolic computation of~\eqref{eq:Q} and of the compression to the orthogonal complement of the
+gauge span (\path{scripts/ricci_su2_left_invariant_sector.py},
+\path{scripts/ricci_su2_sector_minimality.py}).
+\end{proof}
+
+The eigenvalue $8$ is a pure gauge direction, and the pairs $(29\mp\sqrt{1345})/3$ are mixtures, $40\%$
+and $60\%$ gauge. So the field has exactly three \emph{physical} growth directions, $-14/3$ (twice) and
+$16-2\sqrt{73}$, each orthogonal to the gauge directions. All of them come from the field acting on
+itself: with the commutator dropped, the same sector is $4/3$ $(\times6)$ and $12$ $(\times3)$, all
+positive.
+
+\section{The bottom of every sector}\label{sec:bottom}
+
+\begin{proposition}\label{prop:bottom}
+In the sector of spin $j/2$, let $f\in V_j$ be the top weight, $J_0f=\tfrac j2f$. The field
+\[
+  b=f\,(\hat\theta^1+i\,\hat\theta^2)\otimes(\tau_1+i\,\tau_2)
+\]
+is an eigenvector of $H$, orthogonal to every gauge direction, with eigenvalue
+$\lambda(j)=(j(j+2)-14)/3$.
+\end{proposition}
+\begin{proof}
+At the top weight, $\hat e_0f=-ijf/\sqrt3$, $J_+f=0$, $\rho_2f=i\rho_1f$ and $\norm{\rho_1f}^2=j$. So
+every term of~\eqref{eq:Q} on fields supported at the top weight involves only $f$ and
+$u=\rho_1f/\sqrt j$, with coefficients polynomial in $j$. On the squashed plane (frame and Lie indices
+$1,2$, in the order $(1,1),(1,2),(2,1),(2,2)$) the Hessian is
+\[
+  \Bigl(\tfrac{j^2}{3}+j\Bigr)I+\frac13\begin{pmatrix}14&2ij&-ij&28\\-2ij&5&-19&-ij\\ ij&-19&5&2ij\\
+  28&ij&-2ij&14\end{pmatrix},
+\]
+with eigenvalues $\tfrac13(j^2+2j-14)$, $\tfrac13(j^2+4j-14)$ and
+$\tfrac13\bigl(j^2+3j+33\pm3\sqrt{j^2+9}\bigr)$. The first has eigenvector $(-1,-i,-i,1)$, which is $b$
+up to a factor. Three facts complete the argument, each an identity in $j$:
+\begin{itemize}
+  \item the coupling of $b$ to the only other top-weight direction it could reach, the $\tau_0$
+    component of $b_0$, vanishes;
+  \item $D_{ij}b$ has no component along $u$, because the two circular factors cancel, so $H$ maps $b$
+    into the top weight;
+  \item $\langle G\xi,b\rangle=0$ for every $\xi$, at every weight.
+\end{itemize}
+All of these are verified symbolically in $j$ (\path{scripts/ricci_su2_sector_formula.py}).
+\end{proof}
+
+At $j=0$ the proposition gives the growth mode $-14/3$. The circular field is the left-invariant growth
+mode lifted to the top weight of each higher sector, and the lift costs exactly $j(j+2)/3$.
+
+\section{The Weitzenb\"ock bound and the gap}\label{sec:gap}
+
+On the slice $G^*b=0$, so $\langle b,Hb\rangle=\langle b,(H+GG^*)b\rangle$: adding the gauge term changes
+nothing there. The operator $H+GG^*$ has a useful form.
+
+\begin{lemma}[Weitzenb\"ock identity]\label{lem:weitz}
+In every sector,
+\[
+  H+GG^*=\sum_iX_i^*X_i+R_0,\qquad X_i=\rho_i/\sqrt{g_i}+\Omega_i,
+\]
+where $X_i$ is the covariant derivative ($\Omega_i$ is the action of the connection on the Lie index
+together with $-\Gamma_i$ on the frame index) and $R_0$ is a constant real symmetric $9\times9$ matrix
+with eigenvalues $-12$ $(\times2)$, $7\pm\sqrt{73}$, $2\pm2\sqrt{13}$ $(\times2)$ and $8$. Moreover
+$\omega^2:=\sum_i\norm{\Omega_i}^2=76/3$.
+\end{lemma}
+\begin{proof}
+Treat the $\rho_i$ as generators of $U(\su)$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$ and
+$\rho_i^*=-\rho_i$. Both sides are $9\times9$ matrices over $U(\su)$ of filtration degree at most two.
+Put every product in Poincar\'e--Birkhoff--Witt order. Every coefficient of degree one and two then
+agrees, and the constant terms differ by $R_0$, in exact arithmetic with $\sqrt3$ symbolic. By the PBW
+theorem the identity holds in $U(\su)$, hence in every representation $V_j$
+(\path{scripts/ricci_su2_gap_certificates.py}).
+\end{proof}
+
+\begin{theorem}[The gap on the Poincar\'e sphere]\label{thm:gap}
+At the Berger metric $g=(3,1,1)$:
+\begin{enumerate}
+  \item every gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least
+    $\bigl(\sqrt{j(j+2)/3}-\omega\bigr)^2-12$, $\omega=\sqrt{76/3}$, whenever $\sqrt{j(j+2)/3}\ge\omega$;
+  \item for $j=0,12,20,24$, $\lambda(j)$ is the lowest gauge-orthogonal eigenvalue of its sector, and no
+    other eigenvalue of $H+GG^*$ lies below $\lambda(j)+1/3$;
+  \item on the Poincar\'e sphere, the gauge-orthogonal spectrum below $142$ consists of the spin-$0$
+    values of Proposition~\ref{prop:spin0}(3) and the spin-$6$ values from $154/3$ upward; spin $10$
+    begins exactly at $142$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+\emph{Part (1).} Since $g_0=3\ge g_1=g_2=1$ and $-\sum_i\rho_i^2=j(j+2)$ on $V_j$,
+$\sum_i\norm{\rho_iv}^2/g_i\ge j(j+2)\norm v^2/3$. Each term satisfies
+$\norm{X_iv}\ge\bigl|\norm{\rho_iv}/\sqrt{g_i}-\norm{\Omega_iv}\bigr|$. The reverse triangle inequality
+in $\RR^3$ gives $\sum_i\norm{X_iv}^2\ge(\sqrt{j(j+2)/3}-\omega)^2\norm v^2$. With
+Lemma~\ref{lem:weitz} and $\langle b,Hb\rangle=\langle b,(H+GG^*)b\rangle$ on the slice, this is (1).
+
+\emph{Part (2).} By Proposition~\ref{prop:bottom}, $\lambda(j)$ is an eigenvalue of $H+GG^*$ of
+multiplicity at least two: the eigenvector $b$ at the top weight, and its image at the bottom weight
+under the real structure of the integer-spin representation, which commutes with $H+GG^*$ because
+every coefficient is real. For the remaining eigenvalues, $H+GG^*-\mu$ with $\mu=\lambda(j)\mp1/3$ is
+assembled in interval arithmetic at $200$ bits (mpmath~\cite{mpmath}, with $\sqrt3$ and every entry
+enclosed), realified, and factored $LDL^\top$ without pivoting. Its backward error is bounded by
+$\gamma_n|L||D||L^\top|$~\cite[Thm.~9.3]{higham2002}, and the total perturbation is below
+$3\times10^{-54}$ in every case. Sylvester's law of inertia then counts no eigenvalue below
+$\lambda(j)-1/3$ and exactly two below $\lambda(j)+1/3$. So the lowest eigenvalue is exactly
+$\lambda(j)$, twice, and the next is at least $\lambda(j)+1/3$. The eigenvector of
+Proposition~\ref{prop:bottom} lies in the slice, so $\lambda(j)$ is the minimum there.
+
+\emph{Part (3).} At $j=30$ the bound of (1) exceeds $142$ by $0.45$, an exact inequality, and it
+increases with $j$ beyond. Part (2) covers the surviving sectors $j=0,12,20,24$, and
+Proposition~\ref{prop:spin0} gives the spin-$0$ slice exactly.
+\end{proof}
+
+\begin{remark}
+The double-precision computation of $H+GG^*$ for every $j\le120$ gives the same picture: bottom exactly
+$\lambda(j)$, twice, and the next eigenvalue at least $\lambda(j)+2/3$. The theorem does not rely on
+this. Minimality for $j>120$ is not needed for the gap and is not proved.
+\end{remark}
+
+\begin{corollary}\label{cor:56}
+On the Poincar\'e sphere, the first sector above the left-invariant one begins
+$\lambda(12)-\lambda(0)=168/3=56$ above the growth mode: one third of the sphere's first scalar
+eigenvalue. The spectral gap between the two sectors runs from $16+2\sqrt{73}=33.09$ to $154/3=51.33$.
+\end{corollary}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig_spectrum_ladder.pdf}
+  \caption{The gauge-orthogonal spectrum at the Berger field, sector by sector. Curve:
+  $\lambda(j)=(j(j+2)-14)/3$. Filled: the bottom of each sector that survives on the Poincar\'e sphere;
+  hollow: sectors the icosahedral group forbids; grey ticks: the other exact values of a surviving
+  sector. Squares and circles: lattice eigenvalues near the bottom of spins $0$ and $6$ from the two
+  lattice forces of~\cite{davisrtc} (native $n=1,2,3$; two-ring $n=3$).}
+  \label{fig:ladder}
+\end{figure}
+
+\section{Checks}\label{sec:checks}
+
+\paragraph{The round sphere.} At $g=(1,1,1)$ the Levi-Civita connection is a Yang--Mills field (the
+meron), and the same construction gives $-2$, $1$, $6$, $7$ and $10$ in spins $0$ to $2$. That is the
+published fluctuation spectrum~\cite{klc2021}. It has exactly one negative eigenvalue, so index one,
+as Laquer's theorem requires for a group manifold~\cite{laquer1984}. Without the commutator it gives
+the coexact $1$-form spectrum of the unit $S^3$: $j^2$ and $(j+2)^2$ with their multiplicities, and
+gauge zeros.
+
+\paragraph{Lattice computations.} The two lattice Yang--Mills forces of~\cite{davisrtc}, linearised
+at the Berger field on triangulations of the Poincar\'e sphere, resolve the left-invariant sector and
+the bottom of spin $6$ (Table~\ref{tab:lattice}). At $n=1,2$ every left-invariant mode was identified
+by its eigenvector, as the lattice eigenvector with the largest overlap with the nine discrete
+left-invariant directions (overlap $0.76$ to $0.999$). The mode $16-2\sqrt{73}$ is split by the
+non-symmetric lattice Jacobian, between a real eigenvalue and a complex pair. The lattice linearises
+the force in link coordinates at a field that is not at rest, where its Jacobian differs from the
+Hessian by a term proportional to the gradient; so it is compared with the full Hessian $H$, not with
+the slice.
+
+\begin{table}[t]\centering\small
+\caption{Exact eigenvalues of $H$ at the Berger field against the real part of the lattice
+eigenvalue~\cite{davisrtc}. $^{\mathrm g}$: pure gauge; $^{\mathrm m}$: a mixture. At $n=1,2$ the
+spin-$0$ entries are identified by eigenvector; at $n=3$, and for spin $6$, by value.}
+\label{tab:lattice}
+\begin{tabular}{lcrrrr}\toprule
+Exact & mult. & native $n=1$ & native $n=2$ & native $n=3$ & two-ring $n=3$ \\ \midrule
+\multicolumn{6}{l}{\emph{spin $0$}}\\
+$-14/3=-4.6667$ & 2 & $-4.475$ & $-4.651$ & $-4.661$ & $-4.651$ \\
+$(29-\sqrt{1345})/3=-2.5581^{\mathrm m}$ & 2 & $-2.191$ & $-2.504$ & $-2.529$ & $-2.529$ \\
+$16-2\sqrt{73}=-1.0880$ & 1 & $-0.674\pm0.80i$ & $-1.041$ & $-1.088$ & $-1.084$ \\
+$8^{\mathrm g}$ & 1 & $7.083$ & $7.869$ & $7.954$ & $7.931$ \\
+$(29+\sqrt{1345})/3=21.891^{\mathrm m}$ & 2 & $20.71$ & $21.77$ & $21.86$ & $21.80$ \\
+$16+2\sqrt{73}=33.088$ & 1 & $32.64$ & $33.44$ & $33.29$ & $33.16$ \\ \midrule
+\multicolumn{6}{l}{\emph{spin $6$, full Hessian}}\\
+$51.33$ & 2 & --- & $53.41$ & $52.27$ & $49.27$ \\
+$59.52$ & 2 & --- & $61.92$ & $60.69$ & $57.50$ \\
+\bottomrule\end{tabular}
+\end{table}
+
+\section{Discussion}\label{sec:discussion}
+
+\paragraph{Scope.} The result concerns the classical linearised operator. At a field that is not at
+rest, how gauge directions are separated from physical ones is a choice; the theorem is stated for the
+$L^2$ (Coulomb) slice, and the full Hessian is given alongside. The theorem is not a statement about the
+quantum theory and not a Yang--Mills mass gap.
+
+\paragraph{What is special.} The closed form is tied to the squashing: at $(2,1,1)$, $(4,1,1)$ and the
+round metric the bottom of a sector is not of this form. The circular eigenvector of
+Proposition~\ref{prop:bottom} uses only the rotation symmetry about the long axis and the top weight,
+so the same method applies at other squashings, where it will give other values.
+
+\paragraph{Open questions.} Minimality for every $j$, the analogous closed forms at other squashings and
+along the Ricci flow of the metric, and the higher eigenvalues of each sector.
+
+\section*{Funding and competing interests}
+This work received no funding. The author declares no competing interests.
+
+\section*{Code and data availability}
+All programs and certificates are in the \textsc{GIGI} repository,
+\url{https://github.com/nurdymuny/gigi}, with their outputs in
+\path{research/su2-left-invariant-sector-20261119/}:
+\begin{itemize}
+  \item the left-invariant sector: \path{scripts/ricci_su2_left_invariant_sector.py};
+  \item the sector matrices: \path{scripts/ricci_su2_spin_sector.py};
+  \item gauge content: \path{scripts/ricci_su2_sector_gauge_check.py};
+  \item Proposition~\ref{prop:bottom}: \path{scripts/ricci_su2_sector_formula.py};
+  \item the spin-$0$ slice and the double-precision range: \path{scripts/ricci_su2_sector_minimality.py};
+  \item Lemma~\ref{lem:weitz} and the certificates: \path{scripts/ricci_su2_gap_certificates.py}.
+\end{itemize}
+A versioned snapshot will be archived with a DOI on publication.
+
+\begin{thebibliography}{99}\small
+\bibitem{bar1992} C.~B\"ar, The Dirac operator on homogeneous spaces and its spectrum on $3$-dimensional lens spaces, \emph{Arch.\ Math.} 59 (1992) 65--79.
+\bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230.
+\bibitem{davisrtc} B.~R.~Davis, Reading the curve, not counting the points: a two-ring Petrov--Galerkin curvature force for discrete Yang--Mills dynamics on the Poincar\'e homology sphere, 2026, \url{https://doi.org/10.5281/zenodo.24328085}.
+\bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
+\bibitem{higham2002} N.~J.~Higham, \emph{Accuracy and Stability of Numerical Algorithms}, 2nd ed., SIAM, Philadelphia, 2002.
+\bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
+\bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.
+\bibitem{klc2021} S.~Kumar, O.~Lechtenfeld, G.~Pican\c{c}o Costa, Instability of cosmic Yang--Mills fields, \emph{Nucl.\ Phys.\ B} 973 (2021) 115583, \href{https://arxiv.org/abs/2102.08401}{arXiv:2102.08401}.
+\bibitem{lachiezerey2004} M.~Lachi\`eze-Rey, Eigenmodes of dodecahedral space, 2004, \href{https://arxiv.org/abs/gr-qc/0402035}{arXiv:gr-qc/0402035}.
+\bibitem{laquer1984} H.~T.~Laquer, Stability properties of the Yang--Mills functional near the canonical connection, \emph{Michigan Math.\ J.} 31 (1984) 139--159.
+\bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
+\bibitem{mpmath} The mpmath development team, mpmath: a Python library for arbitrary-precision floating-point arithmetic, \url{https://mpmath.org}.
+\bibitem{ohnitapan1989} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, preprint MPI/89-49, Max-Planck-Institut f\"ur Mathematik, Bonn, 1989.
+\end{thebibliography}
+
+\end{document}

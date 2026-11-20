@@ -1424,7 +1424,8 @@ with $[e_a,e_b]=2\varepsilon_{abc}e_c$, and let the Berger metric be diagonal in
 $g_0=3$, $g_1=g_2=1$. Then $\hat e_i=e_i/\sqrt{g_i}$ is orthonormal, with coframe $\hat\theta^i$. The
 \emph{Berger field} is the Levi-Civita (spin) connection of this metric, written as the
 $\mathfrak{su}(2)$-valued $1$-form $A=\sum_iM_i\hat\theta^i$ with constant $M_i\in\mathfrak{su}(2)$,
-where $\tau_1,\tau_2,\tau_3$ is a basis of $\mathfrak{su}(2)$ with the same brackets as the frame. On
+where $\tau_0,\tau_1,\tau_2$ is a basis of $\mathfrak{su}(2)$ with the same brackets as the frame,
+$\tau_0$ along the long axis. On
 the spin-$j/2$ representation $V_j$ (dimension $j+1$), the frame vector $e_i$ acts by an
 anti-Hermitian $\rho_i$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$, and $J_0=\tfrac i2\rho_0$ has the
 weights $-\tfrac j2,\dots,\tfrac j2$. A variation in the sector is $b=\sum_ib_i\hat\theta^i$ with
@@ -1540,7 +1541,8 @@ slice was computed in exact arithmetic (\path{scripts/ricci_su2_sector_minimalit
 certificates are in \path{research/su2-left-invariant-sector-20261119/gap_certificates.json}.
 \end{proof}
 
-For $j>120$, minimality is not needed for the gap and is not proved. Taken together, the field's strongest
+For $j>120$, minimality is not needed for the gap and is not proved. A companion
+paper~\cite{davisberger} develops these results as a self-contained spectral theorem. Taken together, the field's strongest
 growth direction and the bottom of every higher sector are one formula (Figure~\ref{fig:ladder}).
 At $j=0$ it gives $-14/3$, the growth mode. The first sector that survives on the Poincar\'e sphere
 is $j=12$, where $j(j+2)=168$ is the first nonzero eigenvalue of the scalar Laplacian on the
@@ -2006,6 +2008,7 @@ inputs of the \GIGI{} Ricci checkpoint, by the following programs.
 \bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230.
 \bibitem{cdl2013} A.~Cohen, M.~A.~Davenport, D.~Leviatan, On the stability and accuracy of least squares approximations, \emph{Found.\ Comput.\ Math.} 13 (2013) 819--834.
 \bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
+\bibitem{davisberger} B.~R.~Davis, The low spectrum of the Yang--Mills Hessian at the Berger field and its gap on the Poincar\'e homology sphere, in preparation, 2026.
 \bibitem{threeways} B.~R.~Davis, Three ways across a turn: chord, arc and tangent, Zenodo,
 2026, \url{https://doi.org/10.5281/zenodo.24375338}.
 \bibitem{gp2018} E.~H.~Georgoulis, T.~Pryer, Recovered finite element methods, \emph{Comput.\ Methods Appl.\ Mech.\ Engrg.} 332 (2018) 303--324.

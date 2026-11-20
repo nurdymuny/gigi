@@ -63,9 +63,9 @@ def main():
                 arrowprops=dict(arrowstyle="<->", color=INK, lw=0.8, shrinkA=0, shrinkB=0))
     ax.plot([0, 12], [lam(0), lam(0)], color=INK, lw=0.5, ls=(0, (2, 2)))
     ax.plot([4, 12], [lam(12), lam(12)], color=INK, lw=0.5, ls=(0, (2, 2)))
-    ax.text(-0.6, 92, "gap $56=\\frac{168}{3}$; 168 is the first\nscalar eigenvalue of the Poincaré sphere",
+    ax.text(-0.6, 96, "spin 6 begins $\\frac{168}{3}$\nabove the growth mode;\n168 is the first scalar\neigenvalue of the\nPoincaré sphere",
             fontsize=8, va="center", color=INK)
-    ax.annotate("", xy=(4, 0.5 * (lam(0) + lam(12)) + 6), xytext=(2.5, 80),
+    ax.annotate("", xy=(4, 0.5 * (lam(0) + lam(12)) + 6), xytext=(2.8, 66),
                 arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.5))
     # measured lattice values
     for j, target in ((0, -14 / 3), (12, 154 / 3)):

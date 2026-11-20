@@ -19,14 +19,14 @@
 \lstdefinestyle{json}{style=base}
 \usepackage[hidelinks]{hyperref}
 
-\newtheorem{proposition}{Proposition}
-\newtheorem{theorem}{Theorem}
-\newtheorem{lemma}{Lemma}
-\newtheorem{corollary}{Corollary}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
 \theoremstyle{definition}
-\newtheorem{definition}{Definition}
+\newtheorem{definition}[theorem]{Definition}
 \theoremstyle{remark}
-\newtheorem{remark}{Remark}
+\newtheorem{remark}[theorem]{Remark}
 
 \newcommand{\DAVIS}{\textsc{Davis}}
 \newcommand{\GIGI}{\textsc{GIGI}}
@@ -40,7 +40,7 @@
 \newcommand{\Pone}{\mathcal{P}_1^{\mathrm{cl}}}
 
 \title{Reading the Curve, Not Counting the Points:\\[2pt]
-\large A Consistent, Stable Petrov--Galerkin Curvature Force\\ for Discrete Yang--Mills Dynamics on the Poincar\'e Homology Sphere}
+\large A Two-Ring Petrov--Galerkin Curvature Force\\ for Discrete Yang--Mills Dynamics on the Poincar\'e Homology Sphere}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}}
 \date{November 2026}
 
@@ -48,48 +48,30 @@
 \maketitle
 
 \begin{abstract}
-The \DAVIS{}--Wilson programme asks whether lattice gauge dynamics computed from coarse
-edge data reproduce the continuum flow they discretize. Its first requirement is
-instantaneous: the discrete force on the exact edge integrals of a smooth connection,
-tested against \emph{every} discrete variation, must converge to the continuum force. On
-shape-regular meshes of the Poincar\'e homology sphere $S^3/2I$ the lowest-order Whitney
-force fails this; for an Abelian control its error stalls at $26\%$ under refinement.
-
-We show that the floor comes from how curvature is \emph{represented}, not from the data.
-A closed linear curvature recovered on each cell's face-star and tested against the
-original Whitney variations gives a consistent Petrov--Galerkin force. In its minimal
-one-ring form, however, the recovery is exactly determined: it amplifies rough data by a
-median $125$--$252$, and its operator has $489$ of $961$ physical modes with negative real
-part at $n=2$. Recovering instead on a \emph{two-ring} neighbourhood by
-equality-constrained least squares keeps the fit exact on closed linear curvature, cuts
-the amplification to a mesh-uniform median of $30.5$--$35.2$, and puts every decomposed
-physical eigenvalue ($n\le3$) in the right half-plane; at $n=1,2$ the flow is dissipative.
-The force error falls to $6.22\%$, $3.83\%$, $2.79\%$ and $1.45\%$ at $n=1,2,3,5$ (orders
-$0.73$, $0.80$, $1.29$) and passes the unchanged \BW{} gate. Nothing is fitted and no data
-are added; only the size of the neighbourhood the reading consults changes. The force is
-not the gradient of an energy, and we show why every symmetrized variant fails. Counting
-the clues one order higher calls for three rings read to second order. That reading keeps
-each cell's own fluxes exact and reaches $0.158\%$ at $n=5$, with orders near two.
-
-The construction carries over to $SU(2)$. With neighbouring holonomies turned into
-register by link transport, the recovery converges at second order on the Levi-Civita
-fields of the round and a Berger metric. On the Berger field the native force stays
-$25.5\%$ wrong, while the two-ring force falls to $2.51\%$ at $n=5$ and passes \BW{}, with
-no rough modes and a numerical range matching the native one at $n\le3$. Integrated in time as the
-metric follows the Ricci flow, it ends $13.8\%$, $1.76\%$ and $0.87\%$ off the exact
-trajectory at $n=1,2,3$, ahead of the native force from $n=2$; the finest level uses an
-eight-step Cayley (Crank--Nicolson) integrator. The computations run in \GIGI{}, an
-open-source geometric engine, with hash-pinned receipts: the Abelian recovery is a native verb,
-and the $SU(2)$ recovery, force, linearisation and Cayley flow are engine verbs that reproduce the
-research computations to $10^{-13}$ through the engine's query surfaces. The fourth-order runs at
-$n\le2$ and the eigenvalue solves remain scripts, the latter on operators the engine also builds.
-
-We also prove the exact low spectrum of the linearised $SU(2)$ Yang--Mills operator at the Berger
-field. To our knowledge it is the first closed form for the Yang--Mills Hessian on a squashed
-three-sphere. In the sector of spin $j/2$ the bottom is $(j(j+2)-14)/3$, on an explicit
-eigenvector. On the Poincar\'e sphere, the gap above the field's growth mode is therefore exactly
-$168/3$, one third of the sphere's first scalar eigenvalue, and both lattice forces resolve it.
+On shape-regular meshes of the Poincar\'e homology sphere $S^3/2I$, the lowest-order Whitney
+discretization of the Yang--Mills force, evaluated on the exact edge integrals of a smooth connection
+and tested against every discrete variation, does not converge: for an Abelian control its relative
+error stalls at $26\%$ under refinement. We show that the floor comes from how curvature is
+represented, not from the data. A closed linear curvature recovered on each cell's face-star and tested
+against the original Whitney variations is consistent but unstable, because the minimal recovery is
+exactly determined and amplifies rough data. Recovering instead on a two-ring neighbourhood by
+equality-constrained least squares, exact on closed linear curvature, keeps the amplification
+mesh-uniform and gives a Petrov--Galerkin force with no growing modes at every level computed; its
+error falls to $1.45\%$ on the finest mesh. Reading three rings to second order, with each cell's own
+fluxes held exact, lowers it to $0.158\%$, with observed orders near two. The force is not the
+gradient of an energy, and we identify the obstruction. The construction carries over to $SU(2)$: on a Berger metric the force converges where the native one stalls at $25.5\%$, and
+its time integration follows the Ricci-flowed metric to within $0.87\%$. We prove that the
+bottom of the spin-$j/2$ sector of the linearised $SU(2)$ Yang--Mills operator at the Berger field
+is $(j(j+2)-14)/3$. On the Poincar\'e sphere the first sector above the left-invariant one therefore
+begins $168/3$ above the field's growth mode, one third of the sphere's first scalar eigenvalue.
 \end{abstract}
+
+\noindent\textbf{Keywords.} Lattice gauge theory; Yang--Mills; Whitney forms; Petrov--Galerkin methods;
+curvature recovery; constrained least squares; Poincar\'e homology sphere; Berger sphere; spectral
+gap; computer-assisted proof.
+
+\noindent\textbf{MSC 2020.} 65N30, 65N12, 81T13, 81T25, 58E15, 58J50, 53C30, 65G30.
+
 
 \section{Introduction}
 
@@ -200,6 +182,20 @@ each failed one of two requirements:
     operator has eigenvalues with real part as negative as $-2.4\times 10^{4}$.
 \end{itemize}
 
+\paragraph{Related work.} Whitney forms~\cite{whitney1957,bossavit1988} and finite element exterior
+calculus~\cite{afw2006,afw2010,hiptmair2002} give convergent Galerkin discretizations of the same
+operators; the failure studied here is the instantaneous consistency of the combinatorial
+codifferential, known on unstructured meshes~\cite{afgt2014}. Curvature recovery from patches goes
+back to the superconvergent patch recovery of Zienkiewicz and Zhu~\cite{zz1992}, and recovered finite
+element methods use it inside Galerkin schemes~\cite{gp2018}; our recovery is a constrained least-squares
+fit whose stability under oversampling is in the spirit of~\cite{cdl2013}. On the lattice side, the
+chord reading of a plaquette is Wilson's~\cite{wilson1974}, gradient flows of the lattice action are
+standard in lattice QCD~\cite{luscher2010}, and the time stepping is by Lie-group
+integrators~\cite{munthekaas1998,iserles2000}. Stability of Yang--Mills fields at critical points
+on spheres and symmetric spaces goes back to Bourguignon--Lawson and Laquer~\cite{bl1981,laquer1984},
+and closed-form fluctuation spectra on the round $S^3$ are known~\cite{klc2021};
+Section~\ref{sec:su2force} reviews these and goes beyond them.
+
 \paragraph{Contributions.}
 \begin{enumerate}
   \item An exact decomposition of the instantaneous force error into a
@@ -225,15 +221,15 @@ each failed one of two requirements:
     at $n=3$ (Section~\ref{sec:su2}).
   \item A closed form for the bottom of the linearised $SU(2)$ spectrum at the Berger field,
     $(j(j+2)-14)/3$ in the sector of spin $j/2$, derived on an explicit eigenvector and shown to
-    be the bottom of its sector (Theorem~\ref{thm:gap}). On the
-    Poincar\'e sphere it places the gap above the field's growth mode at $168/3$, one third of the
-    sphere's first scalar eigenvalue, and both lattice forces resolve it
+    be the bottom of its sector (Theorem~\ref{thm:gap}). On the Poincar\'e sphere the first sector
+    above the left-invariant one therefore begins $168/3$ above the field's growth mode, one third of
+    the sphere's first scalar eigenvalue, and both lattice forces resolve it
     (Proposition~\ref{prop:sector}).
 \end{enumerate}
 
 \paragraph{A question for a companion paper.} Every face of the mesh carries a turn, its
 holonomy, and there are three honest ways to read how far it turned: straight across, by
-the chord $U-1$ that lattice gauge theory has used since Wilson; along the way it went, by
+the chord $U-1$ that lattice gauge theory has used since Wilson~\cite{wilson1974}; along the way it went, by
 the arc $\log U$ that the continuum uses; and out and back along the tangents, whose leg is
 the Cayley parameter. This paper reads the same faces two of those ways at once, the arc in
 the recovery and the chord in the action, and Section~\ref{sec:su2force} shows the
@@ -241,6 +237,16 @@ difference is far too small to matter here. Why the three readings miss one anot
 fixed ratio of two to one, why the same ratio comes back in energy and in time stepping,
 and which of them the flow should step with, is the subject of the companion paper
 \emph{Three Ways Across a Turn}~\cite{threeways}.
+
+\paragraph{Outline.} Section~\ref{sec:setting} fixes the manifold, meshes, data and the
+convergence criteria, and Section~\ref{sec:gigi} the computational setting.
+Section~\ref{sec:decomp} decomposes the force error, Section~\ref{sec:pg} introduces the
+Petrov--Galerkin curvature, and Section~\ref{sec:conditioning} explains its instability and its
+two-ring remedy. Section~\ref{sec:results} reports convergence and stability,
+Section~\ref{sec:removals} the mechanism removals and the obstruction to a variational force, and
+Section~\ref{sec:hybrid} the second-order reading. Section~\ref{sec:su2} carries the construction to
+$SU(2)$: the recovery, the force, the exact low spectrum at the Berger field, and the flow in time.
+Section~\ref{sec:discussion} discusses the results and Section~\ref{sec:conclusion} concludes.
 
 \section{Setting}\label{sec:setting}
 
@@ -294,8 +300,8 @@ below one as the Whitney gauge kernel, and all others with strictly positive rea
 
 \section{The computation in GIGI}\label{sec:gigi}
 
-Every number in this paper was computed in \GIGI{}, an open-source geometric database
-and computation engine, released under the PolyForm Noncommercial License 1.0.0 at
+The computations in this paper run in \GIGI{}, a source-available geometric database and
+computation engine, released under the PolyForm Noncommercial License 1.0.0 at
 \url{https://github.com/nurdymuny/gigi}. The mathematics above is only half of the
 result. The other half is a code path that anyone can rebuild, rerun and check against
 pinned hashes. That path has three layers.
@@ -323,7 +329,7 @@ native tests run against that pinned binary. The first compares the cell action,
 and every derivative with an independent Python implementation. The second assembles the
 operator once on the quotient $M$ and once on the entire cover $S^3$ ($120$ copies), and
 requires the quotient's energy, volume, gradient and Hessian blocks to equal the cover's
-divided by $120$, to $10^{-11}$. Both pass (rerun on 17 November 2026, $7.2$\,s). This is
+divided by $120$, to $10^{-11}$. Both pass (rerun, $7.2$\,s). This is
 the check that the deck transformations of Section~\ref{sec:setting} are handled
 correctly before any curvature is recovered.
 
@@ -620,8 +626,9 @@ $1/\sigma_{\min}$ times larger than the pattern itself.
 Figure~\ref{fig:conditioning} shows how large that is. The one-ring amplification has
 median $251.8$, $125.4$ and $125.8$ on $\T_1,\T_2,\T_3$,
 with maxima of $252.3$, $254.0$ and $248.9$. The
-operator inherits it at the rough end of its spectrum. At $n=2$, $472$ of the $961$
-physical directions of the symmetric part of $K_{\mathrm{PG}}$ are negative, down to
+operator inherits it at the rough end of its spectrum. At $n=2$, $489$ of the $961$ physical
+eigenvalues of $K_{\mathrm{PG}}$ have negative real part (Table~\ref{tab:stability}), and the
+symmetric part of $K_{\mathrm{PG}}$ is negative on $472$ of the $961$ physical directions, down to
 $-2.4\times10^{4}$, about $2.6$ times the largest Whitney eigenvalue of $9248$
 (Figure~\ref{fig:spectra}, Table~\ref{tab:stability}). Restoring the second ring removes
 every one of those negative directions, and removing it brings them back
@@ -1412,7 +1419,20 @@ No rate is claimed from three levels. Three facts follow:
     an exactly solvable control for any future spectral observable, not a test of one.
 \end{itemize}
 
-\paragraph{The bottom of every sector.} The gap has a closed form. Write $f\in V_j$ for the top
+\paragraph{Notation for the sectors.} On $S^3=SU(2)$ let $e_0,e_1,e_2$ be the left-invariant frame
+with $[e_a,e_b]=2\varepsilon_{abc}e_c$, and let the Berger metric be diagonal in it with eigenvalues
+$g_0=3$, $g_1=g_2=1$. Then $\hat e_i=e_i/\sqrt{g_i}$ is orthonormal, with coframe $\hat\theta^i$. The
+\emph{Berger field} is the Levi-Civita (spin) connection of this metric, written as the
+$\mathfrak{su}(2)$-valued $1$-form $A=\sum_iM_i\hat\theta^i$ with constant $M_i\in\mathfrak{su}(2)$,
+where $\tau_1,\tau_2,\tau_3$ is a basis of $\mathfrak{su}(2)$ with the same brackets as the frame. On
+the spin-$j/2$ representation $V_j$ (dimension $j+1$), the frame vector $e_i$ acts by an
+anti-Hermitian $\rho_i$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$, and $J_0=\tfrac i2\rho_0$ has the
+weights $-\tfrac j2,\dots,\tfrac j2$. A variation in the sector is $b=\sum_ib_i\hat\theta^i$ with
+$b_i\in V_j\otimes\mathfrak{su}(2)$. $H$ is the Hessian of $E=\tfrac12\norm{F}^2$ there, against the $L^2$
+mass. The gauge map is $G\xi=(\hat e_i\xi+[M_i,\xi])_i$ for $\xi\in V_j\otimes\mathfrak{su}(2)$, with
+$L^2$ adjoint $G^*$.
+
+\paragraph{The bottom of every sector.} The spectrum has a closed form at its bottom. Write $f\in V_j$ for the top
 weight along the long axis of the Berger metric, $J_0f=\tfrac j2f$, and $\hat\theta^i$ for the
 orthonormal coframe.
 
@@ -1429,7 +1449,7 @@ every gauge direction, with eigenvalue
 \end{proposition}
 \begin{proof}[Derivation]
 At the top weight, $\hat e_0f=-ijf/\sqrt3$, $J_+f=0$, $\rho_2f=i\rho_1f$ and $\norm{\rho_1f}^2=j$, so
-every term of the sector Hessian involves only $f$ and $g=\rho_1f/\sqrt j$, with coefficients
+every term of the sector Hessian involves only $f$ and $u=\rho_1f/\sqrt j$, with coefficients
 polynomial in $j$. On the squashed plane, frame and Lie indices $1,2$ in the order $(1,1),(1,2),
 (2,1),(2,2)$, the Hessian is
 \[
@@ -1442,7 +1462,7 @@ $b$ up to a factor. Three checks close the argument:
 \begin{itemize}
   \item its coupling to the only other top-weight direction it could reach, the $\tau_0$ component
     of $b_0$, vanishes;
-  \item its covariant derivative has no component along $g$, because the two circular factors cancel,
+  \item its covariant derivative has no component along $u$, because the two circular factors cancel,
     so the Hessian sends it nowhere outside the top weight;
   \item its overlap with the gauge directions $\hat e_i\xi+[M_i,\xi]$ vanishes at every weight.
 \end{itemize}
@@ -1503,7 +1523,8 @@ $\sum_i\norm{X_iv}^2\ge(\sqrt{j(j+2)/3}-\omega)^2\norm v^2$, with $\omega^2=\sum
 eigenvector of Proposition~\ref{prop:sector} at the top weight, and its image at the bottom weight
 under the real structure of the integer-spin representation, which commutes with $H+GG^*$ because
 every coefficient is real. For $j=0,12,20,24$ the remaining eigenvalues are certified by inertia.
-The matrix $H+GG^*-\mu$, $\mu=\lambda(j)\mp1/3$, is assembled in interval arithmetic at 200 bits and
+The matrix $H+GG^*-\mu$, $\mu=\lambda(j)\mp1/3$, is assembled in interval arithmetic at 200 bits (the \texttt{iv} context of mpmath, with
+$\sqrt3$ and every entry enclosed) and
 factored $LDL^\top$ without pivoting. Its backward error is bounded by
 $\gamma_n\,\bigl|L\bigr|\bigl|D\bigr|\bigl|L^\top\bigr|$ \cite[Thm.~9.3]{higham2002}, and the total
 perturbation is below $3\times10^{-54}$ in every case, far inside $1/3$. Sylvester's law of inertia
@@ -1523,8 +1544,10 @@ For $j>120$, minimality is not needed for the gap and is not proved. Taken toget
 growth direction and the bottom of every higher sector are one formula (Figure~\ref{fig:ladder}).
 At $j=0$ it gives $-14/3$, the growth mode. The first sector that survives on the Poincar\'e sphere
 is $j=12$, where $j(j+2)=168$ is the first nonzero eigenvalue of the scalar Laplacian on the
-Poincar\'e sphere~\cite{lachiezerey2004}. So the gap above the growth mode is $168/3=56$, one third of the sphere's
-first scalar eigenvalue. The icosahedral group forbids every sector in between. The formula is
+Poincar\'e sphere~\cite{lachiezerey2004}. So the first surviving sector above the left-invariant one
+begins $168/3=56$ above the growth mode, one third of the sphere's first scalar eigenvalue. The
+spin-$0$ values $16-2\sqrt{73}$, $22/3$ and $16+2\sqrt{73}$ lie in between; the spectral gap between
+the two sectors runs from $16+2\sqrt{73}=33.09$ to $154/3=51.33$.
 special to this squashing: at $(2,1,1)$, $(4,1,1)$ and the round metric, the bottom of a sector is
 not of this form.
 
@@ -1586,10 +1609,11 @@ $h=3.125\times10^{-4}$, inside that rule's larger limit of about $3.8\times10^{-
 
 \subsection{The flow in time}\label{sec:su2flow}
 
-\paragraph{Time integration.} The last test lets the lattice move. Starting from the exact
+\paragraph{Time integration.} The last test lets the lattice move, under a lattice Yang--Mills
+gradient flow of the kind used in lattice QCD~\cite{luscher2010}, here with a moving metric. Starting from the exact
 links at $t=0$, the links evolve under $B(U,g(t))\,\dot\xi=-a(U;g(t))$, where the metric
 $g(t)$ follows the Ricci flow of the Berger metric, by a fourth-order
-Runge--Kutta--Munthe-Kaas step that keeps every link on $SU(2)$. At $t=0.02$ the links are
+Runge--Kutta--Munthe-Kaas step~\cite{munthekaas1998,iserles2000} that keeps every link on $SU(2)$. At $t=0.02$ the links are
 compared with the exact links of the flowed metric: $E$ is the mass-weighted distance
 $\sqrt{\delta^\top B\delta/\mathrm{Vol}}$ between them, $D$ is the same distance travelled
 by the exact field, and $R=E/D$ is the error over the distance actually moved. The gates,
@@ -1754,14 +1778,15 @@ by anyone, and longer windows and finer levels are within reach.
   \label{fig:su2cost}
 \end{figure}
 
-\paragraph{Scope.} Both the covariant recovery and the non-Abelian force are research
-scripts, not yet engine verbs. The force result is the instantaneous \BW{} gate on one
+\paragraph{Scope.} The covariant recovery and the non-Abelian force are engine verbs that
+reproduce the research scripts to $10^{-13}$; the fourth-order flow runs at $n\le2$ and the
+eigenvalue solves remain scripts. The force result is the instantaneous \BW{} gate on one
 metric, with the spectrum of Table~\ref{tab:su2stab}. The time integration is a research
 replica on one metric and one window, at $n\le3$, and stability and the numerical range are
 measured at $n\le3$. A reciprocal version remains the open problem of
 Section~\ref{sec:magnet}.
 
-\section{Discussion}
+\section{Discussion}\label{sec:discussion}
 
 The central observation is simple to state. \emph{The Petrov--Galerkin force was never
 inconsistent; it was ill-conditioned.} The one-ring recovery is the minimal-information
@@ -1850,14 +1875,12 @@ two points: the chord--arc gap on our meshes is too small to matter
 (Section~\ref{sec:su2force}), and the Cayley map is the integrator that carried the flow to
 $n=3$, where the explicit step became unaffordable.
 
-\paragraph{What grew from this work.} Two research notes of 18 November 2026 record further
-ideas that came out of these results, each with its provenance and with every link tagged as
-structural, a resemblance only, or open. The first,
-\path{docs/research/small-edges-2026-11-18.md}, connects the numerical range of
-Proposition~\ref{prop:diss}, Bee's Crouzeix-conjecture work and her graph-fold article to the
-roughness that one ring amplifies. The second, \path{docs/research/unit-curvature-2026-11-18.md},
-continues from the chord--arc--tangent picture to the curvature of a single unit. Neither is
-used as evidence in this paper.
+\paragraph{What grew from this work.} Two research notes in the repository record further ideas that
+came out of these results, each with every link tagged as structural, a resemblance only, or open.
+The first connects the numerical range of Proposition~\ref{prop:diss}, the author's work on the
+Crouzeix conjecture and on graph folds to the roughness that one ring amplifies. The second continues
+from the chord--arc--tangent picture to the curvature of a single unit. Neither is used as evidence in
+this paper.
 
 \paragraph{Limitations.}
 \begin{itemize}
@@ -1895,8 +1918,26 @@ used as evidence in this paper.
     prerequisite for a lattice \DAVIS{}--Wilson correspondence, not an instance of one.
 \end{itemize}
 
-\paragraph{Reproducibility.} Every number and figure in this paper is regenerated from
-the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
+\section{Conclusion}\label{sec:conclusion}
+
+The Whitney floor of the instantaneous Yang--Mills force is a representation defect, and it is
+removed by reading curvature from a neighbourhood rather than from a single cell. The minimal reading
+is exactly determined and therefore unstable; a two-ring reading that holds each cell's own faces
+exactly and lets the rest vote is consistent and, at every level computed, stable, and a three-ring
+reading to second order raises the observed order to about two. The same reading carries over to
+$SU(2)$, where it converges on a Berger metric that defeats the native force and follows the
+Ricci-flowed metric in time. At that Berger field the low spectrum of the linearised operator is
+exact: the bottom of every sector is $(j(j+2)-14)/3$, proved with certified computation, and on the
+Poincar\'e sphere it is set by the sphere's first scalar eigenvalue. Two problems remain open: a
+force that is also the gradient of an energy, which Lemma~\ref{lem:conflict} shows cannot come from
+exact moment conditions on a per-cell reading, and the mass that a flow built on such a force would
+need.
+
+\section*{Code and data availability}
+All code, frozen inputs and results are available in the \GIGI{} repository,
+\url{https://github.com/nurdymuny/gigi}; a versioned snapshot will be archived with a DOI on
+publication. Every number and figure in this paper is regenerated from the frozen, hash-checked
+inputs of the \GIGI{} Ricci checkpoint, by the following programs.
 \begin{itemize}
   \item Two-ring recovery: \path{scripts/ricci_pg_tworing.py}; its focused tests:
     \path{scripts/test_ricci_pg_tworing.py}.
@@ -1967,6 +2008,7 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
 \bibitem{gp2018} E.~H.~Georgoulis, T.~Pryer, Recovered finite element methods, \emph{Comput.\ Methods Appl.\ Mech.\ Engrg.} 332 (2018) 303--324.
 \bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
 \bibitem{hiptmair2002} R.~Hiptmair, Finite elements in computational electromagnetism, \emph{Acta Numerica} 11 (2002) 237--339.
+\bibitem{iserles2000} A.~Iserles, H.~Z.~Munthe-Kaas, S.~P.~N{\o}rsett, A.~Zanna, Lie-group methods, \emph{Acta Numer.} 9 (2000) 215--365.
 \bibitem{higham2002} N.~J.~Higham, \emph{Accuracy and Stability of Numerical Algorithms}, 2nd ed., SIAM, Philadelphia, 2002.
 \bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
 \bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.
@@ -1974,8 +2016,11 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
 \bibitem{lachiezerey2004} M.~Lachi\`eze-Rey, Eigenmodes of dodecahedral space, 2004, \href{https://arxiv.org/abs/gr-qc/0402035}{arXiv:gr-qc/0402035}.
 \bibitem{laquer1984} H.~T.~Laquer, Stability properties of the Yang--Mills functional near the canonical connection, \emph{Michigan Math.\ J.} 31 (1984) 139--159.
 \bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
+\bibitem{luscher2010} M.~L\"uscher, Properties and uses of the Wilson flow in lattice QCD, \emph{J.\ High Energy Phys.} 08 (2010) 071.
+\bibitem{munthekaas1998} H.~Munthe-Kaas, Runge--Kutta methods on Lie groups, \emph{BIT} 38 (1998) 92--111.
 \bibitem{ohnitapan1989} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, preprint MPI/89-49, Max-Planck-Institut f\"ur Mathematik, Bonn, 1989.
 \bibitem{whitney1957} H.~Whitney, \emph{Geometric Integration Theory}, Princeton University Press, 1957.
+\bibitem{wilson1974} K.~G.~Wilson, Confinement of quarks, \emph{Phys.\ Rev.\ D} 10 (1974) 2445--2459.
 \bibitem{zz1992} O.~C.~Zienkiewicz, J.~Z.~Zhu, The superconvergent patch recovery and a posteriori error estimates, \emph{Int.\ J.\ Numer.\ Methods Eng.} 33 (1992) 1331--1364.
 \end{thebibliography}
 

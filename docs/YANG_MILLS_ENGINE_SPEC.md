@@ -189,3 +189,61 @@ Each step gets its tests before its code, and a results document when its gate i
 - The n = 5 flow (C9).
 - Other metrics.
 - Halcyon on the buckyball. Joining Halcyon is strategy step 3, after this.
+
+## Amendment 1 (19 November 2026): the flow through the live server (YM5, flow part)
+
+Written before any flow route exists. Nothing above is relaxed. YM4's probe parity, which used the research
+run's own preconditioner, stands as the strict flow gate.
+
+**Why an amendment is needed.** YM4 fed the engine the exact K₀ each research run used, read from disk. A
+server route cannot honestly take its preconditioner from a research file. It builds K₀ itself, by YM3 at the
+initial links and g(0). That K₀ is not the research runs' K₀:
+
+- At n = 1 and 2, S3b used dense matrices cached by S2c, built while the defect derivative was still a finite
+  difference.
+- At n = 3, it used the loop-built matrices, about 10⁻⁷ from B5.
+
+K₀ only preconditions the quasi-Newton solve. The fixed point Ω is defined by the force, not by K₀, so the step
+converges to the same answer to within the Newton tolerance. But the iterates differ, so the numbers are not
+bit-identical, and the iteration counts may differ.
+
+**The route.** `POST /v1/bundles/{cells}/link_flow`:
+
+- **Request (unknown keys refused):**
+  - `links`, `q`: the link bundle and its quaternion field prefix.
+  - `method`: `pg2` or `native`.
+  - `order`: default 6.
+  - `steps`, `t_end`.
+  - `metric_step`: [t, (g1, g2, g3)] samples at t = 0 and at every step midpoint. **Required. A missing time is
+    a 422 that names the time. Nothing is ever substituted or interpolated.** The frozen-metric control passes
+    g(0) at every time.
+  - Optional `reference`: `metric_ref` samples at the sample times, and an `edge_points` bundle (fields
+    `p0_0..p1_3`), for E, D and R against the exact Levi-Civita links.
+- **K₀** is built by the engine (YM3: ε = 10⁻⁶, exact defect derivative) at the initial links and g(0). It is
+  never read from a request.
+- **Response:**
+  - `status`, the sample rows (t, E, D, R, Newton iterations), the per-step iteration counts, the worst final
+    increment, `variational`, and the seconds spent building K₀ and stepping.
+  - `reference: "none supplied"` when no reference is given.
+- **Refusals:** more than 12,000 unknowns is a 422, "a sparse solver is not built yet" (decision (a)); a missing
+  metric sample; an unknown key; a missing bundle (404).
+
+**Gates (fixed now).**
+
+- **YM5-F1, route = probe.** The route's rows and final links equal the probe's, run with the same
+  engine-built K₀, exactly (0.0). It is the same code; this checks the surface, not the mathematics.
+- **YM5-F2, the engine-K₀ flow against S3b.**
+  - n = 1, 2, 3, N = 8: native, two-ring, and the frozen-metric control at n = 3.
+  - Every sample's E agrees with the S3b receipt to **10⁻⁶ relative**. That is a hundred times the Newton
+    tolerance, which bounds how far a different preconditioner can move the converged step.
+  - The final R reproduces the paper to the printed digit: two-ring 13.8%, 1.77% and 0.87% (R = 0.13834,
+    0.017725 and 0.0087046 in the receipts); frozen control 8.13% at n = 3.
+  - Newton counts are reported side by side with S3b's, not gated.
+- **YM5-F3, the preconditioner's effect, measured.** In the probe, run the same flow twice, once with the
+  research K₀ and once with the engine's. Report the largest relative E difference. It is expected to sit below
+  10⁻⁶; if it does not, YM5-F2's tolerance is wrong, and that is reported before anything else.
+- **YM5-F4, refusals.** A missing metric sample (422, naming the time), more than 12,000 unknowns (422), an
+  unknown key (422), a missing bundle (404).
+
+**Not covered.** n = 5: decision (b) or (c), sparse solver or GMRES, is still open. The gauge-invariant R, which
+S3b also reports, is not gated here.

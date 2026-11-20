@@ -165,3 +165,8 @@ Receipts: `research/magnet-m1-20261119/audit_L0.json`, `audit_L1.json`. Per-edge
 
 **Reading.** At n = 2 the poke term that M0 left flat is, to within 4%, its bumps' zeroth-moment defect contracted
 with the constant δF. That is Lemma B's mechanism, and it is what M1 corrects.
+
+**Decision (Bee, 19 November 2026, after Part 1).** Build and run M1 despite A2's miss at n = 1 (residual 6.6%
+against 5%). The decisive level, n = 2, passes cleanly, and the mechanism is unambiguous at both levels (cosine
+0.998 and 0.9993). This is an exception to the decision rule as written, recorded here before any M1 code. Part 2's
+gates are unchanged.

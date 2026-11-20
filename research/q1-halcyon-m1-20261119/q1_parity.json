@@ -1,0 +1,203 @@
+{
+ "kind": "Q1 correlator parity, null and removal",
+ "p_bar": "m1_su2_L16_beta2.npy",
+ "n_cfg": 100,
+ "L": 16,
+ "null_seed": 20260629,
+ "tolerance": {
+  "in_sigma": 1e-06,
+  "rel": 1e-08
+ },
+ "gates": {
+  "P1_parity_signal": true,
+  "P1_parity_null": true,
+  "N_null_refuses": true,
+  "R_auto_window_reports_on_null": false
+ },
+ "signal": {
+  "parity_rel": {
+   "C_t_in_sigma": 3.3901568780702107e-10,
+   "C_err_t_rel": 3.851341311932066e-10,
+   "m_eff_t_in_sigma": 2.2358419022575064e-10,
+   "m_eff_err_t_halcyon_normalisation_rel": 7.141965558501631e-10
+  },
+  "engine_plateau": {
+   "t_lo": 1,
+   "t_hi": 3,
+   "mass": 2.27582402766044,
+   "error": 0.27856708178523704,
+   "chi2_dof": 0.6855635998431949
+  },
+  "halcyon_auto_window": {
+   "window": [
+    1,
+    4
+   ],
+   "mass": 2.2758240276439143,
+   "error": 0.027856708187892733
+  },
+  "m_eff_t": [
+   null,
+   2.365885329473738,
+   1.6515851373069732,
+   0.6323472196046793,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   0.6323472196046797,
+   1.6515851373069732,
+   null
+  ],
+  "m_eff_err_t_standard": [
+   null,
+   0.2913077757687719,
+   1.1651571778880656,
+   1.6529986233775325,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   1.6529986233775318,
+   1.1651571778880656,
+   null
+  ],
+  "m_eff_err_t_halcyon": [
+   0.0,
+   0.02913077758727859,
+   0.11651571781940527,
+   0.1652998623075431,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.16529986221969659,
+   0.11651571781849102,
+   0.0
+  ],
+  "standard_over_halcyon_error": [
+   null,
+   9.999999996429413,
+   9.999999997373855,
+   10.000000001827598,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   10.000000007141965,
+   9.999999997452322,
+   null
+  ],
+  "engine_seconds": 0.0009879
+ },
+ "null": {
+  "parity_rel": {
+   "C_t_in_sigma": 2.144320108317798e-10,
+   "C_err_t_rel": 3.112889209825853e-10,
+   "m_eff_t_in_sigma": 0.0,
+   "m_eff_err_t_halcyon_normalisation_rel": 0.0
+  },
+  "engine_plateau": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "halcyon_auto_window": {
+   "window": null,
+   "mass": null,
+   "error": null
+  },
+  "m_eff_t": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "m_eff_err_t_standard": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "m_eff_err_t_halcyon": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "standard_over_halcyon_error": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "engine_seconds": 0.000735
+ }
+}

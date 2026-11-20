@@ -53,7 +53,7 @@ its sector for the sectors $j=0,12,20,24$ that survive on the Poincar\'e homolog
 that every other surviving sector lies above $142$. There, the
 gauge-orthogonal spectrum below $142$ consists of the left-invariant values $-14/3$ (twice),
 $16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$ values from $154/3$ upward. The
-first sector above the left-invariant one begins $168/3$ above the field's growth mode, one third of
+first sector above the left-invariant one begins $168/3$ above the field's growth mode\redins{ (its lowest, negative eigenvalue)}, one third of
 the sphere's first scalar eigenvalue. The construction reproduces the published fluctuation spectrum
 of the meron on the round sphere and Laquer's index. The formula is one member of a family: on every
 Berger sphere $(t,1,1)$ the same field is an exact gauge-orthogonal eigenvector with eigenvalue
@@ -81,7 +81,7 @@ of the canonical connection over every simply connected compact irreducible symm
 group manifold the index is one (see also~\cite{ohnitapan1989}). Around homogeneous backgrounds on
 the round $S^3$, Kumar, Lechtenfeld and Pican\c{c}o Costa~\cite{klc2021} diagonalized the
 fluctuation operator sector by sector in closed form. On Berger spheres, closed-form spectra are known
-for the scalar Laplacian~\cite{lauret2019}, the Dirac operator~\cite{bar1992,klingschueth2022} and
+for the scalar Laplacian~\cite{lauret2019}, the Dirac operator~\cite{hitchin1974,bar1992,klingschueth2022} and
 the Hodge Laplacian on $1$-forms~\cite{henkellauret2026}.
 
 We found no exact result for the Yang--Mills Hessian at a non-flat connection on a squashed
@@ -115,7 +115,7 @@ at rest, so gauge directions are not zero modes, and the compression $PHP$ is th
     raising operator, with its internal frame the lowest eigenvector of the curvature term of the Weitzenb\"ock
     identity\redins{ for $t\ge12/7$, so on the whole certified range}
     (Proposition~\ref{prop:landau}),
-    with the stretches at which each twist goes free in closed form (Corollary~\ref{cor:family}).
+    with the stretches at which each twist \redins{(the circular field of Proposition~\ref{prop:bottom}; terms in Section~\ref{sec:setting}) }goes free in closed form (Corollary~\ref{cor:family}).
 \end{itemize}
 Section~\ref{sec:family} follows the floor across the Berger family.
 Section~\ref{sec:checks} checks the construction against the published round-sphere results and
@@ -136,7 +136,15 @@ $\tau_0$ along the long axis.
 Its curvature $F$ has components $F_{ij}=[M_i,M_j]-\sum_kc_{ij}^{\,k}M_k$. At the round metric $A$ is
 a Yang--Mills field; at $g=(3,1,1)$ it is not.
 
-\paragraph{The Hessian and the slice.} A variation is $b=\sum_ib_i\hat\theta^i$. The second variation
+\redins{\paragraph{Terms.} A field is \emph{at rest} if it is a Yang--Mills field, a critical point of the
+energy. A \emph{growth mode} is a direction of negative second variation, a negative eigenvalue of the Hessian
+below. The \emph{stretch} is the parameter $t$ of the Berger metric $(t,1,1)$ of Section~\ref{sec:family}; the
+main case is $t=3$. The \emph{twist} of the sector of spin $j/2$ is the field
+$b=f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ of Proposition~\ref{prop:bottom}, with $f$ the top
+weight along the long axis: it turns in the two short directions and, in step, in two internal directions. A
+twist \emph{goes free} at the stretch where its eigenvalue crosses zero; beyond it, it is a growth mode.
+
+}\paragraph{The Hessian and the slice.} A variation is $b=\sum_ib_i\hat\theta^i$. The second variation
 of $E=\tfrac12\norm{F}^2$ is the quadratic form
 \begin{equation}\label{eq:Q}
   Q(b)=\sum_{i<j}\norm{D_{ij}b}^2+2\langle F_{ij},[b_i,b_j]\rangle,\qquad
@@ -156,7 +164,7 @@ $9(j+1)$. Write $J_0=\tfrac i2\rho_0$, with weights $-\tfrac j2,\dots,\tfrac j2$
 \paragraph{The Poincar\'e sphere.} The binary icosahedral group $2I$ acts by left translations, and
 the frame, the metric and $A$ descend to $S^3/2I$. The sector of spin $j/2$ survives with
 multiplicity $\dim V_j^{2I}$, given by the Molien series $(1+t^{30})/((1-t^{12})(1-t^{20}))$ of
-Klein's invariants~\cite{klein1884}: the surviving sectors are $j=0,12,20,24,30,32,\dots$. The first
+\reddel{Klein's invariants~\cite{klein1884}}\redins{the binary icosahedral group, whose invariants go back to Klein~\cite{klein1884}}: the surviving sectors are $j=0,12,20,24,30,32,\dots$. The first
 nonzero eigenvalue of the scalar Laplacian on the unit Poincar\'e sphere is $j(j+2)=168$ at
 $j=12$~\cite{lachiezerey2004}.
 
@@ -185,8 +193,10 @@ gauge span (\path{scripts/ricci_su2_left_invariant_sector.py},
 \end{proof}
 
 The eigenvalue $8$ is a pure gauge direction, and the pairs $(29\mp\sqrt{1345})/3$ are mixtures, $40\%$
-and $60\%$ gauge. So the field has exactly three \emph{physical} growth directions, $-14/3$ (twice) and
-$16-2\sqrt{73}$, each orthogonal to the gauge directions. All of them come from the field acting on
+and $60\%$ gauge. So the \reddel{field}\redins{left-invariant sector} has exactly three \emph{physical} growth directions, $-14/3$ (twice) and
+$16-2\sqrt{73}$, each orthogonal to the gauge directions.\redins{ On $S^3$ other sectors add more: at $t=3$ the
+sectors $j=1$ and $j=2$ have four each, among them their twists (Corollary~\ref{cor:family}). On the Poincar\'e
+sphere those sectors do not survive, and the three are all.} All of them come from the field acting on
 itself: with the commutator dropped, the same sector is $4/3$ $(\times6)$ and $12$ $(\times3)$, all
 positive.
 
@@ -211,7 +221,7 @@ $1,2$, in the order $(1,1),(1,2),(2,1),(2,2)$) the Hessian is
 \]
 with eigenvalues $\tfrac13(j^2+2j-14)$, $\tfrac13(j^2+4j-14)$ and
 $\tfrac13\bigl(j^2+3j+33\pm3\sqrt{j^2+9}\bigr)$. The first has eigenvector $(-1,-i,-i,1)$, which is $b$
-up to a factor. Three facts complete the argument, each an identity in $j$:
+up to a factor.\redins{ The other three are eigenvalues of this compression only, not of $H$.} Three facts complete the argument, each an identity in $j$:
 \begin{itemize}
   \item the coupling of $b$ to the only other top-weight direction it could reach, the $\tau_0$
     component of $b_0$, vanishes;
@@ -238,7 +248,7 @@ In every sector,
 where $X_i$ is the covariant derivative ($\Omega_i$ is the action of the connection on the Lie index
 together with $-\Gamma_i$ on the frame index) and $R_0$ is a constant real symmetric $9\times9$ matrix
 with eigenvalues $-12$ $(\times2)$, $7\pm\sqrt{73}$, $2\pm2\sqrt{13}$ $(\times2)$ and $8$. Moreover
-$\omega^2:=\sum_i\norm{\Omega_i}^2=76/3$.
+$\omega^2:=\sum_i\norm{\Omega_i}\redins{_2}^2=76/3$\redins{ (operator norms)}.
 \end{lemma}
 \begin{proof}
 Treat the $\rho_i$ as generators of $U(\su)$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$ and
@@ -281,19 +291,22 @@ coefficient is real. The rest is a rigorous count of the eigenvalues of $A$ belo
     triangle. The exact realified matrix is symmetric and each interval encloses its entry, so the two
     differ in norm by at most $\rho$, computed from the radii\redins{. Each radius bounds the distance from the
     interval to its stored midpoint, and is computed, like $\rho$ itself, with outward rounding}.
-  \item \emph{Factorization.} $M$ is factored without pivoting in $200$-bit arithmetic,
+  \item \emph{Factorization.} $M$ is factored without pivoting in $200$-bit arithmetic\reddel{,
     $LDL^\top=M+\Delta M$, with $|\Delta M|\le\gamma_N|L||D||L^\top|$, $\gamma_N=Nu/(1-Nu)$,
-    $u=2^{-200}$: the componentwise bound for Gaussian elimination~\cite[Thm.~9.3]{higham2002}, applied
-    to the symmetric elimination.
-  \item \emph{Inertia.} $LDL^\top$ is congruent to $D$, so by Sylvester's law $M+\Delta M$ has exactly as
+    $u=2^{-200}$: the componentwise bound for Gaussian elimination, applied
+    to the symmetric elimination}\redins{. The stored factors, $L$ unit lower triangular and $D$ diagonal, define an
+    exact matrix $LDL^\top$. Its distance from $M$ is bounded a posteriori by $\norm{M-LDL^\top}_F$, evaluated
+    in interval arithmetic with outward rounding, so no rounding-error constant of the factorization
+    enters}.
+  \item \emph{Inertia.} $LDL^\top$ is congruent to $D$, so by Sylvester's law \reddel{$M+\Delta M$}\redins{$LDL^\top$} has exactly as
     many negative eigenvalues as $D$ has negative pivots, and none equal to zero. Every pivot is recorded.
-  \item \emph{Perturbation.} Let $\varepsilon=\rho+\norm{\gamma_N|L||D||L^\top|}_F$\redins{, an upper bound
+  \item \emph{Perturbation.} Let $\varepsilon=\rho+\reddel{\norm{\gamma_N|L||D||L^\top|}_F}\redins{\norm{M-LDL^\top}_F}$\redins{, an upper bound
     evaluated in interval arithmetic (\path{scripts/ricci_su2_outward.py})}. If $D$ has $k$
     negative pivots, Weyl's inequality gives at most $k$ eigenvalues of the realified $A-\mu$ below
     $-\varepsilon$, that is, at most $k/2$ eigenvalues of $A$ below $\mu-\varepsilon$.
 \end{enumerate}
 In each of the four sectors $D$ has exactly four negative pivots, no pivot is smaller in absolute value
-than $0.63$, and $\varepsilon<3\times10^{-54}$ (Table~\ref{tab:cert}). So $A$ has at most two
+than $0.63$, and $\varepsilon<\reddel{3\times10^{-54}}\redins{7\times10^{-56}}$ (Table~\ref{tab:cert}). So $A$ has at most two
 eigenvalues below $\lambda(j)+1/3-\varepsilon$, and both copies of $\lambda(j)$ are among them. Hence
 $\lambda(j)$ is the lowest eigenvalue of $A$, with multiplicity exactly two, and every other eigenvalue is
 at least $\lambda(j)+1/3-\varepsilon$. The same procedure at $\mu=\lambda(j)-1/3$ finds no negative pivot,
@@ -309,16 +322,16 @@ Proposition~\ref{prop:spin0} gives the spin-$0$ slice exactly.
 
 \begin{table}[t]\centering\small
 \caption{The inertia certificates of Theorem~\ref{thm:gap}(2), at $\mu=\lambda(j)+1/3$. $N$: size of the
-realified matrix; $\rho$: enclosure radius; backward: $\norm{\gamma_N|L||D||L^\top|}_F$;
-$\varepsilon=\rho+{}$backward. At $\mu=\lambda(j)-1/3$ no sector has a negative pivot,
-$\varepsilon\le2.1\times10^{-54}$ and the smallest pivot is at least $0.63$.}
+realified matrix; $\rho$: enclosure radius; \reddel{backward: $\norm{\gamma_N|L||D||L^\top|}_F$;
+$\varepsilon=\rho+{}$backward}\redins{residual: $\norm{M-LDL^\top}_F$; $\varepsilon=\rho+{}$residual}. At $\mu=\lambda(j)-1/3$ no sector has a negative pivot,
+$\varepsilon\le\reddel{2.1\times10^{-54}}\redins{6.2\times10^{-56}}$ and the smallest pivot is at least $0.63$.}
 \label{tab:cert}
 \begin{tabular}{rrrccccc}\toprule
-$j$ & $\lambda(j)$ & $N$ & $\rho$ & backward & $\varepsilon$ & neg.\ pivots & $\min|d_k|$ \\ \midrule
-$0$ & $-14/3$ & $18$ & $\reddel{2.9}\redins{3.0}\times10^{-58}$ & $9.3\times10^{-58}$ & $1.2\times10^{-57}$ & $4$ & $0.679$ \\
-$12$ & $154/3$ & $234$ & $\reddel{7.1}\redins{7.7}\times10^{-57}$ & $3.2\times10^{-55}$ & $3.3\times10^{-55}$ & $4$ & $21.3$ \\
-$20$ & $142$ & $378$ & $\reddel{2.3}\redins{2.4}\times10^{-56}$ & $1.4\times10^{-54}$ & $1.4\times10^{-54}$ & $4$ & $60.0$ \\
-$24$ & $610/3$ & $450$ & $\reddel{3.4}\redins{3.7}\times10^{-56}$ & $2.6\times10^{-54}$ & $2.7\times10^{-54}$ & $4$ & $66.9$ \\
+$j$ & $\lambda(j)$ & $N$ & $\rho$ & \reddel{backward}\redins{residual} & $\varepsilon$ & neg.\ pivots & $\min|d_k|$ \\ \midrule
+$0$ & $-14/3$ & $18$ & $\reddel{2.9}\redins{3.0}\times10^{-58}$ & $\reddel{9.3\times10^{-58}}\redins{5.5\times10^{-59}}$ & $\reddel{1.2\times10^{-57}}\redins{3.5\times10^{-58}}$ & $4$ & $0.679$ \\
+$12$ & $154/3$ & $234$ & $\reddel{7.1}\redins{7.7}\times10^{-57}$ & $\reddel{3.2\times10^{-55}}\redins{6.3\times10^{-57}}$ & $\reddel{3.3\times10^{-55}}\redins{1.4\times10^{-56}}$ & $4$ & $21.3$ \\
+$20$ & $142$ & $378$ & $\reddel{2.3}\redins{2.4}\times10^{-56}$ & $\reddel{1.4\times10^{-54}}\redins{1.9\times10^{-56}}$ & $\reddel{1.4\times10^{-54}}\redins{4.3\times10^{-56}}$ & $4$ & $60.0$ \\
+$24$ & $610/3$ & $450$ & $\reddel{3.4}\redins{3.7}\times10^{-56}$ & $\reddel{2.6\times10^{-54}}\redins{2.9\times10^{-56}}$ & $\reddel{2.7\times10^{-54}}\redins{6.6\times10^{-56}}$ & $4$ & $66.9$ \\
 \bottomrule\end{tabular}
 \end{table}
 
@@ -351,7 +364,7 @@ eigenvalue. The spectral gap between the two sectors runs from $16+2\sqrt{73}=33
   \caption{The gauge-orthogonal spectrum at the Berger field, sector by sector. Curve:
   $\lambda(j)=(j(j+2)-14)/3$. Filled: the bottom of each sector that survives on the Poincar\'e sphere;
   hollow: sectors the icosahedral group forbids; grey ticks: the other exact values of a surviving
-  sector. Squares and circles: lattice eigenvalues near the bottom of spins $0$ and $6$ from the two
+  sector. Squares and circles: lattice eigenvalues near the \reddel{bottom of spins $0$ and $6$}\redins{left-invariant values and the lowest gauge-orthogonal values of spin $6$} from the two
   lattice forces of~\cite{davisrtc} (native $n=1,2,3$; two-ring $n=3$).}
   \label{fig:ladder}
 \end{figure}
@@ -372,7 +385,7 @@ At $t=3$ this is $\lambda(j)$ of Proposition~\ref{prop:bottom}.
 \begin{proof}
 The proof of Proposition~\ref{prop:bottom}, with $t$ symbolic in place of $3$. The block on the squashed
 plane has eigenvalues $\lambda_t(j)$, $(j^2+4jt-8j-2t^2-4t+16)/t$ and
-$(j^2+jt+5t^2-4t\pm t\sqrt{j^2+t^2})/t$. The first has eigenvector $(-1,-i,-i,1)$, and the three facts
+$(j^2+jt+5t^2-4t\pm t\sqrt{j^2+t^2})/t$\redins{ (the last three of the compression only)}. The first has eigenvector $(-1,-i,-i,1)$, and the three facts
 listed there (no coupling to the $\tau_0$ component of $b_0$, no leak into the next weight, and
 orthogonality to every gauge direction) hold as identities in $j$ and $t$
 (\path{scripts/ricci_su2_sector_formula_squashed.py}).
@@ -444,7 +457,7 @@ exactly, $\sqrt{342}-6>\sqrt{156}$, with margin $0.0032$ in that form. The spin-
 arithmetic (receipts in \path{research/su2-floor-family-20261119/}).
 \end{proof}
 
-So at $t=4$ there are still exactly three growth directions, and the floor gap is $36$. Unlike $t=3$, spin $6$
+So at $t=4$ \redins{the Poincar\'e sphere }\reddel{there are}\redins{has} still exactly three growth directions, and the floor gap is $36$. Unlike $t=3$, spin $6$
 begins below the top of the spin-$0$ spectrum, so the sectors interleave there.
 
 \paragraph{The floor law over a range.} A certificate need not be taken one $t$ at a time. For a slice
@@ -452,7 +465,7 @@ $t\in[a,b]$, enclose $A(t)-\lambda_t(j)-\delta$ for \emph{all} $t$ in the slice 
 $\lambda_t(j)$ entered as intervals, and proceed as in the proof of Theorem~\ref{thm:gap}. Bound the
 perturbation by $\rho=\min(\text{Frobenius},\text{maximal row sum})$ of the enclosure radii; both bound the
 $2$-norm of a symmetric perturbation\redins{. As in Theorem~\ref{thm:gap}, the radii are taken about the stored
-midpoints, and $\rho$, the backward-error term and $\varepsilon$ are evaluated with outward rounding}. Then exactly four negative pivots and $\varepsilon<\delta$ give, for every
+midpoints, and $\rho$, the residual $\norm{M-LDL^\top}_F$ and $\varepsilon$ are evaluated with outward rounding}. Then exactly four negative pivots and $\varepsilon<\delta$ give, for every
 $t$ in the slice, at most two eigenvalues below $\lambda_t(j)+\delta-\varepsilon$. By
 Proposition~\ref{prop:family}, both copies of $\lambda_t(j)$ are among them.
 
@@ -471,7 +484,10 @@ $m=q-c_f-c_l$, $|m|\le l$. The state of charge $l+2$ is the twist $b$ alone, and
 conjugate.
 \end{lemma}
 \begin{proof}
-Exact, with $t$ symbolic (\path{scripts/ricci_su2_charge_selection_symbolic.py}). Since $\rho_0$ is diagonal and
+Exact, with $t$ symbolic (\path{scripts/ricci_su2_charge_selection_symbolic.py}). \redins{For every $j$, the antiunitary map $J\otimes K$, with $J$ the real ($j$ even) or quaternionic ($j$ odd)
+structure of $V_j$ and $K$ complex conjugation on the frame and Lie indices, commutes with $H+GG^*$, whose
+coefficients are real, and reverses the charge; so the block of charge $-l-2$ has the same entry as the twist's.
+}Since $\rho_0$ is diagonal and
 $\rho_1\pm i\rho_2=-2iJ_\pm$ shifts $m$ by $\pm1$, each of $X_0$ and $X_\pm$ shifts $q$ by $0$ or $\pm1$, and
 $\sum_iX_i^*X_i=X_0^*X_0+\tfrac12(X_+^*X_++X_-^*X_-)$ preserves $q$; so does $R_0(t)$.
 \end{proof}
@@ -498,7 +514,7 @@ all its eigenvalues above $\lambda_t(j)$; the two twist blocks are $1\times1$ wi
 (Proposition~\ref{prop:family}).
 
 \emph{Sectors $j\le99$.} Each block is enclosed for all $t$ in a slice at once and certified positive
-definite after the shift $\lambda_t(j)+\eta$, as described above, with no negative pivot and $\varepsilon<\eta$
+definite after the shift $\lambda_t(j)+\eta$, as described above\redins{ ($\eta>0$ plays the role of $\delta$ there, chosen per block and slice as half the double-precision gap)}, with no negative pivot and $\varepsilon<\eta$
 (\path{scripts/ricci_su2_block_interval_cert.py}). For $j\le40$, $943$ blocks and $12{,}596$ block-slices, smallest
 margin $\eta-\varepsilon=1.7\times10^{-5}$ (receipt \path{block_cert_j40.json}); for $41\le j\le99$, $4{,}307$
 blocks and $36{,}166$ block-slices, smallest margin $2.9\times10^{-3}$ (receipt \path{block_cert_j41_99.json}).
@@ -633,7 +649,7 @@ the floor law is and is not (scripts and receipts in the repository; see the ava
 \section{Checks}\label{sec:checks}
 
 \paragraph{The round sphere.} At $g=(1,1,1)$ the Levi-Civita connection is a Yang--Mills field (the
-meron), and the same construction gives $-2$, $1$, $6$, $7$ and $10$ in spins $0$ to $2$. That is the
+meron), and the same construction gives $-2$, $1$, $6$, $7$ and $10$ \redins{as the lowest gauge-orthogonal eigenvalues of the sectors $j=0,\dots,4$, }in spins $0$ to $2$. That is the
 published fluctuation spectrum~\cite{klc2021}. It has exactly one negative eigenvalue, so index one,
 as Laquer's theorem requires for a group manifold~\cite{laquer1984}. Without the commutator it gives
 the coexact $1$-form spectrum of the unit $S^3$: $j^2$ and $(j+2)^2$ with their multiplicities, and
@@ -641,7 +657,7 @@ gauge zeros.
 
 \paragraph{Lattice computations.} The two lattice Yang--Mills forces of~\cite{davisrtc}, linearised
 at the Berger field on triangulations of the Poincar\'e sphere, resolve the left-invariant sector and
-the bottom of spin $6$ (Table~\ref{tab:lattice}). At $n=1,2$ every left-invariant mode was identified
+\reddel{the bottom of spin $6$}\redins{two eigenvalues of $H$ in spin $6$: $154/3=51.33$, the floor, and $59.52$, beside the second gauge-orthogonal value $59.50$; $H$ itself has lower, gauge-dominated eigenvalues there, and these two are matched by value} (Table~\ref{tab:lattice}). At $n=1,2$ every left-invariant mode was identified
 by its eigenvector, as the lattice eigenvector with the largest overlap with the nine discrete
 left-invariant directions (overlap $0.76$ to $0.999$). The mode $16-2\sqrt{73}$ is split by the
 non-symmetric lattice Jacobian, between a real eigenvalue and a complex pair. The lattice linearises
@@ -704,7 +720,7 @@ This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}
 All programs and certificates are in the \textsc{GIGI} repository,
-\url{https://github.com/nurdymuny/gigi}, with their outputs in
+\url{https://github.com/nurdymuny/gigi}\redins{ (tag \texttt{floor-theorem-v2}; the scripts are on that tag, not yet on the main branch)}, with their outputs in
 \path{research/su2-left-invariant-sector-20261119/}:
 \begin{itemize}
   \item the left-invariant sector: \path{scripts/ricci_su2_left_invariant_sector.py};
@@ -745,15 +761,15 @@ This paper, its source, and the code and data above are archived on Zenodo under
 \bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230.
 \bibitem{davisrtc} B.~R.~Davis, Reading the curve, not counting the points: a two-ring Petrov--Galerkin curvature force for discrete Yang--Mills dynamics on the Poincar\'e homology sphere, 2026, \url{https://doi.org/10.5281/zenodo.24328085}.
 \bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
-\bibitem{higham2002} N.~J.~Higham, \emph{Accuracy and Stability of Numerical Algorithms}, 2nd ed., SIAM, Philadelphia, 2002.
+\bibitem{hitchin1974} N.~Hitchin, Harmonic spinors, \emph{Adv.\ Math.} 14 (1974) 1--55.
 \bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
-\bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.
-\bibitem{klc2021} S.~Kumar, O.~Lechtenfeld, G.~Pican\c{c}o Costa, Instability of cosmic Yang--Mills fields, \emph{Nucl.\ Phys.\ B} 973 (2021) 115583, \href{https://arxiv.org/abs/2102.08401}{arXiv:2102.08401}.
-\bibitem{lachiezerey2004} M.~Lachi\`eze-Rey, Eigenmodes of dodecahedral space, 2004, \href{https://arxiv.org/abs/gr-qc/0402035}{arXiv:gr-qc/0402035}.
+\bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \redins{\emph{J.\ Geom.\ Anal.} (2022), \href{https://doi.org/10.1007/s12220-022-00997-x}{doi:10.1007/s12220-022-00997-x}, }\href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.
+\bibitem{klc2021} \reddel{S.~Kumar}\redins{K.~Kumar}, O.~Lechtenfeld, G.~Pican\c{c}o Costa, Instability of cosmic Yang--Mills fields, \emph{Nucl.\ Phys.\ B} 973 (2021) 115583, \href{https://arxiv.org/abs/2102.08401}{arXiv:2102.08401}.
+\bibitem{lachiezerey2004} M.~Lachi\`eze-Rey, Eigenmodes of dodecahedral space, \reddel{2004}\redins{\emph{Class.\ Quantum Grav.} 21 (2004) 2455--2464}, \href{https://arxiv.org/abs/gr-qc/0402035}{arXiv:gr-qc/0402035}.
 \bibitem{laquer1984} H.~T.~Laquer, Stability properties of the Yang--Mills functional near the canonical connection, \emph{Michigan Math.\ J.} 31 (1984) 139--159.
-\bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
+\bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \redins{\emph{Bull.\ Lond.\ Math.\ Soc.} 51 (2019) 49--69, }\href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
 \bibitem{mpmath} The mpmath development team, mpmath: a Python library for arbitrary-precision floating-point arithmetic, \url{https://mpmath.org}.
-\bibitem{ohnitapan1989} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, preprint MPI/89-49, Max-Planck-Institut f\"ur Mathematik, Bonn, 1989.
+\bibitem{ohnitapan1989} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, \reddel{preprint MPI/89-49, Max-Planck-Institut f\"ur Mathematik, Bonn, 1989}\redins{\emph{Kodai Math.\ J.} 13 (1990) 317--332}.
 \end{thebibliography}
 
 \end{document}

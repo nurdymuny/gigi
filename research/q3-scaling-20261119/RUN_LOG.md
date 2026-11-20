@@ -101,3 +101,7 @@ Engine target-ym6/q3ext/gigi-stream.exe (sha256 prefix cc121c0f174ad266), own po
 I-persist (engine killed and restarted: the k0 row is bit-identical). Receipt ingest_receipt_k0_k8.json. The receipt
 contains the computed k8 values (parity needs them); they were not read. k8 is scored, with its C-job gate, only by
 the registered extension harness.
+
+## 2026-11-20: k9, k10 done; full extension scoring
+
+k7-k10 sampling exited 0 (done_ext.txt). Full scoring by test_q3_extension.py -> q3ext_receipt.json; Q4 rerun -> q4ext_receipt.json. Verdict: Amendment 3 fails C-harm (k10 flux loop shifts 2.0 sigma); C-job, C-null pass; only beta = 2.2986 passes Q3-a and Q3-v under Q3-C, so Q3-s has no fit; Q4 C1 vacuous (one point). Write-up: docs/HALCYON_Q3_EXTENSION_RESULTS.md. Ingest of k9, k10 started into the same data dir (receipt ingest_receipt_k0_k10.json).

@@ -1,5 +1,7 @@
 # An exact answer for the SU(2) spectrum at the Berger field, and what it means for the mass-gap observable (19 November 2026)
 
+> **Correction (19 November 2026, after the Mac's gauge check, `su2-exact-sector-gauge-check-2026-11-19.md`):** this note counts five physical growth directions. That is wrong. In the spin-0 sector I did not remove the three gauge directions b_i = [M_i, xi]. The value 8 is pure gauge, and the -2.558 pair is 40% gauge, so the physical growth directions are **three**: -14/3 (twice) and 16 - 2 sqrt 73. On the gauge-orthogonal slice the sector is -14/3 (x2), -1.088, 22/3 (x2) and 33.088, and the gap reads 33.088 | 154/3 | 142 | 610/3. I reran the gauge check independently and it reproduces. The text below is kept as written; the paper uses the corrected statement.
+
 A mathematical exercise prompted by the method that keeps working: *have an exact answer to measure against
 before trusting a number*. The Yang–Mills strategy note (`yang-mills-strategy-2026-11-19.md`, step 2) asks for a
 mass-gap observable that separates what the curved space contributes from what the field contributes. Until now

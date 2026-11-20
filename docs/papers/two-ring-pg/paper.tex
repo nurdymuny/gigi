@@ -43,6 +43,7 @@
 \large A Two-Ring Petrov--Galerkin Curvature Force\\ for Discrete Yang--Mills Dynamics on the Poincar\'e Homology Sphere}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt] {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
 \date{November 2026}
+\setlength{\emergencystretch}{3em}
 
 \begin{document}
 \maketitle
@@ -428,8 +429,8 @@ reachable as a query verb. The \BW{} measure stays an independent script: it is 
 the engine is judged against, so it is deliberately not engine code.
 
 \paragraph{The $SU(2)$ verbs.} The non-Abelian computations of Section~\ref{sec:su2} are engine
-verbs too. \texttt{RECOVER\_CURVATURE \dots{} GROUP SU2} is the
-covariant reading; \texttt{LINK\_FORCE} returns the force on every link, two-ring or native, and
+verbs too. The covariant reading is
+\texttt{RECOVER\_CURVATURE} \dots{} \texttt{GROUP SU2}; \texttt{LINK\_FORCE} returns the force on every link, two-ring or native, and
 states in every answer whether the force is the gradient of an energy (only the native one is);
 \texttt{LINK\_FLOW} integrates the flow with the Cayley step, refuses a missing metric sample by
 naming its time, and builds its own Newton preconditioner from the engine's linearisation. Each
@@ -1535,8 +1536,8 @@ eigenvector of Proposition~\ref{prop:sector} lies in the slice, so $\lambda(j)$ 
 For every $j\le120$ the same picture holds in double precision, with the next eigenvalue at least
 $\lambda(j)+2/3$; that wider range is evidence, and the theorem does not rely on it.
 
-\emph{Part (3).} The bound of (1) exceeds $142$ for every $j\ge30$ (at $j=30$ the margin is
-$0.45$, an exact inequality). Part (2) covers the surviving sectors $j=0,12,20,24$, and the spin-$0$
+\emph{Part (3).} The bound of (1) exceeds $142$ for every $j\ge30$: at $j=30$ it is $153.26$
+(exactly, $\sqrt{320}-\sqrt{76/3}>\sqrt{154}$, with margin $0.45$ in that form). Part (2) covers the surviving sectors $j=0,12,20,24$, and the spin-$0$
 slice was computed in exact arithmetic (\path{scripts/ricci_su2_sector_minimality.py}). Both
 certificates are in \path{research/su2-left-invariant-sector-20261119/gap_certificates.json}.
 \end{proof}

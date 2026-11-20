@@ -55,6 +55,8 @@ pub mod correlator;
 #[cfg(feature = "gauge")]
 pub mod lattice2d;
 #[cfg(feature = "gauge")]
+pub mod lattice4d;
+#[cfg(feature = "gauge")]
 pub mod edge_connection;
 #[cfg(feature = "gauge")]
 pub mod holonomy;

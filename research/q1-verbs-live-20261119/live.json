@@ -1,0 +1,67 @@
+{
+ "kind": "Q1 verbs through a live gigi-stream",
+ "port": 64388,
+ "binary": {
+  "path": "C:\\Users\\nurdm\\OneDrive\\Documents\\gigi-ym\\target-ym6\\release\\gigi-stream.exe",
+  "sha256": "7cab840b2b014f4d8f8991d394d08e42d838c7ab31a731da423ff50f077f3181"
+ },
+ "L1": {
+  "status": [
+   200,
+   200,
+   200,
+   200
+  ],
+  "C_gql": 0.0,
+  "C_rest": 0.0,
+  "mass_gql": 0.0,
+  "mass_rest": 0.0,
+  "error_rest": 0.0,
+  "probe_plateau": {
+   "t_lo": 1,
+   "t_hi": 7,
+   "mass": 0.364252916077563,
+   "error": 0.005079892082949206,
+   "chi2_dof": 0.7042176746326997
+  }
+ },
+ "L2": {
+  "status": [
+   200,
+   200
+  ],
+  "probe": {
+   "t_lo": 2,
+   "t_hi": 5,
+   "mass": 0.38606028300014117,
+   "error": 0.028285931348148233,
+   "chi2_dof": 1.9280435457203853
+  },
+  "gql": 0.38606028300014117,
+  "rest": 0.38606028300014117
+ },
+ "L3": {
+  "probe": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "gql": [
+   500,
+   {
+    "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)"
+   }
+  ],
+  "rest": [
+   422,
+   {
+    "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)"
+   }
+  ]
+ },
+ "gates": {
+  "L1": true,
+  "L2": true,
+  "L3": true
+ },
+ "all_pass": true
+}

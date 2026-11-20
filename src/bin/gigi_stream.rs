@@ -9777,6 +9777,70 @@ async fn bundle_link_flow(
     })))
 }
 
+/// Request for `POST /v1/bundles/{name}/correlator` and `/effective_mass` (Q1/Q3,
+/// docs/HALCYON_QUANTUM_GAP_SPEC.md). `{name}` holds one record per (cfg, t). Unknown keys are
+/// rejected; several fields need `gevp` = [t0, t1], never assumed.
+#[cfg(feature = "gauge")]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CorrelatorRequest {
+    fields: Vec<String>,
+    #[serde(default)]
+    block: Option<usize>,
+    #[serde(default)]
+    gevp: Option<[usize; 2]>,
+}
+
+/// Run CORRELATOR / EFFECTIVE_MASS through the same executor as GQL (one implementation).
+#[cfg(feature = "gauge")]
+fn correlator_http(
+    state: &StreamState,
+    stmt: gigi::parser::Statement,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let engine = state.engine_read();
+    match gigi::parser::shape_verb_exec(&engine, &stmt) {
+        Some(Ok(gigi::parser::ExecResult::Rows(rows))) => {
+            Ok(Json(serde_json::json!({ "rows": rows.iter().map(record_to_json).collect::<Vec<_>>() })))
+        }
+        Some(Ok(other)) => Err((StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(ErrorResponse { error: format!("unexpected result {other:?}") }))),
+        Some(Err(e)) => {
+            let code = if e.contains("not found") { StatusCode::NOT_FOUND } else { StatusCode::UNPROCESSABLE_ENTITY };
+            Err((code, Json(ErrorResponse { error: e })))
+        }
+        None => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: "verb not dispatched".into() }))),
+    }
+}
+
+/// POST /v1/bundles/{name}/correlator: one row per t (C, its error, m_eff, its error).
+#[cfg(feature = "gauge")]
+async fn bundle_correlator(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    ApiJson(req): ApiJson<CorrelatorRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    if req.fields.len() != 1 || req.gevp.is_some() {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse {
+            error: "CORRELATOR: exactly one field and no gevp (for several, use effective_mass with gevp)".into() })));
+    }
+    correlator_http(&state, gigi::parser::Statement::Correlator { bundle: name, field: req.fields[0].clone(), block: req.block })
+}
+
+/// POST /v1/bundles/{name}/effective_mass: the plateau, or a 422 naming the time slice.
+#[cfg(feature = "gauge")]
+async fn bundle_effective_mass(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    ApiJson(req): ApiJson<CorrelatorRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    if req.fields.is_empty() || (req.fields.len() > 1 && req.gevp.is_none()) {
+        return Err((StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse {
+            error: "EFFECTIVE_MASS: one field, or several with gevp = [t0, t1]; none is ever assumed".into() })));
+    }
+    correlator_http(&state, gigi::parser::Statement::EffectiveMass {
+        bundle: name, fields: req.fields, block: req.block, gevp: req.gevp.map(|g| (g[0], g[1])) })
+}
+
 /// POST /v1/bundles/{name}/link_force
 ///
 /// LINK_FORCE: the SU(2) force on every link. `{name}` is the cell bundle (with a
@@ -16035,7 +16099,8 @@ fn execute_gql_on_store_read(
         // Delegating to `gigi::parser::execute` keeps ONE implementation: same
         // kernels, same refusals, same row shape as the heap path and as REST.
         Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
-        | Statement::RecoverCurvature { .. } | Statement::LinkForce { .. } => {
+        | Statement::RecoverCurvature { .. } | Statement::LinkForce { .. }
+        | Statement::Correlator { .. } | Statement::EffectiveMass { .. } => {
             let eng_lock = engine.ok_or_else(|| {
                 "shape verbs require engine context (not available in this \
                  dispatch path)".to_string()
@@ -16150,6 +16215,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle, .. } => Some(bundle.clone()),
         RecoverCurvature { cells, .. } => Some(cells.clone()),
         LinkForce { cells, .. } => Some(cells.clone()),
+        Correlator { bundle, .. } | EffectiveMass { bundle, .. } => Some(bundle.clone()),
         // Divergence is cross-bundle; no single name
         _ => None,
     }
@@ -16177,6 +16243,8 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         SpectralGauge { .. }  => "SPECTRAL_GAUGE",
         RecoverCurvature { .. } => "RECOVER_CURVATURE",
         LinkForce { .. } => "LINK_FORCE",
+        Correlator { .. } => "CORRELATOR",
+        EffectiveMass { .. } => "EFFECTIVE_MASS",
         ChernClass { .. }     => "CHERN_CLASS",
         Pontryagin { .. }     => "PONTRYAGIN",
         HolonomyCycle { .. }  => "HOLONOMY_CYCLE",
@@ -17186,6 +17254,11 @@ async fn main() {
     let app = app.route("/v1/bundles/{name}/recover_curvature", post(bundle_recover_curvature));
     #[cfg(feature = "gauge")]
     let app = app.route("/v1/bundles/{name}/link_force", post(bundle_link_force));
+    // CORRELATOR / EFFECTIVE_MASS (docs/HALCYON_QUANTUM_GAP_SPEC.md, Q1/Q3). Gauge-only.
+    #[cfg(feature = "gauge")]
+    let app = app.route("/v1/bundles/{name}/correlator", post(bundle_correlator));
+    #[cfg(feature = "gauge")]
+    let app = app.route("/v1/bundles/{name}/effective_mass", post(bundle_effective_mass));
     #[cfg(feature = "gauge")]
     let app = app.route("/v1/bundles/{name}/link_flow", post(bundle_link_flow));
 

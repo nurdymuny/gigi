@@ -463,6 +463,24 @@ pub enum Statement {
         method: Option<String>,
         rings: Option<usize>,
     },
+    /// `CORRELATOR bundle ON field [BLOCK b]` (Q1, docs/HALCYON_QUANTUM_GAP_SPEC.md). One row per
+    /// time separation t: the periodic connected correlator, its blocked-jackknife error, and the
+    /// cosh effective mass with its error. The bundle holds one record per (cfg, t).
+    Correlator {
+        bundle: String,
+        field: String,
+        block: Option<usize>,
+    },
+    /// `EFFECTIVE_MASS bundle ON f1[, f2, ...] [BLOCK b] [GEVP t0, t1]` (Q1/Q3). One row: the
+    /// plateau by the fixed rule (amendments Q1-1, Q1-2, Q1-3), with the rule as first fixed beside
+    /// it. No plateau is a refusal naming the time slice; there is never a best-guess fit. Several
+    /// fields require GEVP t0, t1 (no default): the GEVP projection is fitted.
+    EffectiveMass {
+        bundle: String,
+        fields: Vec<String>,
+        block: Option<usize>,
+        gevp: Option<(usize, usize)>,
+    },
     /// `SPECTRAL bundle [FULL [LIMIT k]]` — λ₁ of the normalized
     /// field-index-graph Laplacian (Scalar), or with FULL the whole
     /// normalized spectrum ascending (Rows; Phase 2, 2026-07-16).
@@ -2585,6 +2603,8 @@ impl Parser {
             "TEXTURE" => self.parse_texture(),
             "RECOVER_CURVATURE" => self.parse_recover_curvature(),
             "LINK_FORCE" => self.parse_link_force(),
+            "CORRELATOR" => self.parse_correlator(false),
+            "EFFECTIVE_MASS" => self.parse_correlator(true),
             "PRECEDENCE" => self.parse_precedence(),
             "CADENCE" => self.parse_cadence(),
             "SPECTRAL" => self.parse_spectral(),
@@ -6024,6 +6044,45 @@ impl Parser {
             return Err("LINK_FORCE: METRIC g1, g2, g3 is required; none is ever substituted".into());
         }
         Ok(Statement::LinkForce { cells, links, q, metric, order, method, rings })
+    }
+
+    /// `CORRELATOR bundle ON field [BLOCK b]` and
+    /// `EFFECTIVE_MASS bundle ON f1[, f2, ...] [BLOCK b] [GEVP t0, t1]`.
+    fn parse_correlator(&mut self, effective_mass: bool) -> Result<Statement, String> {
+        let verb = if effective_mass { "EFFECTIVE_MASS" } else { "CORRELATOR" };
+        let bundle = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let mut fields = vec![self.expect_word()?];
+        while matches!(self.peek(), Some(Token::Comma)) {
+            self.advance();
+            fields.push(self.expect_word()?);
+        }
+        let (mut block, mut gevp) = (None, None);
+        while !self.at_end() {
+            if self.is_keyword("BLOCK") {
+                self.advance();
+                block = Some(self.expect_usize()?);
+            } else if effective_mass && self.is_keyword("GEVP") {
+                self.advance();
+                let t0 = self.expect_usize()?;
+                self.expect(Token::Comma)?;
+                let t1 = self.expect_usize()?;
+                gevp = Some((t0, t1));
+            } else {
+                return Err(format!("{verb}: unexpected {}", token_or_end(self.peek())));
+            }
+        }
+        if effective_mass {
+            if fields.len() > 1 && gevp.is_none() {
+                return Err("EFFECTIVE_MASS: several fields need GEVP t0, t1; none is ever assumed".into());
+            }
+            Ok(Statement::EffectiveMass { bundle, fields, block, gevp })
+        } else {
+            if fields.len() != 1 {
+                return Err("CORRELATOR: exactly one field (for several, EFFECTIVE_MASS ... GEVP t0, t1)".into());
+            }
+            Ok(Statement::Correlator { bundle, field: fields.remove(0), block })
+        }
     }
 
     /// `PRECEDENCE bundle ON x, y [ALONG order]` — exactly two fields, because
@@ -10964,6 +11023,12 @@ pub fn shape_verb_exec(
             Some(link_force_rows(engine, cells, links, q, *metric, order.unwrap_or(6),
                                  method.as_deref().unwrap_or("PG2"), rings.unwrap_or(2)))
         }
+        Statement::Correlator { bundle, field, block } => {
+            Some(correlator_rows(engine, bundle, field, block.unwrap_or(1)))
+        }
+        Statement::EffectiveMass { bundle, fields, block, gevp } => {
+            Some(effective_mass_rows(engine, bundle, fields, block.unwrap_or(1), *gevp))
+        }
         _ => None,
     }
 }
@@ -11085,6 +11150,91 @@ fn recover_curvature_su2_rows(
     _engine: &crate::engine::Engine, _cells: &str, _links: &str, _q: &str, _rings: usize,
 ) -> Result<ExecResult, String> {
     Err("RECOVER_CURVATURE GROUP SU2 requires the `gauge` feature, which this build does not enable; nothing was executed".to_string())
+}
+
+/// CORRELATOR as GQL rows: one row per t.
+#[cfg(feature = "gauge")]
+fn correlator_rows(engine: &crate::engine::Engine, bundle: &str, field: &str, block: usize) -> Result<ExecResult, String> {
+    use crate::gauge::correlator::{effective_mass_blocked, read_series_bundle};
+    use crate::types::Value as V;
+    let ops = read_series_bundle(engine, bundle, &[field.to_string()])?;
+    let r = effective_mass_blocked(&ops[0], block)?;
+    let num = |x: f64| if x.is_finite() { V::Float(x) } else { V::Null };
+    Ok(ExecResult::Rows(
+        (0..r.correlator.len())
+            .map(|t| {
+                let mut row = crate::types::Record::new();
+                row.insert("t".into(), V::Float(t as f64));
+                row.insert("C".into(), num(r.correlator[t]));
+                row.insert("C_err".into(), num(r.correlator_error[t]));
+                row.insert("m_eff".into(), r.m_eff[t].map(V::Float).unwrap_or(V::Null));
+                row.insert("m_eff_err".into(), if r.m_eff[t].is_some() { num(r.m_eff_error[t]) } else { V::Null });
+                row.insert("block".into(), V::Float(block as f64));
+                row
+            })
+            .collect(),
+    ))
+}
+
+/// EFFECTIVE_MASS as one GQL row; no plateau is an error naming the time slice.
+#[cfg(feature = "gauge")]
+fn effective_mass_rows(
+    engine: &crate::engine::Engine,
+    bundle: &str,
+    fields: &[String],
+    block: usize,
+    gevp: Option<(usize, usize)>,
+) -> Result<ExecResult, String> {
+    use crate::gauge::correlator::{effective_mass_blocked, gevp as solve_gevp, matrix_correlator, project, read_series_bundle};
+    use crate::types::Value as V;
+    let ops = read_series_bundle(engine, bundle, fields)?;
+    let mut row = crate::types::Record::new();
+    let series = match gevp {
+        None => ops.into_iter().next().unwrap(),
+        Some((t0, t1)) => {
+            let c = matrix_correlator(&ops)?;
+            let g = solve_gevp(&c, t0, t1)?;
+            row.insert("gevp_t0".into(), V::Float(t0 as f64));
+            row.insert("gevp_t1".into(), V::Float(t1 as f64));
+            row.insert("gevp_condition".into(), V::Float(g.condition_t0));
+            row.insert("gevp_vector".into(), V::Vector(g.vector.clone()));
+            row.insert("gevp_eigenvalues".into(), V::Vector(g.eigenvalues.clone()));
+            project(&ops, &g.vector)
+        }
+    };
+    let r = effective_mass_blocked(&series, block)?;
+    let p = r.plateau.map_err(|e| e.to_string())?;
+    row.insert("mass".into(), V::Float(p.mass));
+    row.insert("error".into(), V::Float(p.error));
+    row.insert("t_lo".into(), V::Float(p.t_lo as f64));
+    row.insert("t_hi".into(), V::Float(p.t_hi as f64));
+    row.insert("chi2_dof".into(), V::Float(p.chi2_dof));
+    row.insert("block".into(), V::Float(block as f64));
+    row.insert("rule".into(), V::Text("Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error".into()));
+    match r.plateau_as_fixed {
+        Ok(a) => {
+            row.insert("as_fixed_mass".into(), V::Float(a.mass));
+            row.insert("as_fixed_error".into(), V::Float(a.error));
+            row.insert("as_fixed_t_lo".into(), V::Float(a.t_lo as f64));
+            row.insert("as_fixed_t_hi".into(), V::Float(a.t_hi as f64));
+        }
+        Err(e) => {
+            row.insert("as_fixed_refused".into(), V::Text(e.to_string()));
+        }
+    }
+    Ok(ExecResult::Rows(vec![row]))
+}
+
+#[cfg(not(feature = "gauge"))]
+fn correlator_rows(_engine: &crate::engine::Engine, _bundle: &str, _field: &str, _block: usize) -> Result<ExecResult, String> {
+    Err("CORRELATOR requires the `gauge` feature, which this build does not enable; nothing was executed".to_string())
+}
+
+#[cfg(not(feature = "gauge"))]
+fn effective_mass_rows(
+    _engine: &crate::engine::Engine, _bundle: &str, _fields: &[String], _block: usize, _gevp: Option<(usize, usize)>,
+) -> Result<ExecResult, String> {
+    Err("EFFECTIVE_MASS requires the `gauge` feature, which this build does not enable; nothing was executed".to_string())
 }
 
 #[cfg(not(feature = "gauge"))]
@@ -12025,7 +12175,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // `&mut` there deadlocks. Sharing one `&Engine` helper keeps a single
         // implementation and makes the lock discipline impossible to get wrong.
         Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
-        | Statement::RecoverCurvature { .. } | Statement::LinkForce { .. } => {
+        | Statement::RecoverCurvature { .. } | Statement::LinkForce { .. }
+        | Statement::Correlator { .. } | Statement::EffectiveMass { .. } => {
             shape_verb_exec(engine, stmt)
                 .expect("shape verb matched here must be handled by shape_verb_exec")
         }

@@ -606,6 +606,62 @@ pub fn project(ops: &[Vec<Vec<f64>>], v: &[f64]) -> Vec<Vec<f64>> {
     (0..n).map(|c| (0..l).map(|t| ops.iter().zip(v).map(|(o, va)| va * o[c][t]).sum()).collect()).collect()
 }
 
+/// Read time-slice series from a bundle (Q1 verbs): one record per (configuration, time slice),
+/// whole-number fields `cfg` = 0..N−1 and `t` = 0..L−1, and one finite numeric field per operator.
+/// Every (cfg, t) slot must appear exactly once. Returns `[operator][cfg][t]`.
+pub fn read_series_bundle(
+    engine: &crate::engine::Engine,
+    bundle: &str,
+    fields: &[String],
+) -> Result<Vec<Vec<Vec<f64>>>, String> {
+    let store = engine.bundle(bundle).ok_or_else(|| format!("Bundle '{bundle}' not found"))?;
+    let recs: Vec<crate::types::Record> = store.records().collect();
+    if recs.is_empty() {
+        return Err(format!("CORRELATOR: bundle '{bundle}' is empty"));
+    }
+    if fields.is_empty() {
+        return Err("CORRELATOR: name at least one field (ON field)".into());
+    }
+    let whole = |r: &crate::types::Record, f: &str| -> Result<usize, String> {
+        let v = r
+            .get(f)
+            .and_then(|v| v.as_f64())
+            .ok_or_else(|| format!("CORRELATOR: a record of '{bundle}' lacks numeric field '{f}'"))?;
+        if v.fract() != 0.0 || v < 0.0 {
+            return Err(format!("CORRELATOR: field '{f}' = {v} is not a whole number >= 0"));
+        }
+        Ok(v as usize)
+    };
+    let mut n = 0usize;
+    let mut l = 0usize;
+    for r in &recs {
+        n = n.max(whole(r, "cfg")? + 1);
+        l = l.max(whole(r, "t")? + 1);
+    }
+    if n * l != recs.len() {
+        return Err(format!(
+            "CORRELATOR: '{bundle}' has {} records but cfg and t span {n} x {l}; every (cfg, t) must appear exactly once",
+            recs.len()
+        ));
+    }
+    let mut out = vec![vec![vec![f64::NAN; l]; n]; fields.len()];
+    let mut seen = vec![false; n * l];
+    for r in &recs {
+        let (c, t) = (whole(r, "cfg")?, whole(r, "t")?);
+        if std::mem::replace(&mut seen[c * l + t], true) {
+            return Err(format!("CORRELATOR: (cfg {c}, t {t}) appears more than once in '{bundle}'"));
+        }
+        for (k, f) in fields.iter().enumerate() {
+            out[k][c][t] = r
+                .get(f)
+                .and_then(|v| v.as_f64())
+                .filter(|v| v.is_finite())
+                .ok_or_else(|| format!("CORRELATOR: record (cfg {c}, t {t}) lacks a finite numeric field '{f}'"))?;
+        }
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -7,9 +7,10 @@
 //! input: {"p": [[p(0), .., p(L-1)], ..], "block": b}   one row per configuration; block
 //!        (default 1) is the jackknife block length. The Halcyon-normalisation error is block 1 only.
 //!    or: {"ops": [op][cfg][t], "t0": 1, "t1": 2, "block": b}   a GEVP over the operators at
-//!        (t0, t1) after operator selection (Q3-B); the projected series goes through EFFECTIVE_MASS.
+//!        (t0, t1) after operator selection (Q3-B) and, unless "truncate": false, the Q3-C truncation of
+//!        C(t0) directions without a t1 signal; the projected series goes through EFFECTIVE_MASS.
 use gigi::gauge::correlator::{
-    effective_mass_blocked, gevp_selected, jackknife_effective_mass_halcyon, NoPlateau, Plateau,
+    effective_mass_blocked, gevp_run, jackknife_effective_mass_halcyon, NoPlateau, Plateau,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -27,6 +28,12 @@ struct Input {
     t1: usize,
     #[serde(default = "one")]
     block: usize,
+    #[serde(default = "yes")]
+    truncate: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 fn one() -> usize {
@@ -48,11 +55,14 @@ fn main() {
     let (series, gevp_json) = match (inp.p, inp.ops) {
         (Some(p), None) => (p, json!(null)),
         (None, Some(ops)) => {
-            match gevp_selected(&ops, inp.t0, inp.t1, inp.block) {
-                Ok((g, kept, series)) => {
+            match gevp_run(&ops, inp.t0, inp.t1, inp.block, inp.truncate) {
+                Ok(run) => {
+                    let g = &run.gevp;
                     let gj = json!({"t0": g.t0, "t1": g.t1, "eigenvalues": g.eigenvalues, "vector": g.vector,
-                                    "condition_t0": g.condition_t0, "kept": kept});
-                    (series, gj)
+                                    "condition_t0": g.condition_t0, "kept": run.kept_operators,
+                                    "truncate": inp.truncate, "directions_kept": run.directions_kept,
+                                    "direction_snr_t1": fin(&run.direction_snr_t1)});
+                    (run.series, gj)
                 }
                 Err(e) => {
                     let out = json!({"gevp": {"refused": e}, "seconds": t0.elapsed().as_secs_f64()});

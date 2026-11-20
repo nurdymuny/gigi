@@ -11185,15 +11185,18 @@ fn effective_mass_rows(
     block: usize,
     gevp: Option<(usize, usize)>,
 ) -> Result<ExecResult, String> {
-    use crate::gauge::correlator::{effective_mass_blocked, gevp_selected, read_series_bundle};
+    use crate::gauge::correlator::{effective_mass_blocked, gevp_run, read_series_bundle};
     use crate::types::Value as V;
     let ops = read_series_bundle(engine, bundle, fields)?;
     let mut row = crate::types::Record::new();
     let series = match gevp {
         None => ops.into_iter().next().unwrap(),
         Some((t0, t1)) => {
-            let (g, kept, series) = gevp_selected(&ops, t0, t1, block)?;
-            row.insert("gevp_kept".into(), V::Vector(kept.iter().map(|&a| a as f64).collect()));
+            let run = gevp_run(&ops, t0, t1, block, true)?;
+            let (g, series) = (run.gevp, run.series);
+            row.insert("gevp_kept".into(), V::Vector(run.kept_operators.iter().map(|&a| a as f64).collect()));
+            row.insert("gevp_directions_kept".into(), V::Float(run.directions_kept.unwrap_or(0) as f64));
+            row.insert("gevp_direction_snr_t1".into(), V::Vector(run.direction_snr_t1.clone()));
             row.insert("gevp_t0".into(), V::Float(t0 as f64));
             row.insert("gevp_t1".into(), V::Float(t1 as f64));
             row.insert("gevp_condition".into(), V::Float(g.condition_t0));
@@ -11210,7 +11213,7 @@ fn effective_mass_rows(
     row.insert("t_hi".into(), V::Float(p.t_hi as f64));
     row.insert("chi2_dof".into(), V::Float(p.chi2_dof));
     row.insert("block".into(), V::Float(block as f64));
-    row.insert("rule".into(), V::Text("Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error; Q1-4 two-slice window; Q3-B operator selection".into()));
+    row.insert("rule".into(), V::Text("Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error; Q1-4 two-slice window; Q3-B operator selection; Q3-C C(t0) directions without a 3-sigma t1 signal dropped".into()));
     match r.plateau_as_fixed {
         Ok(a) => {
             row.insert("as_fixed_mass".into(), V::Float(a.mass));

@@ -74,3 +74,11 @@ Thread allocation (does not change the ensemble): k10 8 threads, k9 6, k7 1, k8 
 | 10 | 2.5115 | 24 | second volume at 2.5115 |
 
 The Q3-C code and the extension harness are committed before any extension correlator is computed.
+
+Q3-C coded and tested before any extension correlator (unit: on eight noise draws of a near-collinear
+third operator the untruncated GEVP fails on all eight and Q3-C recovers m = 0.5 within 3 sigma on all
+eight, dropping exactly one direction; on clean operators Q3-C keeps every direction and the vector equals
+the untruncated one). An earlier single draw of that fixture (noise seed 23) did not make the
+untruncated GEVP fail; that is why the test runs over several draws. Extension harness
+e2e/probes/test_q3_extension.py; probe frozen at target-ym6/q3ext/correlator_probe.exe, sha256 prefix
+034b57b2d7dde5a8.

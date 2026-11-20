@@ -42,6 +42,11 @@
 //! operators with t = 1 signal-to-noise below half the best are dropped, and a projected mode with
 //! C(1) under 3σ is refused.
 //!
+//! **Amendment Q3-C (2026-11-20, Amendment 3).** The kept operators are scaled to C_aa(t0) = 1 and
+//! C(t0) is diagonalised; eigendirections whose own C(t1) is under 3σ are dropped and the GEVP is
+//! solved in the rest (`gevp_run` with `truncate`). In a near-null direction of C(t0) the t1 value is
+//! noise over a small number and can take the largest eigenvalue; this removes exactly those.
+//!
 //! Errors are a (blocked) jackknife: leave out each block of `block` consecutive
 //! configurations; `block = 1` is the plain leave-one-out jackknife.
 
@@ -473,7 +478,7 @@ pub fn select_operators(ops: &[Vec<Vec<f64>>], block: usize) -> Result<(Vec<usiz
     Ok((kept, snr))
 }
 
-/// The GEVP as the verb runs it (Amendment Q3-B): select operators, solve on the kept ones, project,
+/// The GEVP as Amendment 2 ran it (Q3-B, no Q3-C): select operators, solve on the kept ones, project,
 /// and refuse a mode whose projected C(1) is less than `MIN_SIGNAL_SIGMA` errors from zero. The
 /// returned vector covers all operators, zero for the dropped ones.
 pub fn gevp_selected(
@@ -499,6 +504,90 @@ pub fn gevp_selected(
         ));
     }
     Ok((g, kept, series))
+}
+
+/// The GEVP as the verb runs it after Amendment 3 (docs/HALCYON_Q3_RUN_SPEC.md, Q3-C).
+#[derive(Clone, Debug)]
+pub struct GevpRun {
+    /// the solve in the kept subspace; `vector` mapped back to all operators (zeros for dropped ones)
+    pub gevp: Gevp,
+    /// operators kept by Q3-B
+    pub kept_operators: Vec<usize>,
+    /// Q3-C: t1 signal-to-noise of each eigendirection of the scaled C(t0), largest C(t0) eigenvalue first
+    pub direction_snr_t1: Vec<f64>,
+    /// Q3-C: how many of those directions were kept (None: Q3-C not applied)
+    pub directions_kept: Option<usize>,
+    /// the operator series projected on `gevp.vector`
+    pub series: Vec<Vec<f64>>,
+}
+
+/// Q3-B selection, then (when `truncate`) Q3-C: scale the kept operators so C_aa(t0) = 1, diagonalise
+/// C(t0), keep the eigendirections whose own C(t1) is at least `MIN_SIGNAL_SIGMA` blocked-jackknife
+/// errors above zero, solve the GEVP in that subspace, map back, and refuse a noise-level projected mode.
+pub fn gevp_run(ops: &[Vec<Vec<f64>>], t0: usize, t1: usize, block: usize, truncate: bool) -> Result<GevpRun, String> {
+    let (kept, _) = select_operators(ops, block)?;
+    let sub: Vec<Vec<Vec<f64>>> = kept.iter().map(|&a| ops[a].clone()).collect();
+    let c = matrix_correlator(&sub)?;
+    if t1 <= t0 || t1 >= c.len() {
+        return Err(format!("GEVP: need t0 < t1 < L (t0 = {t0}, t1 = {t1})"));
+    }
+    let k = sub.len();
+    let (g, snr, n_dir) = if truncate {
+        let mut scale = vec![0.0; k];
+        for a in 0..k {
+            if !(c[t0][a][a] > 0.0) {
+                return Err(format!("GEVP: operator {} has no positive C(t0 = {t0})", kept[a]));
+            }
+            scale[a] = 1.0 / c[t0][a][a].sqrt();
+        }
+        let nrm: Vec<Vec<f64>> = (0..k).map(|a| (0..k).map(|b| scale[a] * c[t0][a][b] * scale[b]).collect()).collect();
+        let (ev, u) = jacobi_eigen(nrm);
+        let mut order: Vec<usize> = (0..k).collect();
+        order.sort_by(|&i, &j| ev[j].partial_cmp(&ev[i]).unwrap());
+        let mut snr = Vec::with_capacity(k);
+        let mut w: Vec<Vec<f64>> = Vec::new(); // kept directions in operator space
+        for &j in &order {
+            let wj: Vec<f64> = (0..k).map(|a| scale[a] * u[a][j]).collect();
+            let (cj, ej) = jackknife_correlator_blocked(&project(&sub, &wj), block)?;
+            let s = if ej[t1] > 0.0 && ej[t1].is_finite() { cj[t1] / ej[t1] } else { f64::NEG_INFINITY };
+            snr.push(s);
+            if ev[j] > 0.0 && s >= MIN_SIGNAL_SIGMA {
+                w.push(wj);
+            }
+        }
+        if w.is_empty() {
+            return Err(format!("GEVP: no direction of C(t0 = {t0}) has a signal at t1 = {t1} (Q3-C)"));
+        }
+        let r = w.len();
+        let red: Vec<Vec<Vec<f64>>> = c
+            .iter()
+            .map(|ct| {
+                (0..r)
+                    .map(|p| (0..r).map(|q| (0..k).map(|a| (0..k).map(|b| w[p][a] * ct[a][b] * w[q][b]).sum::<f64>()).sum()).collect())
+                    .collect()
+            })
+            .collect();
+        let mut g = gevp(&red, t0, t1)?;
+        g.vector = (0..k).map(|a| (0..r).map(|p| w[p][a] * g.vector[p]).sum()).collect();
+        (g, snr, Some(r))
+    } else {
+        (gevp(&c, t0, t1)?, Vec::new(), None)
+    };
+    let mut g = g;
+    let mut full = vec![0.0; ops.len()];
+    for (i, &a) in kept.iter().enumerate() {
+        full[a] = g.vector[i];
+    }
+    g.vector = full;
+    let series = project(ops, &g.vector);
+    let (cs, es) = jackknife_correlator_blocked(&series, block)?;
+    if !(es[1] > 0.0 && cs[1] >= MIN_SIGNAL_SIGMA * es[1]) {
+        return Err(format!(
+            "GEVP: noise-level mode at t = 1 (projected C(1) is {:.2} standard errors from zero, below {MIN_SIGNAL_SIGMA})",
+            cs[1] / es[1]
+        ));
+    }
+    Ok(GevpRun { gevp: g, kept_operators: kept, direction_snr_t1: snr, directions_kept: n_dir, series })
 }
 
 /// Largest admissible condition number of C(t0); above it the GEVP refuses.
@@ -967,5 +1056,60 @@ mod tests {
         let n2: Vec<Vec<f64>> = (0..2000).map(|_| (0..16).map(|_| lcg(&mut s2)).collect()).collect();
         let r = gevp_selected(&[noise, n2], 1, 2, 20);
         assert!(r.is_err(), "noise accepted");
+    }
+
+    /// Two independent single-mass processes mixed into operators (Q3-C fixtures).
+    fn mixed(eps: f64, noise_seed: u64) -> (Vec<Vec<Vec<f64>>>, f64) {
+        let (l, n) = (16usize, 4000usize);
+        let x = cosh_ensemble(0.5, l, n, 21);
+        let y = cosh_ensemble(1.2, l, n, 22);
+        let mut s = noise_seed;
+        let a: Vec<Vec<f64>> = (0..n).map(|c| (0..l).map(|t| x[c][t] + 0.8 * y[c][t]).collect()).collect();
+        let b: Vec<Vec<f64>> = (0..n).map(|c| (0..l).map(|t| 0.6 * x[c][t] - 0.9 * y[c][t]).collect()).collect();
+        let mut ops = vec![a.clone(), b];
+        if eps > 0.0 {
+            ops.push((0..n).map(|c| (0..l).map(|t| a[c][t] + eps * lcg(&mut s)).collect()).collect());
+        }
+        (ops, 0.5)
+    }
+
+    #[test]
+    fn truncation_rescues_a_near_collinear_operator_and_the_failure_returns_without_it() {
+        // The sign of the noise in the near-null direction is random, so the untruncated GEVP fails on
+        // some noise draws and not others. Over eight draws: Q3-C must recover the ground mass on every
+        // one, dropping exactly the near-null direction; the untruncated solve must fail on at least one.
+        let mut untruncated_failures = 0;
+        for seed in 0..8u64 {
+            let (ops, m0) = mixed(1e-3, 100 + seed);
+            let bad = gevp_run(&ops, 1, 2, 40, false);
+            let bad_ok = match &bad {
+                Err(_) => false,
+                Ok(r) => match effective_mass_blocked(&r.series, 40).unwrap().plateau {
+                    Ok(p) => (p.mass - m0).abs() < 3.0 * p.error,
+                    Err(_) => false,
+                },
+            };
+            if !bad_ok {
+                untruncated_failures += 1;
+            }
+            let r = gevp_run(&ops, 1, 2, 40, true).unwrap();
+            assert_eq!(r.directions_kept, Some(2), "seed {seed} snr {:?}", r.direction_snr_t1);
+            let p = effective_mass_blocked(&r.series, 40).unwrap().plateau.unwrap();
+            assert!((p.mass - m0).abs() < 3.0 * p.error, "seed {seed} {p:?}");
+        }
+        eprintln!("Q3-C removal arm: untruncated GEVP failed on {untruncated_failures} of 8 noise draws");
+        assert!(untruncated_failures >= 1, "the removal arm never failed: the fixture does not exercise the mechanism");
+    }
+
+    #[test]
+    fn truncation_keeps_every_direction_on_clean_operators() {
+        let (ops, _) = mixed(0.0, 0);
+        let a = gevp_run(&ops, 1, 2, 40, false).unwrap();
+        let b = gevp_run(&ops, 1, 2, 40, true).unwrap();
+        assert_eq!(b.directions_kept, Some(2));
+        let sign = if a.gevp.vector[0] * b.gevp.vector[0] < 0.0 { -1.0 } else { 1.0 };
+        for (x, y) in a.gevp.vector.iter().zip(&b.gevp.vector) {
+            assert!((x - sign * y).abs() < 1e-9 * x.abs().max(1.0), "{:?} vs {:?}", a.gevp.vector, b.gevp.vector);
+        }
     }
 }

@@ -3,7 +3,7 @@
 #![cfg(feature = "gauge")]
 
 use gigi::engine::Engine;
-use gigi::gauge::correlator::{effective_mass_blocked, gevp, matrix_correlator, project};
+use gigi::gauge::correlator::{effective_mass_blocked, gevp_run};
 use gigi::parser::{self, ExecResult};
 use gigi::types::{Record, Value};
 
@@ -104,12 +104,15 @@ fn verbs_equal_the_kernel_and_refuse_by_name() {
     assert_eq!((f(&em[0], "t_lo") as usize, f(&em[0], "t_hi") as usize), (p.t_lo, p.t_hi));
     assert!((p.mass - 0.5).abs() < 3.0 * p.error, "{p:?}");
 
-    // EFFECTIVE_MASS with GEVP equals the kernel's GEVP projection
-    let g = gevp(&matrix_correlator(&[a.clone(), b.clone()]).unwrap(), 1, 2).unwrap();
-    let kp = effective_mass_blocked(&project(&[a.clone(), b.clone()], &g.vector), 10).unwrap().plateau.unwrap();
+    // EFFECTIVE_MASS with GEVP equals the kernel's GEVP (Q3-B selection, Q3-C truncation) projection.
+    // q = p + white noise, so the direction q - p has no t1 signal and Q3-C drops it.
+    let g = gevp_run(&[a.clone(), b.clone()], 1, 2, 10, true).unwrap();
+    assert_eq!(g.directions_kept, Some(1), "{:?}", g.direction_snr_t1);
+    let kp = effective_mass_blocked(&g.series, 10).unwrap().plateau.unwrap();
     let eg = rows(run(&mut e, "EFFECTIVE_MASS glue ON p, q BLOCK 10 GEVP 1, 2;").unwrap());
     assert!((f(&eg[0], "mass") - kp.mass).abs() < 1e-12);
     assert!(matches!(eg[0].get("gevp_vector"), Some(Value::Vector(v)) if v.len() == 2));
+    assert_eq!(f(&eg[0], "gevp_directions_kept") as usize, 1);
 
     // refusals, by name
     let err = run(&mut e, "EFFECTIVE_MASS glue ON p, q;").unwrap_err();

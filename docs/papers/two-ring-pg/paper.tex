@@ -833,8 +833,48 @@ recovery whose \emph{transpose} preserves the Whitney moments of smooth fields:
 \]
 That is a column-wise condition. Imposing it exactly, together with row-wise
 exactness~\eqref{eq:fit}, couples every face to every cell whose neighbourhood contains
-it. In an exploratory construction we found this coupling solvable but dense, and we
-leave a scalable formulation open.
+it. The coupled system can be solved, to $10^{-8}$ at $n=1$ but only to $7\times10^{-5}$ at
+$n=2$, and the next lemma shows why it cannot be imposed exactly on the fields it most needs.
+
+\begin{lemma}[Rows and columns conflict]\label{lem:conflict}
+Work in a chart, as Lemma~\ref{lem:acc} does. Suppose $\cR$ reproduces every closed linear
+field from its fluxes, $\cR\,I^2p=p$, and also
+satisfies the column condition exactly,
+$\langle F,\cR D\eta\rangle=\langle F,jD\eta\rangle$ for all $\eta$, for some field $F$. Then
+$\langle F,\,p-\Pi p\rangle=0$ for every closed linear $p$, where $\Pi=jI^2$ is Whitney
+interpolation of $2$-forms.
+\end{lemma}
+\begin{proof}
+Choose a potential $A_p$ with $dA_p=p$, and take $\eta=I^1A_p$. Integration commutes with
+$d$, so $D\eta=I^2p$. The column condition then reads
+$\langle F,\cR I^2p\rangle=\langle F,jI^2p\rangle$, and row exactness turns the left side
+into $\langle F,p\rangle$.
+\end{proof}
+
+Whitney interpolation keeps each face's total flux, not where on the face it passes, so
+$\langle F,p-\Pi p\rangle$ is generically of relative order $h$. On the sphere, the chart's
+$O(h^2)$ distortion does not change this. Exact rows and exact columns on
+linear fields therefore ask for something that is false to first order. In the language of
+the guide: every piece holds its own edge exactly, and must also push back on the guide
+exactly as the Whitney tents would. The tents keep each wall's total but not its tilt, so
+the two demands disagree. The disagreement has to go somewhere. In our exploratory
+construction, on two rings, the only free directions are the field's own second-order part
+(Lemma~\ref{lem:count}). The reconstruction error grew to $432\%$ at $n=1$ and $62\%$ at
+$n=2$. Imposing the column condition on constant fields only removes the conflict, and the
+reconstruction term returns to $5.2\%$ and $3.8\%$. But the test-variation term then stays
+at $58\%$ at $n=2$.
+
+What remains is the poke itself. Each cell refits on its own, so the response to a change in
+one edge value is a set of local readings that disagree where cells meet. The defect pairs
+with $D\eta$, which costs a factor of $h^{-1}$. A reading in which every cell agrees on the
+response, a single tangentially continuous $1$-form per edge value whose curl is the
+curvature reading, removes that factor: integration by parts moves the derivative from the
+variation onto the smooth field, and the test-variation term becomes
+$\langle\delta F,(\cR^1-W^1)\eta\rangle$. Each shared response then only has to carry the same
+total as its Whitney tent. This is the magnet image taken literally: one field that both sides
+feel, not a private opinion on each side. The mass that defines what a variation weighs has to
+come from the same reading. Building such a reading, with exact gauge invariance, is the open
+problem this paper leaves.
 
 \input{tables/removals.tex}
 
@@ -845,18 +885,37 @@ while its recovered curvature converges at second order. This section asks what 
 remaining error is made of, and answers by counting again.
 
 \paragraph{Counting the clues.} Section~\ref{sec:conditioning} counted the star: $16$ faces,
-$11$ independent fluxes, exactly $\dim\Pone$. The same count on larger neighbourhoods, taking
-the rank of the flux map from edge data, gives $26$ independent fluxes for two rings at $n=1$
-($29$ at $n=2$), and $50$ ($64$) for three. Every sampled cell gives the same numbers. Now
-count unknowns one order up. Closed (divergence-free) homogeneous quadratic fields add $15$
-coefficients to the $11$ of $\Pone$, for $26$ in all, and on every sampled cell their face
-fluxes span exactly the two-ring clue space at $n=1$. So the two-ring fit's spare clues are not
-noise directions: they are the second-order part of the field. A linear fit over two rings
-reads that part as best it can as linear, and how it does so depends on how the
-neighbourhood happens to sit around $K$. A fit exact to second order on two rings would use up
-every clue and fall back into the one-ring trap: its median amplification is about $1{,}490$.
-With three rings there are about twice as many clues as second-order unknowns, the same vote
-the two-ring fit gives the linear one.
+$11$ independent fluxes, exactly $\dim\Pone$. The same count works one order up.
+
+\begin{lemma}[Unknowns one order up]\label{lem:count}
+In $\RR^3$, the divergence-free vector fields whose components are polynomials of degree at most
+one form a space of dimension $11$. Those whose components are homogeneous quadratics form a
+space of dimension $15$. A closed field read to second order therefore has $26$ unknowns.
+\end{lemma}
+\begin{proof}
+A field $c+Bx$ has $3+9$ coefficients and divergence $\operatorname{tr}B$, one condition: $11$.
+A homogeneous quadratic field has $3\times6=18$ coefficients, and its divergence is a linear
+function, three conditions. The divergence is onto the linear functions (the field
+$x_ix_j\,e_k$ alone already reaches every one of them), so it removes exactly three: $15$.
+\end{proof}
+
+Now count clues: the rank of the flux map from edge data on each neighbourhood. Two rings give
+$26$ at $n=1$ ($29$ at $n=2$), and three rings give $50$ ($64$). Every sampled cell gives the
+same numbers. On every sampled cell at $n=1$ the face fluxes of the $26$ fields of
+Lemma~\ref{lem:count} have rank $26$, and they span the two-ring clue space exactly. So the
+two-ring fit's spare clues are not noise directions: they are the second-order part of the
+field.
+
+The rim chart says what this means. A circle is fixed by three points, and the two-ring fit
+has, in effect, enough edge to fit a circle with a vote to spare. But a real mouth is never
+quite round. Over a long sherd its flare bends the edge, and a circle laid against that much
+edge reads the flare as a wrong radius. How wrong depends on how much far edge there happens
+to be, on one side or the other, so the error changes from sherd to sherd. Fitting an oval
+instead needs five points. A sherd that offers exactly five is short again: every point is
+clamped, and a chip reads as shape. That is the two-ring fit asked to read to second order,
+$26$ unknowns from $26$ clues, and its median amplification is about $1{,}490$. A third ring
+gives about twice as many clues as second-order unknowns. That is the same vote the two-ring
+fit gives the linear one, now with room to read the flare.
 
 \paragraph{The hybrid reading.} Fit the $26$ closed linear and quadratic coefficients over
 three rings by the constrained least squares of~\eqref{eq:fit}, $K$'s own faces exact; call
@@ -869,14 +928,35 @@ carries the quadratic part's own-face flux:
   \cR^{\mathrm{hyb}}_K \;=\; \cR^{(26)}_K\big|_{\Pone} \;+\; A_K^{+}\,A^{\mathrm{q}}_K\,\cR^{(26)}_K\big|_{\mathrm{quad}},
 \end{equation}
 where $A_K$ and $A^{\mathrm{q}}_K$ are the own-face flux rows of the linear and quadratic fields
-and $A_K^{+}$ is the pseudoinverse. Three properties hold by construction:
-\begin{itemize}
-  \item it reproduces $K$'s own fluxes for all edge data: they are closed, so the added term
-    lands in the range of $A_K$;
-  \item it is exact on $\Pone$, so Lemma~\ref{lem:acc} applies unchanged;
-  \item it reads a quadratic field as $K$'s own-face representative of it, with nothing drawn
-    from the outer rings.
-\end{itemize}
+and $A_K^{+}$ is the pseudoinverse.
+
+\begin{proposition}[What the hybrid reading keeps]\label{prop:hybrid}
+For all edge data $a$, with fluxes $\Phi=Da$:
+\begin{enumerate}
+  \item $A_K\,\cR^{\mathrm{hyb}}_K\Phi=\Phi_{\mathrm{own}}$: $K$'s own fluxes are reproduced exactly;
+  \item $\cR^{\mathrm{hyb}}_K X_K p=p$ for every $p\in\Pone$, so Lemma~\ref{lem:acc} applies unchanged;
+  \item a closed homogeneous quadratic field $q$ is read as $A_K^{+}A^{\mathrm q}_Kq$, the closed
+    linear field of least norm with $q$'s fluxes through $K$'s own faces. It depends on $q$ and
+    on $K$ alone, not on the outer rings.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+The fluxes of edge data through the four faces of a cell sum to zero, because the boundary of a
+boundary is empty. They therefore lie in the three-dimensional closure space of $K$, which is
+the range of $A_K$ ($A_K$ has rank $3$). The quadratic fields are closed, so the range of
+$A^{\mathrm q}_K$ lies in the same space. The $26$-field fit holds the own faces exactly:
+$A_K\cR^{(26)}_K|_{\Pone}\Phi+A^{\mathrm q}_K\cR^{(26)}_K|_{\mathrm{quad}}\Phi=\Phi_{\mathrm{own}}$.
+Since $A_KA_K^{+}$ is the identity on the range of $A_K$, applying $A_K$
+to~\eqref{eq:hybrid} gives exactly this sum, which is (1). The fit is exact on its own
+$26$ fields: $\cR^{(26)}_K$ returns $(p,0)$ on $X_Kp$ and $(0,q)$ on the fluxes of $q$.
+Substituting these into~\eqref{eq:hybrid} gives (2) and (3).
+\end{proof}
+
+In the rim chart, the hybrid reads the oval from the long edge but reports a circle. It is the
+circle that sits flush on the sherd's own edge, so the flare is read from far away but can only
+reach the reading through the sherd's own points. That is why, unlike the two-ring circle,
+the result no longer depends on how much far edge each sherd happens to have.
+
 The construction came out of the variational investigation of Section~\ref{sec:removals}. It
 was probed first, then measured under a specification that fixed every gate before the run
 (repository: \path{docs/RICCI_PG_HYBRID_SPEC.md}).

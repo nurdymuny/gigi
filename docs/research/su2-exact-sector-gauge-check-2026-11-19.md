@@ -90,3 +90,52 @@ The lattice values in Table 9 are matched to the exact ones by nearest eigenvalu
 gauge-type eigenvalues, so nearest-value matching is fragile there. The robust version computes each matched
 lattice eigenvector's overlap with the discrete left-invariant subspace: the edge integrals of the 9 left-invariant
 su(2)-valued 1-forms. At n = 1 and 2 (426 and 3,372 unknowns) this is a dense eigensolve, minutes each.
+
+---
+
+## Addendum: a closed form for the bottom of every sector, derived
+
+- **Script:** `scripts/ricci_su2_sector_formula.py` (sympy, symbolic in j).
+- **Output:** `research/su2-left-invariant-sector-20261119/sector_formula.txt`.
+
+**Statement.** At the Berger metric g = (3, 1, 1), in every spin-j/2 sector, the field
+
+    b = f_top · (θ̂¹ + i θ̂²) ⊗ (τ₁ + i τ₂)
+
+is an exact eigenvector of the Hessian. Here f_top is the top-weight vector of V_j along the long axis, with
+J₀ f = (j/2) f, and the frame and Lie indices are both circular in the squashed plane. It is orthogonal to every
+gauge direction, and its eigenvalue is
+
+    λ(j) = (j(j+2) − 14)/3 = −14/3 + j(j+2)/3.
+
+Its conjugate, at bottom weight, gives the same value.
+
+**Derivation.**
+
+- **Reduction to two vectors.** At top weight, ê₀f = −2i(j/2)f/√3, J₊f = 0, ρ₂f = iρ₁f and ‖ρ₁f‖² = j. Every term
+  of the Hessian therefore reduces to the two vectors f and g = ρ₁f/√j, with coefficients polynomial in j.
+- **The top-weight block.** On the squashed plane (frame and Lie indices 1, 2) the 9 × 9 top-weight block has a
+  4 × 4 piece with eigenvalues (j² + 2j − 14)/3, (j² + 4j − 14)/3 and (j² + 3j + 33 ± 3√(j² + 9))/3.
+- **The eigenvector decouples.** The eigenvector of the first value is (−1, −i, −i, 1). Its coupling to the one
+  outside direction (τ₀ in b₀) vanishes.
+- **No leak to the next weight.** Its image under D has no component along g, because β₂ − iβ₁ = 0. So the
+  Hessian sends it nowhere outside the top weight.
+- **Gauge.** Its overlap with gauge directions vanishes at every weight.
+- **The value.** The Rayleigh quotient is j²/3 + 2j/3 − 14/3.
+
+**What is numerical, not proved:** that this is the *lowest* gauge-orthogonal eigenvalue of the sector. It holds
+for every j from 0 to 40, to 2 × 10⁻¹².
+
+**What it means on Poincaré's sphere.**
+
+- The sectors present are j = 0, 12, 20, 24, 30, …, and j(j+2) is the round scalar Laplacian eigenvalue of
+  spin j/2.
+- So the bottom of the physical spectrum is −14/3 (the growth mode), and the next physical value is
+  −14/3 + 168/3 = 154/3. **The gap above the left-invariant sector's growth mode is 168/3 = 56: one third of 168,
+  the first nonzero scalar eigenvalue of the Poincaré sphere.**
+- The family's j = 0 member is the growth mode −14/3 itself, so the field's strongest instability and the bottom
+  of every higher sector are one formula.
+
+**Specific to this metric.** At (2, 1, 1), (4, 1, 1) or round, the bottom of the sector is not −λ₀ + j(j+2)/g₀
+(checked numerically). The 3 is tied to g₀ = 3. Whether the circular family stays an exact eigenvector at other
+squashings, and with what value, is not computed.

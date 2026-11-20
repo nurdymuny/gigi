@@ -1,7 +1,7 @@
 # The Floor Theorem at the Berger Field: code and data
 
 These are the scripts and receipts behind *The Floor Theorem for the Yang–Mills Hessian at the Berger Field: A
-Floor Law Across the Squashed Three-Spheres* (B. R. Davis, 2026), at their paths in the GIGI repository
+Floor Law Across the Berger Spheres* (B. R. Davis, 2026), at their paths in the GIGI repository
 (<https://github.com/nurdymuny/gigi>, tag `floor-theorem-v2`).
 
 ## What reruns from this folder
@@ -36,6 +36,9 @@ Every script takes an output path; write to a fresh name and compare it with the
 | Remark 6.7 (t* and the scan, double precision) | `python scripts/ricci_su2_floor_family_scan.py out/scan.json 40` | `…/scan.json` | a few minutes |
 | Remark 6.7 (t_A, the threshold of H + GG*, exact) | `python scripts/ricci_su2_tstar_exact.py out/tstar_exact.txt` | `…/tstar_exact.txt` | hours (symbolic determinants) |
 | Remark 6.7 (between t_A and 2.75, double precision) | `python scripts/ricci_su2_tA_scan.py out/tA_scan.txt` | `…/tA_scan.txt` | about 10 min |
+| Section 6 observation "symmetry does not make the floor": the twist on the Berger field and the squashed meron (Test 2) | `python scripts/ricci_su2_test2_family.py berger out/b.json` and `… meron out/m.json` | `…/test2_berger_control.json`, `…/test2_meron.json` | minutes each |
+| … the curvature split R0 = Ric − 2[F, ·] and the twist's shares | `python scripts/ricci_su2_gyromagnetic_split.py out/split.txt` | `…/gyromagnetic_split.txt` | about a minute |
+| … the meron's twist is the top of every sector j ≤ 12 for t ≤ 1 | `python scripts/ricci_su2_meron_ceiling_check.py out/ceiling.txt` | `…/meron_ceiling_check.txt` | a few minutes |
 | Section 6 observations (flow; resting fields) | `ricci_su2_soft_mode_flow.py`, `ricci_su2_resting_fields.py`, `ricci_su2_resting_fields_general.py`, `ricci_su2_meron_family_soft.py` | `…/soft_mode_flow.json`, `resting_fields*.json`, `meron_family_soft.json` | minutes each |
 
 ## What does not rerun from this folder alone

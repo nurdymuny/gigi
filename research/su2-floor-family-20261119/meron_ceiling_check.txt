@@ -1,0 +1,1 @@
+squashed meron, t = 0.05..1.00, j = 0..12: 260 points; extremal state below the top of the gauge-orthogonal spectrum at 0 of them []; min (extremal - top) = -2.27e-12

@@ -5,7 +5,7 @@
 2. Delete version 1's files. Upload `paper.pdf`, `floor-theorem-v2-latex.zip`,
    `floor-theorem-v2-code-and-data.zip` and `MANIFEST.txt`.
 3. **Change the title.** The new-version form keeps version 1's subtitle. Set it to *The Floor Theorem for the
-   Yang–Mills Hessian at the Berger Field: A Floor Law Across the Squashed Three-Spheres*.
+   Yang–Mills Hessian at the Berger Field: A Floor Law Across the Berger Spheres*.
    Then paste `description.html` through the editor's **Source code** button, and set the version field to **2**.
 4. Fix the affiliation. The published version 1 lists **Brown University**; set **Davis Geometric**, as printed
    in the paper.
@@ -58,7 +58,7 @@ Fill in the form from `metadata.json`:
 | Field | Value |
 | --- | --- |
 | Resource type | Publication, then Preprint |
-| Title | The Floor Theorem for the Yang–Mills Hessian at the Berger Field: A Floor Law Across the Squashed Three-Spheres |
+| Title | The Floor Theorem for the Yang–Mills Hessian at the Berger Field: A Floor Law Across the Berger Spheres |
 | Creator | Davis, Bee Rosa. ORCID 0009-0009-8034-4308. Affiliation: Davis Geometric |
 | Description | paste `description.html`, using the editor's **Source code** button so the headings and lists survive |
 | Licence | Creative Commons Attribution 4.0 International |

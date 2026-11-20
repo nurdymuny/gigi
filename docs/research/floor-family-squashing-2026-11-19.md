@@ -257,3 +257,12 @@ sampled, and no twist or other mode goes soft on it.
 - **Resting fields in other bundles.** On the Poincaré sphere, the non-trivial flat connections from
   representations of the binary icosahedral group in SU(2) are minima (energy zero), so they have no negative modes
   at all.
+
+## Result 8: the floor is a lowest Landau level
+
+See [`spectral-skeleton-2026-11-20.md`](spectral-skeleton-2026-11-20.md), §6. The twist satisfies X₊b = 0 and has
+definite fibre charge q = j − 2(t − 2), and
+
+  λ_t(j) = (j − 2(t−2))²/t + 2(j + t) + (12 − 8t)  (fibre + Landau + curvature),
+
+to round-off in 90 cases (`research/su2-floor-family-20261119/landau_check.json`).

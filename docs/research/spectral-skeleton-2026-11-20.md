@@ -147,3 +147,44 @@ left-invariant, or other bundles.
   theory or the Yang–Mills mass gap.
 - "Law of nature" in §3 is my conjecture and conviction. What is proved is a law of this mathematical object across
   a family of shapes.
+
+## 6. Test 1 run: the twist is a lowest-Landau-level state (20 November 2026)
+
+**Script:** `scripts/ricci_su2_landau_check.py`. **Receipt:** `research/su2-floor-family-20261119/landau_check.json`.
+90 cases: t ∈ {1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8}, j = 1–10.
+
+**Background.** The Weitzenböck form H + GG* = Σ X_i*X_i + R₀ separates the derivative X₀ along the stretched
+fibre from X₁, X₂ on the base sphere of the Hopf fibration.
+
+**Results** (Numerical, to round-off, in all 90 cases):
+
+- **Lowest Landau level.** X₊b = (X₁ + iX₂)b = 0, to 1.7 × 10⁻¹². The holomorphic covariant derivative annihilates
+  the twist. That is the defining property of a lowest-Landau-level state.
+- **Definite fibre charge.** X₀b = iκb with κ = (2t − 4 − j)/√t. The twist carries the definite fibre charge
+  q = j − 2(t − 2).
+- **The energy is exactly fibre + Landau + curvature**, each term matching to 4 × 10⁻¹⁴:
+
+  **λ_t(j) = (j − 2(t−2))²/t  +  2(j + t)  +  (12 − 8t)**
+
+  - **(j − 2(t−2))²/t** is the fibre kinetic energy of the charge q.
+  - **2(j + t)** is the Landau energy on the base sphere. It is linear in the charge, the signature of a lowest
+    Landau level.
+  - **12 − 8t** is the lowest eigenvalue of R₀, a constant curvature shift.
+- The three terms sum to the proved formula identically. The split itself is verified numerically, not
+  symbolically.
+
+**What this does for the theory.**
+
+- The skeleton has a mechanism. The floor mode is the lowest Landau level of a charge moving over the base sphere,
+  with the stretch setting both the fibre charge and the field.
+- It is not a coincidence of one formula. It is the same structure that organises a charged particle in a magnetic
+  field on a sphere (monopole harmonics).
+- **Test 1 passes.**
+
+**A bound that does not work (recorded as a lead).**
+
+- Since |X₊v|² ≥ 0, H + GG* ≥ L := X₀*X₀ + i[X₁, X₂] + R₀ as operators.
+- If L's floor equalled λ_t(j), the twist would be proved the floor in every sector, closing the open question of
+  minimality for all j. It does not: L lies about 4j + 4t below λ_t(j).
+- The cause is the opposite-chirality states (annihilated by X₋), on which i[X₁, X₂] is large and negative.
+- A chirality-aware bound, using |X₊v|² or |X₋v|² charge by charge, is the natural next attempt at an all-j proof.

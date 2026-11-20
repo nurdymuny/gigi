@@ -1360,13 +1360,21 @@ The computation is symbolic in $j$ (\path{scripts/ricci_su2_sector_formula.py}).
 Proposition~\ref{prop:sector} gives an eigenvalue in every sector. The next result shows that it is
 the bottom of its sector, and that this makes the gap exact.
 
+Here the \emph{gauge-orthogonal spectrum} of a sector is the spectrum of the Hessian compressed to
+the slice, $PHP$ with $P$ the $L^2$ projection onto $\ker G^*$: the field is not at rest, so $H$ does
+not preserve the slice, and this compression is the object the theorem is about. The gap is a
+spectral gap of this classical linearised operator; it is not a statement about the quantum theory
+or a Yang--Mills mass gap.
+
 \begin{theorem}[The gap on the Poincar\'e sphere]\label{thm:gap}
 At the Berger metric $g=(3,1,1)$:
 \begin{enumerate}
   \item every gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least
-    $\bigl(\sqrt{j(j+2)/3}-\omega\bigr)^2-12$, with $\omega=5.0332\ldots$, whenever
+    $\bigl(\sqrt{j(j+2)/3}-\omega\bigr)^2-12$, with $\omega=\sqrt{76/3}=5.0332\ldots$, whenever
     $\sqrt{j(j+2)/3}\ge\omega$;
-  \item for every $j\le120$, $\lambda(j)$ is the lowest gauge-orthogonal eigenvalue of its sector;
+  \item for $j=0,12,20,24$, $\lambda(j)$ is the lowest gauge-orthogonal eigenvalue of its sector, and
+    no other eigenvalue of $H+GG^*$ lies below $\lambda(j)+1/3$; numerically the same holds for
+    every $j\le120$;
   \item on the Poincar\'e sphere, the gauge-orthogonal spectrum below $142$ consists of the spin-$0$
     values $-14/3$ (twice), $16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$
     values from $154/3$ upward; spin $10$ begins exactly at $142$.
@@ -1381,8 +1389,14 @@ changes nothing there.
   H+GG^* \;=\; \sum_i X_i^*X_i + R_0,\qquad X_i=\rho_i/\sqrt{g_i}+\Omega_i,
 \]
 where $X_i$ is the full covariant derivative ($\Omega_i$ acts on the Lie and frame indices) and $R_0$
-is a constant $9\times9$ matrix whose smallest eigenvalue is $-12$. Both facts were checked to
-$10^{-14}$, the same matrix in every sector computed.
+is a constant $9\times9$ matrix whose smallest eigenvalue is exactly $-12$. The identity holds in
+the universal enveloping algebra $U(\mathfrak{su}(2))$, so in every sector at once: both sides are
+$9\times9$ matrices over $U(\mathfrak{su}(2))$ of filtration degree at most two, and after putting
+every product in Poincar\'e--Birkhoff--Witt order (with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$
+and $\rho_i^*=-\rho_i$) every coefficient of degree one and two vanishes and the constant term is
+$R_0$, in exact arithmetic with $\sqrt3$ symbolic. The same computation gives
+$\omega^2=\sum_i\norm{\Omega_i}^2=76/3$ exactly
+(\path{scripts/ricci_su2_gap_certificates.py}).
 
 \emph{Part (1).} Two inequalities combine:
 \begin{itemize}
@@ -1393,14 +1407,24 @@ $10^{-14}$, the same matrix in every sector computed.
 The reverse triangle inequality in $\RR^3$ then gives
 $\sum_i\norm{X_iv}^2\ge(\sqrt{j(j+2)/3}-\omega)^2\norm v^2$, with $\omega^2=\sum_i\norm{\Omega_i}^2$.
 
-\emph{Part (2).} The smallest eigenvalue of $H+GG^*$ was computed in double precision in every
-sector $j\le120$. It equals $\lambda(j)$, attained at top and bottom weight, and the next eigenvalue is
-at least $\lambda(j)+2/3$, against a round-off bound below $2\times10^{-5}$. The eigenvector of
-Proposition~\ref{prop:sector} lies in the slice, so $\lambda(j)$ is the minimum there.
+\emph{Part (2).} $\lambda(j)$ is an eigenvalue of $H+GG^*$ of multiplicity at least two: the
+eigenvector of Proposition~\ref{prop:sector} at the top weight, and its image at the bottom weight
+under the real structure of the integer-spin representation, which commutes with $H+GG^*$ because
+every coefficient is real. For $j=0,12,20,24$ the remaining eigenvalues are certified by inertia.
+The matrix $H+GG^*-\mu$, $\mu=\lambda(j)\mp1/3$, is assembled in interval arithmetic at 200 bits and
+factored $LDL^\top$ without pivoting. Its backward error is bounded by
+$\gamma_n\,\bigl|L\bigr|\bigl|D\bigr|\bigl|L^\top\bigr|$ \cite[Thm.~9.3]{higham2002}, and the total
+perturbation is below $3\times10^{-54}$ in every case, far inside $1/3$. Sylvester's law of inertia
+then counts no eigenvalue below $\lambda(j)-1/3$ and exactly two below $\lambda(j)+1/3$, so the
+lowest eigenvalue is exactly $\lambda(j)$, twice, and the next is at least $\lambda(j)+1/3$. The
+eigenvector of Proposition~\ref{prop:sector} lies in the slice, so $\lambda(j)$ is the minimum there.
+For every $j\le120$ the same picture holds in double precision, with the next eigenvalue at least
+$\lambda(j)+2/3$; that wider range is evidence, and the theorem does not rely on it.
 
-\emph{Part (3).} The bound of (1) exceeds $142$ for every $j\ge30$. Part (2) covers the surviving
-sectors $j=0,12,20,24$, and the spin-$0$ slice was computed in exact arithmetic
-(\path{scripts/ricci_su2_sector_minimality.py}).
+\emph{Part (3).} The bound of (1) exceeds $142$ for every $j\ge30$ (at $j=30$ the margin is
+$0.45$, an exact inequality). Part (2) covers the surviving sectors $j=0,12,20,24$, and the spin-$0$
+slice was computed in exact arithmetic (\path{scripts/ricci_su2_sector_minimality.py}). Both
+certificates are in \path{research/su2-left-invariant-sector-20261119/gap_certificates.json}.
 \end{proof}
 
 For $j>120$, minimality is not needed for the gap and is not proved. Taken together, the field's strongest
@@ -1837,6 +1861,7 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
 2026, \url{https://doi.org/10.5281/zenodo.24375338}.
 \bibitem{gp2018} E.~H.~Georgoulis, T.~Pryer, Recovered finite element methods, \emph{Comput.\ Methods Appl.\ Mech.\ Engrg.} 332 (2018) 303--324.
 \bibitem{hiptmair2002} R.~Hiptmair, Finite elements in computational electromagnetism, \emph{Acta Numerica} 11 (2002) 237--339.
+\bibitem{higham2002} N.~J.~Higham, \emph{Accuracy and Stability of Numerical Algorithms}, 2nd ed., SIAM, Philadelphia, 2002.
 \bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
 \bibitem{whitney1957} H.~Whitney, \emph{Geometric Integration Theory}, Princeton University Press, 1957.
 \bibitem{zz1992} O.~C.~Zienkiewicz, J.~Z.~Zhu, The superconvergent patch recovery and a posteriori error estimates, \emph{Int.\ J.\ Numer.\ Methods Eng.} 33 (1992) 1331--1364.

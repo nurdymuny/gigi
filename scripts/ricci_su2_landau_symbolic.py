@@ -1,7 +1,8 @@
 """Symbolic proof (all j >= 0, all t > 0) of the two Landau facts about the twist b = f_top (x) beta,
 beta = (theta^1 + i theta^2) (x) (tau_1 + i tau_2), on the Berger sphere (t, 1, 1):
   X_+ b = (X_1 + i X_2) b = 0   and   X_0 b = i kappa b,  kappa = (2t - 4 - j)/sqrt(t) = -2(q - t)/sqrt(t), q = j/2 + 2,
-with X_i = rho_i / sqrt(g_i) (x) I + I (x) Omega_i (the Weitzenbock covariant derivative).
+with X_i = rho_i / sqrt(g_i) (x) I + I (x) Omega_i (the Weitzenbock covariant derivative); also R0(t) beta = (12 - 8t) beta
+(R0(t) from scripts/ricci_su2_weitzenbock_symbolic_t.py), so the fibre / base / curvature split is exact for all j, t.
 At the top weight f: rho_0 f = -i j f, rho_1 f = sqrt(j) g, rho_2 f = i sqrt(j) g (conventions of
 scripts/ricci_su2_sector_formula.py), so (rho_1 + i rho_2) f = 0 identically and both facts reduce to j-independent
 9 x 9 identities in t for Omega_i = I (x) [m_i]x + (-Gamma_i) (x) I on frame (x) Lie:
@@ -37,6 +38,14 @@ def main():
              f"(Omega_1 + i Omega_2) beta = {list(plus)}  -> zero: {plus == sp.zeros(9, 1)}",
              f"Omega_0 beta - i(2t-4)/sqrt(t) beta = {list(zero_part)}  -> zero: {zero_part == sp.zeros(9, 1)}",
              f"hence X_+ b = 0 and X_0 b = i kappa b with kappa = {kappa} = (2t - 4 - j)/sqrt(t), for all j >= 0, t > 0"]
+    import json
+    R = json.loads((Path(__file__).resolve().parent.parent / "research/su2-floor-family-20261119/weitzenbock_symbolic_t.json").read_text())["R0"]
+    R0 = sp.Matrix(9, 9, lambda a, b: sp.sympify(R[a][b], locals={"t": t}))
+    r0res = sp.simplify(R0 * beta - (12 - 8 * t) * beta)
+    lam = (j * (j + 2) - 2 * (t - 3) * j - 2 * (t - 2) * (t + 4)) / t
+    base = sp.factor(sp.simplify(lam - kappa ** 2 - (12 - 8 * t)))
+    lines += [f"R0(t) beta - (12 - 8t) beta = {list(r0res)}  -> zero: {r0res == sp.zeros(9, 1)}",
+              f"hence the split: fibre |X_0 b|^2 = kappa^2, curvature <b, R0 b> = 12 - 8t, base = lambda - kappa^2 - (12 - 8t) = {base}"]
     txt = "\n".join(lines)
     print(txt)
     Path(sys.argv[1]).write_text(txt + "\n")

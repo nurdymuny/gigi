@@ -179,8 +179,9 @@ fibre from X₁, X₂ on the base sphere of the Hopf fibration.
   `research/su2-floor-family-20261119/landau_symbolic.txt`. At the top weight, (ρ₁ + iρ₂)f = 0 identically, so both
   facts reduce to two j-independent 9 × 9 identities in t on frame ⊗ Lie: (Ω₁ + iΩ₂)β = 0 and
   Ω₀β = i(2t − 4)/√t·β, with β = (θ¹ + iθ²) ⊗ (τ₁ + iτ₂). Both hold symbolically for every t > 0. Hence X₊b = 0 and
-  X₀b = iκb, κ = (2t − 4 − j)/√t = −2(q − t)/√t, for every j ≥ 0 and t > 0. The split into fibre, base and curvature
-  terms then follows exactly, since the base term equals the commutator term on an X₊-annihilated vector.</ins>
+  X₀b = iκb, κ = (2t − 4 − j)/√t = −2(q − t)/√t, for every j ≥ 0 and t > 0. The same script proves R₀(t)β = (12 − 8t)β (R₀(t) from
+  `scripts/ricci_su2_weitzenbock_symbolic_t.py`). So the fibre term is κ², the curvature term is 12 − 8t, and the
+  base term, λ_t(j) − κ² − (12 − 8t), is exactly 2(j + t): the three-term split is an identity for every j and t.</ins>
 
 <ins>**Control (the removal arm)** (`scripts/ricci_su2_landau_control.py`, `landau_control.json`; the same 90
 cases). The decomposition into fibre, base and curvature holds for any vector, so it is not by itself evidence. What

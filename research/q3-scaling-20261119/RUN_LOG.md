@@ -49,3 +49,12 @@ peeked at, never on k0 or k2.
 Q1-4 (two-slice window) and Q3-B (operator selection before the GEVP, refusal of a noise-level
 projected mode); text in docs/HALCYON_Q3_RUN_SPEC.md. The harness runs with the probe rebuilt from
 this commit: correlator_probe.exe sha256 prefix 733b08b6980fce43. The sampler binary is unchanged.
+
+## Run complete and scored (2026-11-20)
+
+All seven points exited 0 (done.txt). The harness was run once with the probe at sha256 prefix
+733b08b6980fce43 (checked before the run). Gates: Q3-a pass at all three beta; Q3-v pass at 2.3715 and
+2.4265, fail at 2.2986 (k1 refused in both channels); Q3-s pass on two points, c = 3.88(46); Q3-r pass;
+Q3-n pass (vacuous for k1 0++, no projected series). beta = 2.5115 not run: the pre-registered condition
+(first three beta pass Q3-a and Q3-v) is not met. Results: docs/HALCYON_Q3_RESULTS.md. The single-level
+k1 numbers in that file are a diagnosis after scoring, not a gate.

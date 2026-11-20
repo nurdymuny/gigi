@@ -1,0 +1,37 @@
+{
+ "kind": "Q4 candidates (exploratory)",
+ "points_tested": [
+  {
+   "beta": 2.3715,
+   "L": 12,
+   "a2sigma": 0.08478142980601622,
+   "ratio": 3.562030743179175,
+   "ratio_err": 0.12581711410340948,
+   "am0": 1.0371654274562458,
+   "am0_err": 0.03541056130632707
+  },
+  {
+   "beta": 2.4265,
+   "L": 16,
+   "a2sigma": 0.058780416893194506,
+   "ratio": 3.661006680714621,
+   "ratio_err": 0.10909924448554352,
+   "am0": 0.8875990982888952,
+   "am0_err": 0.02532016511792223
+  }
+ ],
+ "C1_monotone": {
+  "survives": true,
+  "violations": [],
+  "n_points": 2
+ },
+ "C2_floor_3.158": {
+  "survives": true,
+  "fails_at": []
+ },
+ "K_control_strong_coupling": {
+  "holds_at": [],
+  "stop": false,
+  "note": "expected to hold nowhere; if it holds, stop and find why"
+ }
+}

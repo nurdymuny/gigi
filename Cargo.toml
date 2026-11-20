@@ -33,6 +33,11 @@ name = "link_force_probe"
 path = "examples/link_force_probe.rs"
 required-features = ["gauge"]
 
+[[example]]
+name = "link_flow_probe"
+path = "examples/link_flow_probe.rs"
+required-features = ["gauge"]
+
 # ── Feature flags ──
 #
 # `kahler` — opt-in Kähler-geometry substrate (catalog.md §1, the

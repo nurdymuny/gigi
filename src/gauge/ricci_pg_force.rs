@@ -185,6 +185,70 @@ impl ForceContext {
         Ok(ForceContext { method, weights: weights.to_vec(), mass, quad, prepared, vid, readers })
     }
 
+    /// Move to another metric: rebuild the metric-dependent pieces (masses,
+    /// quadrature) and keep the prepared readings (geometry only).
+    pub fn set_metric(&mut self, cells: &[Cell], metric: [f64; 3], order: usize) -> Result<(), String> {
+        if !metric.iter().all(|g| g.is_finite() && *g > 0.0) {
+            return Err("LINK_FORCE: a positive metric (g1, g2, g3) is required; none is ever substituted".into());
+        }
+        self.mass = cells.iter().map(|c| tetra_mass(c.vertices, metric, order)).collect::<Result<Vec<_>, _>>()?;
+        if let ForceMethod::Pg2 { .. } = self.method {
+            self.quad = cells.iter().map(|c| quadrature_points(c.vertices, metric, order)).collect::<Result<Vec<_>, _>>()?;
+        }
+        Ok(())
+    }
+
+    /// The force on every stored edge at these links.
+    pub fn force(&self, cells: &[Cell], links: &[[f64; 4]]) -> Result<Vec<Vector3<f64>>, String> {
+        let mut gradient = vec![Vector3::<f64>::zeros(); links.len()];
+        for ci in 0..cells.len() {
+            let (contrib, _) = self.cell(cells, links, ci)?;
+            for (k, v) in contrib.iter().enumerate() {
+                gradient[cells[ci].edges[k]] += v;
+            }
+        }
+        Ok(gradient)
+    }
+
+    /// The native SU(2) tangent mass B(U) at these links, as triplets
+    /// (row = 3·edge + axis), assembled exactly as the RF2B probe assembles its blocks.
+    pub fn tangent_mass(&self, cells: &[Cell], links: &[[f64; 4]]) -> Result<(Vec<usize>, Vec<usize>, Vec<f64>), String> {
+        let (mut r, mut c, mut v) = (Vec::new(), Vec::new(), Vec::new());
+        for (ci, cell) in cells.iter().enumerate() {
+            let local: [[f64; 4]; 6] = std::array::from_fn(|e| {
+                let mut q = links[cell.edges[e]];
+                if cell.reverse[e] {
+                    for x in &mut q[1..] {
+                        *x = -*x;
+                    }
+                }
+                q
+            });
+            let t = super::ricci_simplicial::cell_tangent_mass(local, self.mass[ci].edge_mass)?;
+            let lift: [Matrix3<f64>; 6] = std::array::from_fn(|e| {
+                if cell.reverse[e] { -adjoint(links[cell.edges[e]]) } else { Matrix3::identity() }
+            });
+            for e in 0..6 {
+                for f in 0..6 {
+                    let blk = self.weights[ci] * lift[e].transpose() * t.fixed_view::<3, 3>(3 * e, 3 * f) * lift[f];
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            r.push(3 * cell.edges[e] + i);
+                            c.push(3 * cell.edges[f] + j);
+                            v.push(blk[(i, j)]);
+                        }
+                    }
+                }
+            }
+        }
+        Ok((r, c, v))
+    }
+
+    /// Volume, Σ_K w_K |K|_g, at the current metric.
+    pub fn volume(&self) -> f64 {
+        self.mass.iter().zip(&self.weights).map(|(m, w)| w * m.volume).sum()
+    }
+
     /// One cell's weighted contribution to its six stored edges.
     fn cell(&self, cells: &[Cell], links: &[[f64; 4]], ci: usize) -> Result<([Vector3<f64>; 6], f64), String> {
         let cell = &cells[ci];

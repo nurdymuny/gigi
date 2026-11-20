@@ -18,22 +18,13 @@
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
 
-% Redline of the review of 20 November 2026 (second round). \redlinetrue shows the changes (insertions blue,
-% deletions red and struck out); \redlinefalse gives the accepted text. To revert one change, delete its \redins{...}
-% and unwrap its \reddel{...}. paper.pdf is not regenerated from the redline; the marked-up build is
-% paper_redline.pdf (pdflatex -jobname=paper_redline paper.tex).
-\usepackage[normalem]{ulem}
-\newif\ifredline
-\redlinetrue
-\newcommand{\redins}[1]{\ifredline{\color{blue}#1}\else#1\fi}
-\newcommand{\reddel}[1]{\ifredline{\color{red}\sout{#1}}\fi}
 
 \newcommand{\su}{\mathfrak{su}(2)}
 \newcommand{\norm}[1]{\lVert #1\rVert}
 \newcommand{\RR}{\mathbb{R}}
 
 \title{The Floor Theorem for the Yang--Mills Hessian\\ at the Berger Field\\[4pt]
-\large A Floor Law Across the \reddel{Squashed Three-Spheres}\redins{Berger Spheres}}
+\large A Floor Law Across the Berger Spheres}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
 \date{November 2026 (version 2)}
@@ -61,8 +52,7 @@ Berger sphere $(t,1,1)$ the same field is an exact gauge-orthogonal eigenvector 
 $[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$. It is the floor of every sector
 for every $t\in[2.75,10]$, in particular at $t=3$: a conserved charge splits each sector into blocks of size at most
 nine, interval certificates of the blocks cover $j<100$, and a closed-form Gershgorin bound covers $j\ge100$.
-\reddel{The eigenvector is a lowest Landau level: it is annihilated by the transverse raising operator, and its
-internal frame is the lowest eigenvector of the curvature term of the Weitzenb\"ock identity.} At $t=4$ the low spectrum on the
+ At $t=4$ the low spectrum on the
 Poincar\'e sphere is classified below $136$. To our knowledge, these are the first exact eigenvalues of a
 Yang--Mills Hessian at a non-flat connection on a squashed three-sphere.
 \end{abstract}
@@ -113,9 +103,9 @@ at rest, so gauge directions are not zero modes, and the compression $PHP$ is th
   \item \emph{The floor law} (Section~\ref{sec:family}): the formula extends to every Berger sphere $(t,1,1)$
     as an exact eigenvalue (Proposition~\ref{prop:family}). It is certified as the floor at $t=4$
     (Theorem~\ref{thm:t4}) and for every $t\in[2.75,10]$ in every sector
-    (Theorem~\ref{thm:range}); its eigenvector is a lowest Landau level\redins{, annihilated by the transverse
+    (Theorem~\ref{thm:range}); its eigenvector is a lowest Landau level, annihilated by the transverse
     raising operator, with its internal frame the lowest eigenvector of the curvature term of the Weitzenb\"ock
-    identity}
+    identity
     (Proposition~\ref{prop:landau}),
     with the stretches at which each twist goes free in closed form (Corollary~\ref{cor:family}).
 \end{itemize}
@@ -475,7 +465,7 @@ $\rho_1\pm i\rho_2=-2iJ_\pm$ shifts $m$ by $\pm1$, each of $X_0$ and $X_\pm$ shi
 $\sum_iX_i^*X_i=X_0^*X_0+\tfrac12(X_+^*X_++X_-^*X_-)$ preserves $q$; so does $R_0(t)$.
 \end{proof}
 
-\redins{\begin{remark}[Why the floor formula is exact]\label{rem:counting}
+\begin{remark}[Why the floor formula is exact]\label{rem:counting}
 Lemma~\ref{lem:charge} explains Propositions~\ref{prop:bottom} and~\ref{prop:family}, which were proved by
 symbolic computation. The twist is the only state of charge $l+2$, so it spans a $1\times1$ block and is an
 eigenvector of $H+GG^*$. The gauge map preserves the charge, with the gauge parameter $\xi$ carrying the weight
@@ -484,7 +474,7 @@ exact gauge-orthogonal eigenvector of $H$, and its eigenvalue is its diagonal en
 rotation about the long axis, so it holds for any left-invariant background with that symmetry. Whether the twist
 is the \emph{floor} is a separate statement, and it depends on the background (Section~\ref{sec:family},
 ``Further observations'').
-\end{remark}}
+\end{remark}
 
 \begin{theorem}[The floor law on $2.75\le t\le10$]\label{thm:range}
 For every $t\in[2.75,10]$ and every $j\ge0$, $\lambda_t(j)$ is the
@@ -608,18 +598,18 @@ the floor law is and is not (scripts and receipts in the repository; see the ava
     ($36$ shapes, axis ratios up to $20$) finds exactly three Yang--Mills fields up to gauge: two flat, and one
     non-flat relative of the meron. That relative keeps Morse index $1$ throughout, including along
     $(t,1,1)$ for $t\in[0.05,10]$, and no sector $j\le12$ crosses zero on it.
-  \redins{\item \emph{Symmetry does not make the floor.} The squashed meron has the same rotation symmetry, so by
+  \item \emph{Symmetry does not make the floor.} The squashed meron has the same rotation symmetry, so by
     Remark~\ref{rem:counting} the twist is an exact gauge-orthogonal eigenvector there too. Yet on the grid
     $t=0.05,0.10,\dots,10$ it is the floor of no sector $j\le12$ at any point. For $t\le1$ it is the top of every
-    sector\redins{ $j\le12$}, and it descends as $t$ grows without reaching the bottom. On the Berger field the same scan finds it
-    the floor of every sector\redins{ $j\le12$} at exactly the grid points $t\ge2.70$. The difference lies in the curvature term. In
-    the Weitzenb\"ock form~\cite{bl1981}, $R_0=\mathrm{Ric}-2[F,\cdot\,]$\redins{, with
-    $([F,\cdot\,]b)_i=\sum_j[F_{ij},b_j]$}: the Ricci curvature plus the field
+    sector $j\le12$, and it descends as $t$ grows without reaching the bottom. On the Berger field the same scan finds it
+    the floor of every sector $j\le12$ at exactly the grid points $t\ge2.70$. The difference lies in the curvature term. In
+    the Weitzenb\"ock form~\cite{bl1981}, $R_0=\mathrm{Ric}-2[F,\cdot\,]$, with
+    $([F,\cdot\,]b)_i=\sum_j[F_{ij},b_j]$: the Ricci curvature plus the field
     strength with the factor $2$ of the Hessian (checked to $4\times10^{-15}$ on both fields). On the twist's internal
     frame the Ricci share is $4-2t$ on both fields. The field-strength share is $8-6t$ on the Berger field (total
     $12-8t$), but positive on the squashed meron, between $0.4$ and $1.3$ for $t$ from $2$ to $8$
-    (\path{scripts/ricci_su2_test2_family.py}, \path{scripts/ricci_su2_gyromagnetic_split.py}\redins{,
-    \path{scripts/ricci_su2_meron_ceiling_check.py}}).}
+    (\path{scripts/ricci_su2_test2_family.py}, \path{scripts/ricci_su2_gyromagnetic_split.py},
+    \path{scripts/ricci_su2_meron_ceiling_check.py}).
 \end{itemize}
 
 \section{Checks}\label{sec:checks}
@@ -672,8 +662,8 @@ quantum theory and not a Yang--Mills mass gap.
 circular eigenvector uses only the rotation symmetry about the long axis and the top weight, so it is an
 exact eigenvector at every squashing (Proposition~\ref{prop:family}), with the stretch entering the formula
 rationally, and it is a lowest Landau level at every squashing (Proposition~\ref{prop:landau}). Whether
-it is the \emph{floor} depends on $t$\redins{, and on the background: symmetry alone does not make it the floor
-(Section~\ref{sec:family}, ``Further observations'')}. It is the floor throughout $[2.75,10]$ in every sector, and (numerically) not the floor of every sector below
+it is the \emph{floor} depends on $t$, and on the background: symmetry alone does not make it the floor
+(Section~\ref{sec:family}, ``Further observations''). It is the floor throughout $[2.75,10]$ in every sector, and (numerically) not the floor of every sector below
 $t^*\approx2.698$, where the sector $j=4$ is the first to have a lower eigenvalue. At the round metric
 and at $(2,1,1)$ other modes are lower. The relation to the Poincar\'e sphere's first scalar eigenvalue, $168/3$,
 is special to $t=3$, the unique stretch at which the lift of the twist depends only on the Casimir
@@ -720,8 +710,8 @@ For Section~\ref{sec:family}, with outputs in \path{research/su2-floor-family-20
   \item Remark~\ref{rem:tstar}: \path{scripts/ricci_su2_floor_family_scan.py},
     \path{scripts/ricci_su2_tstar_exact.py}, \path{scripts/ricci_su2_tA_scan.py};
   \item the flow experiment: \path{scripts/ricci_su2_soft_mode_flow.py};
-  \redins{\item symmetry does not make the floor:\\ \path{scripts/ricci_su2_test2_family.py},
-    \path{scripts/ricci_su2_gyromagnetic_split.py},\\ \path{scripts/ricci_su2_meron_ceiling_check.py};}
+  \item symmetry does not make the floor:\\ \path{scripts/ricci_su2_test2_family.py},
+    \path{scripts/ricci_su2_gyromagnetic_split.py},\\ \path{scripts/ricci_su2_meron_ceiling_check.py};
   \item resting fields: \path{scripts/ricci_su2_resting_fields.py},
     \path{scripts/ricci_su2_resting_fields_general.py}, \path{scripts/ricci_su2_meron_family_soft.py}.
 \end{itemize}

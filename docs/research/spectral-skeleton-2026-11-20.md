@@ -124,16 +124,29 @@ The twist is the cheapest disturbance in its sector, with multiplicity exactly t
      base sphere in a magnetic field.
    - **Prediction.** If the twist is a *lowest-Landau-level* state, then λ_t(j) is a lowest-Landau-level energy
      plus a fixed curvature shift. The skeleton would then have a mechanism and a name.
-2. **Other symmetric families.** Lens spaces, other squashings, other groups (SU(3) on its homogeneous spaces). If
-   an extremal mode again gives the floor by a closed-form law, the pattern is general.
-3. **Weak symmetry breaking.** Perturb the space so the sectors no longer separate, and follow the floor mode. If it
-   persists continuously and stays lowest, the skeleton is structure, not an artefact of exact symmetry.
+2. **Other symmetric families.** <del>Lens spaces, other squashings, other groups (SU(3) on its homogeneous spaces). If
+   an extremal mode again gives the floor by a closed-form law, the pattern is general.</del><ins>Lens spaces and other
+   quotients do not count: the local operator is the same. In any circle-invariant family the extremal mode is
+   automatically exact, gauge-orthogonal and closed-form (counting argument, pre-registration §1), so only *being the
+   floor* is evidence. Exact criteria (classes E / P / N, verdict rule, families fixed in advance):
+   [`skeleton-tests-preregistration-2026-11-20.md`](skeleton-tests-preregistration-2026-11-20.md) §4.</ins>
+3. **Weak symmetry breaking.** <del>Perturb the space so the sectors no longer separate, and follow the floor mode. If it
+   persists continuously and stays lowest, the skeleton is structure, not an artefact of exact symmetry.</del><ins>As
+   first written this cannot fail: an isolated floor persists and stays lowest under any small perturbation, skeleton
+   or not (pre-registration §0). Restated so that it can fail: break the circle with (t, 1 + ε, 1). The skeleton
+   predicts that the floor pair splits as ε^((j+4)/2), later than every other pair in its sector, which split as
+   ε^(q′). Gates A-code to A-rank: pre-registration §2. Breaking left-invariance (sectors mixing) is §3, not yet
+   designed.</ins>
 
 **What would count against it.**
 
 - the Landau-level test failing to account for λ_t(j);
-- other symmetric families whose floors are not extremal modes;
-- the floor mode disappearing under arbitrarily small symmetry breaking.
+- <del>other symmetric families whose floors are not extremal modes;</del><ins>any independent circle-invariant family
+  in which the extremal mode is the floor nowhere in its pre-set range (class N; pre-registration §4). The Berger
+  family itself is class P: the floor only for t ≥ t*;</ins>
+- <del>the floor mode disappearing under arbitrarily small symmetry breaking.</del><ins>Test 3A: the floor pair
+  splitting earlier than ε^((j+4)/2), or not being the last pair in its sector to split (gates A-exp and A-rank (i)).
+  Disappearance under small breaking is not on this list because it cannot happen.</ins>
 
 **The phase-transition reading (point 3 of my theory).** It is established for the landscape, as a stiffness
 crossing zero linearly at an exact t_j. It is not established as a dynamical transition: the Berger field moves

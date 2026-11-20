@@ -1,0 +1,31 @@
+{
+  "kind": "YM6 / BW10: each removal turns its gate red (production passes in the same run)",
+  "R1_no_register_level0": {
+    "YM1_production_coef_rel": 5.949890714153281e-15,
+    "YM1_removal_coef_rel": 0.3036600862772462,
+    "YM2_production_bw05": 36.24699143432363,
+    "YM2_removal_bw05": 39.01668705170587,
+    "table6_two_ring": 36.25
+  },
+  "R1_no_register_level1": {
+    "YM1_production_coef_rel": 1.818074382917021e-14,
+    "YM1_removal_coef_rel": 0.9377487766565062,
+    "YM2_production_bw05": 7.4272362888174435,
+    "YM2_removal_bw05": 28.719989165208197,
+    "table6_two_ring": 7.43
+  },
+  "R2_fd_defect_derivative_level0": {
+    "YM3_production_K_rel": 2.5274371793957075e-11,
+    "YM3_removal_K_rel": 2.0975664029814168e-06
+  },
+  "R3_endpoint_level0": {
+    "YM4_midpoint_E_rel": 6.3214925496852244e-15,
+    "midpoint_R_final": 0.1383438850817135,
+    "YM4_endpoint_E_rel": 0.05917473136466831,
+    "endpoint_R_final": 0.1435878392889171
+  },
+  "R4_round_metric_level0": {
+    "YM2_removal_bw05": 26.807091487058678,
+    "table6_two_ring": 36.25
+  }
+}

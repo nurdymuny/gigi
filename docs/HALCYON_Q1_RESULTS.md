@@ -74,3 +74,33 @@ re-reported with the amendment as a second column, never in place of the pre-reg
   regenerated value is consistent with the receipt. L = 6 / 8 / 12 still need regenerating.
 - Nothing here bears on the continuum gap. At 100 configurations the plaquette channel at
   β = 2.3, L = 16 carries one significant time step.
+
+## Fresh-seed run under the amended rule (Amendment 1)
+
+Halcyon's L = 16, β = 2.3 ensemble regenerated with seed 20261119, null seed 20261120, as fixed in
+`docs/HALCYON_Q2_RUN_SPEC.md` Amendment 1. Receipts: `research/q1-halcyon-m1-fresh-20261119/`.
+
+| gate | result |
+|---|---|
+| P1 parity, signal and null | **pass** (C to 4.6e-10 σ, m_eff to 9.5e-11 σ) |
+| N, the null refuses | **pass** |
+| R, Halcyon's fit reports on the null | **fail** again: Halcyon's fit also returns nothing on this null |
+| **Prediction fixed before the run: the amended rule refuses** | **confirmed**: "the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)" |
+
+m_eff(1) = 1.85 ± 0.16 and m_eff(2) = 0.78 ± 0.68. C(2) is under 3σ, so the floor admits no window.
+The rule as first fixed also refuses here, at t = 2.
+
+**Three runs of Halcyon's fit on the same physics:**
+
+| run | Halcyon's fit | Halcyon's error |
+|---|---|---|
+| original receipt | 1.949 | 0.015 |
+| regeneration, seed 20260628 | 2.276 | 0.028 |
+| regeneration, seed 20261119 | 1.791 | 0.016 |
+
+The three values spread by 0.49 while each claims an error near 0.02, about 20 of its own error bars.
+With the standard jackknife (about ±0.16 to ±0.28, √n = 10 times larger) they agree. This is direct
+evidence, independent of the code reading, that the M1 error bars are understated by about √n.
+
+(The refusal message was corrected before this record: it had named "undefined in a jackknife
+sample" when the failing condition was the 3σ correlator floor. The verdict was the same.)

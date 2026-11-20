@@ -1,0 +1,208 @@
+{
+ "kind": "Q1 correlator parity, null and removal",
+ "p_bar": "m1_su2_L16_beta2p3_seed20261119.npy",
+ "n_cfg": 100,
+ "L": 16,
+ "null_seed": 20261120,
+ "tolerance": {
+  "in_sigma": 1e-06,
+  "rel": 1e-08
+ },
+ "gates": {
+  "P1_parity_signal": true,
+  "P1_parity_null": true,
+  "N_null_refuses": true,
+  "R_auto_window_reports_on_null": false
+ },
+ "signal": {
+  "parity_rel": {
+   "C_t_in_sigma": 4.614950969488108e-10,
+   "C_err_t_rel": 4.065535858626174e-10,
+   "m_eff_t_in_sigma": 9.450284743901592e-11,
+   "m_eff_err_t_halcyon_normalisation_rel": 4.5055328412999436e-11
+  },
+  "engine_plateau": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "engine_plateau_as_fixed": {
+   "refused": "EFFECTIVE_MASS: no plateau: consecutive effective masses disagree by more than 1 combined standard errors (at t = 2)",
+   "t": 2
+  },
+  "halcyon_auto_window": {
+   "window": [
+    1,
+    4
+   ],
+   "mass": 1.791100987848004,
+   "error": 0.015886231819496492
+  },
+  "m_eff_t": [
+   null,
+   1.8501610867071834,
+   0.7784238197673531,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   0.7784238197673524,
+   null
+  ],
+  "m_eff_err_t_standard": [
+   null,
+   0.16342916157844384,
+   0.6767339698602999,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   0.6767339698603002,
+   null
+  ],
+  "m_eff_err_t_halcyon": [
+   0.0,
+   0.016342916157701934,
+   0.06767339698298093,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.06767339698452722,
+   0.0
+  ],
+  "standard_over_halcyon_error": [
+   null,
+   10.000000000087162,
+   10.000000000450555,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   10.000000000222066,
+   null
+  ],
+  "engine_seconds": 0.0010292
+ },
+ "null": {
+  "parity_rel": {
+   "C_t_in_sigma": 5.175575024021521e-10,
+   "C_err_t_rel": 3.3929653623129027e-10,
+   "m_eff_t_in_sigma": 0.0,
+   "m_eff_err_t_halcyon_normalisation_rel": 0.0
+  },
+  "engine_plateau": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "engine_plateau_as_fixed": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "halcyon_auto_window": {
+   "window": null,
+   "mass": null,
+   "error": null
+  },
+  "m_eff_t": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "m_eff_err_t_standard": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "m_eff_err_t_halcyon": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "standard_over_halcyon_error": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "engine_seconds": 0.0008574
+ }
+}

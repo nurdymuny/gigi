@@ -354,10 +354,24 @@ pub fn plateau_with(
             hi -= 1;
         }
     }
-    Err(first_break.unwrap_or(NoPlateau {
-        t: 0,
-        reason: "no time slice has an effective mass that is defined in every jackknife sample".into(),
-    }))
+    if let Some(b) = first_break {
+        return Err(b);
+    }
+    // no admissible t at all: say which condition failed, naming the first t it failed at
+    let defined = (0..m.len()).find(|&t| m[t].is_some() && err[t] > 0.0 && err[t].is_finite());
+    Err(match defined {
+        Some(t) => NoPlateau {
+            t,
+            reason: format!(
+                "the correlator is less than {} standard errors from zero wherever the effective mass is defined",
+                rule.min_signal_sigma.unwrap_or(0.0)
+            ),
+        },
+        None => NoPlateau {
+            t: 0,
+            reason: "no time slice has an effective mass that is defined in every jackknife sample".into(),
+        },
+    })
 }
 
 /// Everything EFFECTIVE_MASS returns.

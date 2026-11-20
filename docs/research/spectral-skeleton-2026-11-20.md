@@ -188,3 +188,48 @@ fibre from X₁, X₂ on the base sphere of the Hopf fibration.
   minimality for all j. It does not: L lies about 4j + 4t below λ_t(j).
 - The cause is the opposite-chirality states (annihilated by X₋), on which i[X₁, X₂] is large and negative.
 - A chirality-aware bound, using |X₊v|² or |X₋v|² charge by charge, is the natural next attempt at an all-j proof.
+
+## 7. Toward minimality for every j: chirality and charge (20 November 2026)
+
+**The chirality-aware Landau bound** (`scripts/ricci_su2_chiral_bound.py`, `chiral_bound.json`).
+
+- Since |X₊v|² ≥ 0 and |X₋v|² ≥ 0, we have −X₁² − X₂² ≥ c·i[X₁, X₂] for every c ∈ [−1, 1].
+- The fibre charge Q = J₀ + R_frame + R_Lie commutes with H + GG*, with X₀ and with i[X₁, X₂]. So the bound can be
+  optimised charge block by charge block: max over c of λ_min(−X₀² + c·i[X₁, X₂] + R₀).
+- **Result (Numerical).** The bound is tight at j = 0 for every t ≥ 2.5, and in some small sectors at large stretch
+  (j ≤ 3 at t = 6 and t = 10).
+- For j ≥ 1 it falls short by an amount growing like j²; at t = 3 by exactly j(j+2)/3. The commutator is linear in
+  the weight. It discards the sector's Casimir energy on the base sphere, the "lift" that the twist pays.
+- **So the chirality-aware bound alone does not prove minimality for all j.**
+
+**The charge blocks** (`scripts/ricci_su2_charge_blocks.py`, `charge_blocks.json`; t ∈ {2.75, 3, 4, 6, 10},
+j up to 128). All Numerical.
+
+- Every sector splits into blocks of fixed fibre charge, each at most 9 × 9.
+- **The twist is alone in its block.** Its charge q = ±(j/2 + 2) is the maximum possible: the top weight j/2, plus
+  one unit of frame rotation, plus one unit of internal rotation. Exactly one state carries it.
+  - So λ_t(j) is a single diagonal entry. **The floor mode is the unique state of maximal fibre charge.**
+- **Every other block lies above λ_t(j)**, and its margin grows linearly in j:
+
+| t | j = 4 | j = 32 | j = 128 |
+| --- | --- | --- | --- |
+| 2.75 | 0.16 | 17.1 | 69.5 |
+| 3 | 2.1 | 21.3 | 85.3 (= 2j/3) |
+| 4 | 5 | 33 | 129 (= j + 1) |
+| 6 | 7.3 | 44.7 | 172.7 |
+| 10 | 9.2 | 54 | 207.6 |
+
+- The nearest competitor is the block one charge below the top (q = ±(j/2 + 1)), or q = 0 at the smallest j.
+
+**What this means for the skeleton.** The floor mode is the unique highest-charge state of the symmetry that
+survives the stretch, the circle about the long axis. That is the precise sense in which it is extremal. The skeleton
+is the highest-weight structure of that symmetry, and the Landau picture of §6 is its energetics.
+
+**Proof plan for minimality in every sector** (open):
+
+1. Write the ≤ 9 × 9 charge blocks in closed form in (j, q, t). Their entries are polynomials and square roots from
+   the spin ladder.
+2. For large j, prove that every block other than the top lies above λ_t(j) by a margin linear in j.
+3. Certify the finitely many small j with the existing interval machinery, over the same t-range as Theorem 6.3.
+
+Together these would give the floor law for **every** sector and every t ∈ [2.75, 10].

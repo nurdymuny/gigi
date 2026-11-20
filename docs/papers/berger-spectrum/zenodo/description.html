@@ -1,0 +1,51 @@
+<h3>The tones of a squashed sphere</h3>
+<p>Strike a bell and it rings at a set of tones fixed by its shape. Squash the bell and the tones move. The second variation of the Yang&ndash;Mills energy plays the same role for a gauge field. Its eigenvalues say which directions lead downhill and which lead up, how fast nearby fields grow or decay, and what a lattice computation of the field has to reproduce.</p>
+<p>On round spheres these tones are classical. Bourguignon and Lawson worked out stability over the round sphere, and Laquer computed the index of the canonical connection over every symmetric space. Nobody, as far as I can find, had computed them exactly on a <em>squashed</em> three-sphere, or at a field that is not a Yang&ndash;Mills field. This paper does both at once, on one natural case.</p>
+<h3>The field</h3>
+<p>Take the round three-sphere and stretch it by &radic;3 along one direction: the Berger metric g = (3, 1, 1). Its Levi-Civita connection, read as an SU(2) gauge field, is what I call the <strong>Berger field</strong>. It is the instantaneous state of a gauge field carried along the Ricci flow of the metric, and it is the background on which the lattice Yang&ndash;Mills forces of <em>Reading the Curve</em> were tested on the Poincar&eacute; homology sphere. It is not at rest: unlike the round case, it is not a Yang&ndash;Mills field. This paper gives those lattice computations an exact target.</p>
+<h3>The result</h3>
+<ul>
+<li><strong>The floor formula.</strong> By Peter&ndash;Weyl the Hessian splits into finite sectors, one for each spin j/2. In every sector the field f (&theta;<sup>1</sup> + i&theta;<sup>2</sup>) &otimes; (&tau;<sub>1</sub> + i&tau;<sub>2</sub>), with f the top weight along the long axis, is an exact eigenvector with eigenvalue <strong>(j(j+2) &minus; 14)/3</strong>, orthogonal to every gauge direction. Since j(j+2) is the j-th eigenvalue of the Laplacian on the unit three-sphere, the floor is the scalar tone, shifted down by 14 and divided by the stretch.</li>
+<li><strong>The left-invariant sector, exactly.</strong> Its gauge-orthogonal spectrum is &minus;14/3 (twice), 16 &minus; 2&radic;73, 22/3 (twice) and 16 + 2&radic;73. So the field has exactly three growth directions, and all three come from the field acting on itself. With the commutator dropped, the same sector is 4/3 (six times) and 12 (three times), all positive.</li>
+<li><strong>On the Poincar&eacute; sphere.</strong> Glue the opposite faces of a dodecahedron with a tenth of a turn and you get Poincar&eacute;'s homology sphere, S<sup>3</sup>/2I. On it only the sectors carrying Klein's icosahedral invariants survive: j = 0, 12, 20, 24, 30, &hellip; Below 142 the gauge-orthogonal spectrum consists of the six left-invariant values above and the spin-6 values from 154/3 upward.</li>
+<li><strong>The floor gap.</strong> The first sector above the left-invariant one begins <strong>168/3</strong> above the growth mode. That is one third of 168, the first eigenvalue of the scalar Laplacian on the Poincar&eacute; sphere.</li>
+</ul>
+<h3>How it is proved</h3>
+<ul>
+<li><strong>A Weitzenb&ouml;ck identity.</strong> H + GG* = &Sigma; X<sub>i</sub>*X<sub>i</sub> + R<sub>0</sub>, proved once in the universal enveloping algebra in exact arithmetic, so it holds in every sector at the same time. R<sub>0</sub> is a constant 9&times;9 matrix with smallest eigenvalue &minus;12, and the connection term has &omega;<sup>2</sup> = 76/3. Together they bound every sector from below.</li>
+<li><strong>Certified inertia counts.</strong> For the four surviving sectors that matter (j = 0, 12, 20, 24), the shifted operator is assembled in 200-bit interval arithmetic and factored. The rounding error is bounded rigorously (total perturbation below 3 &times; 10<sup>&minus;54</sup>), and Sylvester's law of inertia then counts the eigenvalues below each threshold. So the floor value is the bottom of its sector, twice, and the next value is at least 1/3 higher.</li>
+<li><strong>Everything beyond.</strong> From j = 30 on, the Weitzenb&ouml;ck bound alone puts every sector above 142 (exactly, &radic;320 &minus; &radic;(76/3) &gt; &radic;154). A double-precision check of every sector up to j = 120 shows the same picture, but the theorem does not rely on it.</li>
+</ul>
+<h3>Checks</h3>
+<ul>
+<li><strong>The round sphere.</strong> At g = (1, 1, 1) the same construction gives &minus;2, 1, 6, 7 and 10 in spins 0 to 2. That is the published fluctuation spectrum of the meron (Kumar, Lechtenfeld and Pican&ccedil;o Costa), with exactly one negative value, as Laquer's theorem requires.</li>
+<li><strong>The lattice.</strong> The two lattice Yang&ndash;Mills forces of <em>Reading the Curve</em>, linearised at the Berger field on triangulations of the Poincar&eacute; sphere, resolve the left-invariant sector and the bottom of spin 6. For example, the growth mode &minus;14/3 = &minus;4.667 comes out as &minus;4.475, &minus;4.651 and &minus;4.661 on the native force at n = 1, 2, 3. At n = 1, 2 the left-invariant modes are identified by their eigenvectors, not only their values.</li>
+</ul>
+<h3>What is claimed, and what is not</h3>
+<ul>
+<li>This is a statement about the <strong>classical linearised operator</strong>. It is not a statement about the quantum theory, and it is not a Yang&ndash;Mills mass gap. The growth directions are negative eigenvalues, the opposite of a gap.</li>
+<li>At a field that is not at rest, separating gauge directions from physical ones is a choice. The theorem is stated on the L<sup>2</sup> (Coulomb) slice, and the full Hessian is given alongside it.</li>
+<li>The closed form is tied to this squashing: at (2, 1, 1), (4, 1, 1) and the round metric the bottom of a sector is not of this form. Minimality of the floor for every j beyond the sectors that matter is not proved, and the gap does not need it.</li>
+</ul>
+<h3>The files in this record</h3>
+<ul>
+<li><code>paper.pdf</code>: the paper, 8 pages.</li>
+<li><code>floor-theorem-v1-latex.zip</code>: the LaTeX source, the style file and the figure, with the figure's script. It compiles as is with <code>pdflatex</code> and reproduces the paper.</li>
+<li><code>floor-theorem-v1-code-and-data.zip</code>: every script the theorem runs through, at its repository path, with the receipts it produced and the lattice spectra behind the table and the figure. The proof scripts need only Python with NumPy, SymPy and mpmath. Unzipped into an empty folder they rerun, and the receipts they write match the committed ones. See its <code>README.md</code>.</li>
+<li><code>MANIFEST.txt</code>: the SHA-256 of every file and the commit the record was built from.</li>
+</ul>
+<h3>The code</h3>
+<p>The scripts live in GIGI, my open-source geometric engine (PolyForm Noncommercial 1.0.0): <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>, tag <code>floor-theorem-v1</code>. The lattice spectra used in the checks come from the code and data of <em>Reading the Curve</em>, which carry the meshes and the forces.</p>
+<h3>Companion papers</h3>
+<ul>
+<li><em>Reading the Curve, Not Counting the Points</em>, where the Berger field first appears and where the lattice forces checked here are built: <a href="https://doi.org/10.5281/zenodo.24328085">doi:10.5281/zenodo.24328085</a>.</li>
+<li><em>Three Ways Across a Turn: Chord, Arc and Tangent</em>: <a href="https://doi.org/10.5281/zenodo.24375338">doi:10.5281/zenodo.24375338</a>.</li>
+</ul>
+<h3>Related work by the author</h3>
+<ul>
+<li><em>The Double Cover Principle: Every Circle Carries Two Circumferences</em>: <a href="https://doi.org/10.5281/zenodo.18895462">doi:10.5281/zenodo.18895462</a>.</li>
+<li><em>The Geometry of Sameness: An &epsilon;-Equivalence of Translation and Distance</em>: <a href="https://doi.org/10.5281/zenodo.17642422">doi:10.5281/zenodo.17642422</a>.</li>
+<li><em>Zero Does Not Exist: A Geometric Foundation for the Natural Numbers</em>: <a href="https://doi.org/10.5281/zenodo.19477365">doi:10.5281/zenodo.19477365</a>.</li>
+</ul>
+<h3>My books</h3>
+<p>All of my books are free to read on my website: <a href="https://www.davisgeometric.com/research/books/">davisgeometric.com/research/books</a>.</p>

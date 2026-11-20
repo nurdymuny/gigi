@@ -28,6 +28,13 @@
 //! The rule as first fixed (`PlateauRule::AS_FIXED`) is still computed and returned beside it,
 //! so every result can be read against the pre-registered rule.
 //!
+//! **Amendment Q1-3 (adopted 2026-11-19, before any Q3 data).** The error of the verb's plateau is
+//! the blocked jackknife of the plateau fit itself: the window and the weights are fixed from the
+//! full sample, and the weighted mean is recomputed in every leave-a-block-out sample. The fit's
+//! 1/√Σw treats the m_eff(t) as independent; they are correlated, and on long windows that error was
+//! about 25% too small (Q2 fresh run, β = 8). χ²/dof in the rule is unchanged. The as-fixed plateau
+//! keeps the fit's error, as it was pre-registered.
+//!
 //! Errors are a (blocked) jackknife: leave out each block of `block` consecutive
 //! configurations; `block = 1` is the plain leave-one-out jackknife.
 
@@ -198,6 +205,27 @@ pub fn jackknife_effective_mass_blocked(
     Ok((mfull, err))
 }
 
+/// Amendment Q1-3: the blocked-jackknife error of a plateau fit, with the window and the weights
+/// 1/err(t)² fixed from the full sample. Every leave-a-block-out m_eff in the window is defined,
+/// because the rule admits a t only when its jackknife error is finite.
+pub fn plateau_jackknife_error(p: &[Vec<f64>], block: usize, pl: &Plateau, m_err: &[f64]) -> Result<f64, String> {
+    let (_, jk) = jk_correlators(p, block)?;
+    let w: Vec<f64> = (pl.t_lo..=pl.t_hi).map(|t| 1.0 / (m_err[t] * m_err[t])).collect();
+    let sw: f64 = w.iter().sum();
+    let samples: Vec<f64> = jk
+        .iter()
+        .map(|c| {
+            let m = effective_mass_cosh(c);
+            (pl.t_lo..=pl.t_hi)
+                .zip(&w)
+                .map(|(t, wt)| m[t].ok_or_else(|| format!("EFFECTIVE_MASS: jackknife sample undefined at t = {t}")).map(|v| v * wt))
+                .sum::<Result<f64, String>>()
+                .map(|x| x / sw)
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(jk_error(&samples))
+}
+
 /// Standard leave-one-out jackknife error of the effective mass.
 pub fn jackknife_effective_mass(p: &[Vec<f64>]) -> Result<(Vec<Option<f64>>, Vec<f64>), String> {
     jackknife_effective_mass_blocked(p, 1)
@@ -355,7 +383,10 @@ pub fn effective_mass(p: &[Vec<f64>]) -> Result<EffectiveMass, String> {
 pub fn effective_mass_blocked(p: &[Vec<f64>], block: usize) -> Result<EffectiveMass, String> {
     let (c, ce) = jackknife_correlator_blocked(p, block)?;
     let (m, me) = jackknife_effective_mass_blocked(p, block)?;
-    let plateau = plateau_with(&m, &me, &c, &ce, PlateauRule::AMENDED);
+    let mut plateau = plateau_with(&m, &me, &c, &ce, PlateauRule::AMENDED);
+    if let Ok(pl) = plateau.as_mut() {
+        pl.error = plateau_jackknife_error(p, block, pl, &me)?;
+    }
     let plateau_as_fixed = plateau_with(&m, &me, &c, &ce, PlateauRule::AS_FIXED);
     Ok(EffectiveMass { correlator: c, correlator_error: ce, m_eff: m, m_eff_error: me, plateau, plateau_as_fixed })
 }

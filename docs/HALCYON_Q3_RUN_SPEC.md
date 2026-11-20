@@ -74,6 +74,14 @@ at t = 1. Q3 tests that directly (mechanism removal below), not by assumption.
   value. If the two agree, smearing is not doing what it is claimed to do here.
 - **Q3-n, nulls.** Every channel refuses on its configuration-and-time shuffled series.
 
+## Amendment 1 (adopted by Bee 2026-11-19, before any Q3 code beyond the sampler or any Q3 data)
+
+Plateau-rule Amendment Q1-3: the verb's plateau error is the blocked jackknife of the plateau fit
+itself (window and weights fixed from the full sample). The fit's 1/√Σw was about 25% too small on
+long windows in the Q2 fresh run. Every Q3 gate reads the jackknifed error. The GEVP projection
+vector is fixed from the full sample and not re-solved per jackknife sample (standard; recorded as
+such).
+
 ## Order of work
 
 1. Sampler and its Q3-0 tests.

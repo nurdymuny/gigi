@@ -1,0 +1,44 @@
+{
+ "level": 1,
+ "objective": "change",
+ "generators": "constants",
+ "C_repro_error": 2.7634020861594797,
+ "left_invariant_family": "minus",
+ "C_span_control_in_heldout_max": 1.3743224920885453e-15,
+ "C_span_control_from_enforced_min": 0.03937018066335213,
+ "cells_seeing_two_copies_of_an_edge": 0,
+ "C_solve_relative_residual": 1.422273969954133e-11,
+ "constraint_rows": 3372,
+ "rank": 2880,
+ "change_norm_median": 6.785265949614869,
+ "change_norm_max": 9.95961033400777,
+ "amplification_median_before_after": [
+  35.17832034417175,
+  35.53879720359758
+ ],
+ "amplification_max_before_after": [
+  44.71850870408972,
+  44.80160058581369
+ ],
+ "V1_relative_error": 0.5826738426643762,
+ "trace_before_after": [
+  62779.78135622547,
+  62160.69853540453
+ ],
+ "terms_before": {
+  "reconstruction_term": 0.03668757368305696,
+  "test_variation_term": 2.759427633274435,
+  "curvature_relative_error": 0.009240731961240744
+ },
+ "terms_after": {
+  "reconstruction_term": 0.038186443677630084,
+  "test_variation_term": 0.5843474028494747,
+  "curvature_relative_error": 0.008713820002782006
+ },
+ "asymmetry": 2.4235460921857464e-16,
+ "S3_small_count": 163,
+ "S3_negative_below_minus1": 0,
+ "S3_min_eig": -4.96395882846653e-12,
+ "S3_min_physical": 3.990681750264624,
+ "seconds": 265.0
+}

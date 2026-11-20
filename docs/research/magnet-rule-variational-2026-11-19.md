@@ -281,3 +281,24 @@ Bending one property is possible. The bumps here are deliberately *less* local t
   in §7 places them at vertices, because that is where gauge lives.
 - Should a poke's energy reach exactly the edges sharing a face with $e$ (one ring of connections), or wider? (M3)
   with $k = 2$ needs enough connected data to fit quadratic 1-forms locally. The count for that has not been done.
+
+---
+
+## Addendum (same evening): the §5 falsification test was run
+
+`docs/VARIATIONAL_RECOVERY_V1C_RESULTS.md`, spec fixed before the run. V1 with the constants only:
+
+| | n = 1 | n = 2 |
+| --- | --- | --- |
+| reconstruction term | 5.20% | 3.82% |
+| test-variation term | 82.1% | 58.4% |
+| ‖C‖ median | 3.7 | 6.8 |
+
+V1 needed ‖C‖ of 288 and 65, with reconstruction terms of 432% and 61.6%. Both predictions pass:
+
+- dropping the linear generators removes the explosion (Lemma C);
+- the constants alone leave the poke term at tens of percent (Lemma A's seams).
+
+**[measured]** This is the outcome the note predicted, and it points to conformity (the magnet rule), not to more
+constraints. One caveat: there are two levels only, and the test-variation term fell from n = 1 to n = 2. n = 3 would
+settle its trend.

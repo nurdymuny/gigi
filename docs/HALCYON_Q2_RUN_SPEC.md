@@ -83,6 +83,30 @@ The plaquette channel becomes the second null control (below).
 - **Sampler sanity (a test, not a gate).** ⟨½ tr U_p⟩ is λ_½ up to corrections of order λ_½^{A}
   (A = N_s N_t); the engine test checks it to 4σ at one β per action.
 
+### Amendment 1 (adopted by Bee 2026-11-19, after the first run; written before the fresh run)
+
+The plateau rule first fixed in Q1 accepted two noise points beside m_eff(1) on Halcyon's
+L = 16 ensemble, and on Q2's Wilson β = 4 ensemble slid into the noise after two ordinary 1σ
+fluctuations. Both amendments proposed in the Q1 and Q2 results are adopted:
+
+- **Q1-1:** every t in a window needs C(t − 1), C(t), C(t + 1) each at least 3σ above zero.
+- **Q1-2:** consecutive effective masses agree within 2 combined σ (was 1).
+
+Minimum length 3 and χ²/dof ≤ 2 are unchanged. The verb returns the amended plateau, and the rule
+as first fixed beside it. Because the amendments were suggested by the first data, they are judged
+only on fresh ensembles, with seeds fixed here before the run:
+
+- **Q2 fresh:** heat kernel 202611290 + β, Wilson 202611291 + β. Everything else as in this run spec.
+  Output `research/q2-exact-2d-fresh-20261119/`. The gates are those of this spec, read with the
+  amended rule.
+- **Q1 fresh:** Halcyon's L = 16, β = 2.3 ensemble regenerated with seed 20261119, null seed
+  20261120. Output `research/q1-halcyon-m1-fresh-20261119/`. The prediction, fixed now: with 100
+  configurations the amended rule refuses (the signal is expected to end near t = 1, as in the
+  first regeneration). A plateau, if one appears, is reported with its window and is not argued away.
+
+The first runs stay in the record as run; they are re-read with the amended rule only as a labelled
+second column.
+
 ## Not in this run
 
 - The convention fix in Halcyon's stored bundle and in `clay7_gigi_math.md`. That is Halcyon's

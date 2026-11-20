@@ -12,7 +12,10 @@ t <= Nt/2), Q2-w (the same on Wilson against Wilson's exact answer), Q2-r (Wilso
 3 sigma from the heat-kernel exact m), Q2-n (refusal on the plaquette channel and on the shuffled
 Polyakov series, every ensemble).
 
-usage: python test_q2_exact_2d.py ENSEMBLE_EXE PROBE_EXE OUT_DIR
+The gates use the verb's plateau rule (amendments Q1-1, Q1-2 adopted 2026-11-19); the rule as first
+fixed is recorded beside it in every row.
+
+usage: python test_q2_exact_2d.py ENSEMBLE_EXE PROBE_EXE OUT_DIR [SEED_HK SEED_WILSON]
 """
 import json
 import subprocess
@@ -26,7 +29,8 @@ ens_exe, probe_exe, out = sys.argv[1], sys.argv[2], Path(sys.argv[3])
 out.mkdir(parents=True, exist_ok=True)
 NS, NT, N_THERM, N_MEAS, EVERY, BLOCK, TWO_J = 2, 32, 2000, 20000, 5, 100, 59
 BETAS = [3, 4, 6, 8]
-SEEDS = {"heat_kernel": 202611190, "wilson": 202611191}
+SEEDS = {"heat_kernel": int(sys.argv[4]) if len(sys.argv) > 5 else 202611190,
+         "wilson": int(sys.argv[5]) if len(sys.argv) > 5 else 202611191}
 
 
 def lam(action, beta, two_j):
@@ -93,7 +97,10 @@ for beta in BETAS:
         row = {"beta": beta, "action": action, "acceptance": e["acceptance"], "eps": e["eps"],
                "seconds_ensemble": e["seconds"], "seed": e["seed"],
                "m_leading_exact": m_lead, "plateau": pl, "max_pull_C": max(pulls), "pulls_C": pulls,
-               "plaquette_channel": r_plq["plateau"], "shuffled": r_shuf["plateau"]}
+               "plaquette_channel": r_plq["plateau"], "shuffled": r_shuf["plateau"],
+               "plateau_as_fixed": r_pol.get("plateau_as_fixed"),
+               "plaquette_channel_as_fixed": r_plq.get("plateau_as_fixed"),
+               "shuffled_as_fixed": r_shuf.get("plateau_as_fixed")}
         if "mass" in pl:
             w = np.array([1 / r_pol["m_eff_err_t"][t] ** 2 for t in range(pl["t_lo"], pl["t_hi"] + 1)])
             for a in exact:
@@ -112,7 +119,7 @@ for beta in BETAS:
 
 rec = {"kind": "Q2: EFFECTIVE_MASS against the exact 2D SU(2) answer",
        "spec": "docs/HALCYON_Q2_RUN_SPEC.md",
-       "lattice": {"ns": NS, "nt": NT}, "run": {"n_therm": N_THERM, "n_meas": N_MEAS, "every": EVERY,
+       "lattice": {"ns": NS, "nt": NT}, "seeds": SEEDS, "plateau_rule": "amended (Q1-1, Q1-2)", "run": {"n_therm": N_THERM, "n_meas": N_MEAS, "every": EVERY,
                                                   "jackknife_block": BLOCK, "two_j_max": TWO_J},
        "gates": gates, "all_pass": all(gates.values()), "rows": rows}
 (out / "q2_receipt.json").write_text(json.dumps(rec, indent=1) + "\n")

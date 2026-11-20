@@ -57,6 +57,8 @@ them.
 - **Q1-b, null control.** On the 4D U(1) configurations in the same path, EFFECTIVE_MASS refuses or
   returns a value consistent with zero. It must not report a gap.
 
+> **Q1 plateau rule amended (2026-11-19):** amendments Q1-1 (3σ correlator floor) and Q1-2 (2σ consecutive agreement) adopted after the first Q1 and Q2 runs; see `docs/HALCYON_Q2_RUN_SPEC.md`, Amendment 1, for the text and the fresh-seed runs that judge them.
+
 ### Q2: an exact quantum answer to measure against
 
 > **Amended by `docs/HALCYON_Q2_RUN_SPEC.md` (2026-11-19, before any data).** The stored "3β/8"

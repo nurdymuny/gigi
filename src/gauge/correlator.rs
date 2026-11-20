@@ -16,6 +16,18 @@
 //!
 //! The earliest such window is taken and extended while the rule holds.
 //!
+//! **Amendments Q1-1 and Q1-2 (adopted 2026-11-19, docs/HALCYON_Q1_RESULTS.md and
+//! docs/HALCYON_Q2_RESULTS.md).** The rule as first fixed accepted noise points beside a real
+//! one (Q1, L = 16) and slid into the noise after two ordinary 1σ fluctuations (Q2, Wilson β = 4).
+//! The rule the verb now applies:
+//!
+//! * Q1-1: every t in the window has C(t−1), C(t), C(t+1) each at least `MIN_SIGNAL_SIGMA`
+//!   standard errors above zero (the three values m_eff(t) is built from);
+//! * Q1-2: consecutive effective masses agree within `AGREE_SIGMA` combined standard errors.
+//!
+//! The rule as first fixed (`PlateauRule::AS_FIXED`) is still computed and returned beside it,
+//! so every result can be read against the pre-registered rule.
+//!
 //! Errors are a (blocked) jackknife: leave out each block of `block` consecutive
 //! configurations; `block = 1` is the plain leave-one-out jackknife.
 
@@ -23,6 +35,26 @@
 pub const MIN_LEN: usize = 3;
 /// Largest admissible χ²/dof of the constant fit.
 pub const MAX_CHI2_DOF: f64 = 2.0;
+/// Amendment Q1-1: minimum significance of each correlator value a window point uses.
+pub const MIN_SIGNAL_SIGMA: f64 = 3.0;
+/// Amendment Q1-2: consecutive effective masses agree within this many combined errors.
+pub const AGREE_SIGMA: f64 = 2.0;
+
+/// The parameters of the plateau rule.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlateauRule {
+    /// consecutive m_eff agree within this many combined standard errors
+    pub agree_sigma: f64,
+    /// if set, C(t−1), C(t), C(t+1) must each be at least this many errors above zero
+    pub min_signal_sigma: Option<f64>,
+}
+
+impl PlateauRule {
+    /// The rule as first fixed in the spec, before any data.
+    pub const AS_FIXED: PlateauRule = PlateauRule { agree_sigma: 1.0, min_signal_sigma: None };
+    /// The rule with amendments Q1-1 and Q1-2; the verb's rule.
+    pub const AMENDED: PlateauRule = PlateauRule { agree_sigma: AGREE_SIGMA, min_signal_sigma: Some(MIN_SIGNAL_SIGMA) };
+}
 
 fn check(p: &[Vec<f64>]) -> Result<usize, String> {
     if p.is_empty() {
@@ -225,12 +257,30 @@ fn fit(m: &[f64], e: &[f64]) -> (f64, f64, f64) {
     (mean, (1.0 / sw).sqrt(), chi2 / dof)
 }
 
-/// The plateau rule of the spec (module docs). Never falls back to a best guess.
+/// The plateau rule as first fixed (no correlator inputs needed). Never falls back to a best guess.
 pub fn plateau(m: &[Option<f64>], err: &[f64]) -> Result<Plateau, NoPlateau> {
-    let ok = |t: usize| m[t].is_some() && err[t] > 0.0 && err[t].is_finite();
+    plateau_with(m, err, &[], &[], PlateauRule::AS_FIXED)
+}
+
+/// The plateau rule with explicit parameters; `c`, `c_err` are needed when the rule has a
+/// signal floor. Never falls back to a best guess.
+pub fn plateau_with(
+    m: &[Option<f64>],
+    err: &[f64],
+    c: &[f64],
+    c_err: &[f64],
+    rule: PlateauRule,
+) -> Result<Plateau, NoPlateau> {
+    let significant = |t: usize| match rule.min_signal_sigma {
+        None => true,
+        Some(k) => t >= 1
+            && t + 1 < c.len()
+            && (t - 1..=t + 1).all(|u| c_err[u] > 0.0 && c[u] >= k * c_err[u]),
+    };
+    let ok = |t: usize| m[t].is_some() && err[t] > 0.0 && err[t].is_finite() && significant(t);
     let agree = |t: usize| {
         let (a, b) = (m[t].unwrap(), m[t + 1].unwrap());
-        (a - b).abs() <= (err[t] * err[t] + err[t + 1] * err[t + 1]).sqrt()
+        (a - b).abs() <= rule.agree_sigma * (err[t] * err[t] + err[t + 1] * err[t + 1]).sqrt()
     };
     let mut first_break: Option<NoPlateau> = None;
     for t_lo in 0..m.len() {
@@ -243,12 +293,15 @@ pub fn plateau(m: &[Option<f64>], err: &[f64]) -> Result<Plateau, NoPlateau> {
         }
         if t_hi + 1 - t_lo < MIN_LEN {
             if first_break.is_none() {
-                let why = if t_hi + 1 < m.len() && ok(t_hi + 1) {
-                    "consecutive effective masses disagree by more than one combined standard error"
+                let nx = t_hi + 1;
+                let why = if nx < m.len() && ok(nx) {
+                    format!("consecutive effective masses disagree by more than {} combined standard errors", rule.agree_sigma)
+                } else if nx < m.len() && m[nx].is_some() && err[nx] > 0.0 && err[nx].is_finite() {
+                    format!("the correlator is less than {} standard errors from zero", rule.min_signal_sigma.unwrap_or(0.0))
                 } else {
-                    "the effective mass is undefined or unstable under the jackknife"
+                    "the effective mass is undefined or unstable under the jackknife".to_string()
                 };
-                first_break = Some(NoPlateau { t: t_hi + 1, reason: why.into() });
+                first_break = Some(NoPlateau { t: nx, reason: why });
             }
             continue;
         }
@@ -286,7 +339,10 @@ pub struct EffectiveMass {
     pub correlator_error: Vec<f64>,
     pub m_eff: Vec<Option<f64>>,
     pub m_eff_error: Vec<f64>,
+    /// the verb's plateau: the amended rule (Q1-1, Q1-2)
     pub plateau: Result<Plateau, NoPlateau>,
+    /// the rule as first fixed, for reading results against the pre-registered rule
+    pub plateau_as_fixed: Result<Plateau, NoPlateau>,
 }
 
 /// EFFECTIVE_MASS with the leave-one-out jackknife.
@@ -299,8 +355,9 @@ pub fn effective_mass(p: &[Vec<f64>]) -> Result<EffectiveMass, String> {
 pub fn effective_mass_blocked(p: &[Vec<f64>], block: usize) -> Result<EffectiveMass, String> {
     let (c, ce) = jackknife_correlator_blocked(p, block)?;
     let (m, me) = jackknife_effective_mass_blocked(p, block)?;
-    let plateau = plateau(&m, &me);
-    Ok(EffectiveMass { correlator: c, correlator_error: ce, m_eff: m, m_eff_error: me, plateau })
+    let plateau = plateau_with(&m, &me, &c, &ce, PlateauRule::AMENDED);
+    let plateau_as_fixed = plateau_with(&m, &me, &c, &ce, PlateauRule::AS_FIXED);
+    Ok(EffectiveMass { correlator: c, correlator_error: ce, m_eff: m, m_eff_error: me, plateau, plateau_as_fixed })
 }
 
 #[cfg(test)]
@@ -331,6 +388,35 @@ mod tests {
                         1.0 + sig + noise * lcg(&mut s)
                     })
                     .collect()
+            })
+            .collect()
+    }
+
+    /// A single-mass process: Gaussian time series whose covariance is exactly the periodic
+    /// cosh kernel cosh(m(d − L/2)) (the lattice Green's function shape), via Cholesky.
+    fn cosh_ensemble(m: f64, l: usize, n: usize, seed: u64) -> Vec<Vec<f64>> {
+        let k = |d: usize| (m * (d as f64 - l as f64 / 2.0)).cosh() / (m * l as f64 / 2.0).cosh();
+        let mut ch = vec![vec![0.0; l]; l];
+        for i in 0..l {
+            for j in 0..=i {
+                let d = (i as isize - j as isize).unsigned_abs();
+                let mut v = k(d.min(l - d));
+                for q in 0..j {
+                    v -= ch[i][q] * ch[j][q];
+                }
+                ch[i][j] = if i == j { v.sqrt() } else { v / ch[j][j] };
+            }
+        }
+        let mut s = seed;
+        let mut gauss = || {
+            let u = (lcg(&mut s) + 0.5).max(1e-300);
+            let v = lcg(&mut s) + 0.5;
+            (-2.0 * u.ln()).sqrt() * (std::f64::consts::TAU * v).cos()
+        };
+        (0..n)
+            .map(|_| {
+                let z: Vec<f64> = (0..l).map(|_| gauss()).collect();
+                (0..l).map(|i| 1.0 + (0..=i).map(|q| ch[i][q] * z[q]).sum::<f64>()).collect()
             })
             .collect()
     }
@@ -387,11 +473,29 @@ mod tests {
     }
 
     #[test]
+    fn amended_rule_needs_signal_and_tolerates_two_sigma() {
+        // m_eff on the true value with one 1.2-sigma step: as fixed breaks, amended accepts
+        let m = vec![None, Some(1.0), Some(1.0), Some(1.024), Some(1.0), None, None];
+        let e = vec![0.0, 0.01, 0.01, 0.01, 0.01, 0.0, 0.0];
+        let c = vec![1.0, 0.4, 0.15, 0.06, 0.02, 0.008, 0.003];
+        let ce = vec![0.001; 7];
+        assert!(plateau_with(&m, &e, &c, &ce, PlateauRule::AS_FIXED).is_err());
+        let p = plateau_with(&m, &e, &c, &ce, PlateauRule::AMENDED).unwrap();
+        assert_eq!((p.t_lo, p.t_hi), (1, 4));
+        // the same masses where C(3) is only 2 sigma from zero: amended refuses, naming t = 2
+        let mut ce2 = ce.clone();
+        ce2[3] = 0.03;
+        let r = plateau_with(&m, &e, &c, &ce2, PlateauRule::AMENDED).unwrap_err();
+        assert_eq!(r.t, 2, "{r}");
+    }
+
+    #[test]
     fn signal_ensemble_has_a_plateau_and_the_shuffled_null_refuses() {
-        let p = ensemble(0.5, 16, 400, 0.02, 7);
+        let p = cosh_ensemble(0.5, 16, 4000, 7);
         let r = effective_mass(&p).unwrap();
-        assert!(r.plateau.is_ok(), "{:?}", r.plateau);
-        let rb = effective_mass_blocked(&p, 20).unwrap();
+        let pl = r.plateau.clone().unwrap();
+        assert!((pl.mass - 0.5).abs() < 3.0 * pl.error, "{pl:?}");
+        let rb = effective_mass_blocked(&p, 40).unwrap();
         assert!(rb.plateau.is_ok(), "{:?}", rb.plateau);
         // null: break time correlation by drawing every slice from an independent configuration
         let mut s = 11u64;

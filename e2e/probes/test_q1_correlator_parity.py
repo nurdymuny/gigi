@@ -78,7 +78,7 @@ def compare(arr):
            "m_eff_err_t_halcyon_normalisation_rel": rel(e["m_eff_err_t_halcyon_normalisation"], me)}
     std = np.array([np.nan if x is None else x for x in e["m_eff_err_t"]], float)
     ratio = [float(s / h) if np.isfinite(s) and h > 0 else None for s, h in zip(std, me)]
-    return {"parity_rel": par, "engine_plateau": e["plateau"],
+    return {"parity_rel": par, "engine_plateau": e["plateau"], "engine_plateau_as_fixed": e.get("plateau_as_fixed"),
             "halcyon_auto_window": {"window": list(win) if win else None, "mass": mass, "error": err},
             "m_eff_t": e["m_eff_t"], "m_eff_err_t_standard": e["m_eff_err_t"],
             "m_eff_err_t_halcyon": [float(x) for x in me],
@@ -100,6 +100,7 @@ rec = {"kind": "Q1 correlator parity, null and removal", "p_bar": npy.name, "n_c
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(rec, indent=1) + "\n")
 print(json.dumps({"gates": gates, "signal_parity": sig["parity_rel"], "signal_plateau": sig["engine_plateau"],
+                  "signal_plateau_as_fixed": sig["engine_plateau_as_fixed"],
                   "halcyon_fit": sig["halcyon_auto_window"], "null_plateau": nul["engine_plateau"],
                   "null_halcyon_fit": nul["halcyon_auto_window"]}, indent=1))
 sys.exit(0 if all(gates.values()) else 1)

@@ -29,16 +29,18 @@ fn main() {
     let halcyon_err =
         if inp.block == 1 { jackknife_effective_mass_halcyon(&inp.p).unwrap().1 } else { vec![] };
     let fin = |v: &[f64]| v.iter().map(|x| if x.is_finite() { json!(x) } else { json!(null) }).collect::<Vec<_>>();
-    let plateau = match &r.plateau {
+    let pj = |x: &Result<gigi::gauge::correlator::Plateau, gigi::gauge::correlator::NoPlateau>| match x {
         Ok(p) => json!({"t_lo": p.t_lo, "t_hi": p.t_hi, "mass": p.mass, "error": p.error, "chi2_dof": p.chi2_dof}),
         Err(e) => json!({"refused": e.to_string(), "t": e.t}),
     };
+    let plateau = pj(&r.plateau);
+    let plateau_as_fixed = pj(&r.plateau_as_fixed);
     let out = json!({
         "block": inp.block,
         "C_t": fin(&r.correlator), "C_err_t": fin(&r.correlator_error),
         "m_eff_t": r.m_eff, "m_eff_err_t": fin(&r.m_eff_error),
         "m_eff_err_t_halcyon_normalisation": fin(&halcyon_err),
-        "plateau": plateau, "seconds": t0.elapsed().as_secs_f64(),
+        "plateau": plateau, "plateau_as_fixed": plateau_as_fixed, "seconds": t0.elapsed().as_secs_f64(),
     });
     std::fs::write(&a[2], serde_json::to_string_pretty(&out).unwrap()).unwrap();
 }

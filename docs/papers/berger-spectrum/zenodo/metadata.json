@@ -9,9 +9,11 @@
     "description": "@description.html",
     "access_right": "open",
     "license": "cc-by-4.0",
-    "version": "1",
+    "version": "2",
     "language": "eng",
     "keywords": [
+      "Berger family",
+      "interval arithmetic in a parameter",
       "Yang–Mills Hessian",
       "Berger sphere",
       "Poincaré homology sphere",
@@ -26,12 +28,13 @@
     "subjects": [],
     "notes": "MSC 2020: 58J50, 81T13, 58E15, 53C30, 65G30. This work received no funding. The author declares no competing interests.",
     "related_identifiers": [
+      {"identifier": "10.5281/zenodo.24386614", "relation": "isNewVersionOf", "resource_type": "publication-preprint", "scheme": "doi"},
       {"identifier": "10.5281/zenodo.24328085", "relation": "references", "resource_type": "publication-preprint", "scheme": "doi"},
       {"identifier": "10.5281/zenodo.24375338", "relation": "references", "resource_type": "publication-preprint", "scheme": "doi"},
-      {"identifier": "https://github.com/nurdymuny/gigi/tree/floor-theorem-v1", "relation": "isSupplementedBy", "resource_type": "software", "scheme": "url"}
+      {"identifier": "https://github.com/nurdymuny/gigi/tree/floor-theorem-v2", "relation": "isSupplementedBy", "resource_type": "software", "scheme": "url"}
     ],
     "custom": {
-      "code:codeRepository": "https://github.com/nurdymuny/gigi/tree/floor-theorem-v1",
+      "code:codeRepository": "https://github.com/nurdymuny/gigi/tree/floor-theorem-v2",
       "code:programmingLanguage": [{"id": "python", "title": {"en": "Python"}}]
     }
   }

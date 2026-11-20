@@ -2,7 +2,7 @@
 
 These are the scripts and receipts behind *The Floor Theorem for the Yang–Mills Hessian at the Berger Field: The
 Low Spectrum on the Poincaré Homology Sphere* (B. R. Davis, 2026), at their paths in the GIGI repository
-(<https://github.com/nurdymuny/gigi>, tag `floor-theorem-v1`).
+(<https://github.com/nurdymuny/gigi>, tag `floor-theorem-v2`).
 
 ## What reruns from this folder
 
@@ -22,6 +22,11 @@ Every script takes an output path; write to a fresh name and compare it with the
 | Prop. 4.1 (the floor formula), symbolic in j | `python scripts/ricci_su2_sector_formula.py > out/sector_formula.txt` | `…/sector_formula.txt` | seconds |
 | Prop. 3.1(3) exactly; the double-precision range j ≤ 120 (Remark) | `python scripts/ricci_su2_sector_minimality.py out/minimality.json 120` | `…/minimality.json` | about 2 min |
 | Lemma 5.1 (Weitzenböck), Theorem 5.2 and Table 1 (certified inertia: every pivot, ρ, the backward bound, ε) | `python scripts/ricci_su2_gap_certificates.py out/gap_certificates.json` | `…/gap_certificates.json` | about 20 s |
+| Proposition 6.1 (the floor law, symbolic in j and t) | `cd scripts && python ricci_su2_sector_formula_squashed.py` | `research/su2-floor-family-20261119/formula_squashed.txt` | about 30 s |
+| Theorem 6.2 (the Floor Theorem at (4,1,1)) | `python scripts/ricci_su2_gap_certificates_t.py 4 out/t4.json 136 0,12,20,24,30,32 36` | `…/gap_certificates_t4.json` | about 1 min |
+| Theorem 6.3 (the floor law for every t in [2.75, 10]) | `python scripts/ricci_su2_floor_interval_cert.py out/range.json 2.75 10 0,1,2,3,4,5,6,7,8,9,10,11,12,20,24 6` | `…/interval_cert_2.75_10.json` | about 15 min on 6 cores |
+| Remark 6.4 (t* and the scan, double precision) | `python scripts/ricci_su2_floor_family_scan.py out/scan.json 40` | `…/scan.json` | a few minutes |
+| Section 6 observations (flow; resting fields) | `ricci_su2_soft_mode_flow.py`, `ricci_su2_resting_fields.py`, `ricci_su2_resting_fields_general.py`, `ricci_su2_meron_family_soft.py` | `…/soft_mode_flow.json`, `resting_fields*.json`, `meron_family_soft.json` | minutes each |
 
 ## What does not rerun from this folder alone
 
@@ -31,6 +36,7 @@ Every script takes an output path; write to a fresh name and compare it with the
   (`scripts/ricci_su2_sector_eigvec_check.py`).
   - Recomputing them needs the meshes and the lattice forces. Those are in the code and data of *Reading the
     Curve* (<https://doi.org/10.5281/zenodo.24328085>).
+- **Figure 2** is drawn by `docs/papers/berger-spectrum/make_figure_floor_family.py` (matplotlib).
 - **Figure 1** is drawn by `docs/papers/two-ring-pg/make_figure_spectrum_ladder.py` from the receipts above
   (it needs matplotlib, also in `requirements.txt`).
 

@@ -1,3 +1,17 @@
+# Version 2 (new version of the published record)
+
+1. Open the published record (doi:10.5281/zenodo.24386614) and click **New version**. Zenodo keeps both versions
+   under the concept DOI 10.5281/zenodo.24386613, which the paper now cites, so no DOI needs reserving.
+2. Delete version 1's files. Upload `paper.pdf`, `floor-theorem-v2-latex.zip`,
+   `floor-theorem-v2-code-and-data.zip` and `MANIFEST.txt`.
+3. Paste `description.html` through the editor's **Source code** button. Set the version field to **2**.
+4. Fix the affiliation. The published version 1 lists **Brown University**; set **Davis Geometric**, as printed
+   in the paper.
+5. Keywords: add the two new ones from `metadata.json`. Related works are as before.
+6. Publish.
+
+---
+
 # Uploading *The Floor Theorem* to Zenodo
 
 The paper says its snapshot "will be archived with a DOI on publication". The clean way to keep that promise is

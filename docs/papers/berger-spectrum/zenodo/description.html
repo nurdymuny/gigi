@@ -10,6 +10,21 @@
 <li><strong>On the Poincar&eacute; sphere.</strong> Glue the opposite faces of a dodecahedron with a tenth of a turn and you get Poincar&eacute;'s homology sphere, S<sup>3</sup>/2I. On it only the sectors carrying Klein's icosahedral invariants survive: j = 0, 12, 20, 24, 30, &hellip; Below 142 the gauge-orthogonal spectrum consists of the six left-invariant values above and the spin-6 values from 154/3 upward.</li>
 <li><strong>The floor gap.</strong> The first sector above the left-invariant one begins <strong>168/3</strong> above the growth mode. That is one third of 168, the first eigenvalue of the scalar Laplacian on the Poincar&eacute; sphere.</li>
 </ul>
+<h3>The same law on every stretched sphere</h3>
+<p>The number 3 was never special. Stretch the sphere by any amount t, so its geometry is (t, 1, 1), and the same circular twist is still an exact vibration of its field, with energy</p>
+<p><strong>&lambda;<sub>t</sub>(j) = [ j(j+2) &minus; 2(t&minus;3)&middot;j &minus; 2(t&minus;2)(t+4) ] / t</strong>.</p>
+<ul>
+<li><strong>Proved for every t</strong>, symbolically in both j and t. At t = 3 it is the formula above.</li>
+<li><strong>Certified as the floor at t = 4.</strong> The floor is j&sup2;/4 &minus; 8, and the full low spectrum on the Poincar&eacute; sphere is classified below 136.</li>
+<li><strong>Certified as the floor for every stretch from 2.75 to 10 at once</strong>, in the sectors j = 0&ndash;12, 20 and 24. Here the stretch itself is treated as an interval: 1,091 slices tile the range with no gaps, and each is certified for every t inside it.</li>
+<li><strong>A tipping point.</strong> Below t &asymp; 2.698 the twist stops being the floor. That value is found numerically, not certified.</li>
+<li><strong>Where each twist goes free.</strong> The twist in sector j costs nothing at a stretch given in closed form, t<sub>j</sub> = &frac12;(&radic;((j+2)&sup2; + 2(j+4)&sup2;) &minus; (j+2)), and beyond it lowers the energy. The floor gap on the Poincar&eacute; sphere is (240 &minus; 24t)/t. It equals 168/3 only at t = 3 and closes at t = 10.</li>
+</ul>
+<p>Two numerical experiments, labelled as such in the paper, say what this law is and is not:</p>
+<ul>
+<li><strong>It describes the landscape, not yet a flow in time.</strong> The Berger field slides toward a flat field faster than any twist can grow.</li>
+<li><strong>Its resting relative is stiff.</strong> The squashed meron is the one non-flat resting left-invariant field found. It keeps a single unstable direction across all the shapes searched, and nothing on it goes soft.</li>
+</ul>
 <h3>How it is proved</h3>
 <ul>
 <li><strong>A Weitzenb&ouml;ck identity.</strong> H + GG* = &Sigma; X<sub>i</sub>*X<sub>i</sub> + R<sub>0</sub>, proved once in the universal enveloping algebra in exact arithmetic, so it holds in every sector at the same time. R<sub>0</sub> is a constant 9&times;9 matrix with smallest eigenvalue &minus;12, and the connection term has &omega;<sup>2</sup> = 76/3. Together they bound every sector from below.</li>
@@ -27,15 +42,29 @@
 <li>At a field that is not at rest, separating gauge directions from physical ones is a choice. The theorem is stated on the L<sup>2</sup> (Coulomb) slice, and the full Hessian is given alongside it.</li>
 <li>The closed form is tied to this squashing: at (2, 1, 1), (4, 1, 1) and the round metric the bottom of a sector is not of this form. Minimality of the floor for every j beyond the sectors that matter is not proved, and the gap does not need it.</li>
 </ul>
+<h3>What is new in version 2</h3>
+<ul>
+<li><strong>Section 6, the floor across the Berger family:</strong>
+<ul>
+<li>the floor law for every stretch (proved symbolically);</li>
+<li>the complete Floor Theorem at (4, 1, 1);</li>
+<li>the floor certified for every t in [2.75, 10];</li>
+<li>the tipping point t* &asymp; 2.698 (numerical);</li>
+<li>the stretches where each twist goes free, in closed form;</li>
+<li>a new figure.</li>
+</ul></li>
+<li>Two clearly labelled numerical observations: the flow test, and the search for resting fields.</li>
+<li>The availability line now cites the concept DOI, so it always points to the latest version.</li>
+</ul>
 <h3>The files in this record</h3>
 <ul>
-<li><code>paper.pdf</code>: the paper, 8 pages.</li>
-<li><code>floor-theorem-v1-latex.zip</code>: the LaTeX source, the style file and the figure, with the figure's script. It compiles as is with <code>pdflatex</code> and reproduces the paper.</li>
-<li><code>floor-theorem-v1-code-and-data.zip</code>: every script the theorem runs through, at its repository path, with the receipts it produced and the lattice spectra behind the table and the figure. The proof scripts need only Python with NumPy, SymPy and mpmath. Unzipped into an empty folder they rerun, and the receipts they write match the committed ones. See its <code>README.md</code>.</li>
+<li><code>paper.pdf</code>: the paper, 12 pages.</li>
+<li><code>floor-theorem-v2-latex.zip</code>: the LaTeX source, the style file and the figure, with the figure's script. It compiles as is with <code>pdflatex</code> and reproduces the paper.</li>
+<li><code>floor-theorem-v2-code-and-data.zip</code>: every script the theorem runs through, at its repository path, with the receipts it produced and the lattice spectra behind the table and the figure. The proof scripts need only Python with NumPy, SymPy and mpmath. Unzipped into an empty folder they rerun, and the receipts they write match the committed ones. See its <code>README.md</code>.</li>
 <li><code>MANIFEST.txt</code>: the SHA-256 of every file and the commit the record was built from.</li>
 </ul>
 <h3>The code</h3>
-<p>The scripts live in GIGI, my open-source geometric engine (PolyForm Noncommercial 1.0.0): <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>, tag <code>floor-theorem-v1</code>. The lattice spectra used in the checks come from the code and data of <em>Reading the Curve</em>, which carry the meshes and the forces.</p>
+<p>The scripts live in GIGI, my open-source geometric engine (PolyForm Noncommercial 1.0.0): <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>, tag <code>floor-theorem-v2</code>. The lattice spectra used in the checks come from the code and data of <em>Reading the Curve</em>, which carry the meshes and the forces.</p>
 <h3>Companion papers</h3>
 <ul>
 <li><em>Reading the Curve, Not Counting the Points</em>, where the Berger field first appears and where the lattice forces checked here are built: <a href="https://doi.org/10.5281/zenodo.24328085">doi:10.5281/zenodo.24328085</a>.</li>

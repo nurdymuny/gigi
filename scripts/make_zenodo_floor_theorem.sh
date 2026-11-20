@@ -61,7 +61,7 @@ FILES=(
   scripts/ricci_su2_weitzenbock_symbolic_t.py scripts/ricci_su2_landau_symbolic.py
   scripts/ricci_su2_charge_block_direct.py scripts/ricci_su2_block_rows_symbolic.py
   scripts/ricci_su2_charge_selection_symbolic.py scripts/ricci_su2_block_interval_cert.py
-  scripts/ricci_su2_floor_large_j.py
+  scripts/ricci_su2_floor_large_j.py scripts/ricci_su2_tstar_exact.py scripts/ricci_su2_tA_scan.py
   docs/papers/berger-spectrum/make_figure_floor_family.py
   docs/research/floor-family-squashing-2026-11-19.md
   LICENSE
@@ -71,7 +71,7 @@ for f in $R/*; do FILES+=("$f"); done
 for f in gap_certificates_t4.json spin0_slice_t4.txt formula_squashed.txt interval_cert_2.75_10.json scan.json \
          soft_mode_flow.json soft_mode_controls.txt resting_fields.json resting_fields_general.json meron_family_soft.json \
          weitzenbock_symbolic_t.json landau_symbolic.txt block_rows_symbolic.json charge_selection_symbolic.txt \
-         block_cert_j40.json block_cert_j41_99.json floor_large_j.json; do
+         block_cert_j40.json block_cert_j41_99.json floor_large_j.json tstar_exact.txt tA_scan.txt; do
   FILES+=("research/su2-floor-family-20261119/$f")
 done
 for t in L0_native L0_pg L1_native L1_pg; do FILES+=(research/su2-pg-stability-20261117/$t.eigs.npy research/su2-pg-stability-20261117/$t.json); done

@@ -34,6 +34,8 @@ Every script takes an output path; write to a fresh name and compare it with the
 | Theorem 6.6, the first certificate (full sector matrices, fifteen sectors) | `python scripts/ricci_su2_floor_interval_cert.py out/range.json 2.75 10 0,1,2,3,4,5,6,7,8,9,10,11,12,20,24 6` | `…/interval_cert_2.75_10.json` | about 15 min on 6 cores |
 | The charge blocks against the full sector matrices (validation) | `python scripts/ricci_su2_charge_block_direct.py` | (prints the differences) | about a minute |
 | Remark 6.7 (t* and the scan, double precision) | `python scripts/ricci_su2_floor_family_scan.py out/scan.json 40` | `…/scan.json` | a few minutes |
+| Remark 6.7 (t_A, the threshold of H + GG*, exact) | `python scripts/ricci_su2_tstar_exact.py out/tstar_exact.txt` | `…/tstar_exact.txt` | hours (symbolic determinants) |
+| Remark 6.7 (between t_A and 2.75, double precision) | `python scripts/ricci_su2_tA_scan.py out/tA_scan.txt` | `…/tA_scan.txt` | about 10 min |
 | Section 6 observations (flow; resting fields) | `ricci_su2_soft_mode_flow.py`, `ricci_su2_resting_fields.py`, `ricci_su2_resting_fields_general.py`, `ricci_su2_meron_family_soft.py` | `…/soft_mode_flow.json`, `resting_fields*.json`, `meron_family_soft.json` | minutes each |
 
 ## What does not rerun from this folder alone

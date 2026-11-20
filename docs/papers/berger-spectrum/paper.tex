@@ -509,9 +509,21 @@ At $t=3$ this completes Proposition~\ref{prop:bottom}: $(j(j+2)-14)/3$ is the fl
 Berger field $(3,1,1)$, not only of those that survive on the Poincar\'e sphere.
 
 \begin{remark}[Below the range]\label{rem:tstar}
-In double precision, $\lambda_t(j)$ is the bottom of every sector $j\le40$ for every $t\in[2.7,2.75]$ tested.
-Below $t^*\approx2.6980$ (located by bisection) a lower eigenvalue appears, first in the sector $j=4$; at
-$t\le2$ the branch is the floor of no sector. None of this is certified.
+There are two thresholds, one for each statement of Theorem~\ref{thm:range}.
+\emph{Gauge-orthogonal spectrum.} In double precision, $\lambda_t(j)$ is its bottom in every sector $j\le40$ for
+every $t\in[2.7,2.75]$ tested. Below $t^*\approx2.6980$ (located by bisection) a lower eigenvalue appears, first
+in the sector $j=4$; at $t\le2$ the branch is the floor of no sector.
+\emph{The operator $H+GG^*$.} The threshold is algebraic. The charge-$0$ block of the sector $j=4$ has
+$\lambda_t(4)$ as an eigenvalue exactly when $s=\sqrt t$ is a root of its determinant, whose largest positive root
+is that of
+\[
+  3s^{16}+121s^{14}+1066s^{12}-2836s^{10}-18624s^8+20992s^6+181248s^4-425984s^2+262144,
+\]
+$t_A=s^2=2.7311222782\ldots$ (\path{scripts/ricci_su2_tstar_exact.py}). In double precision, below $t_A$ that
+block has an eigenvalue under $\lambda_t(4)$, and between $t_A$ and $2.75$ no sector $j\le40$ has one
+(\path{scripts/ricci_su2_tA_scan.py}). So between $t^*$ and $t_A$ the eigenvalue of $H+GG^*$ below
+$\lambda_t(4)$ is not gauge-orthogonal, and the twist remains the floor of the slice. Only the range of
+Theorem~\ref{thm:range} is certified.
 \end{remark}
 
 \begin{corollary}\label{cor:family}
@@ -638,8 +650,8 @@ statement about the second variation at the Berger field, the shape of the lands
 resting relative, the squashed meron, keeps a single unstable direction across the family, and no twist goes
 soft on it.
 
-\paragraph{Open questions.} The floor outside $[2.75,10]$; the threshold $t^*$ in closed form, where a second
-eigenvalue branch crosses $\lambda_t(4)$; the floor along the Ricci flow of the metric; Yang--Mills fields that
+\paragraph{Open questions.} The floor outside $[2.75,10]$; the gauge-orthogonal threshold $t^*$ in closed form (that of
+$H+GG^*$ is algebraic, Remark~\ref{rem:tstar}); the floor along the Ricci flow of the metric; Yang--Mills fields that
 are not left-invariant on the squashed spheres, where a twist might go soft at rest; and the higher eigenvalues
 of each sector.
 
@@ -670,7 +682,8 @@ For Section~\ref{sec:family}, with outputs in \path{research/su2-floor-family-20
   \item Lemma~\ref{lem:charge}: \path{scripts/ricci_su2_charge_selection_symbolic.py};
   \item the charge blocks: \path{scripts/ricci_su2_charge_block_direct.py};\\
     their closed-form rows: \path{scripts/ricci_su2_block_rows_symbolic.py};
-  \item Remark~\ref{rem:tstar}: \path{scripts/ricci_su2_floor_family_scan.py};
+  \item Remark~\ref{rem:tstar}: \path{scripts/ricci_su2_floor_family_scan.py},
+    \path{scripts/ricci_su2_tstar_exact.py}, \path{scripts/ricci_su2_tA_scan.py};
   \item the flow experiment: \path{scripts/ricci_su2_soft_mode_flow.py};
   \item resting fields: \path{scripts/ricci_su2_resting_fields.py},
     \path{scripts/ricci_su2_resting_fields_general.py}, \path{scripts/ricci_su2_meron_family_soft.py}.

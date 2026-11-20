@@ -528,23 +528,55 @@ exactly.
 If $X_K$ has full column rank, then $\cR_KX_K=I_{11}$: the recovery reproduces every
 closed linear curvature exactly. Let $\Lambda_K=\norm{\cR_K}_2$. For smooth closed $F$,
 \[
-  \norm{P_K[\cR_K\Phi_F]-F}_{L^\infty(K)} \;\le\; C\,(1+\Lambda_K)\,h^2\,|F|_{W^{2,\infty}(\mathcal{N}(K))}.
+  \norm{P_K[\cR_K\Phi_F]-F}_{L^\infty(K)} \;\le\; C\,(1+\Lambda_K)\,h^2\,|F|_{W^{2,\infty}(\mathcal{N}(K))},
 \]
+where both fields are compared in $K$'s chart, and $C$ depends only on the shape-regularity
+constant of the mesh and on the number of rings.
 \end{lemma}
-\begin{proof}[Proof sketch]
-Exactness: for data $X_Kx$, the residual and the constraint are both satisfied at $x$,
-and the constrained minimizer is unique under full rank. For accuracy, let $F_1$ be the
-closed linear Taylor polynomial of $F$ at $K$'s centroid. Then
-$\cR_K\Phi_F-F_1=\cR_K(\Phi_F-X_KF_1)$, and each flux defect is $O(h^2)$ relative in the
-chart scaling. The remaining $O(h^2)$ is the Taylor remainder.
+\begin{proof}
+\emph{Exactness.} For data $X_Kx$, the constraint $A_Kx'=f_{\mathrm{own}}$ and the residual
+$\norm{R_Kx'-f_{\mathrm{rest}}}$ are both satisfied exactly at $x'=x$, and the constrained
+minimizer is unique when $X_K$ has full column rank. So $\cR_KX_Kx=x$.
 
-Two points are not tracked here. First, $\Lambda_K$ is measured in the chart's
-coordinates, which are scaled by $K$'s diameter, so it is dimensionless; the constant $C$
-absorbs that scaling and shape regularity. Second, the chart is a central projection,
-not an isometry, and the transport of $F$ into the chart introduces a metric distortion
-that we assume, but do not prove, is $O(h^2)$ relative on shape-regular cells. A complete
-proof must bound both. The second-order curvature convergence measured in
-Figure~\ref{fig:curvature} is consistent with the estimate but does not prove it.
+\emph{The chart reads every face as a straight triangle.} Each face of the mesh, on $K$ or on a
+neighbour, is the radial image on $S^3$ of a flat triangle $\Delta\subset\RR^4$ spanned by its
+three vertices. The left multiplications that carry neighbours onto $K$'s sheet are isometries
+of $\RR^4$, so they map flat triangles to flat triangles. $K$'s chart is the central
+projection onto the affine hyperplane $H_K$ through $K$'s vertices. The radial image of
+$\Delta$ meets $H_K$ in $\operatorname{cone}(\Delta)\cap H_K$. The cone is a convex set in a
+three-dimensional linear subspace, and the method refuses any neighbour with a vertex outside
+the projective chart. So this intersection is the straight triangle on the projected
+vertices. Let $\tilde F$ be the pull-back of $F$ to the chart. By the change of variables, each
+measured flux is exactly the flux of $\tilde F$ through a straight chart triangle. The
+recovery's input therefore carries no geometric distortion at all. Pulling back preserves
+closedness, so $\tilde F$ is a smooth divergence-free field on the chart.
+
+\emph{Accuracy.} Write $d$ for $K$'s diameter, so that the chart coordinates scaled by $d$ are
+of order one on $\mathcal N(K)$. Let $F_1$ be the linear Taylor polynomial of $\tilde F$ at $K$'s
+projected centroid. Its divergence is the divergence of $\tilde F$ at that point, which is
+zero, so $F_1\in\Pone$. By exactness,
+\[
+  P_K[\cR_K\Phi_F]-\tilde F \;=\; P_K\bigl[\cR_K(\Phi_F-X_KF_1)\bigr]+(F_1-\tilde F).
+\]
+On $\mathcal N(K)$, whose diameter is at most $c_1d$ for a fixed number of rings,
+$|F_1-\tilde F|\le\tfrac12 c_1^2d^2|\tilde F|_{W^{2,\infty}}$. That bounds the second term on $K$.
+It also bounds each flux defect, $|(\Phi_F-X_KF_1)_f|\le\operatorname{area}(f)\,\tfrac12c_1^2d^2|\tilde
+F|_{W^{2,\infty}}$, where every face has area at most $c_2d^2$ and there are at most $c_3$ faces. In
+the scaled units in which $\Lambda_K$ is measured (fluxes divided by $d^2$), the defect vector
+therefore has norm at most $\tfrac12c_1^2c_2\sqrt{c_3}\,d^2|\tilde F|_{W^{2,\infty}}$, and $\cR_K$
+multiplies it by at most $\Lambda_K$. A coefficient vector of size $\delta$ in these units gives a
+field of size at most $c_4\delta$ on $K$. Together,
+\[
+  \norm{P_K[\cR_K\Phi_F]-\tilde F}_{L^\infty(K)}\;\le\;C\,(1+\Lambda_K)\,d^2\,|\tilde F|_{W^{2,\infty}(\mathcal N(K))}.
+\]
+The constants $c_1,\dots,c_4$ depend only on shape regularity and the number of rings, and
+$d\le h$.
+
+\emph{Back to the sphere.} The inverse chart is smooth. On a region of size $O(h)$ near the point
+of tangency, its derivatives up to second order are bounded by constants that again depend only
+on shape regularity. So $|\tilde F|_{W^{2,\infty}}\le C|F|_{W^{2,\infty}}$, and the chart norm on $K$
+is equivalent to the metric norm with constants of the same kind. This conversion costs a bounded
+factor, not an additional power of $h$. That gives the stated bound.
 \end{proof}
 
 Combining Lemma~\ref{lem:acc} with~\eqref{eq:pgbound} gives a consistency error of order

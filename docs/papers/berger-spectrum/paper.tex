@@ -1,7 +1,7 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1.1in,headsep=18pt]{geometry}
 \usepackage{amsmath, amsthm, amssymb}
-\newcommand{\dgshorttitle}{The Yang--Mills Hessian at the Berger Field}
+\newcommand{\dgshorttitle}{The Floor Theorem at the Berger Field}
 \newcommand{\dgauthorshort}{B. R. Davis}
 \input{../dgstyle}
 \usepackage{graphicx}
@@ -22,8 +22,8 @@
 \newcommand{\norm}[1]{\lVert #1\rVert}
 \newcommand{\RR}{\mathbb{R}}
 
-\title{The Low Spectrum of the Yang--Mills Hessian\\ at the Berger Field\\[4pt]
-\large and Its Gap on the Poincar\'e Homology Sphere}
+\title{The Floor Theorem for the Yang--Mills Hessian\\ at the Berger Field\\[4pt]
+\large The Low Spectrum on the Poincar\'e Homology Sphere}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
 \date{November 2026}
@@ -82,11 +82,11 @@ at rest, so gauge directions are not zero modes, and the compression $PHP$ is th
   \item \emph{The left-invariant sector} (Section~\ref{sec:spin0}) is computed exactly. Three of its
     nine directions are gauge directions. Its slice spectrum is $-14/3$ (twice), $16-2\sqrt{73}$,
     $22/3$ (twice) and $16+2\sqrt{73}$. All three growth directions come from the commutator.
-  \item \emph{The bottom of every sector} (Proposition~\ref{prop:bottom}) is $(j(j+2)-14)/3$ on an
+  \item \emph{The floor formula} (Proposition~\ref{prop:bottom}): the bottom of every sector is $(j(j+2)-14)/3$ on an
     explicit eigenvector.
   \item \emph{A Weitzenb\"ock identity} (Lemma~\ref{lem:weitz}), proved in $U(\su)$, gives a lower
     bound for every sector at once.
-  \item \emph{The gap on the Poincar\'e sphere} (Theorem~\ref{thm:gap}) follows, with certified
+  \item \emph{The Floor Theorem} (Theorem~\ref{thm:gap}) follows, with certified
     inertia counts in the four sectors that matter.
 \end{itemize}
 Section~\ref{sec:checks} checks the construction against the published round-sphere results and
@@ -159,9 +159,9 @@ $16-2\sqrt{73}$, each orthogonal to the gauge directions. All of them come from 
 itself: with the commutator dropped, the same sector is $4/3$ $(\times6)$ and $12$ $(\times3)$, all
 positive.
 
-\section{The bottom of every sector}\label{sec:bottom}
+\section{The floor formula}\label{sec:bottom}
 
-\begin{proposition}\label{prop:bottom}
+\begin{proposition}[The floor formula]\label{prop:bottom}
 In the sector of spin $j/2$, let $f\in V_j$ be the top weight, $J_0f=\tfrac j2f$. The field
 \[
   b=f\,(\hat\theta^1+i\,\hat\theta^2)\otimes(\tau_1+i\,\tau_2)
@@ -218,7 +218,7 @@ theorem the identity holds in $U(\su)$, hence in every representation $V_j$
 (\path{scripts/ricci_su2_gap_certificates.py}).
 \end{proof}
 
-\begin{theorem}[The gap on the Poincar\'e sphere]\label{thm:gap}
+\begin{theorem}[The Floor Theorem]\label{thm:gap}
 At the Berger metric $g=(3,1,1)$:
 \begin{enumerate}
   \item every gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least
@@ -260,7 +260,17 @@ $\lambda(j)$, twice, and the next eigenvalue at least $\lambda(j)+2/3$. The theo
 this. Minimality for $j>120$ is not needed for the gap and is not proved.
 \end{remark}
 
-\begin{corollary}\label{cor:56}
+In one line, with $\lambda_j(\Delta_{S^3})=j(j+2)$ the eigenvalue of the scalar Laplacian of the round
+unit sphere on the sector of spin $j/2$, the floor formula reads
+\[
+  \boxed{\;\lambda_{\mathrm{floor}}(j)\;=\;\frac{\lambda_j(\Delta_{S^3})-14}{3}\;=\;\frac{j(j+2)-14}{3}\;}
+\]
+It is an eigenvalue in every sector (Proposition~\ref{prop:bottom}); the Floor Theorem shows that it is the
+floor of every sector below $j=30$ that survives on the Poincar\'e sphere, and bounds every higher
+sector. On the Poincar\'e sphere the floors of the first two surviving sectors differ by
+$\lambda_1(\Delta_{S^3/2I})/3=168/3$.
+
+\begin{corollary}[The floor gap]\label{cor:56}
 On the Poincar\'e sphere, the first sector above the left-invariant one begins
 $\lambda(12)-\lambda(0)=168/3=56$ above the growth mode: one third of the sphere's first scalar
 eigenvalue. The spectral gap between the two sectors runs from $16+2\sqrt{73}=33.09$ to $154/3=51.33$.

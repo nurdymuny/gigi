@@ -1433,11 +1433,11 @@ $b_i\in V_j\otimes\mathfrak{su}(2)$. $H$ is the Hessian of $E=\tfrac12\norm{F}^2
 mass. The gauge map is $G\xi=(\hat e_i\xi+[M_i,\xi])_i$ for $\xi\in V_j\otimes\mathfrak{su}(2)$, with
 $L^2$ adjoint $G^*$.
 
-\paragraph{The bottom of every sector.} The spectrum has a closed form at its bottom. Write $f\in V_j$ for the top
+\paragraph{The floor of every sector.} The spectrum has a closed form at its floor. Write $f\in V_j$ for the top
 weight along the long axis of the Berger metric, $J_0f=\tfrac j2f$, and $\hat\theta^i$ for the
 orthonormal coframe.
 
-\begin{proposition}[The bottom of every sector]\label{prop:sector}
+\begin{proposition}[The floor formula]\label{prop:sector}
 At the Berger metric $g=(3,1,1)$, in the sector of spin $j/2$, the field
 \[
   b \;=\; f\,(\hat\theta^1+i\,\hat\theta^2)\otimes(\tau_1+i\,\tau_2)
@@ -1479,7 +1479,7 @@ not preserve the slice, and this compression is the object the theorem is about.
 spectral gap of this classical linearised operator; it is not a statement about the quantum theory
 or a Yang--Mills mass gap.
 
-\begin{theorem}[The gap on the Poincar\'e sphere]\label{thm:gap}
+\begin{theorem}[The Floor Theorem]\label{thm:gap}
 At the Berger metric $g=(3,1,1)$:
 \begin{enumerate}
   \item every gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least
@@ -1542,7 +1542,19 @@ certificates are in \path{research/su2-left-invariant-sector-20261119/gap_certif
 \end{proof}
 
 For $j>120$, minimality is not needed for the gap and is not proved. A companion
-paper~\cite{davisberger} develops these results as a self-contained spectral theorem. Taken together, the field's strongest
+paper~\cite{davisberger} develops these results as a self-contained spectral theorem.
+
+In one line, with $\lambda_j(\Delta_{S^3})=j(j+2)$ the eigenvalue of the scalar Laplacian of the round
+unit sphere on the sector of spin $j/2$, the floor formula reads
+\[
+  \boxed{\;\lambda_{\mathrm{floor}}(j)\;=\;\frac{\lambda_j(\Delta_{S^3})-14}{3}\;=\;\frac{j(j+2)-14}{3}\;}
+\]
+It is an eigenvalue in every sector (Proposition~\ref{prop:sector}); the Floor Theorem shows that it is the
+floor of every sector below $j=30$ that survives on the Poincar\'e sphere, and bounds every higher
+sector. On the Poincar\'e sphere the floors of the first two surviving sectors differ by
+$\lambda_1(\Delta_{S^3/2I})/3=168/3$.
+
+Taken together, the field's strongest
 growth direction and the bottom of every higher sector are one formula (Figure~\ref{fig:ladder}).
 At $j=0$ it gives $-14/3$, the growth mode. The first sector that survives on the Poincar\'e sphere
 is $j=12$, where $j(j+2)=168$ is the first nonzero eigenvalue of the scalar Laplacian on the
@@ -2008,7 +2020,7 @@ inputs of the \GIGI{} Ricci checkpoint, by the following programs.
 \bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230.
 \bibitem{cdl2013} A.~Cohen, M.~A.~Davenport, D.~Leviatan, On the stability and accuracy of least squares approximations, \emph{Found.\ Comput.\ Math.} 13 (2013) 819--834.
 \bibitem{cp} M.~Crouzeix, C.~Palencia, The numerical range is a $(1+\sqrt2)$-spectral set, \emph{SIAM J.\ Matrix Anal.\ Appl.} 38 (2017) 649--655.
-\bibitem{davisberger} B.~R.~Davis, The low spectrum of the Yang--Mills Hessian at the Berger field and its gap on the Poincar\'e homology sphere, in preparation, 2026.
+\bibitem{davisberger} B.~R.~Davis, The Floor Theorem for the Yang--Mills Hessian at the Berger field: the low spectrum on the Poincar\'e homology sphere, in preparation, 2026.
 \bibitem{threeways} B.~R.~Davis, Three ways across a turn: chord, arc and tangent, Zenodo,
 2026, \url{https://doi.org/10.5281/zenodo.24375338}.
 \bibitem{gp2018} E.~H.~Georgoulis, T.~Pryer, Recovered finite element methods, \emph{Comput.\ Methods Appl.\ Mech.\ Engrg.} 332 (2018) 303--324.

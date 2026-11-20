@@ -91,3 +91,13 @@ after it: the harness, the probe, the gates and the full scoring of k0-k10 stand
 and C-null exactly as registered; the peek is recorded so no one reads it as unseen when the full receipt lands.
 Read: Q3-a and Q3-v at beta 2.2986 pass (k0 with k7); C-harm at k7 0++ within 0.64 sigma of the Amendment-2 value;
 the Amendment-2 flux loop refused at k7 and the Q3-C one did not (C-harm does not apply there); nulls refuse.
+
+## Step 2: the ensembles inside GIGI (k0-k8), 2026-11-20 ~09:00
+
+docs/HALCYON_Q3_INGEST_SPEC.md (286a7dd1, before code), harness e2e/probes/test_q3_ingest.py (fc436643, before its run).
+Engine target-ym6/q3ext/gigi-stream.exe (sha256 prefix cc121c0f174ad266), own port, key and data dir
+%USERPROFILE%\gigi-data\q3-ingest-20261120. All gates pass: I-load (1,300,000 records in nine bundles), I-store
+(worst relative difference 0.0), I-parity (GQL and REST equal the frozen Q3-C probe, refusals included), I-null,
+I-persist (engine killed and restarted: the k0 row is bit-identical). Receipt ingest_receipt_k0_k8.json. The receipt
+contains the computed k8 values (parity needs them); they were not read. k8 is scored, with its C-job gate, only by
+the registered extension harness.

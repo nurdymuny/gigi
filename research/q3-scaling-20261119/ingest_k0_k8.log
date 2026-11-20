@@ -1,0 +1,19 @@
+{"bundle": "q3_k0", "records": 100000, "ingest": "loaded", "seconds": 3.8, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k1", "records": 140000, "ingest": "loaded", "seconds": 4.7, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k2", "records": 120000, "ingest": "loaded", "seconds": 4.2, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k3", "records": 160000, "ingest": "loaded", "seconds": 5.3, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k4", "records": 160000, "ingest": "loaded", "seconds": 4.7, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k5", "records": 200000, "ingest": "loaded", "seconds": 6.3, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k6", "records": 160000, "ingest": "loaded", "seconds": 4.9, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k7", "records": 120000, "ingest": "loaded", "seconds": 3.7, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{"bundle": "q3_k8", "records": 140000, "ingest": "loaded", "seconds": 4.2, "store_worst_rel": 0.0, "scalar": [true, true], "torelon": [true, true]}
+{
+ "gates": {
+  "I-load": true,
+  "I-store": true,
+  "I-parity": true,
+  "I-null": true,
+  "I-persist": true
+ }
+}
+exit 0

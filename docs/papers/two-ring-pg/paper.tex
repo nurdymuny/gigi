@@ -1124,7 +1124,66 @@ operator's stay below $1$. That extent grows with refinement; the numerical rang
 that it stays harmless at every level measured.
 That is the cost of a force that is not the gradient of an energy. Gauge directions are
 not exact zero modes at a field that is not at rest, so the count of small eigenvalues was
-recorded but not gated.
+recorded but not gated; the exact check below says which they are.
+
+\paragraph{An exact check of the spectrum.} The Berger field, its metric and the energy are all
+invariant under left translations of $S^3$, so the linearised Yang--Mills operator splits by
+representation, and each piece is a finite matrix that can be computed exactly. The smallest
+piece is the left-invariant sector: $\mathfrak{su}(2)$-valued $1$-forms that are constant in the
+left-invariant frame, nine numbers in all. On the Poincar\'e sphere, a quotient by left
+translations, a sector of spin $j/2$ survives only as often as the binary icosahedral group has
+invariants in its spin-$j/2$ representation, which the Molien series
+$(1+t^{30})/\bigl((1-t^{12})(1-t^{20})\bigr)$ counts~\cite{klein1884}. After spin $0$, the next
+sectors are spin $6$, $10$, $12$ and $15$. We computed the Hessian of $E=\tfrac12\norm{F}^2$
+against the $L^2$ mass on the spin-$0$ sector exactly, and on the higher sectors as exact finite
+matrices of size $9(j+1)$. As controls, spin $0$ is reproduced to $8\times10^{-15}$ by the general
+construction, and on the round metric without the commutator the construction returns exactly
+the coexact $1$-form spectrum of the unit $S^3$ (for spin $6$: $144$, $196$ and the gauge zeros,
+with the known multiplicities). These exact values were computed after the lattice spectra had
+been measured, so they are a check, not a gate. Table~\ref{tab:su2exact} compares them with the
+measured eigenvalues.
+
+\begin{table}[t]\centering\small
+\caption{The exact low spectrum of the linearised $SU(2)$ Yang--Mills operator at the Berger field
+on the Poincar\'e sphere, against the real part of the nearest measured lattice eigenvalue.
+Spin $0$ is the left-invariant sector, spin $6$ the next allowed one. The measured doubles carry
+imaginary parts of at most $0.09$: the lattice linearises the force in link coordinates at a field
+that is not at rest, where the Jacobian is not symmetric. Dashes: not resolved at that level.}
+\label{tab:su2exact}
+\begin{tabular}{lcrrrr}\toprule
+Exact & mult. & native $n=1$ & native $n=2$ & native $n=3$ & two-ring $n=3$ \\ \midrule
+\multicolumn{6}{l}{\emph{spin $0$}}\\
+$-14/3=-4.6667$ & 2 & $-4.475$ & $-4.651$ & $-4.661$ & $-4.651$ \\
+$(29-\sqrt{1345})/3=-2.5581$ & 2 & $-2.191$ & $-2.504$ & $-2.529$ & $-2.529$ \\
+$16-2\sqrt{73}=-1.0880$ & 1 & $-0.536$ & $-1.041$ & $-1.088$ & $-1.084$ \\
+$8$ & 1 & $7.083$ & $7.869$ & $7.954$ & $7.931$ \\
+$(29+\sqrt{1345})/3=21.891$ & 2 & $20.71$ & $21.77$ & $21.86$ & $21.80$ \\
+$16+2\sqrt{73}=33.088$ & 1 & $32.64$ & $33.44$ & $33.29$ & $33.16$ \\ \midrule
+\multicolumn{6}{l}{\emph{spin $6$}}\\
+$51.33$ & 2 & --- & $53.41$ & $52.27$ & $49.27$ \\
+$59.52$ & 2 & --- & $61.92$ & $60.69$ & $57.50$ \\
+\bottomrule\end{tabular}
+\end{table}
+
+Every value of the spin-$0$ sector is matched by both forces, and the real parts approach the exact
+values from $n=1$ to $n=3$. The spin-$6$ sector matches the measured band that begins near $50$:
+the native force approaches it from above, and the two-ring force lies a little below it at $n=3$.
+No rate is claimed from three levels. Three facts follow:
+\begin{itemize}
+  \item \emph{The field's growth directions are exactly five:} $-14/3$ (twice), $-2.558$ (twice)
+    and $-1.088$. They all come from the field acting on itself. Without the commutator, the same
+    sector on the Berger metric is $4/3$ (six times) and $12$ (three times), all positive.
+  \item \emph{The other negative eigenvalues are gauge-type.} Each higher sector of spin $j/2$
+    carries $j+3$ negative eigenvalues, gauge directions tilted by the background, shrinking
+    like $1/j$ ($-2.35$ at spin $6$, $-1.73$ at spin $10$). Below $-1$ the exact count is $41$;
+    the lattice shows $9$ at $n=2$ and $13$ at $n=3$, resolving the sectors one by one. On gauge
+    directions the lattice Jacobian differs from the Hessian by a term proportional to the
+    nonzero gradient, so this comparison is indicative, not a gate.
+  \item \emph{The physical spectrum has an exact gap.} The spin-$0$ sector ends at $33.09$, spin
+    $6$ begins at $51.33$, and nothing else lies below $142$, where spin $10$ begins. On this
+    manifold and this background the low spectrum is therefore fixed by symmetry. That makes it
+    an exactly solvable control for any future spectral observable, not a test of one.
+\end{itemize}
 
 \paragraph{Numerical range.} Eigenvalues alone do not rule out transient non-normal growth,
 so we also measured the numerical range $W(\hat G)$ of the force whitened by the native mass,
@@ -1497,7 +1556,10 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
     \path{scripts/ricci_su2_pg_spectrum.py} with receipts in\newline
     \path{research/su2-spectrum-n3-20261119/}; the exact-derivative rebuild and the sparse
     certificate, \path{scripts/ricci_su2_exact_stability.py} with receipts in\newline
-    \path{research/su2-exact-stability-20261119/}.
+    \path{research/su2-exact-stability-20261119/}; the exact sectors,\newline
+    \path{scripts/ricci_su2_left_invariant_sector.py} and\newline
+    \path{scripts/ricci_su2_spin_sector.py}, with receipts in\newline
+    \path{research/su2-left-invariant-sector-20261119/}.
   \item Cayley start-up experiments: \path{scripts/ricci_su2_pg_flow_cayley.py}
     (\texttt{--startup}); receipts in \path{research/su2-startup-20261119/} and\newline
     \path{research/su2-startup-sdirk-20261119/}.
@@ -1527,6 +1589,7 @@ the frozen, hash-checked inputs of the \GIGI{} Ricci checkpoint.
 2026, \url{https://doi.org/10.5281/zenodo.24375338}.
 \bibitem{gp2018} E.~H.~Georgoulis, T.~Pryer, Recovered finite element methods, \emph{Comput.\ Methods Appl.\ Mech.\ Engrg.} 332 (2018) 303--324.
 \bibitem{hiptmair2002} R.~Hiptmair, Finite elements in computational electromagnetism, \emph{Acta Numerica} 11 (2002) 237--339.
+\bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
 \bibitem{whitney1957} H.~Whitney, \emph{Geometric Integration Theory}, Princeton University Press, 1957.
 \bibitem{zz1992} O.~C.~Zienkiewicz, J.~Z.~Zhu, The superconvergent patch recovery and a posteriori error estimates, \emph{Int.\ J.\ Numer.\ Methods Eng.} 33 (1992) 1331--1364.
 \end{thebibliography}

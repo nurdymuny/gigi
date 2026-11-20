@@ -320,13 +320,14 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
                     lkt = Lrows[k2].get(t)
                     if lkt is not None:
                         terms.setdefault((i2, k2), []).append((lit, dvals[t], lkt))
-        frob_iv = O.backward_frob(terms.items())
+        # a posteriori residual of the stored factors, outward (replaces the Higham-type bound)
+        res_iv = O.residual_frob(N, lambda i2, k2: mid.get((i2, k2), mpmath.mpf(0)), Lrows, dvals, band)
         rho = mpmath.mpf(O.up(mpmath.iv.sqrt(bud.rad2)))          # Frobenius bound, as before
-        eps, bwd = O.eps_upper(rho, frob_iv, N, PREC)
+        eps, bwd = O.eps_residual(rho, res_iv)
         neg = sum(1 for dv in dvals if dv < 0)
         results[str(off)] = {"mu": str(mu), "negative_pivots_realified": neg,
                              "eps": mpmath.nstr(eps, 5), "eps_below_one_third": bool(eps < mpmath.mpf(1) / 3), "rho_enclosure": mpmath.nstr(rho, 5),
-                             "backward_error_bound": mpmath.nstr(bwd, 5),
+                             "residual_bound": mpmath.nstr(bwd, 5),
                              "min_abs_pivot": mpmath.nstr(min(abs(dv) for dv in dvals), 5),
                              "negative_pivot_positions": [k for k, dv in enumerate(dvals) if dv < 0],
                              "pivots": [mpmath.nstr(dv, 8) for dv in dvals], "band": band, "N": N}

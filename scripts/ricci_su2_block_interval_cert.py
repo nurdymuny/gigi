@@ -184,9 +184,9 @@ def certify_block(j, q, a, b, eta, fd):
         for i2 in range(k + 1, N):
             L[i2][k] = (mid[i2][k] - mpmath.fsum(L[i2][s_] * L[k][s_] * d[s_] for s_ in range(k))) / dk
         L[k][k] = mpmath.mpf(1)
-    frob = O.backward_frob((((i2, k2), [(L[i2][s_], d[s_], L[k2][s_]) for s_ in range(min(i2, k2) + 1)])
-                            for i2 in range(N) for k2 in range(N)))
-    eps, _ = O.eps_upper(rho, frob, N, PREC)
+    Lrows = [{s_: L[i2][s_] for s_ in range(i2 + 1) if L[i2][s_] != 0} for i2 in range(N)]
+    res = O.residual_frob(N, lambda i2, k2: mid[i2][k2], Lrows, d)      # a posteriori, outward
+    eps, _ = O.eps_residual(rho, res)
     return bool(eps < mpmath.mpf(eta)), float(eps), float(rho)
 
 

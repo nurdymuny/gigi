@@ -79,3 +79,32 @@ def eps_upper(rho, frob_iv, N, prec):
     gamma = N * u / (1 - N * u)
     e = iv.mpf(rho) + gamma * frob_iv
     return up(e), up(gamma * frob_iv)
+
+
+def residual_frob(N, mid_lower, Lrows, d, band=None):
+    """A posteriori: upper bound of ||M - L D L^T||_F, with M the stored symmetric point matrix (lower triangle
+    mid_lower(i, k), i >= k) and L (unit lower triangular, Lrows[i] = {t: L_it}), D = diag(d) the stored factors.
+    L D L^T is then an exact real matrix congruent to D (Sylvester), and ||exact - L D L^T||_2 <= rho + this bound.
+    No rounding-error constant of the factorization is needed (replaces the Higham-type bound; second review,
+    20 November 2026)."""
+    tot = iv.mpf(0)
+    for i in range(N):
+        lo = 0 if band is None else max(0, i - band)
+        for k in range(lo, i + 1):
+            s = iv.mpf(mid_lower(i, k))
+            Li, Lk = Lrows[i], Lrows[k]
+            for t, lit in Li.items():
+                if t > k:
+                    continue
+                lkt = Lk.get(t)
+                if lkt is None:
+                    continue
+                s -= iv.mpf(lit) * iv.mpf(d[t]) * iv.mpf(lkt)
+            m = iv.mpf(max(abs(mpmath.mpf(s.a)), abs(mpmath.mpf(s.b))))     # |e_ik| <= m (s encloses e_ik)
+            tot += m * m if i == k else 2 * m * m
+    return iv.sqrt(tot)
+
+
+def eps_residual(rho, res_iv):
+    """Upper bound of rho + ||M - L D L^T||_F."""
+    return up(iv.mpf(rho) + res_iv), up(res_iv)

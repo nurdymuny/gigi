@@ -162,12 +162,13 @@ def count_interval(j, Tv, mu_iv):
                 lkt = Lrows[k2].get(t)
                 if lkt is not None:
                     terms.setdefault((i2, k2), []).append((lit, dvals[t], lkt))
-    frob_iv = O.backward_frob(terms.items())
+    # a posteriori residual of the stored factors, outward (replaces the Higham-type bound)
+    res_iv = O.residual_frob(N, lambda i2, k2: mid.get((i2, k2), mpmath.mpf(0)), Lrows, dvals, band)
     # rigorous: |E| <= R entrywise, R symmetric non-negative => ||E||_2 <= ||R||_2 <= max row sum of R
     rho = bud.rho()
-    eps, bwd = O.eps_upper(rho, frob_iv, N, PREC)
+    eps, bwd = O.eps_residual(rho, res_iv)
     neg = sum(1 for dv in dvals if dv < 0)
-    return {"neg": neg, "eps": float(eps), "rho": float(rho), "bwd": float(bwd),
+    return {"neg": neg, "eps": float(eps), "rho": float(rho), "residual": float(bwd),
             "min_abs_pivot": float(min(abs(dv) for dv in dvals)), "N": N}
 
 

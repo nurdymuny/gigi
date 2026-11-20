@@ -81,3 +81,46 @@ to adopt them.
   plateau rule against an exact answer. It says nothing about four dimensions.
 - The convention correction to Halcyon's stored 2D column (3/(2β), not 3β/8) is reported in the
   run spec and is Bee's to apply to Halcyon's record.
+
+## Fresh-seed run under the amended rule (Amendment 1)
+
+Seeds 202611290 + β (heat kernel) and 202611291 + β (Wilson), fixed in the run spec before the run.
+Receipt: `research/q2-exact-2d-fresh-20261119/q2_receipt.json`. The gates use the amended plateau
+rule. The rule as first fixed is recorded beside it.
+
+| action | β | amended plateau (window) | exact | pull | as first fixed |
+|---|---|---|---|---|---|
+| heat kernel | 3 | 0.9996 ± 0.0031 (1–4) | 1.0000 | −0.14 | 0.9995 ± 0.0031 (1–7) |
+| heat kernel | 4 | 0.7454 ± 0.0023 (1–6) | 0.7500 | **−2.04** | 0.7535 ± 0.0051 (2–8) |
+| heat kernel | 6 | 0.4991 ± 0.0017 (1–8) | 0.5000 | −0.52 | 0.4990 ± 0.0017 (1–5) |
+| heat kernel | 8 | 0.3746 ± 0.0015 (1–9) | 0.3750 | −0.27 | 0.3977 ± 0.0108 (6–9) |
+| Wilson | 3 | 1.1292 ± 0.0037 (1–3) | 1.1315 | −0.63 | 1.1136 ± 0.0109 (2–6) |
+| Wilson | 4 | 0.8404 ± 0.0027 (1–6) | 0.8370 | +1.27 | 0.8488 ± 0.0060 (2–6) |
+| Wilson | 6 | 0.5425 ± 0.0018 (1–9) | 0.5417 | +0.44 | refused at t = 3 |
+| Wilson | 8 | 0.3971 ± 0.0016 (1–10) | 0.3987 | −1.01 | 0.3972 ± 0.0016 (1–9) |
+
+**Gates (amended rule):**
+
+- Q2-w and Q2-a′: pass at every β.
+- Q2-r: passes at every β. The Wilson plateau is 35, 34, 23 and 14σ from the heat-kernel answer,
+  including β = 4, where the first run could not separate them.
+- Q2-n: passes on all eight ensembles.
+- Q2-a: passes at β = 3, 6, 8. **It fails at β = 4, pull −2.04.** That β counts for Q2-a this time,
+  because Q2-r passed there. The miss stands.
+
+**Reading.**
+
+1. The amendments did what they were adopted for. Under the rule as first fixed, the same fresh data
+   slides into the noise at heat kernel β = 8 (window 6–9, pull +2.1) and refuses Wilson β = 6. Under
+   the amended rule, every window starts at t = 1 and the β = 4 separation is recovered.
+2. The β = 4 miss is not an error-bar artifact. A diagnostic that jackknifes the plateau itself (the
+   fit repeated in each leave-a-block-out sample, window and weights fixed) gives the same error at
+   β = 4 (ratio 1.02; that window is dominated by t = 1), so the pull is still −2.0. Both β = 4
+   heat-kernel runs came out low (−0.73, −2.04, independent seeds). Eight 2σ tests give about a one in
+   three chance of one miss by chance, so this is not by itself evidence of a systematic. It is
+   reported as a miss, and nothing is re-scored.
+3. **A defect found by the same diagnostic.** On long windows the fit's error, 1/√Σw, treats the
+   m_eff(t) as independent, and they are strongly correlated. At β = 8 the jackknifed plateau error is
+   1.26–1.27× the reported one. **Proposed Amendment Q1-3:** the plateau error is the blocked jackknife
+   of the plateau fit itself. It matters most for Q3's long windows, so it should be adopted before
+   Q3 data, and judged there. It would not change the β = 4 verdict here.

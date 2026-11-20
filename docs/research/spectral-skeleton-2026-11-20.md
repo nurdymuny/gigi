@@ -276,3 +276,40 @@ is the highest-weight structure of that symmetry, and the Landau picture of §6 
 3. Certify the finitely many small j with the existing interval machinery, over the same t-range as Theorem 6.3.
 
 Together these would give the floor law for **every** sector and every t ∈ [2.75, 10].
+
+## 8. Follow-up to Test 2: why the floor on the Berger field and not on the squashed meron (exploratory, 20 November)
+
+Bee's question after Test 2 ([`skeleton-test2-family1-results-2026-11-20.md`](skeleton-test2-family1-results-2026-11-20.md)):
+what about the Berger field puts the symmetric state at the bottom?
+
+**Script:** `scripts/ricci_su2_floor_vs_ceiling.py`. Numerical, not pre-registered.
+
+**The common ground.** The Weitzenböck form H + GG* = Σ X_i*X_i + R₀ holds at both backgrounds (≤ 1.1 × 10⁻¹⁴,
+j = 1, 2, 4). In both, (Ω₁ + iΩ₂)β = 0 exactly, so the extremal state is a lowest-Landau-level state on **both**.
+The Landau structure comes from the symmetry and is shared.
+
+**What differs is the curvature term.**
+
+| t | Berger field: ⟨β, R₀β⟩ (rank in R₀) | R₀ range | squashed meron: ⟨β, R₀β⟩ (rank) | R₀ range |
+| --- | --- | --- | --- | --- |
+| 1 | +4.000 (5 of 9) | −2 to +4 | +4.000 (5 of 9) | −2 to +4 |
+| 2 | −4.000 (1 of 9) | −4 to +9.66 | +1.261 (5 of 9) | −2.18 to +4.92 |
+| 3 | −12.000 (1 of 9) | −12 to +15.54 | −1.073 (5 of 9) | −3.39 to +6.47 |
+| 4 | −20.000 (1 of 9) | −20 to +21.49 | −3.267 (5 of 9) | −5.01 to +8.27 |
+| 6 | −36.000 (1 of 9) | −36 to +33.44 | −7.482 (5 of 9) | −8.64 to +12.13 |
+
+- On the Berger field, for t ≠ 1, β lies in the **lowest** eigenspace of R₀, at 12 − 8t: a curvature bonus that
+  deepens linearly with the stretch.
+- On the squashed meron, β sits in the middle of a much narrower R₀ spectrum.
+- At t = 1 the two fields coincide, and β is mid-spectrum (+4). That is consistent with the twist not being the floor
+  on the round sphere.
+
+**Reading.**
+
+- Symmetry makes the extremal state a lowest-Landau-level state on any circle-invariant background (§6, §1 of the
+  pre-registration).
+- Whether it is the floor is decided by the curvature term R₀: whether the background's curvature points the
+  extremal state's internal frame β at its deepest negative direction.
+- The Berger field does this, increasingly with the stretch. The resting squashed meron does not.
+- This locates the floor property in the background's curvature, not in its symmetry. It is consistent with Test 2's
+  verdict. It is an observation; no test was pre-registered for it.

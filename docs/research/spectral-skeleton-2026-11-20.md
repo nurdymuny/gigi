@@ -175,7 +175,12 @@ fibre from X₁, X₂ on the base sphere of the Hopf fibration.
 - The three terms sum to the proved formula identically. The split itself is verified numerically, not
   symbolically.<ins> X₊b = 0 and X₀b = iκb are statements at the top weight, polynomial in j and t, so they can be
   proved symbolically in the same way as the floor law (`scripts/ricci_su2_sector_formula_squashed.py`); until then
-  they stay Numerical.</ins>
+  they stay Numerical.</ins><ins> **Now Proved** (20 November): `scripts/ricci_su2_landau_symbolic.py`, receipt
+  `research/su2-floor-family-20261119/landau_symbolic.txt`. At the top weight, (ρ₁ + iρ₂)f = 0 identically, so both
+  facts reduce to two j-independent 9 × 9 identities in t on frame ⊗ Lie: (Ω₁ + iΩ₂)β = 0 and
+  Ω₀β = i(2t − 4)/√t·β, with β = (θ¹ + iθ²) ⊗ (τ₁ + iτ₂). Both hold symbolically for every t > 0. Hence X₊b = 0 and
+  X₀b = iκb, κ = (2t − 4 − j)/√t = −2(q − t)/√t, for every j ≥ 0 and t > 0. The split into fibre, base and curvature
+  terms then follows exactly, since the base term equals the commutator term on an X₊-annihilated vector.</ins>
 
 <ins>**Control (the removal arm)** (`scripts/ricci_su2_landau_control.py`, `landau_control.json`; the same 90
 cases). The decomposition into fibre, base and curvature holds for any vector, so it is not by itself evidence. What

@@ -322,3 +322,27 @@ The Landau structure comes from the symmetry and is shared.
 - The Berger field does this, increasingly with the stretch. The resting squashed meron does not.
 - This locates the floor property in the background's curvature, not in its symmetry. It is consistent with Test 2's
   verdict. It is an observation; no test was pre-registered for it.
+
+**Addendum to §8 (exploratory, same day): the deciding term is the field strength, with gyromagnetic factor 2.**
+Script `scripts/ricci_su2_gyromagnetic_split.py`, receipt `gyromagnetic_split.txt`.
+
+- The curvature term splits as R₀ = Ric ⊗ I − 2[F, ·] on both backgrounds (≤ 4 × 10⁻¹⁵, t from 1 to 8): the Ricci
+  curvature plus the field strength with the factor 2 of the Yang–Mills Hessian. That 2 is the gyromagnetic ratio of
+  a spin-1 gauge excitation, the factor behind the Nielsen–Olesen instability.
+- The twist's share of each:
+
+| t | Ricci, both fields | field strength, Berger | field strength, squashed meron |
+| --- | --- | --- | --- |
+| 1 | +2 | +2 | +2 |
+| 2 | 0 | −4 | +1.26 |
+| 3 | −2 | −10 | +0.93 |
+| 4 | −4 | −16 | +0.73 |
+| 6 | −8 | −28 | +0.52 |
+| 8 | −12 | −40 | +0.40 |
+
+- On the Berger field the shares fit 4 − 2t (Ricci) and 8 − 6t (field strength), so 12 − 8t. The Ricci share is the
+  same on both fields; it is geometry. The field-strength share is what differs: on the Berger field it aligns with
+  the twist and deepens with the stretch; on the squashed meron it is positive, and it opposes the twist.
+- **Reading.** The twist is the floor when the background's own field strength lines up with the twist's spin. That
+  is the Nielsen–Olesen mechanism, a spin-1 excitation in its lowest Landau orbit with its spin aligned to a
+  chromomagnetic field. The fits 4 − 2t and 8 − 6t are from six values of t, not yet proved symbolically.

@@ -1,0 +1,13 @@
+t= 1.0 Berger field   : |R0 - (Ric - 2[F,.])| = 0.0e+00;  <beta, Ric beta> =  +2.0000, <beta, -2[F,.] beta> =  +2.0000, total =  +4.0000
+t= 1.0 squashed meron : |R0 - (Ric - 2[F,.])| = 0.0e+00;  <beta, Ric beta> =  +2.0000, <beta, -2[F,.] beta> =  +2.0000, total =  +4.0000
+t= 2.0 Berger field   : |R0 - (Ric - 2[F,.])| = 8.9e-16;  <beta, Ric beta> =  -0.0000, <beta, -2[F,.] beta> =  -4.0000, total =  -4.0000
+t= 2.0 squashed meron : |R0 - (Ric - 2[F,.])| = 8.9e-16;  <beta, Ric beta> =  -0.0000, <beta, -2[F,.] beta> =  +1.2614, total =  +1.2614
+t= 3.0 Berger field   : |R0 - (Ric - 2[F,.])| = 1.8e-15;  <beta, Ric beta> =  -2.0000, <beta, -2[F,.] beta> = -10.0000, total = -12.0000
+t= 3.0 squashed meron : |R0 - (Ric - 2[F,.])| = 1.3e-15;  <beta, Ric beta> =  -2.0000, <beta, -2[F,.] beta> =  +0.9265, total =  -1.0735
+t= 4.0 Berger field   : |R0 - (Ric - 2[F,.])| = 0.0e+00;  <beta, Ric beta> =  -4.0000, <beta, -2[F,.] beta> = -16.0000, total = -20.0000
+t= 4.0 squashed meron : |R0 - (Ric - 2[F,.])| = 4.4e-16;  <beta, Ric beta> =  -4.0000, <beta, -2[F,.] beta> =  +0.7334, total =  -3.2666
+t= 6.0 Berger field   : |R0 - (Ric - 2[F,.])| = 2.7e-15;  <beta, Ric beta> =  -8.0000, <beta, -2[F,.] beta> = -28.0000, total = -36.0000
+t= 6.0 squashed meron : |R0 - (Ric - 2[F,.])| = 1.8e-15;  <beta, Ric beta> =  -8.0000, <beta, -2[F,.] beta> =  +0.5183, total =  -7.4817
+t= 8.0 Berger field   : |R0 - (Ric - 2[F,.])| = 3.6e-15;  <beta, Ric beta> = -12.0000, <beta, -2[F,.] beta> = -40.0000, total = -52.0000
+t= 8.0 squashed meron : |R0 - (Ric - 2[F,.])| = 3.6e-15;  <beta, Ric beta> = -12.0000, <beta, -2[F,.] beta> =  +0.4010, total = -11.5990
+Berger field: Ricci share 4 - 2t, field-strength share 8 - 6t, total 12 - 8t (fits every row above).

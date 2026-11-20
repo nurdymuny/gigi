@@ -144,3 +144,46 @@ There is no constraint system and no lsqr.
 ## Not done here
 
 k = 2. The magnet mass (B). SU(2). The zig-zag. Exact gauge. The flow.
+
+## Amendment 1 (Mac, 19 November 2026, before any M0 code)
+
+From a check of the spec against `ricci_pg_curvature.py` (charts, conventions). Nothing above is relaxed.
+
+1. **Sizes.** The Abelian control has 142, 1,124 and 3,786 edges at n = 1, 2, 3. The 3,372 and 11,358 in *Cost* are
+   the SU(2) unknown counts. K is therefore 1,124² and 3,786², and the n = 3 complement eigensolve is the size of
+   the hybrid gate's S3 (about 500 s).
+2. **Weights must be chart-free, or the reading has seams of our own making.**
+   - The cell charts are gnomonic (central projection), scaled by each cell's diameter. A distance measured in K's
+     chart differs from the same distance in its neighbour L's chart.
+   - Weights computed in charts would therefore differ on the two sides of a wall, which is an O(h²) seam built in
+     by the measurement.
+   - **Fix.** w_e(x) = φ(|X(x) − m_e| / ρ), with:
+     - X(x) the point of S³ (in R⁴) under the chart point x, i.e. the normalised preimage of the gnomonic map;
+     - m_e the normalised R⁴ midpoint of edge e, on K's sheet;
+     - ρ = κ · h_max, in the same chordal units.
+   - Each cell's candidate edges are its ring neighbourhood, grown until every edge within ρ of any point of K is
+     included. The ring count is recorded.
+   - A wall's two cells then weight the identical edges identically. The polynomial basis is still chart-dependent,
+     so the remaining jump is Hole 5's, which is what P-seam measures.
+3. **P-seam is measured on exact tangents.**
+   - At each wall point X, take the wall's two edge directions projected onto T_X S³. Push each into K's and L's
+     charts by the gnomonic derivative, and evaluate each side's reading on its pushed vector.
+   - Chart difference vectors are not used: they carry an O(h²) error of their own (about 4% at n = 2), the same
+     size as the 1% threshold.
+4. **A mechanism-removal arm: frozen-centre MLS (seamed).** The same weights, vote, degree and reach, but the fit
+   is evaluated once at K's centroid, so the reading on K is the single polynomial p_{c(x_K)}. Its curvature is
+   curl p (no weight derivative). It differs from the unseated arm only in having seams.
+   - **P-A-removal.** Its poke term grows from n = 2 to n = 3.
+   - If it does **not** grow, P-A cannot tell seams from the reading's other properties. P-A is then reported as
+     **inconclusive**, not as a pass.
+5. **The gauge sentence, corrected.** The spring penalises the reading's own-wall flux (Stokes: the line integrals
+   of R¹a around each wall) minus the measured flux. On a gauge poke the measured flux is zero. The reading's flux
+   is the curl leak of the MLS reading of gauge data, O(h^k), the same leak as in the main energy. So the spring
+   adds no gauge stiffness *beyond the reading's own leak*; it is not exactly zero.
+6. **Push/twist** is computed in a second pass, after the gates are judged, reusing V1's per-edge machinery. It is
+   reported only and does not hold up the gates.
+7. **Controls added.**
+   - **C-orient:** for each cell's own walls, the signed sum of the stored edge orientations equals
+     `pg.data_flux` to 10⁻¹².
+   - **C-curv:** the curvature relative error of curl R¹a is reported. At k = 1 it must be O(h), not O(1); an O(1)
+     value means a sign error.

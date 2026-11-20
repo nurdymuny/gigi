@@ -298,3 +298,20 @@ The proof has four parts.
   in j.
 - Nothing outside [2.75, 10]. t* ≈ 2.698 remains numerical.
 
+
+**Reissue (20 November, after Astra's adversarial review).** Every interval certificate has been reissued under the
+outward error budget of `scripts/ricci_su2_outward.py`:
+- Table 1 at t = 3;
+- t = 4;
+- the range certificate (15 sectors);
+- the block certificates j ≤ 40 and 41 ≤ j ≤ 99.
+
+The repair: radii are taken about the stored midpoints with outward rounding, and ρ, the backward-error term and ε
+are accumulated in interval arithmetic. Results:
+- All pass.
+- Pivots, slice counts and pivot signs are unchanged.
+- ρ grows slightly.
+- The smallest margins quoted for Theorems 6.4 and 6.6 are unchanged at the precision quoted, except that the t = 4
+  bound now reads ε < 8.8 × 10⁻⁵⁴.
+
+The large-j proof does not use the conversion and was already outward.

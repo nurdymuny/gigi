@@ -1,0 +1,43 @@
+{
+ "level": 0,
+ "edges": 142,
+ "cells": 120,
+ "rho": 0.388139515370189,
+ "k": 1,
+ "kind": "M1b (research script, not an engine run)",
+ "seconds_pass1": 27.9,
+ "G_reproduction_rel_on_data": 0.03309666192287954,
+ "predicted_leftover_moment_median": 0.017006965998071222,
+ "M0_moment_defect_median": 0.19467536193105947,
+ "seconds_cells": 147.5,
+ "leftover_moment_median": 0.01700696599807116,
+ "leftover_moment_max": 0.042758179332406894,
+ "leftover_vs_prediction_rel": 7.25543467953561e-15,
+ "gauge_dimension": 21,
+ "seam_rms_jump_relative": 0.004313971095090753,
+ "seam_points": 1440,
+ "arms": {
+  "unseated": {
+   "bw05_relative_error": 0.1002773587676487,
+   "reconstruction_term": 0.06659826968038347,
+   "poke_term": 0.06298325863502563,
+   "curvature_relative_error": 0.0736995947980992,
+   "asymmetry": 3.000298677067995e-16,
+   "wobble_count_below_1": 65,
+   "min_physical_eig": 0.019890346461022255,
+   "negative_physical": 0
+  },
+  "seated": {
+   "bw05_relative_error": 0.1675627053438816,
+   "reconstruction_term": 0.06659826968038347,
+   "poke_term": 0.06298325863502563,
+   "curvature_relative_error": 0.0736995947980992,
+   "asymmetry": 1.5115494543017184e-16,
+   "spring_force_share": 0.13545050040451395,
+   "wobble_count_below_1": 0,
+   "min_physical_eig": 3.623074126135725,
+   "negative_physical": 0
+  }
+ },
+ "seconds": 147.5
+}

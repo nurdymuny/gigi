@@ -170,3 +170,35 @@ with the constant δF. That is Lemma B's mechanism, and it is what M1 corrects.
 against 5%). The decisive level, n = 2, passes cleanly, and the mechanism is unambiguous at both levels (cosine
 0.998 and 0.9993). This is an exception to the decision rule as written, recorded here before any M1 code. Part 2's
 gates are unchanged.
+
+## Amendment 1: M1b (written after M1's n = 1 run and before any M1b run or any gated M1 result)
+
+**What n = 1 showed (a reported level).**
+- The moment correction removes the poke term: 46.5% → 3.07%.
+- It also disturbs smooth fields:
+  - the reconstruction term rises to 35.5%;
+  - the seat spring, fighting the correction, carries 280% of the force.
+- The correction Z a = Σ_e a_e z_e·β_e cancels on smooth data only globally (Σ_e a_e z_e^b = 0 for left-invariant
+  a), not pointwise.
+
+**M1b** applies the correction only to what the reading cannot reproduce:
+
+  R̃¹a = R¹a − Z(a − G a),  G = I¹R¹ (line integrals of M0's reading along every edge).
+
+- **Rows.** Data the reading reproduces (Ga = a, in particular every linear field in the cell's chart) is untouched.
+  The rows are exact again.
+- **Moments.** The moment left over on each edge is (Gᵀz)_e instead of 0. That is Lemma C's first-order
+  conflict, made explicit.
+- **Pre-check, run before this amendment, n = 1 only.** The median leftover is 1.7% (M0's defect: 19.5%), and
+  ‖Gᵀz‖/‖z‖ = 0.066. z is rough from edge to edge, so G smooths it away.
+
+**When it runs.** M1b runs if M1 fails M1-recon at n = 2. Otherwise M1 proceeds to n = 3 as specified.
+
+**Gates for M1b.** As in Part 2, with M1-moment replaced by:
+
+- **M1b-moment.** The median leftover |z̃_e|/‖W_e‖_L¹ is at most a fifth of M0's at n = 2 (≤ 6.2%), and smaller at
+  n = 3 than at n = 2. The receipt also reports how far the leftover differs from the prediction Gᵀz.
+- **M1-poke** (≤ 5.1% at n = 2, no larger at n = 3), **M1-recon** (≤ 2 × M0's, not growing), **M1-variational**,
+  **M1-wobble** and **M1-seam** are unchanged.
+
+**Script:** `scripts/ricci_magnet_m1b.py`, with the same reading, reach, quadrature and arms as M1.

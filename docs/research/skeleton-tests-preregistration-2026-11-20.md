@@ -59,7 +59,11 @@ A(ε) = A₀ + εA₁ + ε²A₂ + …, estimated by central differences at ε =
   |Δq| ∈ {1, 3, 4} entries are ≤ 2 × 10⁻¹².
 - A₂ also couples only |Δq| ∈ {0, 2}. Measured: other entries ≤ 6 × 10⁻⁹, which is finite-difference noise at
   ε² = 10⁻⁶.
-- In general, order n can change the charge by at most 2n. That is all the prediction below uses.
+- In general, order n can change the charge by at most 2n. That is all the prediction below uses.<ins> This is a
+  structural fact, not only a measurement. The perturbation δg = ε e¹⊗e¹ is a quadrupole about the long axis: its
+  charge content is 0 and ±2. Every term of A(ε) is a polynomial or rational function of the metric components, so
+  its n-th order term carries charge at most 2n. That covers A₃ and beyond, which the A₁ and A₂ measurements do not
+  (review, 20 November).</ins>
 
 **Kramers.** At odd j every eigenvalue of A₀ is doubly degenerate. Measured: pair spacing ≤ 7 × 10⁻¹⁴. This is
 expected: the representation is quaternionic, the coefficients are real, and the antiunitary symmetry squares to −1.
@@ -87,7 +91,8 @@ expected: the representation is quaternionic, the coefficients are real, and the
 - **Continuation.** At ε ≠ 0 the continued pair is the two eigenvalues nearest the ε = 0 value. This is valid while
   2‖A(ε) − A₀‖₂ is less than the isolation gap, which is checked at every ε used.
 - **Splitting and slope.** s(ε) = |μ₂(ε) − μ₁(ε)|. The slope is the least-squares slope of log s against log|ε| over
-  the 8 fit points.
+  the 8 fit points.<ins> Pooling both signs is legitimate. When q′ is odd (e.g. j = 2, q′ = 3) the leading coupling is
+  odd in ε, but s = |μ₂ − μ₁| depends only on |ε| to leading order.</ins>
 
 ### The prediction, and why it can fail
 
@@ -106,6 +111,37 @@ at order ε^{q′}. Generically,
 **Odd j.** Δq = j + 4 is odd and the perturbation changes the charge by even steps. Kramers forces exact degeneracy
 anyway. So s(ε) = 0 at every ε. This is a code check, not evidence.
 
+<ins>### What Test 3A can and cannot show (review, 20 November, before any data)
+
+The prediction above follows from facts already established in §1, whether or not there is a skeleton:
+
+- (a) the perturbation changes the charge by at most 2 per order;
+- (b) the antiunitary symmetry makes both members of a ±q′ pair shift together;
+- (c) degenerate perturbation theory.
+
+Together these force every ±q′ pair to split no earlier than ε^{q′}. So the maximal-charge pair, the twist, splits
+no earlier than ε^{(j+4)/2}, and no other pair can outlast it except by accident. Hence:
+
+- A-exp **below** its window is impossible unless the code or the selection rule is wrong. It is a code check, not
+  evidence.
+- A-exp **above** its window, and a failure of A-rank (i), can come only from an accidental cancellation of the
+  leading coupling. That says nothing about a skeleton either way.
+- So Test 3A, like persistence (§0), cannot discriminate a skeleton from any other operator with this symmetry and
+  perturbation structure. What it verifies is the charge selection rule. That is still worth recording.
+
+**A control arm** makes this explicit and is added as gate A-ctrl. Run the same protocol, with the same t, j and ε
+grids, on two non-skeleton operators with the same circle symmetry and the same quadrupole perturbation structure:
+
+- (C1) the abelianised operator: the same construction with the commutator dropped;
+- (C2) a random circle-invariant Hermitian operator. Draw each charge block of A₀ independently, and draw
+  perturbation terms A₁ and A₂ that couple only |Δq| ∈ {0, 2}, keeping the antiunitary symmetry (real coefficients
+  in the charge basis, with the q → −q pairing).
+
+Expected: both controls show the same ε^{q′} pattern. If they do, the result of Test 3A is reported as "the charge
+selection rule holds", not as evidence for the skeleton. The falsifiable content of the hypothesis then lies in
+Test 2, whether the maximal-charge state is the floor. If the controls do **not** show the pattern while the Berger
+operator does, that would be unexpected and would need explaining before anything is claimed.</ins>
+
 ### Gates
 
 | gate | what must hold | if it fails |
@@ -113,15 +149,18 @@ anyway. So s(ε) = 0 at every ε. This is a code check, not evidence.
 | **A-code** | the mp builder reproduces the double builder (above) | stop: code error |
 | **A-sym** | at ε = 0, ‖[Q, A₀]‖ ≤ 10⁻¹²‖A₀‖; the twist pair is isolated, with charges ±(j/2 + 2) | stop: the premise is wrong |
 | **A-odd** | j odd: s(ε) ≤ 10⁻⁴⁰ max\|λ\| at every ε | stop: code or symmetry error |
-| **A-exp** | j even ∈ {0, 2, 4, 6, 8, 12}: the twist-pair slope is (j + 4)/2 ± 0.15 (2, 3, 4, 5, 6, 8) | below: **counts against**. Above: an extra protection to be explained; it counts neither way |
-| **A-rank (i)** | in each even sector, the twist pair's slope is the largest of all isolated pairs | **counts against**: the extremal pair is not the most protected |
+| **A-exp** | j even ∈ {0, 2, 4, 6, 8, 12}: the twist-pair slope is (j + 4)/2 ± 0.15 (2, 3, 4, 5, 6, 8) | below: <del>**counts against**</del><ins>**stop: code or selection-rule error** (impossible otherwise)</ins>. Above: <del>an extra protection to be explained; it counts neither way</del><ins>an accidental cancellation; it counts neither way</ins> |
+| **A-rank (i)** | in each even sector, the twist pair's slope is the largest of all isolated pairs | <del>**counts against**: the extremal pair is not the most protected</del><ins>**neither way**: only an accidental cancellation can cause it</ins> |
+| <ins>**A-ctrl**</ins> | <ins>the controls C1 and C2 run the same protocol</ins> | <ins>if they show the same pattern, 3A is reported as the selection rule only; if they do not, explain before claiming</ins> |
 | **A-rank (ii)** | in each even sector j ≥ 2, at least one isolated pair has q′ ≤ 2 and slope ≤ 2.15 | **inconclusive**: no low-charge pair splits early, so the test cannot tell charge protection from anything else |
 
 A-rank is the removal arm. It shows the mechanism by its absence: pairs without extremal charge must split early.
 
 **Pass.** All gates hold. The claim it supports is this: "When the circle about the long axis is broken, the floor
 pair stays degenerate to order (j + 4)/2, more than any other pair in its sector. The protection is the extremal
-charge." Status: **Numerical** (multiprecision, not interval-certified).
+charge." Status: **Numerical** (multiprecision, not interval-certified).<ins> By the review above, that claim
+describes the charge selection rule, which holds for any operator with this symmetry and perturbation structure. It
+is not evidence that the extremal mode is the floor.</ins>
 
 **Descriptive, with no gate.**
 
@@ -179,7 +218,8 @@ testable is the scoped reading below.
 ### Families, fixed now
 
 1. **The squashed meron** (the resting field of Result 6). Ansatz m₀ = x e₀, m₁ = y e₁, m₂ = y e₂, so it is
-   circle-invariant. Range t ∈ [0.05, 10]; sectors j ≤ 12. Existing code: `ricci_su2_meron_family_soft.py`.
+   circle-invariant.<ins> Checked: the ansatz is invariant under the joint rotation about axis 0 of the frame and
+   Lie indices.</ins> Range t ∈ [0.05, 10]; sectors j ≤ 12. Existing code: `ricci_su2_meron_family_soft.py`.
    Not yet classified.
 2. **SU(3).** The design is open, and the choice of background is Bee's to make before any build. The Levi-Civita
    connection of a squashed SU(3) takes values in so(8), not in su(3), so the Berger-field construction does not
@@ -188,10 +228,12 @@ testable is the scoped reading below.
 
 ## 5. What would count against the hypothesis, in one list
 
-- **Test 3A:** A-exp below its window, or A-rank (i), at any even sector tested.
+- **Test 3A:** <del>A-exp below its window, or A-rank (i), at any even sector tested.</del><ins>nothing. By the review in
+  §2, its outcomes verify the charge selection rule or reveal a code error. None bears on the skeleton.</ins>
 - **Test 2:** any independent tested family classified N.
 - **Not against** (inconclusive or descriptive):
   - A-exp above its window;
   - A-rank (ii);
   - any value of ε_c or ε_W;
-  - persistence at small breaking, which is automatic.
+  - persistence at small breaking, which is automatic;<ins>
+  - every Test 3A outcome (review in §2).</ins>

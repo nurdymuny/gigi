@@ -26,7 +26,7 @@
 \large The Low Spectrum on the Poincar\'e Homology Sphere}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
-\date{November 2026}
+\date{November 2026 (version 2)}
 
 \begin{document}
 \maketitle
@@ -46,8 +46,12 @@ gauge-orthogonal spectrum below $142$ consists of the left-invariant values $-14
 $16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$ values from $154/3$ upward. The
 first sector above the left-invariant one begins $168/3$ above the field's growth mode, one third of
 the sphere's first scalar eigenvalue. The construction reproduces the published fluctuation spectrum
-of the meron on the round sphere and Laquer's index. To our knowledge, these are the first exact
-eigenvalues of a Yang--Mills Hessian on a squashed three-sphere.
+of the meron on the round sphere and Laquer's index. The formula is one member of a family: on every
+Berger sphere $(t,1,1)$ the same field is an exact gauge-orthogonal eigenvector with eigenvalue
+$[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$. An interval-in-$t$ version of the certificate proves that it is the floor of
+its sector for every $t\in[2.75,10]$ in the sectors $j\le12$, $20$ and $24$. At $t=4$ the low spectrum on the
+Poincar\'e sphere is classified below $136$. To our knowledge, these are the first exact eigenvalues of a
+Yang--Mills Hessian on a squashed three-sphere.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Poincar\'e homology sphere; spectral
@@ -91,7 +95,12 @@ at rest, so gauge directions are not zero modes, and the compression $PHP$ is th
     bound for every sector at once.
   \item \emph{The Floor Theorem} (Theorem~\ref{thm:gap}) follows, with certified
     inertia counts in the four sectors that matter.
+  \item \emph{The floor law} (Section~\ref{sec:family}): the formula extends to every Berger sphere $(t,1,1)$
+    as an exact eigenvalue (Proposition~\ref{prop:family}). It is certified as the floor at $t=4$
+    (Theorem~\ref{thm:t4}) and for every $t\in[2.75,10]$ in fifteen sectors at once (Theorem~\ref{thm:range}),
+    with the stretches at which each twist goes free in closed form (Corollary~\ref{cor:family}).
 \end{itemize}
+Section~\ref{sec:family} follows the floor across the Berger family.
 Section~\ref{sec:checks} checks the construction against the published round-sphere results and
 against lattice computations. Section~\ref{sec:discussion} states the scope.
 
@@ -327,6 +336,128 @@ eigenvalue. The spectral gap between the two sectors runs from $16+2\sqrt{73}=33
   \label{fig:ladder}
 \end{figure}
 
+\section{The floor across the Berger family}\label{sec:family}
+
+The computation above never used the value $3$ except through $g_0$. Replace it by any stretch $t>0$:
+the Berger metric $g=(t,1,1)$, its Levi-Civita field, and the same circular top-weight field $b$.
+
+\begin{proposition}[The floor law]\label{prop:family}
+For every $t>0$ and every $j\ge0$, the field $b=f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ is an
+eigenvector of $H$ at the Berger field of $(t,1,1)$, orthogonal to every gauge direction, with eigenvalue
+\[
+  \boxed{\;\lambda_t(j)\;=\;\frac{j(j+2)-2(t-3)\,j-2(t-2)(t+4)}{t}\;}
+\]
+At $t=3$ this is $\lambda(j)$ of Proposition~\ref{prop:bottom}.
+\end{proposition}
+\begin{proof}
+The proof of Proposition~\ref{prop:bottom}, with $t$ symbolic in place of $3$. The block on the squashed
+plane has eigenvalues $\lambda_t(j)$, $(j^2+4jt-8j-2t^2-4t+16)/t$ and
+$(j^2+jt+5t^2-4t\pm t\sqrt{j^2+t^2})/t$. The first has eigenvector $(-1,-i,-i,1)$, and the three facts
+listed there (no coupling to the $\tau_0$ component of $b_0$, no leak into the next weight, and
+orthogonality to every gauge direction) hold as identities in $j$ and $t$
+(\path{scripts/ricci_su2_sector_formula_squashed.py}).
+\end{proof}
+
+The certificate of Theorem~\ref{thm:gap} takes $t$ as a parameter (\path{scripts/ricci_su2_gap_certificates_t.py};
+run at $t=3$ it reproduces Table~\ref{tab:cert} exactly). At a second squashing it gives the same kind of
+complete statement.
+
+\begin{theorem}[The Floor Theorem at $(4,1,1)$]\label{thm:t4}
+At the Berger metric $g=(4,1,1)$:
+\begin{enumerate}
+  \item the Weitzenb\"ock identity of Lemma~\ref{lem:weitz} holds with $R_0$ of eigenvalues $-20$
+    $(\times2)$, $-8$ $(\times2)$, $12$ $(\times3)$ and $10\pm2\sqrt{33}$, and $\omega^2=36$; every
+    gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least $(\sqrt{j(j+2)/4}-6)^2-20$ whenever
+    $\sqrt{j(j+2)/4}\ge6$;
+  \item for $j=0,12,20,24,30,32$, $\lambda_4(j)=j^2/4-8$ is the lowest gauge-orthogonal eigenvalue of its
+    sector, and every other eigenvalue of $H+GG^*$ is at least $\lambda_4(j)+1/3-10^{-53}$;
+  \item on the Poincar\'e sphere, the gauge-orthogonal spectrum below $136$ consists of the spin-$0$ values
+    $-8$ $(\times2)$, $22-2\sqrt{129}$, $29/5$ $(\times2)$ and $22+2\sqrt{129}$, the spin-$6$ values from $28$
+    upward and the spin-$10$ values from $92$ upward; spin $12$ begins exactly at $136$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+As for Theorem~\ref{thm:gap}. The six sectors certify with exactly four negative pivots each,
+$\varepsilon\le8.7\times10^{-54}$ and smallest pivot $0.65$. The tail bound exceeds $136$ from $j=36$ on:
+exactly, $\sqrt{342}-6>\sqrt{156}$, with margin $0.0032$ in that form. The spin-$0$ slice is computed in exact
+arithmetic (receipts in \path{research/su2-floor-family-20261119/}).
+\end{proof}
+
+So at $t=4$ there are still exactly three growth directions, and the floor gap is $36$. Unlike $t=3$, spin $6$
+begins below the top of the spin-$0$ spectrum, so the sectors interleave there.
+
+\paragraph{The floor law over a range.} A certificate need not be taken one $t$ at a time. For a slice
+$t\in[a,b]$, enclose $A(t)-\lambda_t(j)-\delta$ for \emph{all} $t$ in the slice at once, with $t$ and
+$\lambda_t(j)$ entered as intervals, and proceed as in the proof of Theorem~\ref{thm:gap}. Bound the
+perturbation by $\rho=\min(\text{Frobenius},\text{maximal row sum})$ of the enclosure radii; both bound the
+$2$-norm of a symmetric perturbation. Then exactly four negative pivots and $\varepsilon<\delta$ give, for every
+$t$ in the slice, at most two eigenvalues below $\lambda_t(j)+\delta-\varepsilon$. By
+Proposition~\ref{prop:family}, both copies of $\lambda_t(j)$ are among them.
+
+\begin{theorem}[The floor law on $2.75\le t\le10$]\label{thm:range}
+For every $t\in[2.75,10]$ and every $j\in\{0,1,\dots,12,20,24\}$, $\lambda_t(j)$ is the lowest eigenvalue of
+$H+GG^*$ in the sector of spin $j/2$, with multiplicity exactly two, and the lowest gauge-orthogonal eigenvalue
+there.
+\end{theorem}
+\begin{proof}
+$1{,}091$ slices tile $[2.75,10]$ exactly in each of the fifteen sectors, the finest $0.002$ wide near
+$t=2.75$, where the gap above the floor is smallest ($0.16$ for $j=4$, $0.18$ for $j=1$). Every slice has
+exactly four negative pivots and $\varepsilon<\delta$, the smallest margin $\delta-\varepsilon$ being $0.0018$.
+A degenerate slice at $t=3$ reproduces Table~\ref{tab:cert}
+(\path{scripts/ricci_su2_floor_interval_cert.py}, receipt
+\path{research/su2-floor-family-20261119/interval_cert_2.75_10.json}).
+\end{proof}
+
+\begin{remark}[Below the range]\label{rem:tstar}
+In double precision, $\lambda_t(j)$ is the bottom of every sector $j\le40$ for every $t\in[2.7,10]$ tested.
+Below $t^*\approx2.6980$ (located by bisection) a lower eigenvalue appears, first in the sector $j=4$; at
+$t\le2$ the branch is the floor of no sector. None of this is certified.
+\end{remark}
+
+\begin{corollary}\label{cor:family}
+Where $\lambda_t(j)$ is the floor:
+\begin{enumerate}
+  \item \emph{The floor gap.} On the Poincar\'e sphere, $\lambda_t(12)-\lambda_t(0)=(240-24t)/t$: $168/3$ at
+    $t=3$, $36$ at $t=4$, and $0$ at $t=10$. The relation to the first scalar eigenvalue holds at $t=3$ only.
+  \item \emph{Where a twist goes free.} $\lambda_t(j)=0$ exactly at
+    \[
+      t_j=\tfrac12\Bigl(\sqrt{(j+2)^2+2(j+4)^2}-(j+2)\Bigr),
+    \]
+    and $\lambda_t(j)<0$ for $t>t_j$. The values are $t_0=2$, $t_2=2.69$, $t_3=3.045$, $t_4=3.403$. At stretch
+    $t$, every sector with $j<(t-4)+\sqrt{3t^2-4t}$ has negative floor. Each floor crosses zero linearly in
+    $t-t_j$.
+  \item \emph{The softest sector moves.} Over $j$, $\lambda_t(j)$ is smallest near $j=t-4$.
+\end{enumerate}
+\end{corollary}
+\begin{proof}
+Algebra on the formula of Proposition~\ref{prop:family}; the statements about floors hold where
+Theorem~\ref{thm:range} or Theorem~\ref{thm:t4} applies.
+\end{proof}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_floor_family.pdf}
+  \caption{The floor law across the Berger family. (a) $\lambda_t(j)$ for $j=0,\dots,6$; dots mark where each
+  twist goes free ($t_j$); shaded: the range of Theorem~\ref{thm:range}; dashed: $t^*$ of
+  Remark~\ref{rem:tstar}. (b) The floor gap on the Poincar\'e sphere, $(240-24t)/t$.}
+  \label{fig:family}
+\end{figure}
+
+\paragraph{Further observations (double precision; not certified).} Two numerical experiments locate what
+the floor law is and is not (scripts and receipts in the repository; see the availability section).
+\begin{itemize}
+  \item \emph{Landscape, not dynamics.} Under the gauge-fixed linearised flow with the operator held at the
+    Berger field, a disturbance in sector $j$ decays for $t<t_j$, grows for $t>t_j$, and turns into the twist
+    (overlap $1.000$ in every run). Under the actual Yang--Mills flow the Berger field is not at rest. It
+    collapses towards a flat field within flow time $0.1$ (energy $34.6\to0.73$ at $t=3.55$), faster than any
+    twist grows, and the disturbance decays. The floor law describes the second variation at the Berger
+    field. It is not by itself a dynamical transition.
+  \item \emph{Resting fields.} Among left-invariant fields on $(t_1,t_2,1)$, a multistart search
+    ($36$ shapes, axis ratios up to $20$) finds exactly three Yang--Mills fields up to gauge: two flat, and one
+    non-flat relative of the meron. That relative keeps Morse index $1$ throughout, including along
+    $(t,1,1)$ for $t\in[0.05,10]$, and no sector $j\le12$ crosses zero on it.
+\end{itemize}
+
 \section{Checks}\label{sec:checks}
 
 \paragraph{The round sphere.} At $g=(1,1,1)$ the Levi-Civita connection is a Yang--Mills field (the
@@ -373,13 +504,24 @@ rest, how gauge directions are separated from physical ones is a choice; the the
 $L^2$ (Coulomb) slice, and the full Hessian is given alongside. The theorem is not a statement about the
 quantum theory and not a Yang--Mills mass gap.
 
-\paragraph{What is special.} The closed form is tied to the squashing: at $(2,1,1)$, $(4,1,1)$ and the
-round metric the bottom of a sector is not of this form. The circular eigenvector of
-Proposition~\ref{prop:bottom} uses only the rotation symmetry about the long axis and the top weight,
-so the same method applies at other squashings, where it will give other values.
+\paragraph{What is special.} The value $(j(j+2)-14)/3$ is tied to $t=3$, but the mechanism is not. The
+circular eigenvector uses only the rotation symmetry about the long axis and the top weight, so it is an
+exact eigenvector at every squashing (Proposition~\ref{prop:family}), with the stretch entering the formula
+rationally. Whether it is the \emph{floor} depends on $t$. It is the floor throughout $[2.75,10]$ in the
+certified sectors, and (numerically) not below $t^*\approx2.698$. At the round metric and at $(2,1,1)$ other
+modes are lower. The relation to the Poincar\'e sphere's first scalar eigenvalue, $168/3$, is special to
+$t=3$; in general the floor gap is $(240-24t)/t$.
 
-\paragraph{Open questions.} Minimality for every $j$, the analogous closed forms at other squashings and
-along the Ricci flow of the metric, and the higher eigenvalues of each sector.
+\paragraph{The landscape and the flow.} The Berger field is not at rest, and under the Yang--Mills flow it
+slides towards a flat field faster than any twist grows (Section~\ref{sec:family}). So the floor law is a
+statement about the second variation at the Berger field, the shape of the landscape there. Its non-flat
+resting relative, the squashed meron, keeps a single unstable direction across the family, and no twist goes
+soft on it.
+
+\paragraph{Open questions.} Minimality for every $j$; the threshold $t^*$ in closed form, where a second
+eigenvalue branch crosses $\lambda_t(4)$; the floor along the Ricci flow of the metric; Yang--Mills fields that
+are not left-invariant on the squashed spheres, where a twist might go soft at rest; and the higher eigenvalues
+of each sector.
 
 \section*{Funding and competing interests}
 This work received no funding. The author declares no competing interests.
@@ -396,7 +538,18 @@ All programs and certificates are in the \textsc{GIGI} repository,
   \item the spin-$0$ slice and the double-precision range: \path{scripts/ricci_su2_sector_minimality.py};
   \item Lemma~\ref{lem:weitz} and the certificates: \path{scripts/ricci_su2_gap_certificates.py}.
 \end{itemize}
-This paper, its source, and the code and data above are archived at \url{https://doi.org/10.5281/zenodo.24386614}.
+For Section~\ref{sec:family}, with outputs in \path{research/su2-floor-family-20261119/}:
+\begin{itemize}
+  \item Proposition~\ref{prop:family}: \path{scripts/ricci_su2_sector_formula_squashed.py};
+  \item Theorem~\ref{thm:t4}: \path{scripts/ricci_su2_gap_certificates_t.py} (any rational $t$);
+  \item Theorem~\ref{thm:range}: \path{scripts/ricci_su2_floor_interval_cert.py};
+  \item Remark~\ref{rem:tstar}: \path{scripts/ricci_su2_floor_family_scan.py};
+  \item the flow experiment: \path{scripts/ricci_su2_soft_mode_flow.py};
+  \item resting fields: \path{scripts/ricci_su2_resting_fields.py},
+    \path{scripts/ricci_su2_resting_fields_general.py}, \path{scripts/ricci_su2_meron_family_soft.py}.
+\end{itemize}
+This paper, its source, and the code and data above are archived on Zenodo under the concept DOI
+\url{https://doi.org/10.5281/zenodo.24386613}, which resolves to the latest version.
 
 \begin{thebibliography}{99}\small
 \bibitem{bar1992} C.~B\"ar, The Dirac operator on homogeneous spaces and its spectrum on $3$-dimensional lens spaces, \emph{Arch.\ Math.} 59 (1992) 65--79.

@@ -82,3 +82,12 @@ the untruncated one). An earlier single draw of that fixture (noise seed 23) did
 untruncated GEVP fail; that is why the test runs over several draws. Extension harness
 e2e/probes/test_q3_extension.py; probe frozen at target-ym6/q3ext/correlator_probe.exe, sha256 prefix
 034b57b2d7dde5a8.
+
+## Peek at k7 (Bee's request, 2026-11-20 ~07:20, while k8-k10 sample)
+
+k7 finished at 06:45 and was scored early with a copy of e2e/probes/test_q3_extension.py restricted to k0 and k7 (same
+frozen probe 034b57b2d7dde5a8; outputs outside the run directory; receipt k7_peek_receipt.json). Nothing was changed
+after it: the harness, the probe, the gates and the full scoring of k0-k10 stand as committed. k7 counts for C-harm
+and C-null exactly as registered; the peek is recorded so no one reads it as unseen when the full receipt lands.
+Read: Q3-a and Q3-v at beta 2.2986 pass (k0 with k7); C-harm at k7 0++ within 0.64 sigma of the Amendment-2 value;
+the Amendment-2 flux loop refused at k7 and the Q3-C one did not (C-harm does not apply there); nulls refuse.

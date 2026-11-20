@@ -87,3 +87,33 @@ question.
 ## Not done
 
 n = 3 on the long window; the recovered-mass test; windows beyond 0.1.
+
+## Addendum: the two forces are wrong in the same direction (diagnostic, same evening)
+
+Script: `scripts/ricci_su2_long_window_error_split.py`. Receipt: `research/su2-long-window-20261119/error_split.json`.
+
+- **Method.** The script reads the saved final states and splits each error vector d = log(L⁻¹U) exactly as E
+  does. C-E: every receipt's E is reproduced to 2 × 10⁻¹⁶.
+- **No prediction was attached**, so this is evidence, not a gate.
+
+| at t = 0.1 | n = 1 | n = 2 |
+| --- | --- | --- |
+| B-cosine of the native and two-ring error vectors | 0.81 | **0.988** |
+| ‖d_two-ring − d_native‖ / ‖d_native‖ | 0.70 | **0.157** |
+| fraction of the error in the 9 left-invariant directions (native / two-ring) | 0.28 / 0.34 | 0.12 / 0.13 |
+
+N = 80 gives the same numbers to three digits.
+
+At n = 2 the two forces end up wrong in nearly the same direction, though their instantaneous errors differ
+fivefold. So the late error comes from what they share:
+
+- the native (Whitney) mass B;
+- the Whitney test that B defines;
+- the moving-metric assembly;
+- the reference.
+
+**Replacing B alone is not a well-posed test.** The two-ring force's target is defined through the Whitney test,
+and B is the Whitney mass. Swapping B while keeping the test would introduce a moment mismatch (magnet note,
+Lemma B). The well-posed test builds the mass **and** the test from the same reading: option B of
+`docs/research/magnet-rule-variational-2026-11-19.md`. It runs through M0, because the mass must be invertible on
+rough modes, so the reading must be seated.

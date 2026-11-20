@@ -1,0 +1,80 @@
+{
+ "t": 0.1,
+ "kind": "diagnostic (research script, not an engine run)",
+ "n1": {
+  "native_N40": {
+   "E": 0.04755229851047801,
+   "E_receipt": 0.04755229851047801,
+   "C_E_rel": 0.0,
+   "sector_fraction": 0.2800610478324866
+  },
+  "native_N80": {
+   "E": 0.04751035649474399,
+   "E_receipt": 0.04751035649474399,
+   "C_E_rel": 0.0,
+   "sector_fraction": 0.2786455431388614
+  },
+  "pg_N40": {
+   "E": 0.057206857924065393,
+   "E_receipt": 0.0572068579240654,
+   "C_E_rel": 1.2129479149366498e-16,
+   "sector_fraction": 0.3367260735088875
+  },
+  "pg_N80": {
+   "E": 0.05720236933165942,
+   "E_receipt": 0.057202369331659425,
+   "C_E_rel": 1.2130430933158574e-16,
+   "sector_fraction": 0.33649925427024097
+  },
+  "pair_N40": {
+   "cosine_B": 0.8118413350659754,
+   "difference_over_native": 0.7028104193614606,
+   "sector_part_cosine_B": 0.5527435974442115,
+   "off_sector_difference_over_native_off_sector": 0.43295501548049803
+  },
+  "pair_N80": {
+   "cosine_B": 0.8118482908697151,
+   "difference_over_native": 0.7033375197113267,
+   "sector_part_cosine_B": 0.5519125064142913,
+   "off_sector_difference_over_native_off_sector": 0.4329230259470556
+  }
+ },
+ "n2": {
+  "native_N40": {
+   "E": 0.019045058955511274,
+   "E_receipt": 0.019045058955511278,
+   "C_E_rel": 1.821704495669005e-16,
+   "sector_fraction": 0.12469572171470839
+  },
+  "native_N80": {
+   "E": 0.01901215944400387,
+   "E_receipt": 0.01901215944400387,
+   "C_E_rel": 0.0,
+   "sector_fraction": 0.1215443847560084
+  },
+  "pg_N40": {
+   "E": 0.01865693998003064,
+   "E_receipt": 0.018656939980030637,
+   "C_E_rel": 1.8596012827758031e-16,
+   "sector_fraction": 0.13465196639068738
+  },
+  "pg_N80": {
+   "E": 0.018626328619585582,
+   "E_receipt": 0.018626328619585582,
+   "C_E_rel": 0.0,
+   "sector_fraction": 0.1316806748468138
+  },
+  "pair_N40": {
+   "cosine_B": 0.9876702684772505,
+   "difference_over_native": 0.1567553228812084,
+   "sector_part_cosine_B": 0.9374946022239673,
+   "off_sector_difference_over_native_off_sector": 0.09948637236699157
+  },
+  "pair_N80": {
+   "cosine_B": 0.9876259375316061,
+   "difference_over_native": 0.15702780425638682,
+   "sector_part_cosine_B": 0.9357983547932508,
+   "off_sector_difference_over_native_off_sector": 0.09949237660803771
+  }
+ }
+}

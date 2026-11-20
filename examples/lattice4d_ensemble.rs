@@ -2,10 +2,13 @@
 //! Kennedy-Pendleton heat-bath sweep plus N_OR overrelaxation sweeps per update, a measurement
 //! after every update. Writes the 0++ and flux-loop operator series at each APE smearing level.
 //!
-//! usage: lattice4d_ensemble BETA LS LT N_THERM N_MEAS N_OR SEED OUT.json [LEVELS] [ALPHA]
+//! usage: lattice4d_ensemble BETA LS LT N_THERM N_MEAS N_OR SEED OUT.json [LEVELS] [ALPHA] [THREADS]
 //!        LEVELS = comma-separated smearing levels (default 0,4,8,16), ALPHA default 0.5
+//!        THREADS = 0 (default): the sequential sweeps (the contract of the first Q3 run);
+//!        THREADS >= 1: the checkerboard sweeps and parallel smearing, a different ensemble for the
+//!        same seed, bit-identical for any THREADS >= 1.
 //!        N_MEAS = 0 runs the timing only: thermalisation sweeps timed, nothing measured.
-use gigi::gauge::lattice4d::{smeared_operators, Lattice4d};
+use gigi::gauge::lattice4d::{smeared_operators, smeared_operators_par, Lattice4d};
 use gigi::gauge::marsaglia_haar::SmallRng;
 use serde_json::json;
 
@@ -18,13 +21,23 @@ fn main() {
     let levels: Vec<usize> =
         a.get(9).map(|s| s.split(',').map(|x| x.parse().unwrap()).collect()).unwrap_or(vec![0, 4, 8, 16]);
     let alpha: f64 = a.get(10).map(|s| s.parse().unwrap()).unwrap_or(0.5);
+    let threads: usize = a.get(11).map(|s| s.parse().unwrap()).unwrap_or(0);
     let mut rng = SmallRng::seed_from_u64(seed);
     let mut lat = Lattice4d::hot([lt, ls, ls, ls], &mut rng);
-    let update = |lat: &mut Lattice4d, rng: &mut SmallRng| {
-        lat.heatbath_sweep(beta, rng);
-        for _ in 0..n_or {
-            lat.overrelax_sweep();
+    let mut sweep = 0u64;
+    let mut update = |lat: &mut Lattice4d, rng: &mut SmallRng| {
+        if threads == 0 {
+            lat.heatbath_sweep(beta, rng);
+            for _ in 0..n_or {
+                lat.overrelax_sweep();
+            }
+        } else {
+            lat.heatbath_sweep_par(beta, seed, sweep, threads).unwrap();
+            for _ in 0..n_or {
+                lat.overrelax_sweep_par(threads).unwrap();
+            }
         }
+        sweep += 1;
     };
     let t0 = std::time::Instant::now();
     for _ in 0..n_therm {
@@ -39,7 +52,11 @@ fn main() {
     for _ in 0..n_meas {
         update(&mut lat, &mut rng);
         let tm = std::time::Instant::now();
-        let ops = smeared_operators(&lat, &levels, alpha);
+        let ops = if threads == 0 {
+            smeared_operators(&lat, &levels, alpha)
+        } else {
+            smeared_operators_par(&lat, &levels, alpha, threads)
+        };
         meas_s += tm.elapsed().as_secs_f64();
         for (k, o) in ops.into_iter().enumerate() {
             scalar[k].push(o.scalar);
@@ -49,7 +66,8 @@ fn main() {
     }
     let out = json!({
         "beta": beta, "ls": ls, "lt": lt, "n_therm": n_therm, "n_meas": n_meas, "n_or": n_or,
-        "seed": seed, "levels": levels, "alpha": alpha,
+        "seed": seed, "levels": levels, "alpha": alpha, "threads": threads,
+        "sampler": if threads == 0 { "sequential" } else { "checkerboard" },
         "seconds_thermalisation": therm_s, "seconds_per_update": therm_s / n_therm.max(1) as f64,
         "seconds_measuring": meas_s, "seconds_total": t0.elapsed().as_secs_f64(),
         "seconds_production": t1.elapsed().as_secs_f64(),

@@ -279,6 +279,152 @@ pub fn smeared_operators(lat: &Lattice4d, levels: &[usize], alpha: f64) -> Vec<S
     out
 }
 
+// ── Checkerboard-parallel updates ──────────────────────────────────────────────────────────
+//
+// Links U_μ(x) with the same μ and the same site parity (Σ x mod 2) never appear in each other's
+// staples (the only μ-links in the staple of U_μ(x) sit at x ± ν, of the other parity), so each
+// such class can be updated at once from the old lattice. This needs every extent even, and the
+// parallel sweeps refuse otherwise. Every link draws from its own stream, seeded from
+// (seed, sweep, μ, site) through splitmix64, so an ensemble is bit-identical for any thread count.
+// These are new sweeps with their own reproducibility contract; the sequential sweeps above are
+// unchanged.
+
+fn splitmix(mut z: u64) -> u64 {
+    z = z.wrapping_add(0x9E3779B97F4A7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
+    z ^ (z >> 31)
+}
+
+/// The random stream of one link update.
+pub fn link_rng(seed: u64, sweep: u64, mu: usize, site: usize) -> SmallRng {
+    let h = splitmix(splitmix(splitmix(seed) ^ sweep) ^ ((mu as u64) << 48 | site as u64));
+    SmallRng::seed_from_u64(h | 1)
+}
+
+/// Map `f` over `0..n` on `threads` scoped threads, results in order.
+pub fn par_map<T: Send, F: Fn(usize) -> T + Sync>(n: usize, threads: usize, f: F) -> Vec<T> {
+    let threads = threads.max(1).min(n.max(1));
+    let chunk = n.div_ceil(threads);
+    let f = &f;
+    std::thread::scope(|sc| {
+        let hs: Vec<_> = (0..threads)
+            .map(|k| sc.spawn(move || (k * chunk..((k + 1) * chunk).min(n)).map(f).collect::<Vec<T>>()))
+            .collect();
+        hs.into_iter().flat_map(|h| h.join().unwrap()).collect()
+    })
+}
+
+impl Lattice4d {
+    fn require_even(&self) -> Result<(), String> {
+        if self.dims.iter().any(|d| d % 2 == 1) {
+            return Err(format!("checkerboard sweeps need every extent even (dims {:?})", self.dims));
+        }
+        Ok(())
+    }
+    fn parity_sites(&self) -> [Vec<usize>; 2] {
+        let mut out = [Vec::new(), Vec::new()];
+        for site in 0..self.n_sites() {
+            let x = self.coords(site);
+            out[(x[0] + x[1] + x[2] + x[3]) % 2].push(site);
+        }
+        out
+    }
+    /// One checkerboard heat-bath sweep (sweep index `sweep` keys the random streams).
+    pub fn heatbath_sweep_par(&mut self, beta: f64, seed: u64, sweep: u64, threads: usize) -> Result<(), String> {
+        self.require_even()?;
+        let classes = self.parity_sites();
+        for mu in 0..4 {
+            for sites in &classes {
+                let new = par_map(sites.len(), threads, |i| {
+                    let site = sites[i];
+                    let v = self.staple(self.coords(site), mu);
+                    let mut rng = link_rng(seed, sweep, mu, site);
+                    sample_su2_link(v, beta, &mut rng)
+                });
+                for (i, q) in new.into_iter().enumerate() {
+                    self.links[4 * sites[i] + mu] = q;
+                }
+            }
+        }
+        Ok(())
+    }
+    /// One checkerboard overrelaxation sweep.
+    pub fn overrelax_sweep_par(&mut self, threads: usize) -> Result<(), String> {
+        self.require_even()?;
+        let classes = self.parity_sites();
+        for mu in 0..4 {
+            for sites in &classes {
+                let new = par_map(sites.len(), threads, |i| {
+                    let site = sites[i];
+                    let v = self.staple(self.coords(site), mu);
+                    let u = self.links[4 * site + mu];
+                    let k = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2] + v[3] * v[3]).sqrt();
+                    if k < 1e-12 {
+                        return u;
+                    }
+                    let vh = qinv(&[v[0] / k, v[1] / k, v[2] / k, v[3] / k]);
+                    qnormalise(qmul(&qmul(&vh, &qinv(&u)), &vh))
+                });
+                for (i, q) in new.into_iter().enumerate() {
+                    self.links[4 * sites[i] + mu] = q;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// `ape_smear_spatial` on `threads` threads (identical result: every new link reads old links only).
+pub fn ape_smear_spatial_par(lat: &Lattice4d, alpha: f64, threads: usize) -> Lattice4d {
+    let new = par_map(lat.n_sites(), threads, |site| {
+        let x = lat.coords(site);
+        let mut out = [[0.0; 4]; 3];
+        for i in 1..4 {
+            let mut acc = lat.u(x, i);
+            let xi = lat.shift(x, i, true);
+            for j in 1..4 {
+                if j == i {
+                    continue;
+                }
+                let xj = lat.shift(x, j, true);
+                let up = qmul(&qmul(&lat.u(x, j), &lat.u(xj, i)), &qinv(&lat.u(xi, j)));
+                let xmj = lat.shift(x, j, false);
+                let ximj = lat.shift(xi, j, false);
+                let dn = qmul(&qmul(&qinv(&lat.u(xmj, j)), &lat.u(xmj, i)), &lat.u(ximj, j));
+                for k in 0..4 {
+                    acc[k] += alpha * (up[k] + dn[k]);
+                }
+            }
+            out[i - 1] = qnormalise(acc);
+        }
+        out
+    });
+    let mut l = lat.clone();
+    for (site, q) in new.into_iter().enumerate() {
+        for i in 1..4 {
+            l.links[4 * site + i] = q[i - 1];
+        }
+    }
+    l
+}
+
+/// `smeared_operators` with parallel smearing.
+pub fn smeared_operators_par(lat: &Lattice4d, levels: &[usize], alpha: f64, threads: usize) -> Vec<SliceOperators> {
+    let mut out = Vec::with_capacity(levels.len());
+    let mut cur = lat.clone();
+    let mut done = 0usize;
+    for &n in levels {
+        assert!(n >= done, "smearing levels must increase");
+        for _ in done..n {
+            cur = ape_smear_spatial_par(&cur, alpha, threads);
+        }
+        done = n;
+        out.push(slice_operators(&cur));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -408,5 +554,78 @@ mod tests {
         let c = Lattice4d::cold([2, 3, 3, 3]);
         let cs = ape_smear_spatial(&c, 0.5);
         assert!(cs.links.iter().all(|q| (q[0] - 1.0).abs() < 1e-15));
+    }
+
+    #[test]
+    fn checkerboard_is_thread_count_independent_and_refuses_odd_extents() {
+        let mut rng = SmallRng::seed_from_u64(23);
+        let base = Lattice4d::hot([4, 4, 4, 6], &mut rng);
+        let run = |threads: usize| {
+            let mut l = base.clone();
+            for sw in 0..3 {
+                l.heatbath_sweep_par(2.3, 99, sw, threads).unwrap();
+                l.overrelax_sweep_par(threads).unwrap();
+            }
+            l.links
+        };
+        assert_eq!(run(1), run(7));
+        let mut odd = Lattice4d::hot([3, 4, 4, 4], &mut rng);
+        assert!(odd.heatbath_sweep_par(2.3, 1, 0, 2).is_err());
+    }
+
+    #[test]
+    fn parallel_smearing_equals_serial() {
+        let mut rng = SmallRng::seed_from_u64(29);
+        let l = Lattice4d::hot([4, 4, 4, 4], &mut rng);
+        let a = ape_smear_spatial(&l, 0.5);
+        let b = ape_smear_spatial_par(&l, 0.5, 5);
+        assert_eq!(a.links, b.links);
+    }
+
+    #[test]
+    fn checkerboard_sampler_passes_q3_0a_and_0b() {
+        let mut rng = SmallRng::seed_from_u64(31);
+        // (a) strong coupling
+        let beta = 0.5;
+        let u = bessel_i(2, beta) / bessel_i(1, beta);
+        let mut l = Lattice4d::hot([4, 4, 4, 4], &mut rng);
+        let mut sw = 0u64;
+        for _ in 0..50 {
+            l.heatbath_sweep_par(beta, 7, sw, 4).unwrap();
+            sw += 1;
+        }
+        let v: Vec<f64> = (0..400)
+            .map(|_| {
+                l.heatbath_sweep_par(beta, 7, sw, 4).unwrap();
+                sw += 1;
+                l.mean_plaquette()
+            })
+            .collect();
+        let (m, s) = mean_and_err(&v, 20);
+        assert!((m - u).abs() < 4.0 * s + 5.0 * u.powi(5), "{m} ± {s} vs u = {u}");
+        // (b) against Metropolis at beta = 2.3
+        let beta = 2.3;
+        let mut a = Lattice4d::hot([4, 4, 4, 4], &mut rng);
+        for _ in 0..100 {
+            a.heatbath_sweep_par(beta, 8, sw, 4).unwrap();
+            a.overrelax_sweep_par(4).unwrap();
+            sw += 1;
+        }
+        let va: Vec<f64> = (0..600)
+            .map(|_| {
+                a.heatbath_sweep_par(beta, 8, sw, 4).unwrap();
+                a.overrelax_sweep_par(4).unwrap();
+                sw += 1;
+                a.mean_plaquette()
+            })
+            .collect();
+        let mut b = Lattice4d::hot([4, 4, 4, 4], &mut rng);
+        for _ in 0..300 {
+            b.metropolis_sweep(beta, 0.8, 4, &mut rng);
+        }
+        let vb: Vec<f64> = (0..1500).map(|_| { b.metropolis_sweep(beta, 0.8, 4, &mut rng); b.mean_plaquette() }).collect();
+        let (ma, sa) = mean_and_err(&va, 20);
+        let (mb, sb) = mean_and_err(&vb, 20);
+        assert!((ma - mb).abs() < 4.0 * (sa * sa + sb * sb).sqrt(), "checkerboard {ma} ± {sa}, Metropolis {mb} ± {sb}");
     }
 }

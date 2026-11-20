@@ -7,7 +7,7 @@
 //!         "rings": 2, "links": [[q0,q1,q2,q3], ..],
 //!         "cells": [{"vertices": [[..] x4], "edges": [6], "reverse": [6], "weight": w}, ..]}
 use gigi::gauge::curvature_recovery::Cell;
-use gigi::gauge::ricci_pg_force::{link_force, link_force_jacobian, ForceMethod};
+use gigi::gauge::ricci_pg_force::{link_force, link_force_jacobian_with, ForceContext, ForceMethod};
 use serde::Deserialize;
 use std::{fs::File, io::BufReader};
 
@@ -29,6 +29,12 @@ struct Input {
     links: Vec<[f64; 4]>,
     #[serde(default)]
     jacobian_eps: Option<f64>,
+    /// YM6 removal only: finite-difference defect derivative with this step.
+    #[serde(default)]
+    fd_defect_step: Option<f64>,
+    /// YM7: write the native tangent mass B at these links (triplets) instead of a force.
+    #[serde(default)]
+    mass_only: bool,
     cells: Vec<InCell>,
 }
 
@@ -55,11 +61,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into_iter()
         .map(|c| Cell { vertices: c.vertices, edges: c.edges, reverse: c.reverse })
         .collect();
+    if input.mass_only {
+        let ctx = ForceContext::new(&cells, &weights, input.links.len(), metric, input.order, method)?;
+        let (r, c, v) = ctx.tangent_mass(&cells, &input.links)?;
+        let base = std::path::Path::new(&args[2]);
+        let write = |ext: &str, bytes: Vec<u8>| std::fs::write(base.with_extension(ext), bytes);
+        write("rows.bin", r.iter().flat_map(|x| (*x as u32).to_le_bytes()).collect())?;
+        write("cols.bin", c.iter().flat_map(|x| (*x as u32).to_le_bytes()).collect())?;
+        write("vals.bin", v.iter().flat_map(|x| x.to_le_bytes()).collect())?;
+        serde_json::to_writer(File::create(&args[2])?,
+            &serde_json::json!({"schema": "link_force_mass_v1", "n": 3 * input.links.len(), "nnz": v.len()}))?;
+        return Ok(());
+    }
     if let Some(eps) = input.jacobian_eps {
         // YM3: K by central differences; triplets written as raw little-endian
         // files beside the JSON (rows u32, cols u32, vals f64).
         let t = std::time::Instant::now();
-        let j = link_force_jacobian(&cells, &weights, &input.links, metric, input.order, method, eps)?;
+        let j = link_force_jacobian_with(&cells, &weights, &input.links, metric, input.order, method, eps, input.fd_defect_step)?;
         let secs = t.elapsed().as_secs_f64();
         let base = std::path::Path::new(&args[2]);
         let write = |ext: &str, bytes: Vec<u8>| std::fs::write(base.with_extension(ext), bytes);

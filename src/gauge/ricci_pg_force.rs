@@ -133,6 +133,9 @@ pub struct ForceContext {
     vid: Vec<[usize; 4]>,
     /// readers[edge]: the cells whose contribution depends on that link.
     readers: Vec<Vec<usize>>,
+    /// YM6 mechanism removal only: Some(step) replaces the exact defect
+    /// derivative by a central difference with that step (the pre-fix method).
+    fd_defect_step: Option<f64>,
 }
 
 impl ForceContext {
@@ -182,7 +185,14 @@ impl ForceContext {
                 readers[e].push(ci);
             }
         }
-        Ok(ForceContext { method, weights: weights.to_vec(), mass, quad, prepared, vid, readers })
+        Ok(ForceContext { method, weights: weights.to_vec(), mass, quad, prepared, vid, readers, fd_defect_step: None })
+    }
+
+    /// YM6 mechanism removal: use a finite-difference defect derivative with this
+    /// step instead of the exact one. Never used by the verbs.
+    pub fn with_fd_defect_derivative(mut self, step: f64) -> Self {
+        self.fd_defect_step = Some(step);
+        self
     }
 
     /// Move to another metric: rebuild the metric-dependent pieces (masses,
@@ -261,7 +271,28 @@ impl ForceContext {
             }
             q
         });
-        let d = cell_defects(local)?;
+        let mut d = cell_defects(local)?;
+        if let Some(step) = self.fd_defect_step {
+            // Mechanism removal (YM6): the finite-difference defect derivative
+            // the research code used before the exact one.
+            for e in 0..6 {
+                for k in 0..3 {
+                    let (mut up, mut dn) = (local, local);
+                    let mut s_up = [step.cos(), 0.0, 0.0, 0.0];
+                    s_up[1 + k] = step.sin();
+                    let mut s_dn = [step.cos(), 0.0, 0.0, 0.0];
+                    s_dn[1 + k] = -step.sin();
+                    up[e] = lmul4(local[e], s_up);
+                    dn[e] = lmul4(local[e], s_dn);
+                    let (du, dd) = (cell_defects(up)?.value, cell_defects(dn)?.value);
+                    for f in 0..4 {
+                        for c in 0..4 {
+                            d.derivative[f][c][3 * e + k] = (du[f][c] - dd[f][c]) / (2.0 * step);
+                        }
+                    }
+                }
+            }
+        }
         let m = self.mass[ci].face_mass;
         let mut h = [[0.0; 4]; 4];
         for i in 0..4 {
@@ -372,10 +403,28 @@ pub fn link_force_jacobian(
     method: ForceMethod,
     eps: f64,
 ) -> Result<Jacobian, String> {
+    link_force_jacobian_with(cells, weights, links, metric, order, method, eps, None)
+}
+
+/// [`link_force_jacobian`] with the YM6 removal switch (`fd_defect_step`).
+#[allow(clippy::too_many_arguments)]
+pub fn link_force_jacobian_with(
+    cells: &[Cell],
+    weights: &[f64],
+    links: &[[f64; 4]],
+    metric: [f64; 3],
+    order: usize,
+    method: ForceMethod,
+    eps: f64,
+    fd_defect_step: Option<f64>,
+) -> Result<Jacobian, String> {
     if !(eps.is_finite() && eps > 0.0) {
         return Err("LINK_FORCE JACOBIAN: a positive step is required".into());
     }
-    let ctx = ForceContext::new(cells, weights, links.len(), metric, order, method)?;
+    let mut ctx = ForceContext::new(cells, weights, links.len(), metric, order, method)?;
+    if let Some(step) = fd_defect_step {
+        ctx = ctx.with_fd_defect_derivative(step);
+    }
     let n = 3 * links.len();
     let (mut rows, mut cols, mut vals) = (Vec::new(), Vec::new(), Vec::new());
     let mut work = links.to_vec();

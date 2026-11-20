@@ -202,6 +202,15 @@ fn mass_error(ctx: &ForceContext, cells: &[Cell], u: &[[f64; 4]], l: &[[f64; 4]]
     Ok((q.max(0.0) / ctx.volume()).sqrt())
 }
 
+/// Where the step evaluates the velocity. `Midpoint` is the Cayley step;
+/// `Endpoint` (Ω = h ξ(U · cay(Ω), t_k + h)) exists only as the YM6 mechanism
+/// removal and is never used by the verb.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StepEvaluation {
+    Midpoint,
+    Endpoint,
+}
+
 /// Integrate the flow. `k0` is the preconditioner's Jacobian as triplets
 /// (rows, cols, vals); `metric_step` the metric the step uses (the frozen-metric
 /// control passes g(0) at every time); `metric_ref` the reference metric for the
@@ -219,6 +228,26 @@ pub fn link_flow(
     metric_step: &MetricSamples,
     metric_ref: &MetricSamples,
     k0: (&[usize], &[usize], &[f64]),
+) -> Result<FlowResult, String> {
+    link_flow_with(cells, weights, links0, edge_points, order, method, n_steps, t_end, metric_step, metric_ref, k0,
+                   StepEvaluation::Midpoint)
+}
+
+/// [`link_flow`] with the YM6 removal switch.
+#[allow(clippy::too_many_arguments)]
+pub fn link_flow_with(
+    cells: &[Cell],
+    weights: &[f64],
+    links0: &[[f64; 4]],
+    edge_points: &[[[f64; 4]; 2]],
+    order: usize,
+    method: ForceMethod,
+    n_steps: usize,
+    t_end: f64,
+    metric_step: &MetricSamples,
+    metric_ref: &MetricSamples,
+    k0: (&[usize], &[usize], &[f64]),
+    evaluation: StepEvaluation,
 ) -> Result<FlowResult, String> {
     let n = 3 * links0.len();
     if n > DENSE_LU_MAX {
@@ -263,12 +292,15 @@ pub fn link_flow(
     let (mut worst, mut evals) = (0.0_f64, 0usize);
     let mut status = "ok".to_string();
     for k in 0..n_steps {
-        let tm = (k as f64 + 0.5) * h;
+        let (tm, frac) = match evaluation {
+            StepEvaluation::Midpoint => ((k as f64 + 0.5) * h, 0.5),
+            StepEvaluation::Endpoint => ((k as f64 + 1.0) * h, 1.0),
+        };
         let g = metric_step.at(tm)?;
         let (mut ok, mut inc, mut it) = (false, f64::NAN, 0);
         for i in 1..=NEWTON_MAX {
             it = i;
-            let xi = velocity(&mut ctx, &step_links(&u, &om, 0.5), g)?;
+            let xi = velocity(&mut ctx, &step_links(&u, &om, frac), g)?;
             evals += 1;
             let f: Vec<f64> = om.iter().zip(&xi).map(|(o, x)| o - h * x).collect();
             let rhs = DVector::from_vec(b0.matvec(&f).into_iter().map(|x| -x).collect());

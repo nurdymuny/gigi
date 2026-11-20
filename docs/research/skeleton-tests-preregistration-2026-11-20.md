@@ -314,3 +314,21 @@ Script `scripts/ricci_su3_test2_family.py` (to be written after this commit).
   - any value of ε_c or ε_W;
   - persistence at small breaking, which is automatic;<ins>
   - every Test 3A outcome (review in §2).</ins>
+
+<ins>**Family 2 add-on, prediction G (fixed 20 November while families 2a and 2b were running, before any of their
+results were read).** It comes from the reading in the skeleton note, §8 addendum: "a field yields along its twist when
+its own field strength lines up with the twist's spin."
+
+- **Quantity.** s_F(t) = ⟨β, −2[F, ·]β⟩, the field-strength share of the curvature term for the extremal frame
+  state β. β is the unique charge-4 state of frame ⊗ su(3), E_θ ⊗ E_θ, with unit norm. ([F, ·]β)_i = Σ_j [F_ij, β_j],
+  with F_ij the curvature of A = ½θ in the orthonormal frame, and the sign convention of
+  `scripts/ricci_su2_gyromagnetic_split.py`. On SU(2) this gives 8 − 6t on the Berger field and > 0 on the squashed
+  meron.
+- **Prediction G (necessary condition).** In each of 2a and 2b, at every grid point in T_all, s_F(t) < 0.
+- **Verdict.**
+  - A point of T_all with s_F ≥ 0 counts against the reading as a general rule.
+  - If T_all is empty, G is untested in that family.
+  - The converse (s_F < 0 implies floor) is not predicted. Where s_F < 0 but the state is not the floor, that is
+    reported, not counted.
+- **Script.** A small addition, `scripts/ricci_su3_gyromagnetic_share.py`, computes s_F and the Ricci share from the
+  background alone. It is written after this commit.</ins>

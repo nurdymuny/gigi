@@ -1,10 +1,10 @@
 # The field equations against today's proven results (19 November 2026)
 
-**Research note.** It compares *The Field Equations of Semantic Coherence* (Bee's conjecture reference: the
+**Research note.** It compares *The Field Equations of Semantic Coherence* (my conjecture reference: the
 Davis Law C = τ/K, the trichotomy, the principle of stationary holonomy and 89 derived conjectures) with
 the results proved or measured on 19 November. **No new measurement.**
 
-**Tags** (Bee's convention):
+**Tags** (my convention):
 
 - **STRUCTURAL:** the same mathematical object, in a different setting.
 - **RESONANCE:** the same shape, on a different object.

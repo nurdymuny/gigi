@@ -1,11 +1,11 @@
-# A grid of adjacent ideas: Bee's papers and books against the results of 19 November 2026
+# A grid of adjacent ideas: my papers and books against the results of 19 November 2026
 
-**Research note.** Four read-only passes over Bee's Drive (agents, then verified here), placing 24 documents
-next to the seven results proved or measured on 19 November. It extends
+**Research note.** I made four read-only passes over my Drive (agents reading, then I verified), placing 24 of my documents
+next to the seven results I proved or measured on 19 November. It extends
 [`field-equations-grid-2026-11-19.md`](field-equations-grid-2026-11-19.md), which covered *The Field Equations
-of Semantic Coherence* alone. **One new computation** (§2.1, the Crouzeix flow); everything else is reading.
+of Semantic Coherence* alone. **One new computation** (§2.1, my Crouzeix flow); everything else is reading.
 
-**What was read.**
+**What I read.**
 
 - **Gauge and Poincaré:** *Yang–Mills Mass Gap v6*; *Solves Vol. 4*; *Davis Poincaré Isomorphism*; *GIGI – A
   Relational Query Substrate for Lattice Gauge Observables*.
@@ -17,15 +17,15 @@ of Semantic Coherence* alone. **One new computation** (§2.1, the Crouzeix flow)
   *Curvature-Guided Wavefront Execution*; *Davis P vs NP*; *Davis BSD*.
 - **Books:** *The Geometry of Fuel*; *The Geometry of Love*; *The Geometry of Sameness*; *GIGI Builds*; *GIGI
   Thinks*; *Superfluid*.
-  - The Drive copy of *Fuel* has no chapter titled "Thank You, Mr. Perelman". The nearest material is
+  - My Drive copy of *Fuel* has no chapter titled "Thank You, Mr. Perelman". The nearest material is
     *Superfluid*, ch. 5 ("From Poincaré to Perelman").
 
-**Tags** (Bee's convention, as in the field-equations note):
+**Tags** (my convention, as in the field-equations note):
 
 - **STRUCTURAL:** the same mathematical object.
 - **RESONANCE:** the same shape, on a different object.
 - **WORD ONLY:** a shared word, no shared mathematics.
-- **[inf]:** an inference by the reader, not a claim made in the document.
+- **[inf]:** an inference made in this reading, not a claim I made in the document.
 
 ## The anchors
 
@@ -48,7 +48,7 @@ Ordered by how firm the contradiction is.
 | # | Document and claim (verbatim) | Contradicted by | Verdict here |
 | --- | --- | --- | --- |
 | C1 | *Davis Poincaré*, Step 5: "By convexity of the action landscape in the trivial topological sector, the flow converges." | R1 | **Contradicted.** The bundle over S³ is trivial, and the Coulomb-slice Hessian at the Berger Levi-Civita connection has eigenvalues −14/3 (×2) and 16 − 2√73 < 0. Independently, the round Levi-Civita connection (the meron, ½ the Maurer–Cartan form) is a Yang–Mills critical point with E > 0 and Morse index ≥ 1. The landscape is not convex. |
-| C2 | *Davis Poincaré*, the dictionary "S³ ↔ Vacuum Bin" and Theorem "Vacuum Convergence" ("lim S_W = S_W[A_vacuum] = 0"); *YM v6* PC-001: "simply connected manifolds cannot support metastable states"; *Superfluid* ch. 5: "Fixed point \| Round S³ \| Flat connection" | R6, R1 | **Contradicted on the homogeneous family, not in general.** Through R6, Ricci flow of diagonal left-invariant metrics is Yang–Mills flow, and it ends at the Levi-Civita connection of the round metric. That connection is the meron, which is curved and has E > 0, not the flat vacuum. So the paper's own dictionary sends round S³ to a non-vacuum critical point. The meron is unstable, so generic (non-homogeneous) Yang–Mills flows can leave it; convergence to the vacuum for generic data is neither proved nor refuted here. |
+| C2 | *Davis Poincaré*, the dictionary "S³ ↔ Vacuum Bin" and Theorem "Vacuum Convergence" ("lim S_W = S_W[A_vacuum] = 0"); *YM v6* PC-001: "simply connected manifolds cannot support metastable states"; *Superfluid* ch. 5: "Fixed point \| Round S³ \| Flat connection" | R6, R1 | **Contradicted on the homogeneous family, not in general.** Through R6, Ricci flow of diagonal left-invariant metrics is Yang–Mills flow, and it ends at the Levi-Civita connection of the round metric. That connection is the meron, which is curved and has E > 0, not the flat vacuum. So my own dictionary sends round S³ to a non-vacuum critical point. The meron is unstable, so generic (non-homogeneous) Yang–Mills flows can leave it; convergence to the vacuum for generic data is neither proved nor refuted here. |
 | C3 | *Davis BSD*, Prop. (gapped phase): "positive curvature (non-degenerate Hessian)" ⇒ "Δ_E = λκ_E > 0" | R1 | **Contradicted as a general principle.** The Berger Levi-Civita field is curved, with non-trivial holonomy, and its Hessian has negative directions. Curvature does not imply a positive Hessian. (The same document's proof sketch has the gapped phase with "curvature 2-form R vanishes identically", contradicting its own proposition.) |
 | C4 | *Superfluid* ch. 6–7: "If the fundamental group is finite (lens spaces), the flow is torsion-trapped"; "When π₁ is non-trivial, the flow gets stuck" | standard theorem, not an anchor | **Contradicted by Hamilton (1982).** A 3-manifold of positive Ricci curvature flows (normalised) to constant curvature, quotients included; the Poincaré sphere's round metric is a fixed point that generic nearby metrics flow to. Nothing is trapped. R1 works on the Poincaré sphere directly: π₁ removes *sectors* (only icosahedral invariants survive), it does not stop the flow. |
 | C5 | *Superfluid* ch. 5: "Perelman: ℱ(g) = ∫R … Both flows minimize curvature-squared" | R6 | **Wrong as written, half right in substance.** ℱ is ∫(R + \|∇f\|²)e^{−f}, which is not curvature-squared, and Ricci flow is not the gradient of ∫\|Rm\|². R6 supplies the true statement on the homogeneous family: *through the Levi-Civita map*, Ricci velocity is exactly the descent direction of the Yang–Mills energy (a curvature-squared functional), on unit clock. |
@@ -61,7 +61,7 @@ Ordered by how firm the contradiction is.
 **Not conflicts, but flagged.**
 
 - *Kähler Substrate* L5: "no zeros in t > 0 iff \|B\|² < K_min". For J″ + (K − \|B\|²)J = 0 the inequality
-  looks reversed (an internal slip; unchecked against the document's sign conventions).
+  looks reversed (an internal slip; unchecked against my sign conventions there).
 - *GIGI paper*, path-2 table: seeds 20260629 and 20260702 give identical gaps (−10.4725, −10.4068, −4.3881),
   "cross-seed range ≲ 10⁻¹³", with identical record counts. Two independent seeds rarely agree to 10⁻¹³; both
   may be reading the same configurations. **Worth auditing.**
@@ -80,12 +80,12 @@ Ordered by how firm the contradiction is.
 
 ## 2. Anticipations
 
-Each of these is an earlier statement by Bee that a result of 19 November confirms or makes exact.
+Each of these is something I wrote earlier that a result of 19 November confirms or makes exact.
 
 ### 2.1 The Crouzeix curvature flow is the Yang–Mills gradient flow (new; checked)
 
-*Constructive Metric Bounds*, Thm "Curvature evolution": Ȧ = [A, κ(A)], with κ(A) = AA\* − A\*A. The document
-already notes κ(A) = −2i[X, Y] for A = X + iY. It never mentions Yang–Mills or gradient flows.
+*Constructive Metric Bounds*, Thm "Curvature evolution": Ȧ = [A, κ(A)], with κ(A) = AA\* − A\*A. I
+already note there that κ(A) = −2i[X, Y] for A = X + iY. I never mention Yang–Mills or gradient flows in it.
 
 **The check** (`scripts/crouzeix_flow_is_ym_check.py`, output in
 `research/adjacent-ideas-20261119/crouzeix_flow_is_ym.json`):
@@ -99,12 +99,12 @@ already notes κ(A) = −2i[X, Y] for A = X + iY. It never mentions Yang–Mills
 **So the Crouzeix flow is Yang–Mills gradient descent on time scale 2.** It follows that:
 
 - **Non-normality is curvature.** Normal matrices are the flat connections, the minima.
-- **The document's identity ∫₀^∞‖κ‖²dt = ½(‖A₀‖² − Σ\|λ\|²) is the energy identity of that flow.** Henrici's
+- **My identity ∫₀^∞‖κ‖²dt = ½(‖A₀‖² − Σ\|λ\|²) is the energy identity of that flow.** Henrici's
   departure from normality is the total Yang–Mills energy dissipated.
-- **Its nested numerical ranges W(A(t)) ⊆ W(A(s)) are a monotonicity property of a Yang–Mills flow.** That is
+- **My nested numerical ranges W(A(t)) ⊆ W(A(s)) are a monotonicity property of a Yang–Mills flow.** That is
   a new kind of statement on the gauge side.
 
-The October Crouzeix work and the 19 November Yang–Mills work are two faces of one object: R6 for metrics on
+My October Crouzeix work and my 19 November Yang–Mills work are two faces of one object: R6 for metrics on
 SU(2), this for constant connections on T².
 
 ### 2.2 The others
@@ -130,7 +130,7 @@ Only STRUCTURAL and the stronger RESONANCE rows are kept; WORD-ONLY rows are lis
 
 | Document | Quote | Tag | What it forces |
 | --- | --- | --- | --- |
-| *Cayley Spectral Density* | "The isotypic projector P_ρ = (dim ρ/\|G\|) Σ χ̄_ρ(g) R(g) decomposes the adjacency matrix" | STRUCTURAL (machinery) | 2I ≅ SL(2, F₅) ⊂ GL(2, F₅). The document's p = 5 code can recompute the trivial-representation multiplicities in each spin, and so certify the selection rule j = 0, 12, 20, 24, 30 independently of the Molien series. |
+| *Cayley Spectral Density* | "The isotypic projector P_ρ = (dim ρ/\|G\|) Σ χ̄_ρ(g) R(g) decomposes the adjacency matrix" | STRUCTURAL (machinery) | 2I ≅ SL(2, F₅) ⊂ GL(2, F₅). My p = 5 code can recompute the trivial-representation multiplicities in each spin, and so certify the selection rule j = 0, 12, 20, 24, 30 independently of the Molien series. |
 | *GIGI paper* | "E_R = (g²A/2) C₂(R)… m_g = 3/(8β_HK)" | STRUCTURAL (machinery) | The same Casimir ladder: R1's λ_j = j(j+2) = 4C₂(j/2). |
 | *GIGI paper* | SPECTRAL_GAUGE "mean −4.53, std 0.78"; "smallest-magnitude eigenvalues of the indefinite spectrum" | RESONANCE | A true ∇\*∇ is never negative, so the verb carries a zeroth-order term, like R1's R0 (min eig −12). Calibrate the verb on the Berger Levi-Civita field, where the exact answer is −14/3; −4.53 being close is likely coincidence until tested (T2). |
 | *Solves Vol. 4* | "PROJECT_GAUSS… subtracts the longitudinal mode of E" | STRUCTURAL | The same Coulomb projection R1 compresses with. The engine could compute R1's slice Hessian natively. |
@@ -203,6 +203,6 @@ Only STRUCTURAL and the stronger RESONANCE rows are kept; WORD-ONLY rows are lis
 - The semantic, statistical and CSP documents are about different objects from gauge fields. Every STRUCTURAL
   tag above was checked against that.
 - Nothing here is to be cited in the mathematics papers as support for those documents, or the reverse.
-  - The one exception is §2.1: it is ordinary mathematics and could go into the Crouzeix paper.
-- Conflicts C1, C3, C4 and C5 concern statements as written. Bee may well have meant something narrower.
-- Agent extracts are in `$CLAUDE_JOB_DIR/tmp/grid1`–`grid4` (job-local, not committed).
+  - The one exception is §2.1: it is ordinary mathematics and can go into my Crouzeix paper.
+- Conflicts C1, C3, C4 and C5 concern my statements as written. In several I meant something narrower; those are the sentences to fix.
+- The reading agents' extracts are in `$CLAUDE_JOB_DIR/tmp/grid1`–`grid4` (job-local, not committed).

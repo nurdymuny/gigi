@@ -58,12 +58,22 @@ FILES=(
   scripts/ricci_su2_floor_interval_cert.py scripts/ricci_su2_floor_family_scan.py
   scripts/ricci_su2_soft_mode_flow.py scripts/ricci_su2_resting_fields.py
   scripts/ricci_su2_resting_fields_general.py scripts/ricci_su2_meron_family_soft.py
+  scripts/ricci_su2_weitzenbock_symbolic_t.py scripts/ricci_su2_landau_symbolic.py
+  scripts/ricci_su2_charge_block_direct.py scripts/ricci_su2_block_rows_symbolic.py
+  scripts/ricci_su2_charge_selection_symbolic.py scripts/ricci_su2_block_interval_cert.py
+  scripts/ricci_su2_floor_large_j.py
   docs/papers/berger-spectrum/make_figure_floor_family.py
   docs/research/floor-family-squashing-2026-11-19.md
   LICENSE
 )
 for f in $R/*; do FILES+=("$f"); done
-for f in research/su2-floor-family-20261119/*; do FILES+=("$f"); done
+# the receipts the paper uses, listed (the folder also holds exploratory receipts that are not part of the paper)
+for f in gap_certificates_t4.json spin0_slice_t4.txt formula_squashed.txt interval_cert_2.75_10.json scan.json \
+         soft_mode_flow.json soft_mode_controls.txt resting_fields.json resting_fields_general.json meron_family_soft.json \
+         weitzenbock_symbolic_t.json landau_symbolic.txt block_rows_symbolic.json charge_selection_symbolic.txt \
+         block_cert_j40.json block_cert_j41_99.json floor_large_j.json; do
+  FILES+=("research/su2-floor-family-20261119/$f")
+done
 for t in L0_native L0_pg L1_native L1_pg; do FILES+=(research/su2-pg-stability-20261117/$t.eigs.npy research/su2-pg-stability-20261117/$t.json); done
 for t in L2_native L2_pg; do FILES+=(research/su2-spectrum-n3-20261119/$t.eigs.npy research/su2-spectrum-n3-20261119/$t.json); done
 for f in "${FILES[@]}"; do mkdir -p "$C/$(dirname "$f")"; cp "$f" "$C/$f"; done
@@ -90,6 +100,9 @@ T=$STAGE/check; mkdir -p $T/l $T/c
   && "$PY" -I scripts/ricci_su2_sector_minimality.py out/minimality.json 120 >/dev/null \
   && "$PY" -I scripts/ricci_su2_gap_certificates_t.py 4 out/gap_certificates_t4.json 136 0,12,20,24,30,32 36 >/dev/null \
   && (cd scripts && "$PY" -I ricci_su2_sector_formula_squashed.py 2>&1 | grep -v "^↪\|⎡\|⎢\|⎣\|⎥" > ../out/formula_squashed.txt) \
+  && "$PY" -I scripts/ricci_su2_landau_symbolic.py out/landau_symbolic.txt >/dev/null \
+  && "$PY" -I scripts/ricci_su2_charge_selection_symbolic.py out/charge_selection_symbolic.txt >/dev/null \
+  && "$PY" -I scripts/ricci_su2_floor_large_j.py out/floor_large_j.json 50 20 2.75 10 >/dev/null \
   && "$PY" - "$R" <<'EOF'
 import json, sys
 R = sys.argv[1]
@@ -118,6 +131,12 @@ same = close(strip(json.load(open("out/gap_certificates_t4.json"))), strip(json.
 ok &= same; print(f"rerun gap_certificates_t4.json: {'matches the committed receipt' if same else 'DIFFERS'}")
 same = open("out/formula_squashed.txt").read() == open(f"{FF}/formula_squashed.txt").read()
 ok &= same; print(f"rerun formula_squashed.txt: {'identical' if same else 'DIFFERS'}")
+for f in ("landau_symbolic.txt", "charge_selection_symbolic.txt"):
+    same = open(f"out/{f}").read() == open(f"{FF}/{f}").read()
+    ok &= same; print(f"rerun {f}: {'identical' if same else 'DIFFERS'}")
+a, b = json.load(open("out/floor_large_j.json")), json.load(open(f"{FF}/floor_large_j.json"))
+same = a["all_proved"] and all(a[k][x]["ok"] and a[k][x]["pieces"] == b[k][x]["pieces"] for k in ("regionA", "regionB") for x in b[k])
+ok &= same; print(f"rerun floor_large_j.json: {'all proved, same boxes' if same else 'DIFFERS'}")
 sys.exit(0 if ok else 1)
 EOF
 )

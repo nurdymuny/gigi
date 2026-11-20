@@ -1,0 +1,18 @@
+Omega_0 diagonal in the charge basis: True
+Omega_0 = i diag(w_a), w_a = c(t-2)/sqrt(t): True
+Omega_+ raises c by exactly 1: True
+Omega_- lowers c by exactly 1: True
+R0(t) preserves c: True   (so C = -(Omega_1^2+Omega_2^2) + R0 preserves c: True)
+moduli of the nonzero entries of Omega_+-: {sqrt(2)*sqrt(t)}
+type (-1, -1): D - lambda - radius - G = 0; counts (n+, n-) = (2, 0) ok
+type (-1, 0): D - lambda - radius - G = 0; counts (n+, n-) = (2, 1) ok
+type (-1, 1): D - lambda - radius - G = 0; counts (n+, n-) = (1, 1) ok
+type (0, -1): D - lambda - radius - G = 0; counts (n+, n-) = (2, 1) ok
+type (0, 0): D - lambda - radius - G = 0; counts (n+, n-) = (2, 2) ok
+type (0, 1): D - lambda - radius - G = 0; counts (n+, n-) = (1, 2) ok
+type (1, -1): D - lambda - radius - G = 0; counts (n+, n-) = (1, 1) ok
+type (1, 0): D - lambda - radius - G = 0; counts (n+, n-) = (1, 2) ok
+type (1, 1): D - lambda - radius - G = 0; counts (n+, n-) = (0, 2) ok
+Gershgorin closed form exact for all nine types: True
+mirror G(x, a) = G(2l - x, -a) for all nine types: True
+ALL EXACT

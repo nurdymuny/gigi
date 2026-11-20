@@ -277,6 +277,15 @@ is the highest-weight structure of that symmetry, and the Landau picture of §6 
 
 Together these would give the floor law for **every** sector and every t ∈ [2.75, 10].
 
+**Status (later on 20 November): carried out, and the floor law now holds in every sector for every t ∈ [2.75, 10]
+(Proved).** Steps 1–3 are done; details in Result 9 of
+[`floor-family-squashing-2026-11-19.md`](floor-family-squashing-2026-11-19.md) and Theorem 6.6 of the Floor paper (v2).
+
+- The block splitting is now exact rather than numerical (`charge_selection_symbolic.txt`).
+- Step 2 used a Gershgorin bound. It proves that every other block lies strictly above λ_t(j), not that the margin is
+  linear in j.
+- The linear growth of the margin in the table above remains Numerical.
+
 ## 8. Follow-up to Test 2: why the floor on the Berger field and not on the squashed meron (exploratory, 20 November)
 
 Bee's question after Test 2 ([`skeleton-test2-family1-results-2026-11-20.md`](skeleton-test2-family1-results-2026-11-20.md)):

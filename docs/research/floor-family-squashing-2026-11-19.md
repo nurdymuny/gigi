@@ -267,3 +267,34 @@ charge (spectral-skeleton §7); X₊ annihilates no other mode (control, `landau
   λ_t(j) = (j − 2(t−2))²/t + 2(j + t) + (12 − 8t)  (fibre + Landau + curvature),
 
 to round-off in 90 cases (`research/su2-floor-family-20261119/landau_check.json`).
+
+## Result 9 (Proved): the floor law in every sector, for every t in [2.75, 10]
+
+For every t ∈ [2.75, 10] and every j ≥ 0, λ_t(j) is the lowest eigenvalue of H + GG* in the sector of spin j/2, with
+multiplicity exactly two, and the lowest gauge-orthogonal eigenvalue there. At t = 3 this settles every sector of
+the original Floor Theorem, not only those that survive on the Poincaré sphere. Theorem 6.6 of the Floor paper, v2.
+
+The proof has four parts.
+
+1. **Charge blocks (exact).** `scripts/ricci_su2_charge_selection_symbolic.py`, receipt `charge_selection_symbolic.txt`.
+   - In the charge basis of frame ⊗ Lie, Ω₀ = i·diag(c(t−2)/√t), Ω± shift c by exactly ±1, and R₀(t) preserves c.
+   - So H + GG* preserves q = m + c, and each sector is the orthogonal sum of blocks of size at most 9.
+   - The twist and its conjugate are the only states of charge ±(j/2 + 2).
+2. **Sectors j ≤ 99 (interval certificates).** `scripts/ricci_su2_block_interval_cert.py`. Every non-twist block is
+   enclosed for all t in a slice at once and certified positive definite after the shift λ_t(j) + η.
+   - j ≤ 40: 943 blocks, 12,596 block-slices, smallest margin 1.7 × 10⁻⁵ (`block_cert_j40.json`).
+   - 41 ≤ j ≤ 99: 4,307 blocks, 36,166 block-slices, smallest margin 2.9 × 10⁻³ (`block_cert_j41_99.json`).
+   - No failures.
+3. **Sectors j ≥ 100 (Gershgorin).** `scripts/ricci_su2_floor_large_j.py`, receipt `floor_large_j.json`.
+   - The diagonal minus λ minus the Gershgorin radius is a closed form G(l, x, t) per state type. This is exact,
+     identically in l, x and t, as is the mirror symmetry x → 2l − x (charge_selection receipt).
+   - G > 0 is proved for l ≥ 50 by interval bisection:
+     - x ≤ 20: G/l > 5.9 × 10⁻⁴, 373 boxes;
+     - x ≥ 20, on a relaxed box: G/(lx) > 0.85, 9 boxes.
+4. **The twist block** is 1 × 1 with entry λ_t(j) (Result 1 / Proposition 6.1).
+
+**Not claimed.**
+- No quantitative gap above the floor for every j. The large-j part gives a strict inequality, not a margin linear
+  in j.
+- Nothing outside [2.75, 10]. t* ≈ 2.698 remains numerical.
+

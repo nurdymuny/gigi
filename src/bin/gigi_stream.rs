@@ -9654,9 +9654,87 @@ struct RecoverCurvatureRequest {
     /// Neighbourhood radius in face-steps, 1..=3 (default 2, the paper's choice).
     #[serde(default = "default_recover_rings")]
     rings: usize,
+    /// "u1" (default): `edges` holds a cochain in `field`. "su2": `edges` holds
+    /// SU(2) links in fields `{field}0..{field}3` (YM1).
+    #[serde(default)]
+    group: Option<String>,
 }
 #[cfg(feature = "gauge")]
 fn default_recover_rings() -> usize { 2 }
+
+/// Request for `POST /v1/bundles/{name}/link_force` (YM2/YM5,
+/// docs/YANG_MILLS_ENGINE_SPEC.md). Unknown keys are rejected; `metric` has no
+/// default, and a missing metric is a 422 refusal.
+#[cfg(feature = "gauge")]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LinkForceRequest {
+    /// Bundle of SU(2) links: numeric `edge` and fields `{q}0..{q}3`.
+    links: String,
+    /// Field prefix of the quaternion components.
+    q: String,
+    /// Left-invariant metric (g1, g2, g3). Required.
+    #[serde(default)]
+    metric: Option<[f64; 3]>,
+    /// Quadrature order, 2..=6 (default 6, as the paper).
+    #[serde(default = "default_force_order")]
+    order: usize,
+    /// "pg2" (default, two-ring Petrov-Galerkin, not variational) or "native" (variational).
+    #[serde(default = "default_force_method")]
+    method: String,
+    #[serde(default = "default_recover_rings")]
+    rings: usize,
+}
+#[cfg(feature = "gauge")]
+fn default_force_order() -> usize { 6 }
+#[cfg(feature = "gauge")]
+fn default_force_method() -> String { "pg2".into() }
+
+/// POST /v1/bundles/{name}/link_force
+///
+/// LINK_FORCE: the SU(2) force on every link. `{name}` is the cell bundle (with a
+/// numeric `weight` per cell). The response says whether the force is the
+/// gradient of an energy (`variational`): true for native, false for pg2.
+#[cfg(feature = "gauge")]
+async fn bundle_link_force(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    ApiJson(req): ApiJson<LinkForceRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::gauge::curvature_recovery::{link_force_from_bundles, BundleRecoveryError};
+    use gigi::gauge::ricci_pg_force::ForceMethod;
+    let method = match req.method.to_ascii_lowercase().as_str() {
+        "pg2" => ForceMethod::Pg2 { rings: req.rings, register: true },
+        "native" => ForceMethod::Native,
+        m => {
+            return Err((StatusCode::UNPROCESSABLE_ENTITY,
+                        Json(ErrorResponse { error: format!("LINK_FORCE: method must be pg2 or native (got {m})") })))
+        }
+    };
+    let engine = state.engine_read();
+    let out = link_force_from_bundles(&engine, &name, &req.links, &req.q, req.metric, req.order, method)
+        .map_err(|e| match e {
+            BundleRecoveryError::NotFound(m) => (StatusCode::NOT_FOUND, Json(ErrorResponse { error: m })),
+            BundleRecoveryError::Refused(m) => (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: m })),
+        })?;
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "links": req.links,
+        "metric": req.metric,
+        "order": req.order,
+        "method": req.method.to_ascii_lowercase(),
+        "variational": out.variational,
+        "n_links": out.gradient.len(),
+        "energy": out.energy,
+        "volume": out.volume,
+        "force": out.gradient,
+        "notes": [
+            "force[e] is the right-trivialised force on link e (three components).",
+            "variational says whether the force is the gradient of an energy: the native force is; the two-ring Petrov-Galerkin force is not.",
+            "energy is the native cell-action energy at these links, whichever method computed the force.",
+        ],
+    })))
+}
 
 /// POST /v1/bundles/{name}/recover_curvature
 ///
@@ -9670,8 +9748,36 @@ async fn bundle_recover_curvature(
     Path(name): Path<String>,
     ApiJson(req): ApiJson<RecoverCurvatureRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    use gigi::gauge::curvature_recovery::{recover_curvature_from_bundles, BundleRecoveryError};
+    use gigi::gauge::curvature_recovery::{recover_curvature_from_bundles, recover_curvature_su2_from_bundles, BundleRecoveryError};
     let engine = state.engine_read();
+    match req.group.as_deref().map(|g| g.to_ascii_lowercase()) {
+        None => {}
+        Some(g) if g == "u1" => {}
+        Some(g) if g == "su2" => {
+            let out = recover_curvature_su2_from_bundles(&engine, &name, &req.edges, &req.field, req.rings)
+                .map_err(|e| match e {
+                    BundleRecoveryError::NotFound(m) => (StatusCode::NOT_FOUND, Json(ErrorResponse { error: m })),
+                    BundleRecoveryError::Refused(m) => (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: m })),
+                })?;
+            let cells: Vec<serde_json::Value> = out.iter().enumerate().map(|(ci, r)| serde_json::json!({
+                "cell": ci, "coefficients": r.coefficients, "amplification": r.amplification,
+                "condition": r.condition, "rank": r.rank, "faces": r.faces, "cells": r.cells,
+                "own_residual": r.own_residual, "frame_vertex": r.frame_vertex,
+            })).collect();
+            return Ok(Json(serde_json::json!({
+                "bundle": name, "links": req.edges, "q": req.field, "rings": req.rings, "group": "su2",
+                "n_cells": out.len(), "cells": cells,
+                "notes": [
+                    "coefficients[a][k]: su(2) component a, closed linear basis coefficient k, in the cell's chart and in the fibre frame at frame_vertex.",
+                    "own_residual is the non-Abelian Stokes remainder on the cell's own faces: zero for commuting links, reported and never refused.",
+                ],
+            })));
+        }
+        Some(g) => {
+            return Err((StatusCode::UNPROCESSABLE_ENTITY,
+                        Json(ErrorResponse { error: format!("RECOVER_CURVATURE: group must be u1 or su2 (got {g})") })))
+        }
+    }
     let out = recover_curvature_from_bundles(&engine, &name, &req.edges, &req.field, req.rings)
         .map_err(|e| match e {
             BundleRecoveryError::NotFound(m) => (StatusCode::NOT_FOUND, Json(ErrorResponse { error: m })),
@@ -15842,7 +15948,7 @@ fn execute_gql_on_store_read(
         // Delegating to `gigi::parser::execute` keeps ONE implementation: same
         // kernels, same refusals, same row shape as the heap path and as REST.
         Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
-        | Statement::RecoverCurvature { .. } => {
+        | Statement::RecoverCurvature { .. } | Statement::LinkForce { .. } => {
             let eng_lock = engine.ok_or_else(|| {
                 "shape verbs require engine context (not available in this \
                  dispatch path)".to_string()
@@ -15956,6 +16062,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         // Cognitive Geometry (Branch VII — Davis 2026-05-29)
         Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle, .. } => Some(bundle.clone()),
         RecoverCurvature { cells, .. } => Some(cells.clone()),
+        LinkForce { cells, .. } => Some(cells.clone()),
         // Divergence is cross-bundle; no single name
         _ => None,
     }
@@ -15982,6 +16089,7 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Helicity { .. }       => "HELICITY",
         SpectralGauge { .. }  => "SPECTRAL_GAUGE",
         RecoverCurvature { .. } => "RECOVER_CURVATURE",
+        LinkForce { .. } => "LINK_FORCE",
         ChernClass { .. }     => "CHERN_CLASS",
         Pontryagin { .. }     => "PONTRYAGIN",
         HolonomyCycle { .. }  => "HOLONOMY_CYCLE",
@@ -16989,6 +17097,8 @@ async fn main() {
     // recovery of docs/papers/two-ring-pg as an engine verb. Gauge-only.
     #[cfg(feature = "gauge")]
     let app = app.route("/v1/bundles/{name}/recover_curvature", post(bundle_recover_curvature));
+    #[cfg(feature = "gauge")]
+    let app = app.route("/v1/bundles/{name}/link_force", post(bundle_link_force));
 
     let app = app
         // GQL endpoint

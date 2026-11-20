@@ -1066,3 +1066,111 @@ pub fn recover_curvature_from_bundles(
     let cells: Vec<Cell> = slots.into_iter().map(|c| c.expect("every id 0..N-1 filled once")).collect();
     recover_curvature(&cells, &a, rings).map_err(|e| BundleRecoveryError::Refused(e.to_string()))
 }
+
+/// Read SU(2) links from `links_bundle`: one record per edge, numeric `edge` =
+/// 0..E-1 and four numeric fields `{q}0 … {q}3` (unit quaternion, scalar first,
+/// stored-link convention). (YM5, docs/YANG_MILLS_ENGINE_SPEC.md.)
+pub fn read_links_bundle(
+    engine: &crate::engine::Engine,
+    links_bundle: &str,
+    q: &str,
+) -> Result<Vec<[f64; 4]>, BundleRecoveryError> {
+    let store = engine
+        .bundle(links_bundle)
+        .ok_or_else(|| BundleRecoveryError::NotFound(format!("Bundle '{links_bundle}' not found")))?;
+    let recs: Vec<crate::types::Record> = store.records().collect();
+    if recs.is_empty() {
+        return Err(refuse(format!("link bundle '{links_bundle}' is empty")));
+    }
+    let n = recs.len();
+    let mut out: Vec<Option<[f64; 4]>> = vec![None; n];
+    for r in &recs {
+        let id = index_field(r, "edge", "link", n)?;
+        if out[id].is_some() {
+            return Err(refuse(format!("edge id {id} appears more than once in '{links_bundle}'")));
+        }
+        let mut quat = [0.0; 4];
+        for (k, x) in quat.iter_mut().enumerate() {
+            *x = number_field(r, &format!("{q}{k}"), "link")?;
+        }
+        out[id] = Some(quat);
+    }
+    Ok(out.into_iter().map(|x| x.expect("every id 0..E-1 filled once")).collect())
+}
+
+/// Read the mesh from `cells_bundle` (shape as RECOVER_CURVATURE), and with
+/// `weights` also the numeric field `weight` of every cell.
+pub fn read_cells_bundle(
+    engine: &crate::engine::Engine,
+    cells_bundle: &str,
+    n_edges: usize,
+    weights: bool,
+) -> Result<(Vec<Cell>, Vec<f64>), BundleRecoveryError> {
+    let cstore = engine
+        .bundle(cells_bundle)
+        .ok_or_else(|| BundleRecoveryError::NotFound(format!("Bundle '{cells_bundle}' not found")))?;
+    let crecs: Vec<crate::types::Record> = cstore.records().collect();
+    if crecs.is_empty() {
+        return Err(refuse(format!("cell bundle '{cells_bundle}' is empty")));
+    }
+    let n_cells = crecs.len();
+    let mut slots: Vec<Option<(Cell, f64)>> = vec![None; n_cells];
+    for r in &crecs {
+        let id = index_field(r, "cell", "cell", n_cells)?;
+        if slots[id].is_some() {
+            return Err(refuse(format!("cell id {id} appears more than once in '{cells_bundle}'")));
+        }
+        let mut vertices = [[0.0; 4]; 4];
+        for (i, vtx) in vertices.iter_mut().enumerate() {
+            for (k, comp) in vtx.iter_mut().enumerate() {
+                *comp = number_field(r, &format!("v{i}_{k}"), "cell")?;
+            }
+        }
+        let mut edges = [0usize; 6];
+        let mut reverse = [false; 6];
+        for e in 0..6 {
+            edges[e] = index_field(r, &format!("e{e}"), "cell", n_edges)?;
+            let flag = number_field(r, &format!("r{e}"), "cell")?;
+            reverse[e] = match flag {
+                x if x == 0.0 => false,
+                x if x == 1.0 => true,
+                x => return Err(refuse(format!("cell field 'r{e}' = {x} must be 0 or 1"))),
+            };
+        }
+        let w = if weights { number_field(r, "weight", "cell")? } else { 1.0 };
+        slots[id] = Some((Cell { vertices, edges, reverse }, w));
+    }
+    Ok(slots.into_iter().map(|c| c.expect("every id 0..N-1 filled once")).unzip())
+}
+
+/// RECOVER_CURVATURE … GROUP SU2 over bundles.
+pub fn recover_curvature_su2_from_bundles(
+    engine: &crate::engine::Engine,
+    cells_bundle: &str,
+    links_bundle: &str,
+    q: &str,
+    rings: usize,
+) -> Result<Vec<Su2CellRecovery>, BundleRecoveryError> {
+    let links = read_links_bundle(engine, links_bundle, q)?;
+    let (cells, _) = read_cells_bundle(engine, cells_bundle, links.len(), false)?;
+    recover_curvature_su2(&cells, &links, rings).map_err(|e| BundleRecoveryError::Refused(e.to_string()))
+}
+
+/// LINK_FORCE over bundles. A missing metric refuses (BW08): none is ever substituted.
+pub fn link_force_from_bundles(
+    engine: &crate::engine::Engine,
+    cells_bundle: &str,
+    links_bundle: &str,
+    q: &str,
+    metric: Option<[f64; 3]>,
+    order: usize,
+    method: super::ricci_pg_force::ForceMethod,
+) -> Result<super::ricci_pg_force::LinkForce, BundleRecoveryError> {
+    let metric = metric.ok_or_else(|| {
+        BundleRecoveryError::Refused("LINK_FORCE: METRIC (g1, g2, g3) is required; none is ever substituted".into())
+    })?;
+    let links = read_links_bundle(engine, links_bundle, q)?;
+    let (cells, weights) = read_cells_bundle(engine, cells_bundle, links.len(), true)?;
+    super::ricci_pg_force::link_force(&cells, &weights, &links, metric, order, method)
+        .map_err(BundleRecoveryError::Refused)
+}

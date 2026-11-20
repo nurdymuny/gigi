@@ -1,0 +1,56 @@
+{
+  "kind": "YM5 / BW08: SU(2) verbs through a live gigi-stream",
+  "port": 49309,
+  "binary": {
+    "path": "C:\\Users\\nurdm\\OneDrive\\Documents\\gigi-ym\\target\\release\\gigi-stream.exe",
+    "sha256": "50ab444fe396e51b813a2ca7930ab56fd5bcf570ab7a5efc42765cb32213172b"
+  },
+  "levels": {
+    "0": {
+      "recover_su2": {
+        "rest_vs_probe_max_abs": 0.0,
+        "gql_vs_rest_max_abs": 0.0
+      },
+      "force_pg2": {
+        "rest_vs_probe_max_abs": 0.0,
+        "gql_vs_rest_max_abs": 0.0,
+        "variational": false,
+        "bw05_percent": 36.24699143432363,
+        "table6_percent": 36.25
+      },
+      "force_native": {
+        "rest_vs_probe_max_abs": 0.0,
+        "gql_vs_rest_max_abs": 0.0,
+        "variational": true,
+        "bw05_percent": 26.245893533098613,
+        "table6_percent": 26.25
+      },
+      "refusals": {
+        "gql_missing_metric": {
+          "status": 400,
+          "body": "{'error': 'Parse error: LINK_FORCE: METRIC g1, g2, g3 is required; none is ever substituted (near: \"\u2026 ym5_cells_0 LINKS ym5_links_0 ON q \u25c0\")'}"
+        },
+        "rest_missing_metric": {
+          "status": 422,
+          "body": "{'error': 'LINK_FORCE: METRIC (g1, g2, g3) is required; none is ever substituted'}"
+        },
+        "rest_unknown_key": {
+          "status": 422,
+          "body": "{'error': 'Failed to deserialize the JSON body into the target type: metrik: unknown field `metrik`, expected one of `links`, `q`, `metric`, `order`, `method`, "
+        },
+        "rest_bad_method": {
+          "status": 422,
+          "body": "{'error': 'LINK_FORCE: method must be pg2 or native (got whitney)'}"
+        },
+        "rest_bad_group": {
+          "status": 422,
+          "body": "{'error': 'RECOVER_CURVATURE: group must be u1 or su2 (got su3)'}"
+        },
+        "rest_missing_links": {
+          "status": 404,
+          "body": "{'error': \"Bundle 'no_such' not found\"}"
+        }
+      }
+    }
+  }
+}

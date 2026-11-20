@@ -446,6 +446,22 @@ pub enum Statement {
         edges: String,
         field: String,
         rings: Option<usize>,
+        /// `GROUP SU2`: `edges` holds SU(2) links in fields `{field}0..{field}3`
+        /// (YM1, docs/YANG_MILLS_ENGINE_SPEC.md). Absent or `U1`: the cochain verb.
+        group: Option<String>,
+    },
+    /// `LINK_FORCE cells LINKS links ON q METRIC g1, g2, g3 [ORDER n] [METHOD PG2|NATIVE] [RINGS n]`
+    /// (YM2/YM5, docs/YANG_MILLS_ENGINE_SPEC.md). One row per edge: the force on that
+    /// link (three right-trivialised components) and whether the force is
+    /// variational. METRIC is required: a missing metric is a parse error, never a default.
+    LinkForce {
+        cells: String,
+        links: String,
+        q: String,
+        metric: Option<[f64; 3]>,
+        order: Option<usize>,
+        method: Option<String>,
+        rings: Option<usize>,
     },
     /// `SPECTRAL bundle [FULL [LIMIT k]]` — λ₁ of the normalized
     /// field-index-graph Laplacian (Scalar), or with FULL the whole
@@ -2568,6 +2584,7 @@ impl Parser {
             // Shape verbs (2026-08-09) — GQL twins of the REST routes.
             "TEXTURE" => self.parse_texture(),
             "RECOVER_CURVATURE" => self.parse_recover_curvature(),
+            "LINK_FORCE" => self.parse_link_force(),
             "PRECEDENCE" => self.parse_precedence(),
             "CADENCE" => self.parse_cadence(),
             "SPECTRAL" => self.parse_spectral(),
@@ -5956,7 +5973,57 @@ impl Parser {
         } else {
             None
         };
-        Ok(Statement::RecoverCurvature { cells, edges, field, rings })
+        let group = if self.is_keyword("GROUP") {
+            self.advance();
+            let g = self.expect_word()?.to_ascii_uppercase();
+            if g != "SU2" && g != "U1" {
+                return Err(format!("RECOVER_CURVATURE: GROUP must be U1 or SU2 (got {g})"));
+            }
+            Some(g)
+        } else {
+            None
+        };
+        Ok(Statement::RecoverCurvature { cells, edges, field, rings, group })
+    }
+
+    /// `LINK_FORCE cells LINKS links ON q METRIC g1, g2, g3 [ORDER n] [METHOD PG2|NATIVE] [RINGS n]`
+    fn parse_link_force(&mut self) -> Result<Statement, String> {
+        let cells = self.expect_word()?;
+        self.expect_keyword("LINKS")?;
+        let links = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let q = self.expect_word()?;
+        let (mut metric, mut order, mut method, mut rings) = (None, None, None, None);
+        while !self.at_end() {
+            if self.is_keyword("METRIC") {
+                self.advance();
+                let g1 = self.expect_f64()?;
+                self.expect(Token::Comma)?;
+                let g2 = self.expect_f64()?;
+                self.expect(Token::Comma)?;
+                let g3 = self.expect_f64()?;
+                metric = Some([g1, g2, g3]);
+            } else if self.is_keyword("ORDER") {
+                self.advance();
+                order = Some(self.expect_usize()?);
+            } else if self.is_keyword("METHOD") {
+                self.advance();
+                let m = self.expect_word()?.to_ascii_uppercase();
+                if m != "PG2" && m != "NATIVE" {
+                    return Err(format!("LINK_FORCE: METHOD must be PG2 or NATIVE (got {m})"));
+                }
+                method = Some(m);
+            } else if self.is_keyword("RINGS") {
+                self.advance();
+                rings = Some(self.expect_usize()?);
+            } else {
+                return Err(format!("LINK_FORCE: unexpected {}", token_or_end(self.peek())));
+            }
+        }
+        if metric.is_none() {
+            return Err("LINK_FORCE: METRIC g1, g2, g3 is required; none is ever substituted".into());
+        }
+        Ok(Statement::LinkForce { cells, links, q, metric, order, method, rings })
     }
 
     /// `PRECEDENCE bundle ON x, y [ALONG order]` — exactly two fields, because
@@ -10886,8 +10953,16 @@ pub fn shape_verb_exec(
                 Ok(ExecResult::Rows(vec![row]))
             })())
         }
-        Statement::RecoverCurvature { cells, edges, field, rings } => {
-            Some(recover_curvature_rows(engine, cells, edges, field, rings.unwrap_or(2)))
+        Statement::RecoverCurvature { cells, edges, field, rings, group } => {
+            if group.as_deref() == Some("SU2") {
+                Some(recover_curvature_su2_rows(engine, cells, edges, field, rings.unwrap_or(2)))
+            } else {
+                Some(recover_curvature_rows(engine, cells, edges, field, rings.unwrap_or(2)))
+            }
+        }
+        Statement::LinkForce { cells, links, q, metric, order, method, rings } => {
+            Some(link_force_rows(engine, cells, links, q, *metric, order.unwrap_or(6),
+                                 method.as_deref().unwrap_or("PG2"), rings.unwrap_or(2)))
         }
         _ => None,
     }
@@ -10930,6 +11005,95 @@ fn recover_curvature_rows(
         })
         .collect();
     Ok(ExecResult::Rows(rows))
+}
+
+/// RECOVER_CURVATURE ... GROUP SU2 as GQL rows: one row per cell, the 3 x 11
+/// coefficients as `c{a}_{k}` (su(2) component a, basis coefficient k) and the
+/// diagnostics, including the non-Abelian Stokes remainder `own_residual`.
+#[cfg(feature = "gauge")]
+fn recover_curvature_su2_rows(
+    engine: &crate::engine::Engine,
+    cells: &str,
+    links: &str,
+    q: &str,
+    rings: usize,
+) -> Result<ExecResult, String> {
+    use crate::types::Value as V;
+    let out = crate::gauge::curvature_recovery::recover_curvature_su2_from_bundles(engine, cells, links, q, rings)
+        .map_err(|e| e.to_string())?;
+    Ok(ExecResult::Rows(
+        out.iter()
+            .enumerate()
+            .map(|(ci, r)| {
+                let mut row = crate::types::Record::new();
+                row.insert("cell".into(), V::Float(ci as f64));
+                for a in 0..3 {
+                    for k in 0..11 {
+                        row.insert(format!("c{a}_{k}"), V::Float(r.coefficients[a][k]));
+                    }
+                }
+                row.insert("amplification".into(), V::Float(r.amplification));
+                row.insert("condition".into(), V::Float(r.condition));
+                row.insert("rank".into(), V::Float(r.rank as f64));
+                row.insert("faces".into(), V::Float(r.faces as f64));
+                row.insert("cells".into(), V::Float(r.cells as f64));
+                row.insert("own_residual".into(), V::Float(r.own_residual));
+                row.insert("frame_vertex".into(), V::Float(r.frame_vertex as f64));
+                row
+            })
+            .collect(),
+    ))
+}
+
+/// LINK_FORCE as GQL rows: one row per edge.
+#[cfg(feature = "gauge")]
+#[allow(clippy::too_many_arguments)]
+fn link_force_rows(
+    engine: &crate::engine::Engine,
+    cells: &str,
+    links: &str,
+    q: &str,
+    metric: Option<[f64; 3]>,
+    order: usize,
+    method: &str,
+    rings: usize,
+) -> Result<ExecResult, String> {
+    use crate::gauge::ricci_pg_force::ForceMethod;
+    use crate::types::Value as V;
+    let m = if method == "NATIVE" { ForceMethod::Native } else { ForceMethod::Pg2 { rings, register: true } };
+    let out = crate::gauge::curvature_recovery::link_force_from_bundles(engine, cells, links, q, metric, order, m)
+        .map_err(|e| e.to_string())?;
+    Ok(ExecResult::Rows(
+        out.gradient
+            .iter()
+            .enumerate()
+            .map(|(e, f)| {
+                let mut row = crate::types::Record::new();
+                row.insert("edge".into(), V::Float(e as f64));
+                for (k, x) in f.iter().enumerate() {
+                    row.insert(format!("f{k}"), V::Float(*x));
+                }
+                row.insert("variational".into(), V::Bool(out.variational));
+                row
+            })
+            .collect(),
+    ))
+}
+
+#[cfg(not(feature = "gauge"))]
+fn recover_curvature_su2_rows(
+    _engine: &crate::engine::Engine, _cells: &str, _links: &str, _q: &str, _rings: usize,
+) -> Result<ExecResult, String> {
+    Err("RECOVER_CURVATURE GROUP SU2 requires the `gauge` feature, which this build does not enable; nothing was executed".to_string())
+}
+
+#[cfg(not(feature = "gauge"))]
+#[allow(clippy::too_many_arguments)]
+fn link_force_rows(
+    _engine: &crate::engine::Engine, _cells: &str, _links: &str, _q: &str, _metric: Option<[f64; 3]>,
+    _order: usize, _method: &str, _rings: usize,
+) -> Result<ExecResult, String> {
+    Err("LINK_FORCE requires the `gauge` feature, which this build does not enable; nothing was executed".to_string())
 }
 
 #[cfg(not(feature = "gauge"))]
@@ -11861,7 +12025,7 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // `&mut` there deadlocks. Sharing one `&Engine` helper keeps a single
         // implementation and makes the lock discipline impossible to get wrong.
         Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
-        | Statement::RecoverCurvature { .. } => {
+        | Statement::RecoverCurvature { .. } | Statement::LinkForce { .. } => {
             shape_verb_exec(engine, stmt)
                 .expect("shape verb matched here must be handled by shape_verb_exec")
         }

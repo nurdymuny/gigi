@@ -39,6 +39,8 @@ pub const COND_CAP: f64 = 1e12;
 pub const COINCIDE: f64 = 1e-12;
 /// Admissible range of `rings`.
 pub const MAX_RINGS: usize = 3;
+/// SU(2): largest admissible | |link| − 1 |.
+pub const UNIT_TOL: f64 = 1e-9;
 
 /// One tetrahedral cell.
 #[derive(Clone, Debug)]
@@ -88,6 +90,12 @@ pub enum RecoveryError {
     RankDeficient { cell: usize, rank: usize },
     IllConditioned { cell: usize, condition: f64 },
     OwnFluxNotReproduced { cell: usize, residual: f64 },
+    /// SU(2): there must be exactly one link per edge the cells name.
+    LinkCountMismatch { links: usize, edges_needed: usize },
+    /// SU(2): a link is not a unit quaternion.
+    NonUnitLink { edge: usize, deviation: f64 },
+    /// SU(2): a face holonomy is too close to −1 for its logarithm to be defined.
+    HolonomyNearMinusOne { cell: usize, face_cell: usize },
 }
 
 impl fmt::Display for RecoveryError {
@@ -111,6 +119,12 @@ impl fmt::Display for RecoveryError {
                 f, "RECOVER_CURVATURE: the flux map of cell {cell} has condition {condition:.3e}, above the cap {COND_CAP:e}"),
             OwnFluxNotReproduced { cell, residual } => write!(
                 f, "RECOVER_CURVATURE: the own face fluxes of cell {cell} are not reproduced (residual {residual:.3e})"),
+            LinkCountMismatch { links, edges_needed } => write!(
+                f, "RECOVER_CURVATURE GROUP SU2: {links} links given, but the cells name {edges_needed} edges"),
+            NonUnitLink { edge, deviation } => write!(
+                f, "RECOVER_CURVATURE GROUP SU2: the link on edge {edge} is not a unit quaternion (| |q| - 1 | = {deviation:.3e} > {UNIT_TOL:e})"),
+            HolonomyNearMinusOne { cell, face_cell } => write!(
+                f, "RECOVER_CURVATURE GROUP SU2: a face holonomy read by cell {cell} (from cell {face_cell}) is near -1; its logarithm is not defined"),
         }
     }
 }
@@ -454,11 +468,78 @@ pub fn recover_cell(
     mech: Mechanism,
     flux: Option<&dyn Fn([Vector3<f64>; 3]) -> f64>,
 ) -> Result<CellRecovery, RecoveryError> {
+    let fit = fit_map(cells, faces, ci, rings, mech)?;
+    let basis = basis();
+    let d = DVector::from_iterator(
+        fit.faces.len(),
+        fit.faces.iter().map(|(nj, f, tri)| match flux {
+            Some(g) => g(*tri),
+            None => data_flux(&cells[*nj], a, *f),
+        }),
+    );
+    let x = &fit.fmap * &d;
+
+    let scale = d.iter().take(fit.own).fold(1.0_f64, |m, v| m.max(v.abs()));
+    let own_res = (&fit.am * &x - d.rows(0, fit.own)).amax();
+    if mech.equality && own_res > 1e-12 * scale {
+        return Err(RecoveryError::OwnFluxNotReproduced { cell: ci, residual: own_res });
+    }
+    let amplification = singular_values(&fit.fmap).into_iter().fold(0.0_f64, f64::max);
+    let residual = (&fit.rows * &x - &d).amax();
+
+    let mut cvec = [0.0; 3];
+    let mut bmat = Matrix3::zeros();
+    for k in 0..11 {
+        for i in 0..3 {
+            cvec[i] += x[k] * basis[k].0[i];
+        }
+        bmat += basis[k].1 * x[k];
+    }
+    Ok(CellRecovery {
+        c: cvec,
+        b: std::array::from_fn(|i| std::array::from_fn(|j| bmat[(i, j)])),
+        coefficients: std::array::from_fn(|k| x[k]),
+        amplification,
+        condition: fit.condition,
+        rank: fit.rank,
+        faces: fit.faces.len(),
+        cells: fit.nb.len(),
+        residual,
+        own_residual: own_res,
+    })
+}
+
+/// One distinct face a cell reads: the neighbour it was read from, the local
+/// face, and its chart triangle.
+type ReadFace = (usize, (usize, usize, usize), [Vector3<f64>; 3]);
+
+/// The fit of one cell: its neighbourhood, the distinct faces it reads (own
+/// faces first, then the rest, breadth-first), and the linear map from those
+/// faces' fluxes to the eleven coefficients. Shared by the U(1) and SU(2)
+/// readings, which differ only in the fluxes they feed it.
+struct Fit {
+    nb: Vec<(usize, Verts)>,
+    faces: Vec<ReadFace>,
+    own: usize,
+    am: DMatrix<f64>,
+    rows: DMatrix<f64>,
+    fmap: DMatrix<f64>,
+    condition: f64,
+    rank: usize,
+}
+
+fn fit_map(
+    cells: &[Cell],
+    faces: &FaceIndex,
+    ci: usize,
+    rings: usize,
+    mech: Mechanism,
+) -> Result<Fit, RecoveryError> {
     let nb = neighbourhood(cells, faces, ci, rings, mech.transport)?;
     let ch = chart(&nb[0].1, ci)?;
     let basis = basis();
     let mut seen = std::collections::HashSet::new();
-    let (mut own_rows, mut own_d, mut rest_rows, mut rest_d) = (vec![], vec![], vec![], vec![]);
+    let (mut own_rows, mut own_f, mut rest_rows, mut rest_f) = (vec![], vec![], vec![], vec![]);
     for (nj, v) in &nb {
         let o = ch.to_orth(v, ci)?;
         for &f in FACES.iter() {
@@ -466,17 +547,13 @@ pub fn recover_cell(
                 continue;
             }
             let tri = [o[f.0], o[f.1], o[f.2]];
-            let d = match flux {
-                Some(g) => g(tri),
-                None => data_flux(&cells[*nj], a, f),
-            };
             let row = flux_row(tri, &basis);
             if *nj == ci {
                 own_rows.push(row);
-                own_d.push(d);
+                own_f.push((*nj, f, tri));
             } else {
                 rest_rows.push(row);
-                rest_d.push(d);
+                rest_f.push((*nj, f, tri));
             }
         }
     }
@@ -484,7 +561,7 @@ pub fn recover_cell(
     let (am, rm) = (to_mat(&own_rows), to_mat(&rest_rows));
     let all_rows: Vec<[f64; 11]> = own_rows.iter().chain(rest_rows.iter()).copied().collect();
     let rows = to_mat(&all_rows);
-    let d = DVector::from_iterator(all_rows.len(), own_d.iter().chain(rest_d.iter()).copied());
+    let read: Vec<ReadFace> = own_f.into_iter().chain(rest_f).collect();
 
     let s = singular_values(&rows);
     let smax = s.iter().copied().fold(0.0_f64, f64::max);
@@ -514,36 +591,7 @@ pub fn recover_cell(
     } else {
         pinv(&rows)
     };
-    let x = &fmap * &d;
-
-    let scale = d.iter().take(own_rows.len()).fold(1.0_f64, |m, v| m.max(v.abs()));
-    let own_res = (&am * &x - d.rows(0, own_rows.len())).amax();
-    if mech.equality && own_res > 1e-12 * scale {
-        return Err(RecoveryError::OwnFluxNotReproduced { cell: ci, residual: own_res });
-    }
-    let amplification = singular_values(&fmap).into_iter().fold(0.0_f64, f64::max);
-    let residual = (&rows * &x - &d).amax();
-
-    let mut cvec = [0.0; 3];
-    let mut bmat = Matrix3::zeros();
-    for k in 0..11 {
-        for i in 0..3 {
-            cvec[i] += x[k] * basis[k].0[i];
-        }
-        bmat += basis[k].1 * x[k];
-    }
-    Ok(CellRecovery {
-        c: cvec,
-        b: std::array::from_fn(|i| std::array::from_fn(|j| bmat[(i, j)])),
-        coefficients: std::array::from_fn(|k| x[k]),
-        amplification,
-        condition,
-        rank,
-        faces: all_rows.len(),
-        cells: nb.len(),
-        residual,
-        own_residual: own_res,
-    })
+    Ok(Fit { own: own_rows.len(), nb, faces: read, am, rows, fmap, condition, rank })
 }
 
 /// Recover every cell of a closed mesh from a cochain of edge integrals.
@@ -579,6 +627,262 @@ pub fn recover_curvature_with(
 /// Face index for callers that drive [`recover_cell`] directly (tests).
 pub fn build_face_index(cells: &[Cell]) -> Result<FaceIndex, RecoveryError> {
     face_index(cells)
+}
+
+// ── SU(2): the covariant reading ──────────────────────────────────────────
+//
+// Engine form of scripts/ricci_su2_recovery.py. The fit map is the U(1) one,
+// unchanged; what is new is what it is fed:
+//
+//   face flux   X_f = log(U_ij · U_jk · U_ki)      holonomy at the face's base vertex i
+//   register    Y_f = W_i X_f W_i⁻¹                 W_i: transport from i to the cell's vertex 0
+//   fit         C (3 × 11) = Y (3 × faces) · F_Kᵀ   one closed linear field per su(2) component
+//
+// Group product and inverse are the repository's stored-link convention
+// (ricci_consistency_math.compose / inverse): a stored link on edge tail → head
+// maps the fibre at head to the fibre at tail, and becomes g_tail U g_head⁻¹
+// under a gauge change g.
+
+/// Mechanism switches for the SU(2) reading (production: [`Su2Mechanism::FULL`]).
+#[derive(Clone, Copy, Debug)]
+pub struct Su2Mechanism {
+    /// Carry every face flux to the cell's vertex-0 frame before fitting.
+    pub register: bool,
+    /// Replace log(holonomy) by the sum of the three edge logarithms.
+    pub abelianised: bool,
+}
+
+impl Su2Mechanism {
+    pub const FULL: Su2Mechanism = Su2Mechanism { register: true, abelianised: false };
+}
+
+/// The covariant curvature of one cell: one closed linear field per su(2)
+/// component, in the cell's chart and in the fibre frame at the cell's vertex 0.
+#[derive(Clone, Debug)]
+pub struct Su2CellRecovery {
+    /// `coefficients[a][k]`: su(2) component `a`, basis coefficient `k`.
+    pub coefficients: [[f64; 11]; 3],
+    pub amplification: f64,
+    pub condition: f64,
+    pub rank: usize,
+    pub faces: usize,
+    pub cells: usize,
+    /// Largest |recovered − registered flux| over the cell's own faces, all
+    /// components. Zero to rounding for commuting links; for non-commuting links
+    /// it measures the non-Abelian Stokes remainder (reported, never refused).
+    pub own_residual: f64,
+    /// Global vertex id whose fibre frame the coefficients are expressed in.
+    pub frame_vertex: usize,
+}
+
+const ONE: [f64; 4] = [1.0, 0.0, 0.0, 0.0];
+
+fn q4(q: [f64; 4]) -> Vector4<f64> {
+    Vector4::new(q[0], q[1], q[2], q[3])
+}
+
+/// Link product, stored-link convention: (a0 b0 − a·b, a0 b + b0 a − a × b).
+fn lmul(a: &Vector4<f64>, b: &Vector4<f64>) -> Vector4<f64> {
+    let (av, bv) = (Vector3::new(a[1], a[2], a[3]), Vector3::new(b[1], b[2], b[3]));
+    let s = a[0] * b[0] - av.dot(&bv);
+    let v = bv * a[0] + av * b[0] - av.cross(&bv);
+    Vector4::new(s, v[0], v[1], v[2])
+}
+
+fn linv(q: &Vector4<f64>) -> Vector4<f64> {
+    Vector4::new(q[0], -q[1], -q[2], -q[3])
+}
+
+/// log of a unit quaternion, as its imaginary 3-vector; `None` near −1.
+fn qlog(q: &Vector4<f64>) -> Option<Vector3<f64>> {
+    let v = Vector3::new(q[1], q[2], q[3]);
+    let s = v.norm();
+    if q[0] < -1.0 + 1e-6 && s < 1e-3 {
+        return None;
+    }
+    if s < 1e-300 {
+        return Some(Vector3::zeros());
+    }
+    Some(v * (s.atan2(q[0]) / s))
+}
+
+/// Ad_g x = g x g⁻¹ for an imaginary quaternion x.
+fn ad(g: &Vector4<f64>, x: &Vector3<f64>) -> Vector3<f64> {
+    let r = lmul(&lmul(g, &Vector4::new(0.0, x[0], x[1], x[2])), &linv(g));
+    Vector3::new(r[1], r[2], r[3])
+}
+
+/// Global vertex ids on the quotient, by union-find over shared stored edges:
+/// the tail (head) of a stored edge is one vertex in every cell using it. Ids
+/// are numbered by first appearance scanning cells, then local vertices
+/// (the research script's numbering, which fixes the transport tree).
+pub fn vertex_ids(cells: &[Cell]) -> Vec<[usize; 4]> {
+    let n = 4 * cells.len();
+    let mut parent: Vec<usize> = (0..n).collect();
+    fn find(parent: &mut [usize], mut x: usize) -> usize {
+        while parent[x] != x {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        x
+    }
+    let mut ends: HashMap<usize, (usize, usize)> = HashMap::new();
+    for (ci, c) in cells.iter().enumerate() {
+        for (e, &(i, j)) in EDGES.iter().enumerate() {
+            let (tail, head) = if c.reverse[e] { (4 * ci + j, 4 * ci + i) } else { (4 * ci + i, 4 * ci + j) };
+            match ends.get(&c.edges[e]).copied() {
+                Some((t0, h0)) => {
+                    for (a, b) in [(t0, tail), (h0, head)] {
+                        let (ra, rb) = (find(&mut parent, a), find(&mut parent, b));
+                        if ra != rb {
+                            parent[ra.max(rb)] = ra.min(rb);
+                        }
+                    }
+                }
+                None => {
+                    ends.insert(c.edges[e], (tail, head));
+                }
+            }
+        }
+    }
+    let mut ids: HashMap<usize, usize> = HashMap::new();
+    let mut out = vec![[0usize; 4]; cells.len()];
+    for ci in 0..cells.len() {
+        for v in 0..4 {
+            let r = find(&mut parent, 4 * ci + v);
+            let next = ids.len();
+            out[ci][v] = *ids.entry(r).or_insert(next);
+        }
+    }
+    out
+}
+
+/// The link for local edge i → j of a cell: maps the fibre at j to the fibre at i.
+fn local_link(cell: &Cell, links: &[[f64; 4]], i: usize, j: usize) -> Vector4<f64> {
+    let e = edge_index(i, j);
+    let mut u = q4(links[cell.edges[e]]);
+    if cell.reverse[e] {
+        u = linv(&u);
+    }
+    if i < j { u } else { linv(&u) }
+}
+
+/// Recover one cell from SU(2) links.
+#[allow(clippy::too_many_arguments)]
+pub fn recover_cell_su2(
+    cells: &[Cell],
+    faces: &FaceIndex,
+    vid: &[[usize; 4]],
+    links: &[[f64; 4]],
+    ci: usize,
+    rings: usize,
+    mech: Mechanism,
+    su: Su2Mechanism,
+) -> Result<Su2CellRecovery, RecoveryError> {
+    let fit = fit_map(cells, faces, ci, rings, mech)?;
+
+    // Transport W[v]: fibre at v → fibre at the cell's vertex 0, along a
+    // breadth-first tree over the neighbourhood's edges (sorted adjacency).
+    let mut adj: HashMap<usize, std::collections::BTreeMap<usize, Vector4<f64>>> = HashMap::new();
+    for (nj, _) in &fit.nb {
+        for &(i, j) in EDGES.iter() {
+            let (a, b) = (vid[*nj][i], vid[*nj][j]);
+            let u = local_link(&cells[*nj], links, i, j);
+            adj.entry(a).or_default().insert(b, u);
+            adj.entry(b).or_default().insert(a, linv(&u));
+        }
+    }
+    let root = vid[ci][0];
+    let mut w: HashMap<usize, Vector4<f64>> = HashMap::from([(root, q4(ONE))]);
+    let mut queue = std::collections::VecDeque::from([root]);
+    while let Some(u) = queue.pop_front() {
+        let wu = w[&u];
+        for (&v, link) in &adj[&u] {
+            if let std::collections::hash_map::Entry::Vacant(slot) = w.entry(v) {
+                slot.insert(lmul(&wu, link));
+                queue.push_back(v);
+            }
+        }
+    }
+
+    let mut y = DMatrix::<f64>::zeros(fit.faces.len(), 3);
+    for (row, (nj, (i, j, k), _)) in fit.faces.iter().enumerate() {
+        let c = &cells[*nj];
+        let (uij, ujk, uki) = (local_link(c, links, *i, *j), local_link(c, links, *j, *k), local_link(c, links, *k, *i));
+        let near = RecoveryError::HolonomyNearMinusOne { cell: ci, face_cell: *nj };
+        let x = if su.abelianised {
+            let l = |q: &Vector4<f64>| qlog(q).ok_or_else(|| near.clone());
+            l(&uij)? + l(&ujk)? + l(&uki)?
+        } else {
+            qlog(&lmul(&lmul(&uij, &ujk), &uki)).ok_or(near)?
+        };
+        let x = if su.register { ad(&w[&vid[*nj][*i]], &x) } else { x };
+        for comp in 0..3 {
+            y[(row, comp)] = x[comp];
+        }
+    }
+
+    let coef = &fit.fmap * &y; // 11 × 3
+    // Not a refusal, unlike U(1): the four registered own fluxes of a cell sum to
+    // zero only for commuting links. With non-commuting links the non-Abelian
+    // Stokes remainder (commutator terms) is a genuine inconsistency, which a
+    // closed field cannot match exactly. It is reported, as the research script
+    // implies by never checking it.
+    let own_res = (&fit.am * &coef - y.rows(0, fit.own)).amax();
+    let amplification = singular_values(&fit.fmap).into_iter().fold(0.0_f64, f64::max);
+    Ok(Su2CellRecovery {
+        coefficients: std::array::from_fn(|a| std::array::from_fn(|k| coef[(k, a)])),
+        amplification,
+        condition: fit.condition,
+        rank: fit.rank,
+        faces: fit.faces.len(),
+        cells: fit.nb.len(),
+        own_residual: own_res,
+        frame_vertex: root,
+    })
+}
+
+/// Recover every cell of a closed mesh from SU(2) links (one unit quaternion
+/// per edge, scalar first, stored-link convention).
+pub fn recover_curvature_su2(
+    cells: &[Cell],
+    links: &[[f64; 4]],
+    rings: usize,
+) -> Result<Vec<Su2CellRecovery>, RecoveryError> {
+    recover_curvature_su2_with(cells, links, rings, Mechanism::FULL, Su2Mechanism::FULL)
+}
+
+/// [`recover_curvature_su2`] with explicit mechanism switches (tests).
+pub fn recover_curvature_su2_with(
+    cells: &[Cell],
+    links: &[[f64; 4]],
+    rings: usize,
+    mech: Mechanism,
+    su: Su2Mechanism,
+) -> Result<Vec<Su2CellRecovery>, RecoveryError> {
+    if rings == 0 || rings > MAX_RINGS {
+        return Err(RecoveryError::InvalidRings(rings));
+    }
+    for (ci, c) in cells.iter().enumerate() {
+        if let Some(&e) = c.edges.iter().find(|&&e| e >= links.len()) {
+            return Err(RecoveryError::EdgeOutOfRange { cell: ci, edge: e, n_edges: links.len() });
+        }
+    }
+    let needed = 1 + cells.iter().flat_map(|c| c.edges).max().unwrap_or(0);
+    if links.len() != needed {
+        return Err(RecoveryError::LinkCountMismatch { links: links.len(), edges_needed: needed });
+    }
+    for (e, q) in links.iter().enumerate() {
+        let deviation = (q4(*q).norm() - 1.0).abs();
+        if !(deviation <= UNIT_TOL) {
+            return Err(RecoveryError::NonUnitLink { edge: e, deviation });
+        }
+    }
+    let faces = face_index(cells)?;
+    let vid = vertex_ids(cells);
+    (0..cells.len())
+        .map(|ci| recover_cell_su2(cells, &faces, &vid, links, ci, rings, mech, su))
+        .collect()
 }
 
 // ── engine surface ────────────────────────────────────────────────────────

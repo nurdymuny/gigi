@@ -54,3 +54,5 @@ The gates are defined at n = 1 and n = 2. P-recon fails at n = 1 by a factor of 
 Each n = 1 arm took about an hour and a half of solve time (`lsqr_seconds` up to 5,187), and n = 2 is
 much larger. **Recommendation: do not run V2 at n = 2.** The variational route continues through M0
 (the seamless reading), which addresses the mechanism this result points at. This is Bee's call.
+
+**Decision (Bee, 2026-11-19): V2 is not run at n = 2.** The variational route continues through M0.

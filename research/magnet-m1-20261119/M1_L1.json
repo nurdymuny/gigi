@@ -1,0 +1,48 @@
+{
+ "level": 1,
+ "edges": 1124,
+ "cells": 960,
+ "rho": 0.20166195340219167,
+ "k": 1,
+ "kind": "M1 (research script, not an engine run)",
+ "seconds_norm": 632.2,
+ "C_curl_max_rel": 1.5197447087885471e-09,
+ "seconds_cells": 4219.7,
+ "M1_moment_max_rel": 1.3668923764155018e-15,
+ "gauge_dimension": 163,
+ "seam_rms_jump_relative": 0.00033677047656262114,
+ "seam_points": 11520,
+ "amplification_max": null,
+ "arms": {
+  "unseated": {
+   "bw05_relative_error": 5.5892375573201845,
+   "reconstruction_term": 5.587676778265967,
+   "poke_term": 0.019653657264149228,
+   "curvature_relative_error": 0.9706966860450562,
+   "asymmetry": 4.3780502494481865e-16,
+   "wobble_count_below_1": 332,
+   "min_physical_eig": 0.014180772579029501,
+   "negative_physical": 0
+  },
+  "seated": {
+   "bw05_relative_error": 6.271773997232125,
+   "reconstruction_term": 5.587676778265967,
+   "poke_term": 0.019653657264149228,
+   "curvature_relative_error": 0.9706966860450562,
+   "asymmetry": 2.1605116846803835e-16,
+   "spring_force_share": 8.487132164033838,
+   "wobble_count_below_1": 0,
+   "min_physical_eig": 10.32995054958076,
+   "negative_physical": 0
+  }
+ },
+ "gates_this_level": {
+  "M1-moment (<= 1e-8)": true,
+  "M1-variational (asym <= 1e-12)": true,
+  "M1-wobble (seated: none below 1, none negative)": true,
+  "M1-seam (<= 1%)": true,
+  "M1-poke (n = 2: <= M0/10)": true,
+  "M1-recon (<= 2 x M0)": false
+ },
+ "seconds": 4223.2
+}

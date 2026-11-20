@@ -221,3 +221,39 @@ dominate. The frozen control answers what P1 meant to ask.
 - Two places remain where a true soft-mode transition could live:
   - resting fields that are **not** left-invariant (the search above sees only left-invariant ones);
   - other squashings (t₁, t₂, t₃ all different), where the symmetry is lower.
+
+## Result 7: unevenly stretched spheres (t₁, t₂, 1): the same three resting fields, still no soft mode
+
+**Script:** `scripts/ricci_su2_resting_fields_general.py`. **Receipt:**
+`research/su2-floor-family-20261119/resting_fields_general.json`.
+
+**The search.**
+
+- Only the shape matters, so t₃ = 1 is fixed.
+- t₁ and t₂ range over {0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5}, with t₁ ≤ t₂ (swapping them is a symmetry). That is 36
+  shapes, with axis ratios up to 20.
+- 300 random starts at each shape.
+
+**The resting fields.**
+
+- At every shape there are exactly three resting left-invariant fields up to gauge: two flat, and one non-flat
+  relative of the meron. Its energy runs from 8.18 at (0.25, 0.25, 1) to 0.139 at (5, 5, 1).
+
+**Its spectrum.**
+
+- Its Morse index is exactly 1 at every shape: one negative direction, in the left-invariant sector.
+- Every spin sector j = 1–8 stays positive.
+- The closest approach to zero is j = 1 at 0.405, at (5, 5, 1). That is the flattened shape (0.2, 1, 1) with the
+  axes renamed, which Result 6's one-axis scan already followed down to t = 0.05 with index 1 throughout.
+
+**Reading.** Among left-invariant fields, the stretched spheres carry one non-flat resting field, the meron's
+relative. It keeps the round meron's single unstable direction across the whole two-parameter family of shapes
+sampled, and no twist or other mode goes soft on it.
+
+**What remains open.**
+
+- **Resting fields that are not left-invariant.** For example, fields invariant only under a circle subgroup, or
+  under the right action. That is a PDE or ODE search, not an algebraic one.
+- **Resting fields in other bundles.** On the Poincaré sphere, the non-trivial flat connections from
+  representations of the binary icosahedral group in SU(2) are minima (energy zero), so they have no negative modes
+  at all.

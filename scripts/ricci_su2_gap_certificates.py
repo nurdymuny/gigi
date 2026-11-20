@@ -29,6 +29,7 @@ CERTIFICATE 2 (j = 0, 12, 20, 24: the sectors below 30 that survive on the Poinc
     eigenvalue is exactly lambda(j), with multiplicity two, and nothing else lies below lambda(j) + 1/3 - eps.
 
 usage: python scripts/ricci_su2_gap_certificates.py [OUT.json]
+Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of Astra's review, 20 November 2026, finding 1).
 """
 import json
 import sys
@@ -37,6 +38,10 @@ from itertools import product
 from pathlib import Path
 
 import mpmath
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parent))
+import ricci_su2_outward as O                    # noqa: E402
 import sympy as sp
 
 PREC = 200
@@ -269,7 +274,7 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
         mu_iv = iv.mpf(mpmath.mpf(mu.p) / mpmath.mpf(mu.q)) if False else iv.mpf(mu.p) / iv.mpf(mu.q)
         # realify: C^n -> R^2n, index 2x (re), 2x+1 (im)
         N = 2 * n
-        mid, rad2 = {}, mpmath.mpf(0)
+        mid, bud = {}, O.Budget()
         Ar = {}
         for (x, y), z in A.items():
             re, im = z
@@ -288,12 +293,10 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
             band = max(band, abs(r_ - c_))
             if r_ < c_:
                 continue
-            v = v if not isinstance(v, int) else iv.mpf(v)
-            a_, b_ = mpmath.mpf(v.a), mpmath.mpf(v.b)          # exact endpoints
-            mid[(r_, c_)] = (a_ + b_) / 2
-            # radius rounded up: (b - a)/2 computed at PREC bits, inflated by one part in 2^(PREC-8)
-            rr = (((b_ - a_) / 2) * (1 + mpmath.mpf(2) ** (8 - PREC))) ** 2
-            rad2 += rr if r_ == c_ else 2 * rr
+            # stored midpoint and OUTWARD radius about it (ricci_su2_outward; Astra's review, finding 1)
+            m_, r1 = O.mid_rad(v if not isinstance(v, int) else iv.mpf(v))
+            mid[(r_, c_)] = m_
+            bud.add(r_, c_, r1)
         # LDL^T without pivoting, banded, at PREC bits
         Lrows = [dict() for _ in range(N)]
         dvals = []
@@ -309,28 +312,27 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
                 if aik != 0 or sm != 0:
                     Lrows[i2][k] = (aik - sm) / dk
             Lrows[k][k] = mpmath.mpf(1)
-        # || |L||D||L^T| ||_F
-        absM = {}
+        # || |L||D||L^T| ||_F, outward
+        terms = {}
         for i2 in range(N):
             for t, lit in Lrows[i2].items():
                 for k2 in range(max(0, t), min(N, t + band + 1)):
                     lkt = Lrows[k2].get(t)
                     if lkt is not None:
-                        absM[(i2, k2)] = absM.get((i2, k2), 0) + abs(lit) * abs(dvals[t]) * abs(lkt)
-        frob = mpmath.sqrt(mpmath.fsum(v ** 2 for v in absM.values()))
-        u = mpmath.mpf(2) ** (-PREC)
-        gamma = N * u / (1 - N * u)
-        eps = mpmath.sqrt(rad2) + gamma * frob
+                        terms.setdefault((i2, k2), []).append((lit, dvals[t], lkt))
+        frob_iv = O.backward_frob(terms.items())
+        rho = mpmath.mpf(O.up(mpmath.iv.sqrt(bud.rad2)))          # Frobenius bound, as before
+        eps, bwd = O.eps_upper(rho, frob_iv, N, PREC)
         neg = sum(1 for dv in dvals if dv < 0)
         results[str(off)] = {"mu": str(mu), "negative_pivots_realified": neg,
-                             "eps": mpmath.nstr(eps, 5), "rho_enclosure": mpmath.nstr(mpmath.sqrt(rad2), 5),
-                             "backward_error_bound": mpmath.nstr(gamma * frob, 5),
+                             "eps": mpmath.nstr(eps, 5), "eps_below_one_third": bool(eps < mpmath.mpf(1) / 3), "rho_enclosure": mpmath.nstr(rho, 5),
+                             "backward_error_bound": mpmath.nstr(bwd, 5),
                              "min_abs_pivot": mpmath.nstr(min(abs(dv) for dv in dvals), 5),
                              "negative_pivot_positions": [k for k, dv in enumerate(dvals) if dv < 0],
                              "pivots": [mpmath.nstr(dv, 8) for dv in dvals], "band": band, "N": N}
     lo_ok = results[str(mu_offsets[0])]["negative_pivots_realified"] == 0
     hi_ok = results[str(mu_offsets[1])]["negative_pivots_realified"] == 4
-    eps_ok = all(mpmath.mpf(r["eps"]) < mpmath.mpf(1) / 3 for r in results.values())
+    eps_ok = all(r["eps_below_one_third"] for r in results.values())
     return {"j": j, "lambda": str(lam), "counts": results, "certified": bool(lo_ok and hi_ok and eps_ok)}
 
 

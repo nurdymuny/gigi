@@ -13,6 +13,7 @@ factored LDL^T. With rho = min(Frobenius, max row sum) of the radii and the back
 and eps < eta give lambda_min(B(t)) >= lambda_t(j) + eta - eps > lambda_t(j) for every t in the slice. Together:
 lambda_t(j) is the lowest eigenvalue of H + G G^* in sector j, multiplicity exactly two (the two twist blocks).
 
+Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of Astra's review, 20 November 2026, finding 1).
 usage: python scripts/ricci_su2_block_interval_cert.py OUT.json TMIN TMAX JMAX [NPROC] [JMIN]
 """
 import json
@@ -29,6 +30,7 @@ _argv, sys.argv = sys.argv, [sys.argv[0]]
 import ricci_su2_gap_certificates_t as GC      # noqa: E402
 sys.argv = _argv
 import ricci_su2_charge_block_direct as D      # noqa: E402
+import ricci_su2_outward as O                  # noqa: E402
 
 PREC = 64
 HERE = Path(__file__).resolve().parent
@@ -165,17 +167,14 @@ def certify_block(j, q, a, b, eta, fd):
             A[2 * x][2 * y] = re; A[2 * x][2 * y + 1] = -im; A[2 * x + 1][2 * y] = im; A[2 * x + 1][2 * y + 1] = re
     for x in range(N):
         A[x][x] = A[x][x] - mu
-    mid = [[None] * N for _ in range(N)]; rows = [mpmath.mpf(0)] * N; rad2 = mpmath.mpf(0)
+    # stored midpoints and OUTWARD radii about them (ricci_su2_outward; Astra's review, finding 1)
+    mid = [[None] * N for _ in range(N)]; bud = O.Budget()
     for r in range(N):
         for c_ in range(r + 1):
-            v = A[r][c_]; lo, hi = mpmath.mpf(v.a), mpmath.mpf(v.b)
-            mid[r][c_] = mid[c_][r] = (lo + hi) / 2
-            r1 = ((hi - lo) / 2) * (1 + mpmath.mpf(2) ** (8 - PREC))
-            rad2 += r1 ** 2 if r == c_ else 2 * r1 ** 2
-            rows[r] += r1
-            if r != c_:
-                rows[c_] += r1
-    rho = min(mpmath.sqrt(rad2), max(rows))
+            m_, r1 = O.mid_rad(A[r][c_])
+            mid[r][c_] = mid[c_][r] = m_
+            bud.add(r, c_, r1)
+    rho = bud.rho()
     L = [[mpmath.mpf(0)] * N for _ in range(N)]; d = []
     for k in range(N):
         dk = mid[k][k] - mpmath.fsum(L[k][s_] ** 2 * d[s_] for s_ in range(k))
@@ -185,11 +184,10 @@ def certify_block(j, q, a, b, eta, fd):
         for i2 in range(k + 1, N):
             L[i2][k] = (mid[i2][k] - mpmath.fsum(L[i2][s_] * L[k][s_] * d[s_] for s_ in range(k))) / dk
         L[k][k] = mpmath.mpf(1)
-    absM = mpmath.fsum((mpmath.fsum(abs(L[i2][s_]) * d[s_] * abs(L[k2][s_]) for s_ in range(min(i2, k2) + 1))) ** 2
-                       for i2 in range(N) for k2 in range(N))
-    u = mpmath.mpf(2) ** (-PREC); gamma = N * u / (1 - N * u)
-    eps = rho + gamma * mpmath.sqrt(absM)
-    return bool(eps < eta), float(eps), float(rho)
+    frob = O.backward_frob((((i2, k2), [(L[i2][s_], d[s_], L[k2][s_]) for s_ in range(min(i2, k2) + 1)])
+                            for i2 in range(N) for k2 in range(N)))
+    eps, _ = O.eps_upper(rho, frob, N, PREC)
+    return bool(eps < mpmath.mpf(eta)), float(eps), float(rho)
 
 
 def task(arg):

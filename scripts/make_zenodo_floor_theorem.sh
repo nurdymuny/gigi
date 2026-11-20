@@ -64,6 +64,7 @@ FILES=(
   scripts/ricci_su2_floor_large_j.py scripts/ricci_su2_tstar_exact.py scripts/ricci_su2_tA_scan.py
   scripts/ricci_su2_test2_family.py scripts/ricci_su2_chiral_bound.py scripts/ricci_su2_gyromagnetic_split.py
   scripts/ricci_su2_floor_vs_ceiling.py scripts/ricci_su2_meron_ceiling_check.py
+  scripts/ricci_su2_outward.py scripts/ricci_su2_outward_test.py scripts/ricci_su2_meron_index_below1.py
   docs/papers/berger-spectrum/make_figure_floor_family.py
   docs/research/floor-family-squashing-2026-11-19.md
   LICENSE
@@ -74,7 +75,8 @@ for f in gap_certificates_t4.json spin0_slice_t4.txt formula_squashed.txt interv
          soft_mode_flow.json soft_mode_controls.txt resting_fields.json resting_fields_general.json meron_family_soft.json \
          weitzenbock_symbolic_t.json landau_symbolic.txt block_rows_symbolic.json charge_selection_symbolic.txt \
          block_cert_j40.json block_cert_j41_99.json floor_large_j.json tstar_exact.txt tA_scan.txt \
-         test2_berger_control.json test2_meron.json gyromagnetic_split.txt meron_ceiling_check.txt; do
+         test2_berger_control.json test2_meron.json gyromagnetic_split.txt meron_ceiling_check.txt \
+         outward_test.txt meron_index_below1.json; do
   FILES+=("research/su2-floor-family-20261119/$f")
 done
 for t in L0_native L0_pg L1_native L1_pg; do FILES+=(research/su2-pg-stability-20261117/$t.eigs.npy research/su2-pg-stability-20261117/$t.json); done

@@ -9,6 +9,7 @@ eigenvalues below lambda_t(j) + delta - eps; lambda_t(j) is an exact eigenvalue 
 every other is at least lambda_t(j) + delta - eps > lambda_t(j). Its eigenvector lies in the gauge slice, so it is the
 floor there. The assembly and count code are taken verbatim from scripts/ricci_su2_gap_certificates_t.py.
 
+Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of Astra's review, 20 November 2026, finding 1).
 usage: python scripts/ricci_su2_floor_interval_cert.py OUT.json TMIN TMAX SECTORS [NPROC]
 """
 import json
@@ -25,6 +26,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 _argv, sys.argv = sys.argv, [sys.argv[0]]
 import ricci_su2_gap_certificates_t as GC      # noqa: E402  (module defaults; only its helpers are used)
+import ricci_su2_outward as O                 # noqa: E402
 sys.argv = _argv
 background, PAIRS, cross_mat = GC.background, GC.PAIRS, GC.cross_mat
 PREC = 96
@@ -114,7 +116,7 @@ def count_interval(j, Tv, mu_iv):
                 cadd(A, (idx(jj, a2, w), idx(i, a, w)), (-blk[a][a2], 0))
     # realify: C^n -> R^2n, index 2x (re), 2x+1 (im)
     N = 2 * n
-    mid, rad2 = {}, mpmath.mpf(0)
+    mid, bud = {}, O.Budget()
     Ar = {}
     for (x, y), z in A.items():
         re, im = z
@@ -126,7 +128,6 @@ def count_interval(j, Tv, mu_iv):
     for x in range(N):
         Ar[(x, x)] = Ar.get((x, x), 0) - mu_iv
     band = 0
-    rows = {}
     # M is the symmetric matrix built from the LOWER triangle (and diagonal) of the enclosure: that is exactly
     # what the factorization reads. The exact matrix is symmetric and each lower interval encloses its entry, so
     # ||exact - M||_2 <= ||exact - M||_F <= sqrt(sum_diag r^2 + 2 sum_lower r^2) =: rho.
@@ -134,15 +135,10 @@ def count_interval(j, Tv, mu_iv):
         band = max(band, abs(r_ - c_))
         if r_ < c_:
             continue
-        v = v if not isinstance(v, int) else iv.mpf(v)
-        a_, b_ = mpmath.mpf(v.a), mpmath.mpf(v.b)          # exact endpoints
-        mid[(r_, c_)] = (a_ + b_) / 2
-        # radius rounded up: (b - a)/2 computed at PREC bits, inflated by one part in 2^(PREC-8)
-        r1 = ((b_ - a_) / 2) * (1 + mpmath.mpf(2) ** (8 - PREC))
-        rad2 += r1 ** 2 if r_ == c_ else 2 * r1 ** 2
-        rows[r_] = rows.get(r_, 0) + r1
-        if r_ != c_:
-            rows[c_] = rows.get(c_, 0) + r1
+        # stored midpoint and OUTWARD radius about it (ricci_su2_outward; Astra's review, finding 1)
+        m_, r1 = O.mid_rad(v if not isinstance(v, int) else iv.mpf(v))
+        mid[(r_, c_)] = m_
+        bud.add(r_, c_, r1)
     # LDL^T without pivoting, banded, at PREC bits
     Lrows = [dict() for _ in range(N)]
     dvals = []
@@ -158,22 +154,20 @@ def count_interval(j, Tv, mu_iv):
             if aik != 0 or sm != 0:
                 Lrows[i2][k] = (aik - sm) / dk
         Lrows[k][k] = mpmath.mpf(1)
-    # || |L||D||L^T| ||_F
-    absM = {}
+    # || |L||D||L^T| ||_F, outward
+    terms = {}
     for i2 in range(N):
         for t, lit in Lrows[i2].items():
             for k2 in range(max(0, t), min(N, t + band + 1)):
                 lkt = Lrows[k2].get(t)
                 if lkt is not None:
-                    absM[(i2, k2)] = absM.get((i2, k2), 0) + abs(lit) * abs(dvals[t]) * abs(lkt)
-    frob = mpmath.sqrt(mpmath.fsum(v ** 2 for v in absM.values()))
-    u = mpmath.mpf(2) ** (-PREC)
-    gamma = N * u / (1 - N * u)
+                    terms.setdefault((i2, k2), []).append((lit, dvals[t], lkt))
+    frob_iv = O.backward_frob(terms.items())
     # rigorous: |E| <= R entrywise, R symmetric non-negative => ||E||_2 <= ||R||_2 <= max row sum of R
-    rho = min(mpmath.sqrt(rad2), max(rows.values()) if rows else mpmath.mpf(0))
-    eps = rho + gamma * frob
+    rho = bud.rho()
+    eps, bwd = O.eps_upper(rho, frob_iv, N, PREC)
     neg = sum(1 for dv in dvals if dv < 0)
-    return {"neg": neg, "eps": float(eps), "rho": float(rho), "bwd": float(gamma * frob),
+    return {"neg": neg, "eps": float(eps), "rho": float(rho), "bwd": float(bwd),
             "min_abs_pivot": float(min(abs(dv) for dv in dvals)), "N": N}
 
 

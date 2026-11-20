@@ -391,6 +391,207 @@ pub fn effective_mass_blocked(p: &[Vec<f64>], block: usize) -> Result<EffectiveM
     Ok(EffectiveMass { correlator: c, correlator_error: ce, m_eff: m, m_eff_error: me, plateau, plateau_as_fixed })
 }
 
+/// The variational step of Q3 (docs/HALCYON_Q3_RUN_SPEC.md): a generalized eigenvalue problem
+/// C(t1) v = λ C(t0) v on the matrix correlator of K operators, and the projection of the operator
+/// series onto the eigenvector of the largest λ (the lowest state).
+///
+/// The projected series p(t) = Σ_a v_a O_a(t) has the correlator vᵀC(t)v, so it goes through
+/// EFFECTIVE_MASS like any single operator. The vector is fixed from the full sample and not
+/// re-solved in the jackknife (recorded in the run spec).
+#[derive(Clone, Debug)]
+pub struct Gevp {
+    pub t0: usize,
+    pub t1: usize,
+    /// eigenvalues λ of C(t0)^{-1/2} C(t1) C(t0)^{-1/2}, descending
+    pub eigenvalues: Vec<f64>,
+    /// the eigenvector of the largest λ, normalised so vᵀC(t0)v = 1
+    pub vector: Vec<f64>,
+    /// condition number of C(t0)
+    pub condition_t0: f64,
+}
+
+/// Largest admissible condition number of C(t0); above it the GEVP refuses.
+pub const GEVP_MAX_CONDITION: f64 = 1e12;
+
+/// The symmetrised connected matrix correlator C_ab(τ), periodic origin average.
+pub fn matrix_correlator(ops: &[Vec<Vec<f64>>]) -> Result<Vec<Vec<Vec<f64>>>, String> {
+    let k = ops.len();
+    if k == 0 {
+        return Err("GEVP: no operators".into());
+    }
+    let l = check(&ops[0])?;
+    let n = ops[0].len();
+    for o in ops {
+        if check(o)? != l || o.len() != n {
+            return Err("GEVP: every operator needs the same configurations and time slices".into());
+        }
+    }
+    let q: Vec<Vec<Vec<f64>>> = ops
+        .iter()
+        .map(|o| {
+            let mu = o.iter().flatten().sum::<f64>() / (n * l) as f64;
+            o.iter().map(|r| r.iter().map(|x| x - mu).collect()).collect()
+        })
+        .collect();
+    let mut c = vec![vec![vec![0.0; k]; k]; l];
+    for tau in 0..l {
+        for a in 0..k {
+            for b in 0..k {
+                let mut acc = 0.0;
+                for cfg in 0..n {
+                    for t in 0..l {
+                        acc += q[a][cfg][t] * q[b][cfg][(t + tau) % l];
+                    }
+                }
+                c[tau][a][b] = acc / (n * l) as f64;
+            }
+        }
+        for a in 0..k {
+            for b in 0..a {
+                let m = 0.5 * (c[tau][a][b] + c[tau][b][a]);
+                c[tau][a][b] = m;
+                c[tau][b][a] = m;
+            }
+        }
+    }
+    Ok(c)
+}
+
+fn cholesky(a: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
+    let k = a.len();
+    let mut l = vec![vec![0.0; k]; k];
+    for i in 0..k {
+        for j in 0..=i {
+            let mut v = a[i][j];
+            for q in 0..j {
+                v -= l[i][q] * l[j][q];
+            }
+            if i == j {
+                if v <= 0.0 {
+                    return None;
+                }
+                l[i][i] = v.sqrt();
+            } else {
+                l[i][j] = v / l[j][j];
+            }
+        }
+    }
+    Some(l)
+}
+
+/// Symmetric eigen-decomposition by cyclic Jacobi; returns (eigenvalues, eigenvectors as columns).
+fn jacobi_eigen(mut a: Vec<Vec<f64>>) -> (Vec<f64>, Vec<Vec<f64>>) {
+    let k = a.len();
+    let mut v = vec![vec![0.0; k]; k];
+    for i in 0..k {
+        v[i][i] = 1.0;
+    }
+    for _ in 0..100 {
+        let off: f64 = (0..k).flat_map(|i| (0..k).filter(move |&j| j != i).map(move |j| (i, j))).map(|(i, j)| a[i][j] * a[i][j]).sum();
+        if off < 1e-30 {
+            break;
+        }
+        for p in 0..k {
+            for q in p + 1..k {
+                if a[p][q].abs() < 1e-300 {
+                    continue;
+                }
+                let theta = (a[q][q] - a[p][p]) / (2.0 * a[p][q]);
+                let t = theta.signum() / (theta.abs() + (theta * theta + 1.0).sqrt());
+                let t = if theta == 0.0 { 1.0 } else { t };
+                let c = 1.0 / (t * t + 1.0).sqrt();
+                let s = t * c;
+                for r in 0..k {
+                    let (arp, arq) = (a[r][p], a[r][q]);
+                    a[r][p] = c * arp - s * arq;
+                    a[r][q] = s * arp + c * arq;
+                }
+                for r in 0..k {
+                    let (apr, aqr) = (a[p][r], a[q][r]);
+                    a[p][r] = c * apr - s * aqr;
+                    a[q][r] = s * apr + c * aqr;
+                }
+                for r in 0..k {
+                    let (vrp, vrq) = (v[r][p], v[r][q]);
+                    v[r][p] = c * vrp - s * vrq;
+                    v[r][q] = s * vrp + c * vrq;
+                }
+            }
+        }
+    }
+    ((0..k).map(|i| a[i][i]).collect(), v)
+}
+
+/// Solve the GEVP at (t0, t1). Refuses when C(t0) is not positive definite or is worse
+/// conditioned than `GEVP_MAX_CONDITION` (operators too close to linearly dependent).
+pub fn gevp(c: &[Vec<Vec<f64>>], t0: usize, t1: usize) -> Result<Gevp, String> {
+    if t1 <= t0 || t1 >= c.len() {
+        return Err(format!("GEVP: need t0 < t1 < L (t0 = {t0}, t1 = {t1})"));
+    }
+    let k = c[t0].len();
+    let (ev0, _) = jacobi_eigen(c[t0].clone());
+    let (lo, hi) = ev0.iter().fold((f64::INFINITY, 0.0f64), |(a, b), &x| (a.min(x), b.max(x.abs())));
+    if lo <= 0.0 {
+        return Err(format!("GEVP: C(t0 = {t0}) is not positive definite (smallest eigenvalue {lo:.3e})"));
+    }
+    let cond = hi / lo;
+    if cond > GEVP_MAX_CONDITION {
+        return Err(format!("GEVP: C(t0 = {t0}) has condition number {cond:.3e} > {GEVP_MAX_CONDITION:e}"));
+    }
+    let l = cholesky(&c[t0]).ok_or("GEVP: Cholesky of C(t0) failed")?;
+    // M = L⁻¹ C(t1) L⁻ᵀ
+    let solve_lower = |b: &[f64]| -> Vec<f64> {
+        let mut y = vec![0.0; k];
+        for i in 0..k {
+            let mut v = b[i];
+            for q in 0..i {
+                v -= l[i][q] * y[q];
+            }
+            y[i] = v / l[i][i];
+        }
+        y
+    };
+    let cols: Vec<Vec<f64>> = (0..k).map(|j| solve_lower(&(0..k).map(|i| c[t1][i][j]).collect::<Vec<_>>())).collect();
+    // cols[j] = L⁻¹ C(t1) e_j ; now M = (L⁻¹ (L⁻¹ C(t1))ᵀ)ᵀ
+    let mut m = vec![vec![0.0; k]; k];
+    for i in 0..k {
+        let row: Vec<f64> = (0..k).map(|j| cols[j][i]).collect(); // (L⁻¹ C(t1))[i][·]
+        let y = solve_lower(&row); // L⁻¹ applied to row i of (L⁻¹C)ᵀ ... symmetric result
+        for j in 0..k {
+            m[i][j] = y[j];
+        }
+    }
+    for i in 0..k {
+        for j in 0..i {
+            let a = 0.5 * (m[i][j] + m[j][i]);
+            m[i][j] = a;
+            m[j][i] = a;
+        }
+    }
+    let (ev, vecs) = jacobi_eigen(m);
+    let mut idx: Vec<usize> = (0..k).collect();
+    idx.sort_by(|&a, &b| ev[b].partial_cmp(&ev[a]).unwrap());
+    let w: Vec<f64> = (0..k).map(|i| vecs[i][idx[0]]).collect();
+    // v = L⁻ᵀ w
+    let mut v = vec![0.0; k];
+    for i in (0..k).rev() {
+        let mut s = w[i];
+        for q in i + 1..k {
+            s -= l[q][i] * v[q];
+        }
+        v[i] = s / l[i][i];
+    }
+    let norm: f64 = (0..k).map(|a| (0..k).map(|b| v[a] * c[t0][a][b] * v[b]).sum::<f64>()).sum::<f64>().sqrt();
+    let v: Vec<f64> = v.iter().map(|x| x / norm).collect();
+    Ok(Gevp { t0, t1, eigenvalues: idx.iter().map(|&i| ev[i]).collect(), vector: v, condition_t0: cond })
+}
+
+/// The operator series projected on a GEVP vector: p_c(t) = Σ_a v_a O_a(c, t).
+pub fn project(ops: &[Vec<Vec<f64>>], v: &[f64]) -> Vec<Vec<f64>> {
+    let (n, l) = (ops[0].len(), ops[0][0].len());
+    (0..n).map(|c| (0..l).map(|t| ops.iter().zip(v).map(|(o, va)| va * o[c][t]).sum()).collect()).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -544,5 +745,36 @@ mod tests {
         assert!(connected_correlator(&[vec![1.0, f64::NAN, 3.0]]).is_err());
         assert!(effective_mass(&[vec![1.0, 2.0, 3.0]]).is_err());
         assert!(effective_mass_blocked(&vec![vec![1.0, 2.0, 3.0]; 10], 6).is_err());
+    }
+
+    #[test]
+    fn gevp_removes_an_exact_excited_state() {
+        // two states, two operators: C_ab(t) = sum_n Z_an Z_bn (e^{-m_n t} + e^{-m_n (L-t)})
+        let (l, m) = (24usize, [0.4f64, 1.1f64]);
+        let z = [[1.0, 0.8], [0.6, -0.9]];
+        let c: Vec<Vec<Vec<f64>>> = (0..l)
+            .map(|t| {
+                (0..2)
+                    .map(|a| {
+                        (0..2)
+                            .map(|b| (0..2).map(|s| z[a][s] * z[b][s] * ((-m[s] * t as f64).exp() + (-m[s] * (l - t) as f64).exp())).sum())
+                            .collect()
+                    })
+                    .collect()
+            })
+            .collect();
+        let g = gevp(&c, 1, 2).unwrap();
+        let proj: Vec<f64> = (0..l).map(|t| (0..2).map(|a| (0..2).map(|b| g.vector[a] * c[t][a][b] * g.vector[b]).sum::<f64>()).sum()).collect();
+        for (t, me) in effective_mass_cosh(&proj).iter().enumerate() {
+            if (1..l / 2).contains(&t) {
+                assert!((me.unwrap() - m[0]).abs() < 1e-9, "t={t} {me:?}");
+            }
+        }
+        // a single operator is contaminated at small t
+        let diag: Vec<f64> = (0..l).map(|t| c[t][0][0]).collect();
+        assert!(effective_mass_cosh(&diag)[1].unwrap() - m[0] > 0.05);
+        // a singular C(t0) refuses
+        let sing: Vec<Vec<Vec<f64>>> = (0..l).map(|t| vec![vec![c[t][0][0]; 2]; 2]).collect();
+        assert!(gevp(&sing, 1, 2).is_err());
     }
 }

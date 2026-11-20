@@ -197,6 +197,88 @@ impl Lattice4d {
     }
 }
 
+/// Spatial APE smearing, one step, all spatial links at once from the old links:
+/// U_i(x) → Proj_SU(2)[U_i(x) + α Σ_{j ≠ i spatial} (U_j(x) U_i(x+ĵ) U_j(x+î)⁻¹
+///                                                 + U_j(x−ĵ)⁻¹ U_i(x−ĵ) U_j(x−ĵ+î))].
+/// For SU(2) a sum of unit quaternions is a multiple of one, so normalising is the projection.
+/// Time links are never smeared. Smeared links transform like links, so every operator built
+/// from them stays gauge invariant.
+pub fn ape_smear_spatial(lat: &Lattice4d, alpha: f64) -> Lattice4d {
+    let mut out = lat.clone();
+    for site in 0..lat.n_sites() {
+        let x = lat.coords(site);
+        for i in 1..4 {
+            let mut acc = lat.u(x, i);
+            let xi = lat.shift(x, i, true);
+            for j in 1..4 {
+                if j == i {
+                    continue;
+                }
+                let xj = lat.shift(x, j, true);
+                let up = qmul(&qmul(&lat.u(x, j), &lat.u(xj, i)), &qinv(&lat.u(xi, j)));
+                let xmj = lat.shift(x, j, false);
+                let ximj = lat.shift(xi, j, false);
+                let dn = qmul(&qmul(&qinv(&lat.u(xmj, j)), &lat.u(xmj, i)), &lat.u(ximj, j));
+                for k in 0..4 {
+                    acc[k] += alpha * (up[k] + dn[k]);
+                }
+            }
+            out.links[4 * site + i] = qnormalise(acc);
+        }
+    }
+    out
+}
+
+/// Zero-momentum operators on each time slice t (= x₀):
+/// * `scalar[t]`  = Σ over spatial sites and the three spatial planes of ½ tr U_ij  (0⁺⁺);
+/// * `torelon[t]` = the mean over the three spatial directions i of the sum over transverse
+///   positions of ½ tr of the Polyakov line winding direction i (the flux loop).
+pub struct SliceOperators {
+    pub scalar: Vec<f64>,
+    pub torelon: Vec<f64>,
+}
+
+pub fn slice_operators(lat: &Lattice4d) -> SliceOperators {
+    let nt = lat.dims[0];
+    let mut scalar = vec![0.0; nt];
+    let mut torelon = vec![0.0; nt];
+    for site in 0..lat.n_sites() {
+        let x = lat.coords(site);
+        let t = x[0];
+        for i in 1..4 {
+            for j in i + 1..4 {
+                scalar[t] += lat.plaquette(x, i, j)[0];
+            }
+            if x[i] == 0 {
+                let mut p: Q = [1.0, 0.0, 0.0, 0.0];
+                let mut y = x;
+                for _ in 0..lat.dims[i] {
+                    p = qmul(&p, &lat.u(y, i));
+                    y = lat.shift(y, i, true);
+                }
+                torelon[t] += p[0] / 3.0;
+            }
+        }
+    }
+    SliceOperators { scalar, torelon }
+}
+
+/// The operators at each smearing level in `levels` (increasing; level n = n APE steps).
+pub fn smeared_operators(lat: &Lattice4d, levels: &[usize], alpha: f64) -> Vec<SliceOperators> {
+    let mut out = Vec::with_capacity(levels.len());
+    let mut cur = lat.clone();
+    let mut done = 0usize;
+    for &n in levels {
+        assert!(n >= done, "smearing levels must increase");
+        for _ in done..n {
+            cur = ape_smear_spatial(&cur, alpha);
+        }
+        done = n;
+        out.push(slice_operators(&cur));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,5 +369,44 @@ mod tests {
         let (ma, sa) = mean_and_err(&va, 20);
         let (mb, sb) = mean_and_err(&vb, 20);
         assert!((ma - mb).abs() < 4.0 * (sa * sa + sb * sb).sqrt(), "HB {ma} ± {sa}, Metropolis {mb} ± {sb}");
+    }
+
+    #[test]
+    fn smeared_operators_are_gauge_invariant() {
+        let mut rng = SmallRng::seed_from_u64(17);
+        let mut l = Lattice4d::hot([4, 3, 3, 4], &mut rng);
+        for _ in 0..5 {
+            l.heatbath_sweep(2.3, &mut rng);
+        }
+        let a = smeared_operators(&l, &[0, 2, 5], 0.5);
+        let g: Vec<Q> = (0..l.n_sites()).map(|_| sample_su2_link([0.0; 4], 1.0, &mut rng)).collect();
+        l.gauge_transform(&g);
+        let b = smeared_operators(&l, &[0, 2, 5], 0.5);
+        for (x, y) in a.iter().zip(&b) {
+            for t in 0..4 {
+                assert!((x.scalar[t] - y.scalar[t]).abs() < 1e-11, "scalar t={t}");
+                assert!((x.torelon[t] - y.torelon[t]).abs() < 1e-11, "torelon t={t}");
+            }
+        }
+    }
+
+    #[test]
+    fn smearing_raises_the_spatial_plaquette_and_keeps_time_links() {
+        let mut rng = SmallRng::seed_from_u64(19);
+        let mut l = Lattice4d::hot([3, 4, 4, 4], &mut rng);
+        for _ in 0..10 {
+            l.heatbath_sweep(2.3, &mut rng);
+        }
+        let s = ape_smear_spatial(&l, 0.5);
+        for site in 0..l.n_sites() {
+            assert_eq!(s.links[4 * site], l.links[4 * site]);
+        }
+        let ops0 = slice_operators(&l);
+        let ops1 = slice_operators(&s);
+        assert!(ops1.scalar.iter().sum::<f64>() > ops0.scalar.iter().sum::<f64>());
+        // the cold lattice is a fixed point of smearing
+        let c = Lattice4d::cold([2, 3, 3, 3]);
+        let cs = ape_smear_spatial(&c, 0.5);
+        assert!(cs.links.iter().all(|q| (q[0] - 1.0).abs() < 1e-15));
     }
 }

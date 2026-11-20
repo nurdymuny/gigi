@@ -107,6 +107,62 @@ other levels); the condition number (~4.5e3) was far below the refusal threshold
   scored by the harness like the others but the amendment's success is not claimed from them. Q3-n
   (nulls refuse) and Q3-r (removal) stand unchanged and test the amendment against its failure mode.
 
+## Amendment 3 and the extension run (directed by Bee 2026-11-20, after the Q3 results; written before any extension data)
+
+Bee chose all three follow-ups in `docs/HALCYON_Q3_RESULTS.md`, the GEVP fix first. The details below are
+fixed before any extension configuration is generated and before the fix is coded.
+
+**Q3-C, truncate the directions C(t₁) cannot see.** After Q3-B selection, each kept operator is scaled so
+C_aa(t₀) = 1. C(t₀) is diagonalised, C(t₀) = U Λ Uᵀ. For each eigendirection u_j the projected series
+Σ_a (u_j)_a O_a has a correlator at t₁ with a blocked-jackknife error; the direction is kept only if that
+C(t₁) is at least `MIN_SIGNAL_SIGMA` (3) errors above zero. The GEVP is solved in the kept subspace,
+Ĉ(t) = U_keptᵀ C(t) U_kept, and the vector is mapped back to the operators (zeros for operators Q3-B
+dropped). If no direction is kept, the GEVP refuses ("no direction of C(t0) has a signal at t1"). The
+Q3-B noise-mode refusal after projection stays. No new threshold: the 3σ is the one Q1-1 and Q3-B
+already use. The kept directions are reported.
+
+Why this criterion: in a near-null direction of C(t₀) the true C(t₁) is smaller still, so what the
+GEVP sees there at t₁ is noise divided by a small number, which can win the largest eigenvalue. That is
+the failure diagnosed at k1 (after scoring). The criterion drops exactly the directions whose t₁ signal is
+not distinguishable from noise.
+
+**Tests before data (unit, synthetic).** A two-state matrix correlator with a third operator nearly
+collinear with the first (independent noise added): (i) without Q3-C the GEVP's mode is wrong or refused;
+(ii) with Q3-C it recovers the ground mass within 3σ; (iii) on clean, well-separated operators Q3-C keeps
+every direction and the vector equals the untruncated one. (i) is the removal arm: with the
+truncation off the failure must return.
+
+**Extension points (seed = 20261193 + 1000·k, as before; parallel sampler, THREADS ≥ 1, which is a
+different ensemble class from k0–k6 and bit-identical for any thread count):**
+
+| k | β | L | role |
+|---|---|---|---|
+| 7 | 2.2986 | 12 | second volume at β = 2.2986, replacing k1 in Q3-v (k1 stays reported as failed) |
+| 8 | 2.2986 | 14 | fresh replicate of k1: the Q3-C test point |
+| 9 | 2.5115 | 20 | LTW Table 5 calibration |
+| 10 | 2.5115 | 24 | second volume at β = 2.5115 |
+
+Same statistics as k0–k6: 1,000 thermalisation updates, 10,000 measurements, one heat bath + four
+overrelaxation per update, levels 0, 4, 8, 16, α = 0.5, blocks of 100, GEVP at (1, 2).
+
+β = 2.5115 overrides the rule in "The run" (first three β must pass Q3-a and Q3-v, which β = 2.2986
+did not). The override is Bee's decision, recorded here before any of its data.
+
+**Gates for Q3-C, judged only on k7–k10:**
+- **C-harm.** At every extension point and channel where the Amendment-2 GEVP (no Q3-C) returns a
+  plateau, the Q3-C value differs from it by at most 1 σ of the Amendment-2 value.
+- **C-job.** At k8 the Q3-C 0⁺⁺ plateau exists and agrees with LTW's am₀₊₊ = 1.212(22) (β = 2.2986,
+  aL√σ > 5, so volume effects are below the errors) within 2 combined σ. Whether the Amendment-2 GEVP
+  refused at k8 is reported; if it did not, C-job tests correctness only, and that is said.
+- **C-null.** Every channel refuses on its shuffled series at k7–k10.
+- The unit tests above.
+
+**Q3 gates on the extension.** Q3-a at β = 2.5115 (k9) against Table 5; Q3-v at β = 2.2986 from k0 and
+k7, at β = 2.5115 from k9 and k10; Q3-s refitted over every β that passes Q3-a and Q3-v (up to four
+points, so the fit has degrees of freedom and the falsifier can trigger). All with the Q3-C verb rule.
+k0–k6 are rescored with Q3-C and reported; k1 is not evidence for Q3-C (it prompted it). Q4 is rerun on
+the new receipt, exploratory as before.
+
 ## Order of work
 
 1. Sampler and its Q3-0 tests.

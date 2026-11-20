@@ -58,3 +58,19 @@ All seven points exited 0 (done.txt). The harness was run once with the probe at
 Q3-n pass (vacuous for k1 0++, no projected series). beta = 2.5115 not run: the pre-registered condition
 (first three beta pass Q3-a and Q3-v) is not met. Results: docs/HALCYON_Q3_RESULTS.md. The single-level
 k1 numbers in that file are a diagnosis after scoring, not a gate.
+
+## Extension run (Amendment 3 in the spec; written before any extension data, 2026-11-20)
+
+Points k7-k10 (seed = 20261193 + 1000 k), parallel sampler built from 084de9ac with --features gauge,
+frozen at target-ym6/q3ext/lattice4d_ensemble.exe, sha256 prefix 670f68e54075c509 (thread-count
+identity checked on a 4^4 smoke run: THREADS 2 and 3 give identical series). Statistics as k0-k6.
+Thread allocation (does not change the ensemble): k10 8 threads, k9 6, k7 1, k8 1.
+
+| k | beta | L | role |
+|---|---|---|---|
+| 7 | 2.2986 | 12 | second volume at 2.2986 (replaces k1 in Q3-v) |
+| 8 | 2.2986 | 14 | fresh replicate of k1; Q3-C test point |
+| 9 | 2.5115 | 20 | LTW Table 5 calibration |
+| 10 | 2.5115 | 24 | second volume at 2.5115 |
+
+The Q3-C code and the extension harness are committed before any extension correlator is computed.

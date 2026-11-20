@@ -1,0 +1,82 @@
+{
+ "level": 0,
+ "rings": 3,
+ "cells": 120,
+ "edges": 142,
+ "kind": "V2 (research script, not an engine run)",
+ "C_copies_cells_seeing_two_copies_of_an_edge": 0,
+ "C_quad_max": {
+  "linear": 4.456820260181408e-16,
+  "quadratic": 3.3199595463088016e-16
+ },
+ "C_count_live_median_N1_N2": [
+  39.0,
+  24.0
+ ],
+ "C_count_live_min_N1_N2": [
+  39,
+  24
+ ],
+ "seconds_cells": 15.5,
+ "seconds_edge_geometry": 279.7,
+ "base": "hybrid",
+ "exclusion": "N2",
+ "before": {
+  "variational_error": 0.6068668060083017,
+  "pg_error": 0.054740669148125004,
+  "reconstruction_term": 0.04264136475786666,
+  "test_variation_term": 0.6099594174864689,
+  "curvature_relative_error": 0.014586903385682639,
+  "amplification_median_max": [
+   26.8223794285267,
+   26.82473424038489
+  ]
+ },
+ "constraint_rows": 2698,
+ "C_unknowns": 51840,
+ "A_nnz": 69932160,
+ "lsqr_residual": 0.0005085570409474737,
+ "lsqr_iterations": 20000,
+ "lsqr_istop": 7,
+ "lsqr_seconds": 5186.7,
+ "eigh_residual": 9.444760372505955e-05,
+ "eigh_rank": 2279,
+ "eigh_seconds": 159.6,
+ "solutions_rel_diff": 0.10589331297208217,
+ "solve_used": "eigh",
+ "C_solve_relative_residual": 9.444760372505955e-05,
+ "C_solve_pass": false,
+ "C_exact_change_own_max": 1.8985269736429887e-15,
+ "C_exact_change_linear_max": 2.3299993707891067e-14,
+ "C_exact_change_quad_max": 3.903798081035369e-15,
+ "change_norm_median_max": [
+  225.07601153774084,
+  228.78941073038575
+ ],
+ "amplification_median_before_after": [
+  26.8223794285267,
+  151.78926621177774
+ ],
+ "amplification_max_before_after": [
+  26.82473424038489,
+  153.94424542996015
+ ],
+ "variational_error": 1.0077549797922258,
+ "pg_error": 0.28231643250663735,
+ "pg_error_base_C0": 0.054740669148125004,
+ "terms_after": {
+  "reconstruction_term": 1.0256754704163091,
+  "test_variation_term": 0.038377904195043194,
+  "curvature_relative_error": 0.030905705234302316
+ },
+ "asymmetry": 1.3355560974776037e-16,
+ "S3_small_count": 21,
+ "S3_negative_below_minus1": 0,
+ "S3_min_physical": 3.987886051122702,
+ "gates": {
+  "P_recon_le_10pct": false,
+  "V2_acc_below_whitney": false,
+  "V2_stable": true
+ },
+ "seconds_arm": 5371.0
+}

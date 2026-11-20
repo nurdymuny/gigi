@@ -1,0 +1,82 @@
+{
+ "level": 0,
+ "rings": 3,
+ "cells": 120,
+ "edges": 142,
+ "kind": "V2 (research script, not an engine run)",
+ "C_copies_cells_seeing_two_copies_of_an_edge": 0,
+ "C_quad_max": {
+  "linear": 4.456820260181408e-16,
+  "quadratic": 3.3199595463088016e-16
+ },
+ "C_count_live_median_N1_N2": [
+  39.0,
+  24.0
+ ],
+ "C_count_live_min_N1_N2": [
+  39,
+  24
+ ],
+ "seconds_cells": 15.0,
+ "seconds_edge_geometry": 278.2,
+ "base": "linear",
+ "exclusion": "N2",
+ "before": {
+  "variational_error": 0.38950431889740555,
+  "pg_error": 0.04022351054274076,
+  "reconstruction_term": 0.014907365153000748,
+  "test_variation_term": 0.37635329352892527,
+  "curvature_relative_error": 0.03595231807417498,
+  "amplification_median_max": [
+   21.090931929691294,
+   21.2416136064775
+  ]
+ },
+ "constraint_rows": 2698,
+ "C_unknowns": 51840,
+ "A_nnz": 69932160,
+ "lsqr_residual": 0.0005413876890385123,
+ "lsqr_iterations": 20000,
+ "lsqr_istop": 7,
+ "lsqr_seconds": 5193.5,
+ "eigh_residual": 0.0001757921630648479,
+ "eigh_rank": 2279,
+ "eigh_seconds": 160.5,
+ "solutions_rel_diff": 0.06574216616141836,
+ "solve_used": "eigh",
+ "C_solve_relative_residual": 0.0001757921630648479,
+ "C_solve_pass": false,
+ "C_exact_change_own_max": 1.4451070373361665e-15,
+ "C_exact_change_linear_max": 1.4056458134353084e-14,
+ "C_exact_change_quad_max": 5.640870563629877e-15,
+ "change_norm_median_max": [
+  197.09830556687893,
+  201.685359057107
+ ],
+ "amplification_median_before_after": [
+  21.090931929691294,
+  132.00427353328922
+ ],
+ "amplification_max_before_after": [
+  21.2416136064775,
+  137.88031906491028
+ ],
+ "variational_error": 0.8907054492696123,
+ "pg_error": 0.20243761335177407,
+ "pg_error_base_C0": 0.04022351054274076,
+ "terms_after": {
+  "reconstruction_term": 0.886316366994557,
+  "test_variation_term": 0.057050668668161116,
+  "curvature_relative_error": 0.04591129035867954
+ },
+ "asymmetry": 9.159836822397319e-17,
+ "S3_small_count": 21,
+ "S3_negative_below_minus1": 0,
+ "S3_min_physical": 3.992548593030173,
+ "gates": {
+  "P_recon_le_10pct": false,
+  "V2_acc_below_whitney": false,
+  "V2_stable": true
+ },
+ "seconds_arm": 5378.0
+}

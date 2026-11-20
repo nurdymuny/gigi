@@ -138,6 +138,9 @@ def generators_on(cell, verts):
     return plus, minus, lin
 
 
+GENERATORS = "all"     # V1: 3 constants + 20 linear; V1c: "constants"
+
+
 def run(level, objective="change"):
     t0 = time.time()
     L = pg.load_level(level, ORDER)
@@ -157,7 +160,7 @@ def run(level, objective="change"):
     def rel(K):
         return norm(solve_rhs(mass, -(K @ a)) + 4 * a) / norm(-4 * a)
 
-    out = {"level": level, "objective": objective}
+    out = {"level": level, "objective": objective, "generators": GENERATORS}
     # C-repro
     K0 = assemble([c.T for c in C])
     out["C_repro_error"] = rel(K0)
@@ -180,7 +183,7 @@ def run(level, objective="change"):
         if left_is is None:
             left_is = "plus" if rp < rm else "minus"
         worst_in = max(worst_in, rp if left_is == "plus" else rm)
-        enforced = np.concatenate([minus if left_is == "plus" else plus, lin], axis=1)
+        enforced = np.concatenate([minus if left_is == "plus" else plus] + ([lin] if GENERATORS == "all" else []), axis=1)
         Ge = ip(enforced, enforced); be = ip(enforced, c.Pex[:, None, :])[:, 0]
         coef = np.linalg.lstsq(Ge, be, rcond=1e-12)[0]
         res = c.Pex - np.einsum("m,qma->qa", coef, enforced)
@@ -193,7 +196,7 @@ def run(level, objective="change"):
 
     def enforced_gens(c, verts):
         plus, minus, lin = generators_on(c, verts)
-        return np.concatenate([minus if left_is == "plus" else plus, lin], axis=1)
+        return np.concatenate([minus if left_is == "plus" else plus] + ([lin] if GENERATORS == "all" else []), axis=1)
 
     # constraints, per edge on the sheet of a reference cell
     owner = {}
@@ -361,6 +364,10 @@ def run(level, objective="change"):
 if __name__ == "__main__":
     args = sys.argv[1:]
     objective = "change"
+    global GENERATORS
+    if "--generators" in args:          # V1c: "constants" enforces only the 3 right-invariant constants
+        i = args.index("--generators"); GENERATORS = args[i + 1]; del args[i:i + 2]
+        assert GENERATORS in ("all", "constants")
     if "--objective" in args:
         i = args.index("--objective"); objective = args[i + 1]; del args[i:i + 2]
     level = int(args[0])

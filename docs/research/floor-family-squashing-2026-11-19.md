@@ -44,7 +44,7 @@ Script: `scripts/ricci_su2_floor_family_scan.py`; receipt: `research/su2-floor-f
 - **Threshold.** Below t* ≈ 2.69803 a lower eigenvalue appears, first in the sector j = 4 (found by bisection).
 - **Not a proof.** Above t*, the branch is the bottom of every sector up to j = 40 at every t tested up to 10. That
   is evidence, not a theorem. The Floor Theorem's certificate machinery (Weitzenböck bound plus interval inertia)
-  certifies any fixed t; so far t = 3 (the paper) and t = 4 (Result 3) are certified.
+  certifies any fixed t, or a whole range of t (Result 5): t = 3 (the paper), t = 4 (Result 3), and every t in [2.75, 10] for j ≤ 12, 20, 24 (Result 5).
 
 ## Result 3 (certified): the floor theorem at a second squashing, t = 4
 
@@ -90,8 +90,8 @@ So at t = 4 there are still exactly three growth directions, −8 (twice) and 22
 
 ## What this is not
 
-- Certified statements exist at t = 3 (the paper) and t = 4 (Result 3) only. Minimality at other t, and the
-  threshold t*, are double-precision evidence.
+- Certified: t = 3 (the paper), t = 4 (Result 3), and every t in [2.75, 10] for j ≤ 12, 20, 24 (Result 5).
+  Other sectors outside those, t < 2.75, and the threshold t* ≈ 2.698 are double-precision evidence.
 - It is not a claim about Ricci flow along the family. The flow moves t, and how the spectrum moves with it needs
   the moving-slice bookkeeping that Sol's note warns about.
 
@@ -99,6 +99,41 @@ So at t = 4 there are still exactly three growth directions, −8 (twice) and 22
 
 1. ~~Certify a second squashing.~~ Done for t = 4 (Result 3). Any other rational t runs the same way.
 2. Characterise t* exactly. It is where a second eigenvalue branch crosses λ_t(4); find that branch in closed form.
+
+## Result 5 (certified over a range): the floor law for every t in [2.75, 10]
+
+**Script:** `scripts/ricci_su2_floor_interval_cert.py`. **Receipt:**
+`research/su2-floor-family-20261119/interval_cert_2.75_10.json`.
+
+**Statement.** For **every** t ∈ [2.75, 10] and every j ∈ {0, 1, …, 12, 20, 24}, λ_t(j) is the lowest
+eigenvalue of H + GG* in the sector of spin j/2, with multiplicity exactly two. Its eigenvector lies in the gauge
+slice, so λ_t(j) is the floor of the gauge-orthogonal spectrum there.
+
+**Method.**
+
+- Each slice [a, b] of t is certified once, for all t in it at the same time. The matrix
+  A(t) − (λ_t(j) + δ) is enclosed with t and λ_t(j) as intervals (mpmath's interval context, 96 bits), realified
+  and factored LDLᵀ at its midpoint.
+- The perturbation bound is ε = ρ + backward error, where ρ = min(Frobenius, max row sum) of the enclosure radii.
+  Both bound the 2-norm of a symmetric perturbation.
+- Exactly four negative pivots and ε < δ give, for every t in the slice: at most two eigenvalues lie below
+  λ_t(j) + δ − ε.
+- λ_t(j) itself is an exact double eigenvalue for every t (Result 1). So it is the lowest, and every other
+  eigenvalue lies above λ_t(j) + δ − ε > λ_t(j).
+
+**Data.**
+
+- 1,091 slices. The finest is 0.002 wide, near t = 2.75 where the gap above the floor is smallest: 0.16 for j = 4,
+  0.18 for j = 1.
+- Every slice has exactly four negative pivots and ε < δ. The smallest margin δ − ε is 0.0018 (j = 1).
+- The slices tile [2.75, 10] exactly in every sector. No slice failed.
+- Point check: a degenerate slice at t = 3 reproduces the published certificate (j = 12: four negative pivots,
+  smallest pivot 21.29).
+
+**Scope.** This proves the floor law across a whole range of shapes, for these fifteen sectors. It does not cover
+every sector. At large j the Weitzenböck tail bound grows more slowly than λ_t(j) itself, so it cannot replace
+per-sector certificates. The sectors chosen are all j ≤ 12, including j = 4, the first to fail below t*, plus the
+Poincaré-surviving 20 and 24.
 
 ## Result 4: the soft-mode flow test (exact sector flow, no lattice)
 

@@ -239,11 +239,14 @@ extension.
 | 16 | 2.4265 | 20 | Q3-v |
 | 17 | 2.5115 | 20 | Q3-a; also a direct replicate of k9, whose 0⁺⁺ was 3.2σ high under both GEVPs |
 | 18 | 2.5115 | 24 | Q3-v |
+| 19 | 2.2986 | 14 | the A4-2 test point (added by Bee 2026-11-21) |
 
-**[Bee]** Optional k19 at (2.2986, 14). It is the volume where the flux-loop excess was largest (k1, k8). It does
-not enter Q3-v; it tests A4-2 where its effect should be largest.
+k19 is the volume where the flux-loop excess was largest (k1, k8). It does not enter Q3-v or Q3-s. It is scored
+against LTW's a√σ = 0.3667(18) and am₀₊₊ = 1.212(22) at β = 2.2986 (aL√σ > 5, so volume effects are below the
+errors), and it is reported under A4-start: whether A4-2 moved the flux-loop window, and whether a√σ now agrees with
+LTW within 2σ or the flux loop refuses. Neither outcome is a pass or a fail of the amendment.
 
-**Gates, judged only on k11–k18 (and k19 if run).**
+**Gates, judged only on k11–k19.**
 
 | gate | what must hold | if it fails |
 | --- | --- | --- |

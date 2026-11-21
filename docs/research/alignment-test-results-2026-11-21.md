@@ -1,4 +1,4 @@
-# The alignment test (Test 4): results (21 November 2026; 4a pending)
+# The alignment test (Test 4): results (21 November 2026)
 
 The protocol was fixed before any code or data:
 [`alignment-test-preregistration-2026-11-21.md`](alignment-test-preregistration-2026-11-21.md).
@@ -50,4 +50,12 @@ Alignment is necessary-looking (Test 2) but not sufficient (this test). Being si
 from t. Register in advance where the twist must be the floor (where β alone spans the lowest eigenspace of R₀,
 with enough margin) and where it must not.
 
-## Family 4a, SU(3): running
+## Family 4a, SU(3): class N
+
+Receipt `alignment_test_4a.json`.
+
+- Aligned at every grid point (precondition A2 held). No check stopped the run.
+- The twist is the floor of the trivial sector (0,0) for s ≥ 1.5 and of no other sector at any s, so S_all is empty
+  and the class is **N**.
+- This is the same pattern as SU(2) (family 4b).
+- **Both families are N, so "alignment suffices" is counted against twice.**

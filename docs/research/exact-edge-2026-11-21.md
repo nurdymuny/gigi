@@ -77,3 +77,33 @@ receipt.)
   large-j Gershgorin argument should carry over once x and y enter the rows, which they now do in closed form.
 - **A theorem for the family:** "she is the floor iff x < x*(t, y)", with x* defined by the competitor block. The
   Floor Theorem would be its first case.
+
+## Addendum (same day): the closed-form edge polynomial, and the large-j proof on a domain
+
+**The edge polynomial.** Script `scripts/ricci_su2_edge_polynomial.py`, receipt `edge_polynomial.txt`.
+
+- With s = √t, the numerator of det(B_{4,0}(x, y, s²) − λ₄ I) factors over ℚ(√2, √3) into two polynomials. Their
+  degrees in (x, y, s):
+  - **P₁: (5, 6, 12)**, 61 terms;
+  - **P₂: (7, 8, 16)**, 113 terms.
+- **P₂ vanishes on the edge** wherever the (4, 0) block is the competitor, which is y ≳ 1. It is within 10⁻⁸ at the
+  numerically located edges, against 10³ to 10⁶ elsewhere.
+- **Restricted to the Berger path** x = (2 − s²)/s, y = s, P₂ contains the degree-16 polynomial of t_A exactly
+  (polynomial division, zero remainder).
+- So t_A is, algebraically, a root of the edge polynomial on the Berger path. The edge is the largest real root in x
+  of P₂(x, y, √t).
+- At small cross field (y = 0.5) the competitors are blocks of sectors 2 and 3, which have their own polynomials (not
+  derived here).
+
+**The large-j half of an all-sector proof on a domain.** Script `scripts/ricci_su2_family_large_j.py`, receipt
+`family_large_j.json`.
+
+- On D = {x ∈ [−3, −1.5], y ∈ [0.5, 3], t ∈ [3, 10]}, which lies inside her region with margin, every non-twist row
+  of every sector j ≥ 80 has a positive Gershgorin margin. This is **proved** by interval bisection: region A
+  ξ ≤ 20, region B ξ ≥ 20 relaxed, smallest lower bounds 0.72 to 1.59.
+- The closed-form G is a lower bound on the actual Gershgorin quantity: checked on random rows, excess
+  ≤ 2.8 × 10⁻¹³. Its ingredients (w_a, C, Ω±) are exact symbolic expressions.
+- Plain Gershgorin needs large j unless the domain stays well away from the edge. Sampled cutoffs: l ≈ 640 for
+  x ∈ [−2, −0.5]; l ≈ 160 for [−2, −1]; l ≈ 40 for [−3, −1.5]. That is why D stops at −1.5.
+- The small-j half (j < 80 on D) is in progress, with a mean-value interval certificate.
+

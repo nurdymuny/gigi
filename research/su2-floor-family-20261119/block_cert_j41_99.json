@@ -13,7 +13,7 @@
    "slices": 394,
    "fails": [],
    "min_margin_eta_minus_eps": 0.27473469575720344,
-   "seconds": 920.4
+   "seconds": 440.1
   },
   {
    "j": 42,
@@ -21,7 +21,7 @@
    "slices": 400,
    "fails": [],
    "min_margin_eta_minus_eps": 0.05901535530951918,
-   "seconds": 942.6
+   "seconds": 446.6
   },
   {
    "j": 43,
@@ -29,7 +29,7 @@
    "slices": 410,
    "fails": [],
    "min_margin_eta_minus_eps": 0.03924849819786935,
-   "seconds": 962.3
+   "seconds": 462.3
   },
   {
    "j": 44,
@@ -37,7 +37,7 @@
    "slices": 416,
    "fails": [],
    "min_margin_eta_minus_eps": 0.055588232142362415,
-   "seconds": 980.4
+   "seconds": 477.3
   },
   {
    "j": 45,
@@ -45,7 +45,7 @@
    "slices": 426,
    "fails": [],
    "min_margin_eta_minus_eps": 0.40463406523414847,
-   "seconds": 1069.8
+   "seconds": 489.5
   },
   {
    "j": 46,
@@ -53,7 +53,7 @@
    "slices": 434,
    "fails": [],
    "min_margin_eta_minus_eps": 0.06480991208781717,
-   "seconds": 1097.9
+   "seconds": 605.3
   },
   {
    "j": 47,
@@ -61,7 +61,7 @@
    "slices": 440,
    "fails": [],
    "min_margin_eta_minus_eps": 0.13174000451750167,
-   "seconds": 1132.6
+   "seconds": 615.4
   },
   {
    "j": 48,
@@ -69,7 +69,7 @@
    "slices": 446,
    "fails": [],
    "min_margin_eta_minus_eps": 0.0195959078802872,
-   "seconds": 1147.1
+   "seconds": 630.1
   },
   {
    "j": 49,
@@ -77,7 +77,7 @@
    "slices": 450,
    "fails": [],
    "min_margin_eta_minus_eps": 0.003694065843944827,
-   "seconds": 1155.5
+   "seconds": 631.5
   },
   {
    "j": 50,
@@ -85,7 +85,7 @@
    "slices": 458,
    "fails": [],
    "min_margin_eta_minus_eps": 0.07694583744569172,
-   "seconds": 975.0
+   "seconds": 643.1
   },
   {
    "j": 51,
@@ -93,7 +93,7 @@
    "slices": 466,
    "fails": [],
    "min_margin_eta_minus_eps": 0.2554454772486672,
-   "seconds": 988.9
+   "seconds": 653.3
   },
   {
    "j": 52,
@@ -101,7 +101,7 @@
    "slices": 474,
    "fails": [],
    "min_margin_eta_minus_eps": 0.0028592267307097075,
-   "seconds": 996.1
+   "seconds": 686.1
   },
   {
    "j": 53,
@@ -109,7 +109,7 @@
    "slices": 482,
    "fails": [],
    "min_margin_eta_minus_eps": 0.413721361693284,
-   "seconds": 1000.0
+   "seconds": 693.0
   },
   {
    "j": 54,
@@ -117,7 +117,7 @@
    "slices": 490,
    "fails": [],
    "min_margin_eta_minus_eps": 0.43709923550731133,
-   "seconds": 1014.0
+   "seconds": 708.0
   },
   {
    "j": 55,
@@ -125,7 +125,7 @@
    "slices": 494,
    "fails": [],
    "min_margin_eta_minus_eps": 0.0742192155679895,
-   "seconds": 1482.8
+   "seconds": 707.4
   },
   {
    "j": 56,
@@ -133,7 +133,7 @@
    "slices": 502,
    "fails": [],
    "min_margin_eta_minus_eps": 0.1163810448782705,
-   "seconds": 1484.2
+   "seconds": 726.6
   },
   {
    "j": 57,
@@ -141,7 +141,7 @@
    "slices": 510,
    "fails": [],
    "min_margin_eta_minus_eps": 0.2956988751909222,
-   "seconds": 1492.7
+   "seconds": 733.9
   },
   {
    "j": 58,
@@ -149,7 +149,7 @@
    "slices": 520,
    "fails": [],
    "min_margin_eta_minus_eps": 0.9085279360453882,
-   "seconds": 1506.5
+   "seconds": 695.2
   },
   {
    "j": 59,
@@ -157,7 +157,7 @@
    "slices": 524,
    "fails": [],
    "min_margin_eta_minus_eps": 0.49037582911017097,
-   "seconds": 1512.3
+   "seconds": 708.8
   },
   {
    "j": 60,
@@ -165,7 +165,7 @@
    "slices": 530,
    "fails": [],
    "min_margin_eta_minus_eps": 0.13449666668557114,
-   "seconds": 844.3
+   "seconds": 716.0
   },
   {
    "j": 61,
@@ -173,7 +173,7 @@
    "slices": 538,
    "fails": [],
    "min_margin_eta_minus_eps": 0.24970498680629305,
-   "seconds": 896.1
+   "seconds": 726.9
   },
   {
    "j": 62,
@@ -181,7 +181,7 @@
    "slices": 552,
    "fails": [],
    "min_margin_eta_minus_eps": 0.3443683612093764,
-   "seconds": 909.4
+   "seconds": 749.9
   },
   {
    "j": 63,
@@ -189,7 +189,7 @@
    "slices": 562,
    "fails": [],
    "min_margin_eta_minus_eps": 0.3859894961216277,
-   "seconds": 939.9
+   "seconds": 776.6
   },
   {
    "j": 64,
@@ -197,7 +197,7 @@
    "slices": 566,
    "fails": [],
    "min_margin_eta_minus_eps": 0.027488653272470742,
-   "seconds": 947.6
+   "seconds": 1057.3
   },
   {
    "j": 65,
@@ -205,7 +205,7 @@
    "slices": 576,
    "fails": [],
    "min_margin_eta_minus_eps": 0.21139757718307095,
-   "seconds": 1270.8
+   "seconds": 1087.0
   },
   {
    "j": 66,
@@ -213,7 +213,7 @@
    "slices": 584,
    "fails": [],
    "min_margin_eta_minus_eps": 0.5663188059959268,
-   "seconds": 1296.8
+   "seconds": 1106.2
   },
   {
    "j": 67,
@@ -221,7 +221,7 @@
    "slices": 588,
    "fails": [],
    "min_margin_eta_minus_eps": 0.32347303919868864,
-   "seconds": 1273.4
+   "seconds": 1114.2
   },
   {
    "j": 68,
@@ -229,7 +229,7 @@
    "slices": 596,
    "fails": [],
    "min_margin_eta_minus_eps": 0.10465426719636284,
-   "seconds": 1308.5
+   "seconds": 1120.5
   },
   {
    "j": 69,
@@ -237,7 +237,7 @@
    "slices": 606,
    "fails": [],
    "min_margin_eta_minus_eps": 0.4820785017587035,
-   "seconds": 1380.6
+   "seconds": 1139.1
   },
   {
    "j": 70,
@@ -245,7 +245,7 @@
    "slices": 612,
    "fails": [],
    "min_margin_eta_minus_eps": 0.1406325866466993,
-   "seconds": 1436.7
+   "seconds": 546.0
   },
   {
    "j": 71,
@@ -253,7 +253,7 @@
    "slices": 622,
    "fails": [],
    "min_margin_eta_minus_eps": 0.240350369393326,
-   "seconds": 1464.5
+   "seconds": 557.3
   },
   {
    "j": 72,
@@ -261,7 +261,7 @@
    "slices": 628,
    "fails": [],
    "min_margin_eta_minus_eps": 0.05081954332818839,
-   "seconds": 1453.8
+   "seconds": 561.5
   },
   {
    "j": 73,
@@ -269,7 +269,7 @@
    "slices": 634,
    "fails": [],
    "min_margin_eta_minus_eps": 0.7495192597196372,
-   "seconds": 1459.7
+   "seconds": 564.0
   },
   {
    "j": 74,
@@ -277,7 +277,7 @@
    "slices": 638,
    "fails": [],
    "min_margin_eta_minus_eps": 0.45474733695713354,
-   "seconds": 1496.2
+   "seconds": 567.2
   },
   {
    "j": 75,
@@ -285,7 +285,7 @@
    "slices": 644,
    "fails": [],
    "min_margin_eta_minus_eps": 0.08402662356557755,
-   "seconds": 1103.5
+   "seconds": 568.8
   },
   {
    "j": 76,
@@ -293,7 +293,7 @@
    "slices": 654,
    "fails": [],
    "min_margin_eta_minus_eps": 0.0037367767457752166,
-   "seconds": 1129.4
+   "seconds": 1198.2
   },
   {
    "j": 77,
@@ -301,7 +301,7 @@
    "slices": 664,
    "fails": [],
    "min_margin_eta_minus_eps": 0.562157942734892,
-   "seconds": 1139.7
+   "seconds": 1204.4
   },
   {
    "j": 78,
@@ -309,7 +309,7 @@
    "slices": 670,
    "fails": [],
    "min_margin_eta_minus_eps": 0.014841837711408346,
-   "seconds": 1133.3
+   "seconds": 1211.2
   },
   {
    "j": 79,
@@ -317,7 +317,7 @@
    "slices": 680,
    "fails": [],
    "min_margin_eta_minus_eps": 0.158184952421081,
-   "seconds": 1131.5
+   "seconds": 1216.4
   },
   {
    "j": 80,
@@ -325,7 +325,7 @@
    "slices": 688,
    "fails": [],
    "min_margin_eta_minus_eps": 0.09155118206589208,
-   "seconds": 601.6
+   "seconds": 1225.6
   },
   {
    "j": 81,
@@ -333,7 +333,7 @@
    "slices": 698,
    "fails": [],
    "min_margin_eta_minus_eps": 0.2211743418554306,
-   "seconds": 609.5
+   "seconds": 1235.1
   },
   {
    "j": 82,
@@ -341,7 +341,7 @@
    "slices": 708,
    "fails": [],
    "min_margin_eta_minus_eps": 0.4789697578173673,
-   "seconds": 618.0
+   "seconds": 1150.6
   },
   {
    "j": 83,
@@ -349,15 +349,15 @@
    "slices": 712,
    "fails": [],
    "min_margin_eta_minus_eps": 0.019200284385618716,
-   "seconds": 621.4
+   "seconds": 1152.3
   },
   {
    "j": 84,
    "blocks": 87,
    "slices": 722,
    "fails": [],
-   "min_margin_eta_minus_eps": 0.24866144079689434,
-   "seconds": 630.5
+   "min_margin_eta_minus_eps": 0.24866144079692276,
+   "seconds": 1165.9
   },
   {
    "j": 85,
@@ -365,7 +365,7 @@
    "slices": 730,
    "fails": [],
    "min_margin_eta_minus_eps": 0.12306107138834221,
-   "seconds": 684.5
+   "seconds": 1185.4
   },
   {
    "j": 86,
@@ -373,7 +373,7 @@
    "slices": 740,
    "fails": [],
    "min_margin_eta_minus_eps": 0.32100519320669463,
-   "seconds": 697.3
+   "seconds": 1203.3
   },
   {
    "j": 87,
@@ -381,7 +381,7 @@
    "slices": 748,
    "fails": [],
    "min_margin_eta_minus_eps": 0.20418830682982403,
-   "seconds": 704.4
+   "seconds": 1224.3
   },
   {
    "j": 88,
@@ -389,7 +389,7 @@
    "slices": 758,
    "fails": [],
    "min_margin_eta_minus_eps": 0.9676983133309278,
-   "seconds": 708.2
+   "seconds": 1170.9
   },
   {
    "j": 89,
@@ -397,7 +397,7 @@
    "slices": 762,
    "fails": [],
    "min_margin_eta_minus_eps": 0.5869364424548991,
-   "seconds": 714.2
+   "seconds": 1172.4
   },
   {
    "j": 90,
@@ -405,7 +405,7 @@
    "slices": 766,
    "fails": [],
    "min_margin_eta_minus_eps": 0.19731175893270603,
-   "seconds": 701.5
+   "seconds": 1186.6
   },
   {
    "j": 91,
@@ -413,7 +413,7 @@
    "slices": 776,
    "fails": [],
    "min_margin_eta_minus_eps": 0.20990567249575065,
-   "seconds": 698.7
+   "seconds": 1201.5
   },
   {
    "j": 92,
@@ -421,15 +421,15 @@
    "slices": 782,
    "fails": [],
    "min_margin_eta_minus_eps": 0.1606353198837951,
-   "seconds": 708.0
+   "seconds": 1207.0
   },
   {
    "j": 93,
    "blocks": 96,
    "slices": 788,
    "fails": [],
-   "min_margin_eta_minus_eps": 0.6040481651413359,
-   "seconds": 712.3
+   "min_margin_eta_minus_eps": 0.6040481651413643,
+   "seconds": 1212.6
   },
   {
    "j": 94,
@@ -437,7 +437,7 @@
    "slices": 794,
    "fails": [],
    "min_margin_eta_minus_eps": 0.07591851332099964,
-   "seconds": 699.4
+   "seconds": 1268.8
   },
   {
    "j": 95,
@@ -445,7 +445,7 @@
    "slices": 804,
    "fails": [],
    "min_margin_eta_minus_eps": 0.23012121357861304,
-   "seconds": 694.7
+   "seconds": 1294.0
   },
   {
    "j": 96,
@@ -453,7 +453,7 @@
    "slices": 816,
    "fails": [],
    "min_margin_eta_minus_eps": 0.8757583065318002,
-   "seconds": 707.0
+   "seconds": 1331.0
   },
   {
    "j": 97,
@@ -461,7 +461,7 @@
    "slices": 822,
    "fails": [],
    "min_margin_eta_minus_eps": 0.025816414686701705,
-   "seconds": 709.1
+   "seconds": 1329.7
   },
   {
    "j": 98,
@@ -469,7 +469,7 @@
    "slices": 834,
    "fails": [],
    "min_margin_eta_minus_eps": 0.5644005680311182,
-   "seconds": 718.5
+   "seconds": 1372.0
   },
   {
    "j": 99,
@@ -477,7 +477,7 @@
    "slices": 838,
    "fails": [],
    "min_margin_eta_minus_eps": 0.13523769813106412,
-   "seconds": 714.8
+   "seconds": 1367.5
   }
  ]
 }

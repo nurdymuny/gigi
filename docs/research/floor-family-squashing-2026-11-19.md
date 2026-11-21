@@ -315,3 +315,14 @@ are accumulated in interval arithmetic. Results:
   bound now reads ε < 8.8 × 10⁻⁵⁴.
 
 The large-j proof does not use the conversion and was already outward.
+
+**Second reissue (20 November, after the second adversarial review).** The certificates now bound the factorization
+a posteriori: ‖M − LDLᵀ‖_F is evaluated in outward interval arithmetic from the stored factors, so no
+rounding-error constant (Higham-type) is needed. All certificates were reissued again.
+- Table 1: all certified, ε < 7 × 10⁻⁵⁶.
+- t = 4: all certified, ε < 1.3 × 10⁻⁵⁵.
+- Range certificate: 1,091 slices, all certified, minimum margin 0.0018.
+- Block certificates: j ≤ 40 with 943 blocks and 12,596 block-slices, minimum margin 1.7 × 10⁻⁵; 41 ≤ j ≤ 99 with
+  4,307 blocks and 36,166 block-slices, minimum margin 2.9 × 10⁻³.
+- No failures.
+

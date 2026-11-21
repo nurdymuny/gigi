@@ -2446,5 +2446,19 @@
    "field": 0.5000000000000004,
    "total": -2.1250000000000018
   }
- ]
+ ],
+ "prediction_G": {
+  "2a": {
+   "n_T_all": 0,
+   "T_all_points_with_s_F_nonneg": [],
+   "G": "untested (T_all empty)",
+   "s_F_negative_but_not_floor_t": []
+  },
+  "2b": {
+   "n_T_all": 0,
+   "T_all_points_with_s_F_nonneg": [],
+   "G": "untested (T_all empty)",
+   "s_F_negative_but_not_floor_t": []
+  }
+ }
 }

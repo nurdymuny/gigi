@@ -241,7 +241,7 @@ def task(arg):
             ok, marg = certify(j, float(q), box)
             if ok:
                 nboxes += 1; worst = min(worst, marg); continue
-            if dpt >= 12:
+            if dpt >= 20:
                 fails.append((float(q), box)); continue
             k = max(range(3), key=lambda i: (box[i][1] - box[i][0]) / widths[i])
             mid = 0.5 * (box[k][0] + box[k][1])

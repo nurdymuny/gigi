@@ -11185,15 +11185,21 @@ fn effective_mass_rows(
     block: usize,
     gevp: Option<(usize, usize)>,
 ) -> Result<ExecResult, String> {
-    use crate::gauge::correlator::{effective_mass_blocked, gevp_run, read_series_bundle};
+    use crate::gauge::correlator::{effective_mass_blocked, gevp_effective_mass, read_series_bundle};
     use crate::types::Value as V;
     let ops = read_series_bundle(engine, bundle, fields)?;
     let mut row = crate::types::Record::new();
-    let series = match gevp {
-        None => ops.into_iter().next().unwrap(),
+    let r = match gevp {
+        None => effective_mass_blocked(&ops[0], block)?,
         Some((t0, t1)) => {
-            let run = gevp_run(&ops, t0, t1, block, true)?;
-            let (g, series) = (run.gevp, run.series);
+            // Amendment 4: A4-1 (Q3-C only as a fallback) and A4-2 (no plateau slice before t1)
+            let gm = gevp_effective_mass(&ops, t0, t1, block, true)?;
+            let run = gm.run;
+            let g = run.gevp;
+            row.insert("gevp_path".into(), V::Text(gm.path.as_str().into()));
+            if let Some(f) = &gm.a2_failure {
+                row.insert("gevp_a2_failure".into(), V::Text(f.clone()));
+            }
             row.insert("gevp_kept".into(), V::Vector(run.kept_operators.iter().map(|&a| a as f64).collect()));
             row.insert("gevp_directions_kept".into(), V::Float(run.directions_kept.unwrap_or(0) as f64));
             row.insert("gevp_direction_snr_t1".into(), V::Vector(run.direction_snr_t1.clone()));
@@ -11202,10 +11208,9 @@ fn effective_mass_rows(
             row.insert("gevp_condition".into(), V::Float(g.condition_t0));
             row.insert("gevp_vector".into(), V::Vector(g.vector.clone()));
             row.insert("gevp_eigenvalues".into(), V::Vector(g.eigenvalues.clone()));
-            series
+            gm.em
         }
     };
-    let r = effective_mass_blocked(&series, block)?;
     let p = r.plateau.map_err(|e| e.to_string())?;
     row.insert("mass".into(), V::Float(p.mass));
     row.insert("error".into(), V::Float(p.error));
@@ -11213,7 +11218,7 @@ fn effective_mass_rows(
     row.insert("t_hi".into(), V::Float(p.t_hi as f64));
     row.insert("chi2_dof".into(), V::Float(p.chi2_dof));
     row.insert("block".into(), V::Float(block as f64));
-    row.insert("rule".into(), V::Text("Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error; Q1-4 two-slice window; Q3-B operator selection; Q3-C C(t0) directions without a 3-sigma t1 signal dropped".into()));
+    row.insert("rule".into(), V::Text("Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error; Q1-4 two-slice window; Q3-B operator selection; Amendment 4: Q3-C (C(t0) directions without a 3-sigma t1 signal dropped) only as a fallback when the Amendment-2 GEVP or its plateau refuses, and no GEVP plateau slice before t1".into()));
     match r.plateau_as_fixed {
         Ok(a) => {
             row.insert("as_fixed_mass".into(), V::Float(a.mass));

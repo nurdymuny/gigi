@@ -3,7 +3,7 @@
 #![cfg(feature = "gauge")]
 
 use gigi::engine::Engine;
-use gigi::gauge::correlator::{effective_mass_blocked, gevp_run};
+use gigi::gauge::correlator::{effective_mass_blocked, gevp_effective_mass, gevp_run};
 use gigi::parser::{self, ExecResult};
 use gigi::types::{Record, Value};
 
@@ -108,11 +108,17 @@ fn verbs_equal_the_kernel_and_refuse_by_name() {
     // q = p + white noise, so the direction q - p has no t1 signal and Q3-C drops it.
     let g = gevp_run(&[a.clone(), b.clone()], 1, 2, 10, true).unwrap();
     assert_eq!(g.directions_kept, Some(1), "{:?}", g.direction_snr_t1);
-    let kp = effective_mass_blocked(&g.series, 10).unwrap().plateau.unwrap();
+    // The verb runs Amendment 4 (A4-1 fallback, A4-2 start bound); it equals the kernel's gevp_effective_mass.
+    let gm = gevp_effective_mass(&[a.clone(), b.clone()], 1, 2, 10, true).unwrap();
+    let kp = gm.em.plateau.clone().unwrap();
+    assert!(kp.t_lo >= 2, "{kp:?}");
     let eg = rows(run(&mut e, "EFFECTIVE_MASS glue ON p, q BLOCK 10 GEVP 1, 2;").unwrap());
     assert!((f(&eg[0], "mass") - kp.mass).abs() < 1e-12);
+    assert_eq!((f(&eg[0], "t_lo") as usize, f(&eg[0], "t_hi") as usize), (kp.t_lo, kp.t_hi));
     assert!(matches!(eg[0].get("gevp_vector"), Some(Value::Vector(v)) if v.len() == 2));
-    assert_eq!(f(&eg[0], "gevp_directions_kept") as usize, 1);
+    assert!(matches!(eg[0].get("gevp_path"), Some(Value::Text(t)) if t == gm.path.as_str()), "{:?}", eg[0].get("gevp_path"));
+    assert_eq!(f(&eg[0], "gevp_directions_kept") as usize, gm.run.directions_kept.unwrap_or(0));
+    let _ = effective_mass_blocked(&g.series, 10).unwrap();
 
     // refusals, by name
     let err = run(&mut e, "EFFECTIVE_MASS glue ON p, q;").unwrap_err();

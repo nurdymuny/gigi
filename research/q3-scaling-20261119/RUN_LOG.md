@@ -105,3 +105,16 @@ the registered extension harness.
 ## 2026-11-20: k9, k10 done; full extension scoring
 
 k7-k10 sampling exited 0 (done_ext.txt). Full scoring by test_q3_extension.py -> q3ext_receipt.json; Q4 rerun -> q4ext_receipt.json. Verdict: Amendment 3 fails C-harm (k10 flux loop shifts 2.0 sigma); C-job, C-null pass; only beta = 2.2986 passes Q3-a and Q3-v under Q3-C, so Q3-s has no fit; Q4 C1 vacuous (one point). Write-up: docs/HALCYON_Q3_EXTENSION_RESULTS.md. Ingest of k9, k10 started into the same data dir (receipt ingest_receipt_k0_k10.json).
+
+## 2026-11-21: Amendment 4 code, frozen binaries, fresh points k11-k19
+
+Amendment 4 adopted (019e934d) before code. Code: `gevp_effective_mass` (A4-1 fallback), `PlateauRule::gevp_amended`
+(A4-2), verb and probe (probe "rule": a4 | a4_nostart | q3c | a2). Unit tests: 15/15 correlator tests, including
+the four A4 tests. Test 2: the Amendment-2 path refused on 8/8 noise draws (never a wrong mass); the fallback engaged
+and recovered 0.5103(100) on 8/8. Test 1 was corrected before data (spec note): A4-2 moves a t = 1 window by design.
+Verb tests 2/2.
+
+Frozen at target-ym6/q3a4/ (sha256 prefixes): correlator_probe.exe bde9f81396de89c5, gigi-stream.exe
+6422f11170c35aa3, lattice4d_ensemble.exe 670f68e54075c509 (the extension's sampler, copied unchanged).
+k11-k19: statistics as before, 1,000 thermalisation, 10,000 measurements, 1 HB + 4 OR, levels 0,4,8,16, alpha 0.5,
+seeds 20261193 + 1000 k. Completion in done_a4.txt.

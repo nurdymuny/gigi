@@ -6,11 +6,16 @@
 //! usage: correlator_probe input.json output.json
 //! input: {"p": [[p(0), .., p(L-1)], ..], "block": b}   one row per configuration; block
 //!        (default 1) is the jackknife block length. The Halcyon-normalisation error is block 1 only.
-//!    or: {"ops": [op][cfg][t], "t0": 1, "t1": 2, "block": b}   a GEVP over the operators at
-//!        (t0, t1) after operator selection (Q3-B) and, unless "truncate": false, the Q3-C truncation of
-//!        C(t0) directions without a t1 signal; the projected series goes through EFFECTIVE_MASS.
+//!    or: {"ops": [op][cfg][t], "t0": 1, "t1": 2, "block": b, "rule": r}   a GEVP over the operators at
+//!        (t0, t1); the projected series goes through EFFECTIVE_MASS. "rule" (default "a4"):
+//!        "a4"          Amendment 4, the verb's rule: Amendment-2 GEVP, Q3-C only as a fallback, no plateau
+//!                      slice before t1;
+//!        "a4_nostart"  A4-1 alone (the A4-start counterfactual);
+//!        "q3c"         Amendment 3 (Q3-C always, no start bound);
+//!        "a2"          Amendment 2 (no Q3-C, no start bound). Legacy: "truncate": false with no "rule" = "a2".
 use gigi::gauge::correlator::{
-    effective_mass_blocked, gevp_run, jackknife_effective_mass_halcyon, NoPlateau, Plateau,
+    effective_mass_blocked, effective_mass_blocked_rule, gevp_effective_mass, gevp_run, jackknife_effective_mass_halcyon,
+    GevpRun, NoPlateau, Plateau, PlateauRule,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -30,6 +35,8 @@ struct Input {
     block: usize,
     #[serde(default = "yes")]
     truncate: bool,
+    #[serde(default)]
+    rule: Option<String>,
 }
 
 fn yes() -> bool {
@@ -52,28 +59,47 @@ fn main() {
         Ok(p) => json!({"t_lo": p.t_lo, "t_hi": p.t_hi, "mass": p.mass, "error": p.error, "chi2_dof": p.chi2_dof}),
         Err(e) => json!({"refused": e.to_string(), "t": e.t}),
     };
-    let (series, gevp_json) = match (inp.p, inp.ops) {
-        (Some(p), None) => (p, json!(null)),
+    let gj = |run: &GevpRun, rule: &str| {
+        let g = &run.gevp;
+        json!({"t0": g.t0, "t1": g.t1, "eigenvalues": g.eigenvalues, "vector": g.vector,
+               "condition_t0": g.condition_t0, "kept": run.kept_operators, "rule": rule,
+               "truncate": run.directions_kept.is_some(), "directions_kept": run.directions_kept,
+               "direction_snr_t1": fin(&run.direction_snr_t1)})
+    };
+    let refuse = |e: String| {
+        let out = json!({"gevp": {"refused": e}, "seconds": t0.elapsed().as_secs_f64()});
+        std::fs::write(&a[2], serde_json::to_string_pretty(&out).unwrap()).unwrap();
+    };
+    let (series, gevp_json, r) = match (inp.p, inp.ops) {
+        (Some(p), None) => {
+            let r = effective_mass_blocked(&p, inp.block).unwrap();
+            (p, json!(null), r)
+        }
         (None, Some(ops)) => {
-            match gevp_run(&ops, inp.t0, inp.t1, inp.block, inp.truncate) {
-                Ok(run) => {
-                    let g = &run.gevp;
-                    let gj = json!({"t0": g.t0, "t1": g.t1, "eigenvalues": g.eigenvalues, "vector": g.vector,
-                                    "condition_t0": g.condition_t0, "kept": run.kept_operators,
-                                    "truncate": inp.truncate, "directions_kept": run.directions_kept,
-                                    "direction_snr_t1": fin(&run.direction_snr_t1)});
-                    (run.series, gj)
-                }
-                Err(e) => {
-                    let out = json!({"gevp": {"refused": e}, "seconds": t0.elapsed().as_secs_f64()});
-                    std::fs::write(&a[2], serde_json::to_string_pretty(&out).unwrap()).unwrap();
-                    return;
-                }
+            let rule = inp.rule.clone().unwrap_or_else(|| if inp.truncate { "a4".into() } else { "a2".into() });
+            match rule.as_str() {
+                "a4" | "a4_nostart" => match gevp_effective_mass(&ops, inp.t0, inp.t1, inp.block, rule == "a4") {
+                    Ok(gm) => {
+                        let mut j = gj(&gm.run, &rule);
+                        j["path"] = json!(gm.path.as_str());
+                        j["a2_failure"] = json!(gm.a2_failure);
+                        (gm.run.series, j, gm.em)
+                    }
+                    Err(e) => return refuse(e),
+                },
+                "q3c" | "a2" => match gevp_run(&ops, inp.t0, inp.t1, inp.block, rule == "q3c") {
+                    Ok(run) => {
+                        let r = effective_mass_blocked_rule(&run.series, inp.block, PlateauRule::AMENDED).unwrap();
+                        let j = gj(&run, &rule);
+                        (run.series, j, r)
+                    }
+                    Err(e) => return refuse(e),
+                },
+                other => panic!("unknown rule {other}"),
             }
         }
         _ => panic!("give exactly one of p or ops"),
     };
-    let r = effective_mass_blocked(&series, inp.block).unwrap();
     let halcyon_err =
         if inp.block == 1 && gevp_json.is_null() { jackknife_effective_mass_halcyon(&series).unwrap().1 } else { vec![] };
     let out = json!({

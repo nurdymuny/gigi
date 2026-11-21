@@ -47,6 +47,11 @@
 //! solved in the rest (`gevp_run` with `truncate`). In a near-null direction of C(t0) the t1 value is
 //! noise over a small number and can take the largest eigenvalue; this removes exactly those.
 //!
+//! **Amendment 4 (adopted 2026-11-21).** A4-1: the GEVP runs as Amendment 2 did (Q3-B, untruncated);
+//! Q3-C runs only as a fallback, when that solve or its plateau refuses (`gevp_effective_mass`). A4-2:
+//! a GEVP-projected plateau has no slice before t1 (`PlateauRule::gevp_amended`). Single-series
+//! EFFECTIVE_MASS is unchanged.
+//!
 //! Errors are a (blocked) jackknife: leave out each block of `block` consecutive
 //! configurations; `block = 1` is the plain leave-one-out jackknife.
 
@@ -69,14 +74,20 @@ pub struct PlateauRule {
     /// Amendment Q1-4: if no three-slice window exists, accept two slices (t, t+1) where t passes
     /// the floor and m_eff(t+1) is jackknife-defined
     pub two_slice: bool,
+    /// Amendment 4 (A4-2): no window slice before this t (t1 for a GEVP-projected correlator; 0 otherwise)
+    pub min_t_lo: usize,
 }
 
 impl PlateauRule {
     /// The rule as first fixed in the spec, before any data.
-    pub const AS_FIXED: PlateauRule = PlateauRule { agree_sigma: 1.0, min_signal_sigma: None, two_slice: false };
+    pub const AS_FIXED: PlateauRule = PlateauRule { agree_sigma: 1.0, min_signal_sigma: None, two_slice: false, min_t_lo: 0 };
     /// The rule with amendments Q1-1, Q1-2 and Q1-4; the verb's rule.
     pub const AMENDED: PlateauRule =
-        PlateauRule { agree_sigma: AGREE_SIGMA, min_signal_sigma: Some(MIN_SIGNAL_SIGMA), two_slice: true };
+        PlateauRule { agree_sigma: AGREE_SIGMA, min_signal_sigma: Some(MIN_SIGNAL_SIGMA), two_slice: true, min_t_lo: 0 };
+    /// Amendment 4: the amended rule for a GEVP-projected correlator solved at (t0, t1): no slice before t1.
+    pub const fn gevp_amended(t1: usize) -> PlateauRule {
+        PlateauRule { min_t_lo: t1, ..PlateauRule::AMENDED }
+    }
 }
 
 fn check(p: &[Vec<f64>]) -> Result<usize, String> {
@@ -321,7 +332,7 @@ pub fn plateau_with(
             && t + 1 < c.len()
             && (t - 1..=t + 1).all(|u| c_err[u] > 0.0 && c[u] >= k * c_err[u]),
     };
-    let ok = |t: usize| m[t].is_some() && err[t] > 0.0 && err[t].is_finite() && significant(t);
+    let ok = |t: usize| t >= rule.min_t_lo && m[t].is_some() && err[t] > 0.0 && err[t].is_finite() && significant(t);
     let agree = |t: usize| {
         let (a, b) = (m[t].unwrap(), m[t + 1].unwrap());
         (a - b).abs() <= rule.agree_sigma * (err[t] * err[t] + err[t + 1] * err[t + 1]).sqrt()
@@ -374,7 +385,7 @@ pub fn plateau_with(
     // jackknife-defined; the earliest such window
     if rule.two_slice {
         let defined = |u: usize| m[u].is_some() && err[u] > 0.0 && err[u].is_finite();
-        for t in 0..m.len().saturating_sub(1) {
+        for t in rule.min_t_lo..m.len().saturating_sub(1) {
             if ok(t) && defined(t + 1) && agree(t) {
                 let (mass, error, chi2_dof) = fit(&[m[t].unwrap(), m[t + 1].unwrap()], &[err[t], err[t + 1]]);
                 if chi2_dof <= MAX_CHI2_DOF {
@@ -383,22 +394,29 @@ pub fn plateau_with(
             }
         }
     }
+    let bound = |r: String| {
+        if rule.min_t_lo > 0 {
+            format!("{r} (no window slice before t = {}, Amendment 4)", rule.min_t_lo)
+        } else {
+            r
+        }
+    };
     if let Some(b) = first_break {
-        return Err(b);
+        return Err(NoPlateau { t: b.t, reason: bound(b.reason) });
     }
     // no admissible t at all: say which condition failed, naming the first t it failed at
-    let defined = (0..m.len()).find(|&t| m[t].is_some() && err[t] > 0.0 && err[t].is_finite());
+    let defined = (rule.min_t_lo..m.len()).find(|&t| m[t].is_some() && err[t] > 0.0 && err[t].is_finite());
     Err(match defined {
         Some(t) => NoPlateau {
             t,
-            reason: format!(
+            reason: bound(format!(
                 "the correlator is less than {} standard errors from zero wherever the effective mass is defined",
                 rule.min_signal_sigma.unwrap_or(0.0)
-            ),
+            )),
         },
         None => NoPlateau {
             t: 0,
-            reason: "no time slice has an effective mass that is defined in every jackknife sample".into(),
+            reason: bound("no time slice has an effective mass that is defined in every jackknife sample".into()),
         },
     })
 }
@@ -424,9 +442,15 @@ pub fn effective_mass(p: &[Vec<f64>]) -> Result<EffectiveMass, String> {
 /// EFFECTIVE_MASS with a blocked jackknife (blocks of `block` consecutive configurations),
 /// for autocorrelated Monte-Carlo measurements.
 pub fn effective_mass_blocked(p: &[Vec<f64>], block: usize) -> Result<EffectiveMass, String> {
+    effective_mass_blocked_rule(p, block, PlateauRule::AMENDED)
+}
+
+/// EFFECTIVE_MASS with a blocked jackknife and an explicit verb rule (Amendment 4 passes
+/// `PlateauRule::gevp_amended(t1)` for a GEVP-projected series). The as-fixed plateau is unchanged.
+pub fn effective_mass_blocked_rule(p: &[Vec<f64>], block: usize, rule: PlateauRule) -> Result<EffectiveMass, String> {
     let (c, ce) = jackknife_correlator_blocked(p, block)?;
     let (m, me) = jackknife_effective_mass_blocked(p, block)?;
-    let mut plateau = plateau_with(&m, &me, &c, &ce, PlateauRule::AMENDED);
+    let mut plateau = plateau_with(&m, &me, &c, &ce, rule);
     if let Ok(pl) = plateau.as_mut() {
         pl.error = plateau_jackknife_error(p, block, pl, &me)?;
     }
@@ -588,6 +612,67 @@ pub fn gevp_run(ops: &[Vec<Vec<f64>>], t0: usize, t1: usize, block: usize, trunc
         ));
     }
     Ok(GevpRun { gevp: g, kept_operators: kept, direction_snr_t1: snr, directions_kept: n_dir, series })
+}
+
+/// Which GEVP path produced an Amendment-4 value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GevpPath {
+    /// the Amendment-2 solve (Q3-B, untruncated) gave a plateau
+    A2,
+    /// the Amendment-2 path failed (solve or plateau refused); Q3-C ran as the fallback
+    Q3cFallback,
+}
+
+impl GevpPath {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            GevpPath::A2 => "a2",
+            GevpPath::Q3cFallback => "q3c_fallback",
+        }
+    }
+}
+
+/// An Amendment-4 GEVP effective mass.
+#[derive(Clone, Debug)]
+pub struct GevpMass {
+    pub run: GevpRun,
+    pub path: GevpPath,
+    /// why the Amendment-2 path failed, when the fallback ran
+    pub a2_failure: Option<String>,
+    /// EFFECTIVE_MASS on the projected series; its plateau may still be a refusal (fallback path)
+    pub em: EffectiveMass,
+}
+
+/// Amendment 4 (docs/HALCYON_Q3_RUN_SPEC.md). A4-1: run the GEVP as Amendment 2 did (Q3-B, untruncated);
+/// only if that solve refuses, or its plateau refuses, run Q3-C as the fallback. A4-2 (`start_bound`):
+/// the plateau of the projected series has no slice before t1. With `start_bound = false` this is A4-1
+/// alone, the counterfactual the A4-start record reports. Errors only when no projected series exists
+/// on either path; the message names both failures.
+pub fn gevp_effective_mass(
+    ops: &[Vec<Vec<f64>>],
+    t0: usize,
+    t1: usize,
+    block: usize,
+    start_bound: bool,
+) -> Result<GevpMass, String> {
+    let rule = if start_bound { PlateauRule::gevp_amended(t1) } else { PlateauRule::AMENDED };
+    let a2_failure = match gevp_run(ops, t0, t1, block, false) {
+        Ok(run) => {
+            let em = effective_mass_blocked_rule(&run.series, block, rule)?;
+            match &em.plateau {
+                Ok(_) => return Ok(GevpMass { run, path: GevpPath::A2, a2_failure: None, em }),
+                Err(e) => e.to_string(),
+            }
+        }
+        Err(e) => e,
+    };
+    match gevp_run(ops, t0, t1, block, true) {
+        Ok(run) => {
+            let em = effective_mass_blocked_rule(&run.series, block, rule)?;
+            Ok(GevpMass { run, path: GevpPath::Q3cFallback, a2_failure: Some(a2_failure), em })
+        }
+        Err(e) => Err(format!("{e} (Q3-C fallback; the Amendment-2 path failed first: {a2_failure})")),
+    }
 }
 
 /// Largest admissible condition number of C(t0); above it the GEVP refuses.
@@ -1111,5 +1196,113 @@ mod tests {
         for (x, y) in a.gevp.vector.iter().zip(&b.gevp.vector) {
             assert!((x - sign * y).abs() < 1e-9 * x.abs().max(1.0), "{:?} vs {:?}", a.gevp.vector, b.gevp.vector);
         }
+    }
+
+    // ── Amendment 4 (docs/HALCYON_Q3_RUN_SPEC.md): tests fixed before any A4 data ──
+
+    #[test]
+    fn a4_fallback_is_invisible_when_not_needed() {
+        let (ops, _) = mixed(0.0, 0);
+        let a2 = gevp_run(&ops, 1, 2, 40, false).unwrap();
+        let em_a2 = effective_mass_blocked(&a2.series, 40).unwrap();
+        let p_a2 = em_a2.plateau.clone().unwrap();
+        // A4-1 alone: bit-identical to Amendment 2
+        let g = gevp_effective_mass(&ops, 1, 2, 40, false).unwrap();
+        assert_eq!(g.path, GevpPath::A2);
+        assert!(g.a2_failure.is_none());
+        assert_eq!(g.run.gevp.vector, a2.gevp.vector);
+        let p = g.em.plateau.clone().unwrap();
+        assert_eq!((p.t_lo, p.t_hi, p.mass.to_bits(), p.error.to_bits()), (p_a2.t_lo, p_a2.t_hi, p_a2.mass.to_bits(), p_a2.error.to_bits()));
+        // full A4 (spec correction before data): same path and vector; A4-2 moves a window that started
+        // at t = 1 to t >= 2 by design, so the plateau is compared within errors, not bit for bit
+        let g4 = gevp_effective_mass(&ops, 1, 2, 40, true).unwrap();
+        assert_eq!(g4.path, GevpPath::A2);
+        assert_eq!(g4.run.gevp.vector, a2.gevp.vector);
+        let p4 = g4.em.plateau.unwrap();
+        assert!(p4.t_lo >= 2, "{p4:?}");
+        if p_a2.t_lo >= 2 {
+            assert_eq!((p4.t_lo, p4.t_hi, p4.mass.to_bits()), (p_a2.t_lo, p_a2.t_hi, p_a2.mass.to_bits()));
+        } else {
+            assert!((p4.mass - p_a2.mass).abs() <= p4.error.max(p_a2.error), "A4 {p4:?} vs A2 {p_a2:?}");
+        }
+    }
+
+    #[test]
+    fn a4_fallback_engages_on_the_near_collinear_fixture_and_the_failure_returns_without_it() {
+        let (mut a2_failed, mut fallback, mut recovered) = (0, 0, 0);
+        for seed in 0..8u64 {
+            let (ops, m0) = mixed(1e-3, 100 + seed);
+            // removal arm: the Amendment-2 path alone (no fallback)
+            let a2_ok = match gevp_run(&ops, 1, 2, 40, false) {
+                Err(_) => false,
+                Ok(r) => match effective_mass_blocked_rule(&r.series, 40, PlateauRule::gevp_amended(2)).unwrap().plateau {
+                    Ok(p) => (p.mass - m0).abs() < 3.0 * p.error,
+                    Err(_) => false,
+                },
+            };
+            if !a2_ok {
+                a2_failed += 1;
+            }
+            let g = gevp_effective_mass(&ops, 1, 2, 40, true).unwrap();
+            if g.path == GevpPath::Q3cFallback {
+                fallback += 1;
+            }
+            if let Ok(p) = &g.em.plateau {
+                if (p.mass - m0).abs() < 3.0 * p.error {
+                    recovered += 1;
+                }
+            }
+            eprintln!("A4 seed {seed}: a2_ok {a2_ok} path {} a2_failure {:?} plateau {:?}", g.path.as_str(), g.a2_failure, g.em.plateau);
+        }
+        assert_eq!(a2_failed, 8, "removal arm: the Amendment-2 path must fail on all 8 draws");
+        assert_eq!(fallback, 8, "the fallback must engage on all 8 draws");
+        assert_eq!(recovered, 8, "A4 must recover the ground mass within 3 sigma on all 8 draws");
+    }
+
+    #[test]
+    fn a4_start_bound_removes_a_contaminated_t1_window_and_the_bias_returns_without_it() {
+        // m_eff(t) = 1.0 + excited-state contamination; C(4) is 2.5 sigma, so no three-slice window
+        // exists and only two-slice windows are admissible. The earliest starts at t = 1.
+        let m0 = 1.0;
+        let c = [100.0, 35.0, 13.0, 5.0, 1.0, 0.3, 0.1, 0.05];
+        let ce = [1.0, 0.5, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4];
+        let m = [None, Some(1.06), Some(1.02), Some(1.005), Some(1.3), None, None, None];
+        let e = [0.0, 0.01, 0.03, 0.08, 0.4, 0.0, 0.0, 0.0];
+        // removal arm: without A4-2 the window is (1, 2) and sits more than 3 sigma above m0
+        let no = plateau_with(&m, &e, &c, &ce, PlateauRule::AMENDED).unwrap();
+        assert_eq!((no.t_lo, no.t_hi), (1, 2));
+        assert!(no.mass - m0 > 3.0 * no.error, "the removal arm is not biased: {no:?}; the fixture does not test A4-2");
+        // with A4-2: no slice before t1 = 2; the plateau agrees with m0 within 2 sigma
+        let a4 = plateau_with(&m, &e, &c, &ce, PlateauRule::gevp_amended(2)).unwrap();
+        assert!(a4.t_lo >= 2, "{a4:?}");
+        assert!((a4.mass - m0).abs() <= 2.0 * a4.error, "{a4:?}");
+        // and where nothing admissible starts at t >= 2, A4-2 refuses rather than fall back to t = 1
+        let ce_short = [1.0, 0.5, 0.4, 2.0, 0.4, 0.4, 0.4, 0.4]; // C(3) 2.5 sigma: t = 2 fails the floor
+        let r = plateau_with(&m, &e, &c, &ce_short, PlateauRule::gevp_amended(2)).unwrap_err();
+        assert!(r.reason.contains("Amendment 4"), "{r}");
+    }
+
+    #[test]
+    fn a4_nulls_refuse_under_both_paths() {
+        let (ops, _) = mixed(1e-3, 100);
+        let shuffle = |s: &Vec<Vec<f64>>, seed: u64| -> Vec<Vec<f64>> {
+            let (n, l) = (s.len(), s[0].len());
+            let mut flat: Vec<f64> = s.iter().flatten().cloned().collect();
+            let mut st = seed;
+            for i in (1..flat.len()).rev() {
+                let j = (((lcg(&mut st) + 0.5) * (i + 1) as f64) as usize).min(i);
+                flat.swap(i, j);
+            }
+            (0..n).map(|c| flat[c * l..(c + 1) * l].to_vec()).collect()
+        };
+        let mut checked = 0;
+        for truncate in [false, true] {
+            if let Ok(r) = gevp_run(&ops, 1, 2, 40, truncate) {
+                let null = effective_mass_blocked(&shuffle(&r.series, 7), 40).unwrap();
+                assert!(null.plateau.is_err(), "truncate {truncate}: the null gave {:?}", null.plateau);
+                checked += 1;
+            }
+        }
+        assert!(checked >= 1, "no projected series on either path");
     }
 }

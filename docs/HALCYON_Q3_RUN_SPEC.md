@@ -213,6 +213,11 @@ Changing the window choice as well would make a pass impossible to attribute (Be
 
 1. **Fallback is invisible when not needed.** On clean two-state operators the A4 result is bit-identical to the
    Amendment-2 result, and `gevp_path = "a2"`.
+   - *Correction, 2026-11-21, while writing the test, before any A4 data.* As written, this holds for A4-1 alone, not
+     for full A4. On the clean fixture the Amendment-2 window starts at t = 1, and A4-2 moves it by design. The test
+     now checks: (a) A4-1 alone is bit-identical (vector, window, mass, error), with path "a2"; (b) full A4 has the
+     same path and vector, its window starts at t ≥ 2, and its mass agrees with the Amendment-2 mass within the
+     larger of the two errors (bit-identical whenever the Amendment-2 window already starts at t ≥ 2).
 2. **Fallback engages when needed.** On the near-collinear fixture of Amendment 3 (the same 8 noise seeds), the
    untruncated path fails 8/8 and A4 recovers the ground mass within 3σ through `q3c_fallback` 8/8. Removal arm:
    with the fallback disabled the failure returns.

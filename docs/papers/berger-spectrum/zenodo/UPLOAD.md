@@ -1,3 +1,5 @@
+**Published:** version 2, 21 November 2026, doi:10.5281/zenodo.24412603 (concept DOI 10.5281/zenodo.24386613). The record's title still showed version 1's subtitle at publication; fix it with **Edit** on the record (metadata only, same DOI).
+
 # Version 2 (new version of the published record)
 
 1. Open the published record (doi:10.5281/zenodo.24386614) and click **New version**. Zenodo keeps both versions

@@ -1,6 +1,17 @@
 # Q4 step 3: hunting a uniform lower bound from data stored in GIGI (draft spec)
 
-2026-11-20. **Draft.** Written while k9 and k10 sample, before any step-3 code or data. Branch `feat/ym-engine`.
+2026-11-20. **Draft. ON HOLD (Bee, 2026-11-20)** until Amendment 4 to the Q3 run spec is adopted and scored. Written
+while k9 and k10 sample, before any step-3 code or data. Branch `feat/ym-engine`.
+
+> **Why held.** The extension results (`docs/HALCYON_Q3_EXTENSION_RESULTS.md`) left one β passing Q3-a and Q3-v, so
+> 3a has one point and 3b has nothing to fit. The estimator is fixed first (`docs/HALCYON_Q3_RUN_SPEC.md`,
+> Amendment 4, fresh points k11–k18, optional k19).
+>
+> **What changes when it resumes:**
+> - 3a and 3b read the Amendment-4 receipt and its bundles, not the extension receipt.
+> - 3c's fresh seeds start after the last Amendment-4 point (k ≥ 19, or k ≥ 20 if k19 is run), not at k ≥ 11 as
+>   written below.
+> - The rest of the draft stands as written, with its [Bee] items still open.
 Parents:
 
 - `docs/HALCYON_QUANTUM_GAP_SPEC.md` §Q4: the hunt, exploratory;

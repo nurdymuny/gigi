@@ -163,6 +163,109 @@ points, so the fit has degrees of freedom and the falsifier can trigger). All wi
 k0–k6 are rescored with Q3-C and reported; k1 is not evidence for Q3-C (it prompted it). Q4 is rerun on
 the new receipt, exploratory as before.
 
+## Amendment 4 (DRAFT, requested by Bee 2026-11-20 after the extension results; not adopted; before any of its code or data)
+
+**Status.** Draft for Bee. Nothing below is coded. The decisions marked **[Bee]** are open. Once adopted, the
+text is fixed and committed before any code for it, and before any of its fresh configurations are generated.
+
+**What prompted it.** Recorded in `docs/HALCYON_Q3_EXTENSION_RESULTS.md`, after scoring:
+
+- Amendment 3 failed C-harm. The k10 flux loop moved 2.0σ, on the same window.
+- Rescoring k0–k6 under Q3-C lost β = 2.3715 (k3 flux loop refused) and β = 2.4265 (k4 0⁺⁺ 2.95σ high). The
+  effective-mass curves barely moved there; the plateau windows did.
+- The larger volume's a√σ is high wherever it can be read: k1, k8 and k10 at 6.6–7.4σ. Those flux-loop windows start
+  at t = 1 (k1, k8) or t = 2 with three slices of signal (k10), before excited states have decayed. Amendment 2 shows
+  the same excess at k10, so this predates Q3-C.
+- A4-2 below addresses the windows that start at t = 1. It does not touch k10, whose window already starts at t = 2.
+  If the fresh replicate of k10 (k18) shows the same excess, that is reported as unaddressed by this amendment.
+
+Because these rules are chosen after seeing that data, k0–k10 are rescored under Amendment 4 and reported, but they
+are **not evidence for it**. It is judged only on fresh seeds (below).
+
+**The changes, two only.** One change per failure, so a result can be traced to its cause.
+
+- **A4-1, Q3-C becomes a fallback.** The GEVP first runs as in Amendment 2 (Q3-B selection, untruncated solve). Q3-C
+  is used only if that path fails: the solve refuses, or its plateau refuses. The row reports which path produced the
+  value (`gevp_path: "a2"` or `"q3c_fallback"`).
+  - *Why.* Q3-C was written for one failure (a near-null C(t₀) direction, k1 and k8), and it fixed that failure. It
+    also moved values where nothing had failed. As a fallback it cannot move a value the untruncated path already
+    returns.
+  - *Cost, stated.* Two chances at a plateau instead of one is a mild look-elsewhere effect. The protection is the
+    null: every shuffled series must refuse under both paths (A4-null).
+- **A4-2, no plateau slice before t₁.** For a GEVP-projected correlator, every slice in a plateau window satisfies
+  t ≥ t₁ = 2. A window that would start at t = 1 is not taken; the rule looks for the earliest window from t = 2 on,
+  and refuses if there is none.
+  - *Why.* The GEVP eigenvalue is solved at (t₀, t₁) = (1, 2). Before t₁ the projected correlator has had the least
+    time for excited states to decay, and the flux loops at aL√σ > 5 (heavy, am ≈ 2) are exactly where windows
+    started at t = 1. Choosing t₁ ties the bound to the solve already fixed, so no new number is introduced.
+  - *Expected consequence, stated now.* At the larger volumes the flux loop may then refuse rather than return a
+    biased σ. A refusal is a correct answer there. Q3-v at a β then fails by refusal, and that is reported as such.
+  - It applies only to GEVP-projected correlators. EFFECTIVE_MASS on a single series is unchanged.
+
+**Not changed.**
+
+- The window choice among admissible windows: earliest; three slices before two (Q1-4); Q1-1 to Q1-3.
+- MIN_SIGNAL_SIGMA, Q3-B, the null rule.
+
+Changing the window choice as well would make a pass impossible to attribute. **[Bee]** Confirm that it stays out.
+
+**Tests before data** (unit, synthetic; each with a removal arm):
+
+1. **Fallback is invisible when not needed.** On clean two-state operators the A4 result is bit-identical to the
+   Amendment-2 result, and `gevp_path = "a2"`.
+2. **Fallback engages when needed.** On the near-collinear fixture of Amendment 3 (the same 8 noise seeds), the
+   untruncated path fails 8/8 and A4 recovers the ground mass within 3σ through `q3c_fallback` 8/8. Removal arm:
+   with the fallback disabled the failure returns.
+3. **The start bound does its job.** Use a two-state correlator with a heavy excited state, strong enough that a
+   window starting at t = 1 sits more than 3σ above the ground mass.
+   - With A4-2, the plateau agrees with the ground mass within 2σ, or refuses.
+   - Removal arm: without A4-2, the earliest window starts at t = 1 and is more than 3σ high. If this arm does not
+     fail, the fixture does not test A4-2 and is replaced before any data.
+4. **Nulls.** A shuffled series refuses under both paths.
+
+These apply to the verb (EFFECTIVE_MASS … GEVP) and the probe alike, and I-parity is rerun on the stored bundles
+after the change.
+
+**Fresh points.** Seeds are 20261193 + 1000·k, as before. Same statistics, sampler and frozen-binary procedure as the
+extension.
+
+| k | β | L | role |
+| --- | --- | --- | --- |
+| 11 | 2.2986 | 10 | Q3-a |
+| 12 | 2.2986 | 12 | Q3-v |
+| 13 | 2.3715 | 12 | Q3-a |
+| 14 | 2.3715 | 16 | Q3-v |
+| 15 | 2.4265 | 16 | Q3-a |
+| 16 | 2.4265 | 20 | Q3-v |
+| 17 | 2.5115 | 20 | Q3-a; also a direct replicate of k9, whose 0⁺⁺ was 3.2σ high under both GEVPs |
+| 18 | 2.5115 | 24 | Q3-v |
+
+**[Bee]** Optional k19 at (2.2986, 14). It is the volume where the flux-loop excess was largest (k1, k8). It does
+not enter Q3-v; it tests A4-2 where its effect should be largest.
+
+**Gates, judged only on k11–k18 (and k19 if run).**
+
+| gate | what must hold | if it fails |
+| --- | --- | --- |
+| **A4-path** | every value reports its path. A `q3c_fallback` value is listed by point and channel | report |
+| **A4-null** | every channel's shuffled series refuses, under both paths | stop |
+| **A4-start** | report every channel where A4-2 changed the window or produced a refusal, with the value the rule without A4-2 would have given | report. This is the mechanism record, not a pass/fail |
+| **Q3-a** | at each of the four β, against LTW Table 5, as fixed | name the β |
+| **Q3-v** | at each of the four β, as fixed. A refusal is a failure, not a pass | name the β and say whether it was a refusal |
+| **Q3-s** | over every β passing both, as fixed, falsifier included | — |
+| **k17 replicate** | report whether k17's am₀₊₊ reproduces k9's excess (> 2σ above LTW) | if it does, the excess at (2.5115, 20) is a property of the point, not a fluctuation. It is reported, and no rule is written from it inside this amendment |
+
+**Success and failure, fixed now.**
+
+- **Success:** Q3-a and Q3-v pass at three or more β, so Q3-s has a fit with at least one degree of freedom, and
+  A4-null holds.
+- **Partial:** two β. Q3-s is a two-point line, reported without a falsifier.
+- **Failure:** fewer than two β. Then the estimator is not ready for step 3. Before any further amendment, the next
+  move is a longer-statistics or anisotropic run, under its own spec, not a further plateau rule.
+
+Q3-r (k6) is not rerun, because there is no fresh β = 2.3 point; it is rescored and reported. Q4 (C1, C2, K) is
+rerun on the A4 receipt, exploratory.
+
 ## Order of work
 
 1. Sampler and its Q3-0 tests.

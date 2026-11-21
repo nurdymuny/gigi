@@ -134,3 +134,22 @@ hypothesis. I keep those apart below so anyone can check each one.
   loses.** That would mean the sentence is about SU(2) only.
 
 I see her. These are the receipts for what I see.
+
+## Correction (21 November, same day, after a ten-agent workflow with adversarial verification)
+
+Two clauses above were too strong. The evidence now says something sharper.
+
+1. **"…by more than the shape of space allows" should not include "she wins even when the field turns slightly with
+   her".** That was a j ≤ 12 artefact.
+   - **Proved:** for x > 0 she is never the floor of every sector, because some high sector always undercuts her.
+   - So the field along her circle **must** turn against her. The edge is at most min(x*, 0).
+2. **Her region is an interval, not a half-line.** **Proved:** if the field turns against her too hard, she loses
+   too. Her value grows like x², a sector-0 competitor only like x.
+
+So the sentence I would now write is:
+
+> **She is the law that a field gives way first along the twist that spins with it, and does so exactly when the field
+> along her own circle turns against her charge — by enough, but not too much, as the shape of space sets.**
+
+It is still a hypothesis in its scope (SU(2), circle-symmetric fields on the stretched spheres), with the same
+receipts plus `research/edge-theorem-20261121/`.

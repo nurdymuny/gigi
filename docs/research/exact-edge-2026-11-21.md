@@ -107,3 +107,21 @@ receipt.)
   x ∈ [−2, −0.5]; l ≈ 160 for [−2, −1]; l ≈ 40 for [−3, −1.5]. That is why D stops at −1.5.
 - The small-j half (j < 80 on D) is in progress, with a mean-value interval certificate.
 
+
+## Correction (21 November, after the edge-theorem workflow; verified independently)
+
+The positive edges in the table above (t ≳ 6 at y ≥ 1.5) are **artefacts of the cut-off j ≤ 12**. For x > 0 the
+twist is the floor of no field in every sector. This is **proved**: in the block of charge q = l, the state of weight
+m = l and type (1, −1) has Rayleigh quotient minus λ equal to −8lx/√t + O(1), which is negative for large l. Two
+independent builders reproduced it; for example, at (x, y, t) = (0.1, √10, 10), sector j = 120 lies 0.58 below her.
+
+- **Bound.** The all-sector edge is at most min(x*₁₂, 0).
+- **Equality is a conjecture for t ≥ 3 only.** It is refuted near t = 2.01 at y = 0.25, where a q = l block undercuts
+  her first in sector j = 16.
+- **Her region is also bounded below.** λ grows like x², while the gauge-orthogonal state θ̂⁰ ⊗ τ₀ of sector 0 grows
+  linearly in x. So her region in x is an **interval**, not a half-line. Every earlier scan stopped at x = −3, which
+  hid the lower end.
+
+The Berger crossings t_A and t* and the polynomial P₂ are unaffected.
+
+Receipts: `research/edge-theorem-20261121/` (WP1, WP2, WP4 and their verifiers, `workflow_reports.json`).

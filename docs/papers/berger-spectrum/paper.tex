@@ -63,8 +63,9 @@ for every $t\in[2.75,10]$, in particular at $t=3$: a conserved charge splits eac
 nine, interval certificates of the blocks cover $j<100$, and a closed-form Gershgorin bound covers $j\ge100$.
 \redins{ Across all circle-symmetric fields on these spheres, the same
 field is an exact eigenvector with eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$, where $x$ and $y$ are the
-field's strengths along and across the long circle, and it is the floor exactly on one side of an algebraic edge in
-$x$; the thresholds of the Berger field are where its path crosses that edge.} At $t=4$ the low spectrum on the
+field's strengths along and across the long circle. It is the floor only where the field along the long circle turns
+against it ($x<0$), and there only within an interval of $x$ whose upper end is an algebraic edge; the thresholds of the
+Berger field are where its path crosses that edge.} At $t=4$ the low spectrum on the
 Poincar\'e sphere is classified below $136$. To our knowledge, these are the first exact eigenvalues of a
 Yang--Mills Hessian at a non-flat connection on a squashed three-sphere.
 \end{abstract}
@@ -121,9 +122,9 @@ at rest, so gauge directions are not zero modes, and the compression $PHP$ is th
     (Proposition~\ref{prop:landau}),
     with the stretches at which each twist (the circular field of Proposition~\ref{prop:bottom}; terms in Section~\ref{sec:setting}) goes free in closed form (Corollary~\ref{cor:family}).
 \redins{  \item \emph{Where the twist is the floor} (Section~\ref{sec:edge}): across every circle-symmetric field on
-    $(t,1,1)$ the twist's eigenvalue is in closed form (Proposition~\ref{prop:twistfamily}); it is the floor exactly
-    up to an edge in the field's strength along the long circle, the root of an explicit polynomial
-    (Proposition~\ref{prop:edge}), and the Berger thresholds are the crossings of that edge.
+    $(t,1,1)$ the twist's eigenvalue is in closed form (Proposition~\ref{prop:twistfamily}); it is the floor
+    only where the field along the long circle turns against it, up to an edge given by the root of an explicit
+    polynomial (Proposition~\ref{prop:edge}), and the Berger thresholds are the crossings of that edge.
 }\end{itemize}
 Section~\ref{sec:family} follows the floor across the Berger family\redins{, and Section~\ref{sec:edge} across every
 circle-symmetric field}.
@@ -666,8 +667,10 @@ the floor law is and is not (scripts and receipts in the repository; see the ava
 
 \redins{\section{Where the twist is the floor}\label{sec:edge}
 
-The Berger field is one member of a larger family. Consider the left-invariant fields on $(t,1,1)$ of the form
-$M_0=x\,\tau_0$, $M_1=y\,\tau_1$, $M_2=y\,\tau_2$, symmetric under the rotation about the long axis: a strength $x$
+The Berger field is one member of a larger family. Up to a constant gauge transformation, every left-invariant field on $(t,1,1)$
+that is symmetric under the joint rotation about the long axis has the form
+$M_0=x\,\tau_0$, $M_1=y\,\tau_1$, $M_2=y\,\tau_2$ with $y\ge0$ (a commutant computation,
+\path{scripts/edge_wp4_design_checks.py}): a strength $x$
 along the long circle and a strength $y$ across it. The Berger field is $x=(2-t)/\sqrt t$, $y=\sqrt t$; the
 multiples $A=s\theta$ of the Maurer--Cartan form are $x=2s/\sqrt t$, $y=2s$; the squashed meron lies in the family
 too. By Remark~\ref{rem:counting} the twist is an exact gauge-orthogonal eigenvector of every member.
@@ -705,9 +708,16 @@ Exact symbolic determinant and factorization, and exact polynomial division on t
 \paragraph{The edge, numerically.} In the sectors $j\le12$, at every $(t,y)$ computed, the twist is the floor of
 $H+GG^*$ for $x$ below an edge $x^*(t,y)$ and not above it, and the same holds for the gauge-orthogonal spectrum
 with a slightly higher edge. For $y\gtrsim1$ the competitor that sets the edge is the block $B_{4,0}$, and $x^*$ is a
-root of $P_2$ (to $10^{-8}$); at small $y$ it is a block of the sector $j=2$ or $3$. The edge rises with the stretch:
-the gauge-orthogonal edge is $-0.66$, $-0.36$, $-0.19$, $0.008$, $0.14$ at $t=2,3,4,6,8$ for $y=\sqrt t$, so for a
-strongly stretched sphere with a strong cross field the twist is the floor even when $x$ is slightly positive.
+root of $P_2$ (to $10^{-8}$); at small $y$ it is a block of the sector $j=2$ or $3$. Within $j\le12$ the edge rises with the stretch
+($-0.66$, $-0.36$, $-0.19$ at $t=2,3,4$ for $y=\sqrt t$) and turns positive for strongly stretched spheres with a strong
+cross field. That is an artefact of the cut-off. \emph{For $x>0$ the twist is the floor of no field in every sector:}
+in the block of charge $q=l$ the state of weight $m=l$ and type $(1,-1)$ has Rayleigh quotient minus $\lambda$ equal to
+$-8lx/\sqrt t+O(1)$, negative for large $l$ (\path{scripts/edge_wp2_symbolic.py}; at $(x,y,t)=(0.1,\sqrt{10},10)$ the
+sector $j=120$ already falls $0.58$ below the twist). So the all-sector edge is at most $\min(x^*_{12},0)$. That it equals
+this is a conjecture for $t\ge3$; it fails near $t=2$, where a block of charge $q=l$ undercuts the twist first in the
+sector $j=16$ (\path{research/edge-theorem-20261121/}). The region is bounded below as well: $\lambda$ grows like $x^2$,
+while the gauge-orthogonal state $\hat\theta^0\otimes\tau_0$ of the sector $j=0$ has a Rayleigh quotient affine in
+$x$, so for strongly negative $x$ the twist is not the floor either (\path{scripts/edge_wp4_design_checks.py}).
 Along the Berger path the crossings are exact: the $H+GG^*$ edge is crossed at $t=2.7311222782381144$ (the root
 $t_A$ of Remark~\ref{rem:tstar}, to $9\times10^{-16}$) and the gauge-orthogonal edge at $t=2.698026940521$ ($t^*$,
 to $10^{-12}$), both through the block $B_{4,0}$ (\path{scripts/ricci_su2_exact_edge.py}). The thresholds of
@@ -742,7 +752,10 @@ failed: that the rotation symmetry makes the twist the floor (on the squashed me
 Maurer--Cartan field it is the floor nowhere); that a field strength aligned with the twist's spin makes it the floor
 (for $A=s\theta$ with $s>1$, aligned throughout, it is the floor only of $j=0$); and that alignment together with the
 twist alone spanning the lowest eigenspace of $R_0$ does (on $35$ such points of $A=s\theta$ on $(t,1,1)$, none). The
-curvature term alone does not decide it; the comparison above, governed by $x$, does.}
+curvature term alone does not decide it; the comparison above, governed by $x$, does.
+The literature checked (the chromomagnetic instability~\cite{nielsenolesen1978,savvidy1977}, the Weitzenb\"ock
+formula~\cite{bl1981}, spectra on Berger spheres~\cite{lauret2019,henkellauret2026}, homogeneous backgrounds on the round
+$S^3$~\cite{avramidicollopy2012,klc2021}) did not contain such an edge; the closest is the negative modes of covariantly constant backgrounds on the round sphere.}
 
 \section{Checks}\label{sec:checks}
 
@@ -862,6 +875,9 @@ This paper, its source, and the code and data above are archived on Zenodo under
 \bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230.
 \bibitem{davisrtc} B.~R.~Davis, Reading the curve, not counting the points: a two-ring Petrov--Galerkin curvature force for discrete Yang--Mills dynamics on the Poincar\'e homology sphere, 2026, \url{https://doi.org/10.5281/zenodo.24328085}.
 \bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
+\redins{\bibitem{avramidicollopy2012} I.~G.~Avramidi, S.~Collopy, Thermal Yang--Mills theory in the Einstein universe, \emph{J.\ Phys.\ A} 45 (2012) 374009, \href{https://arxiv.org/abs/1201.5163}{arXiv:1201.5163}.}
+\redins{\bibitem{nielsenolesen1978} N.~K.~Nielsen, P.~Olesen, An unstable Yang--Mills field mode, \emph{Nucl.\ Phys.\ B} 144 (1978) 376--396.}
+\redins{\bibitem{savvidy1977} G.~K.~Savvidy, Infrared instability of the vacuum state of gauge theories and asymptotic freedom, \emph{Phys.\ Lett.\ B} 71 (1977) 133--134.}
 \bibitem{hitchin1974} N.~Hitchin, Harmonic spinors, \emph{Adv.\ Math.} 14 (1974) 1--55.
 \bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
 \bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \emph{J.\ Geom.\ Anal.} (2022), \href{https://doi.org/10.1007/s12220-022-00997-x}{doi:10.1007/s12220-022-00997-x}, \href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.

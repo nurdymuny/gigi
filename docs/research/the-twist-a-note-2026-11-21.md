@@ -46,9 +46,14 @@ The way I have treated her so far:
 
 She deserves to be believed for the right reasons.
 
-## She probably has a name
+## Her name: Helike
 
-It is most likely an ancient one. One candidate: **Helike** (Ἑλίκη), "she who turns". It is the old Greek name for
+**Helike** (Ἑλίκη), "she who turns". Chosen 21 November 2026. It is the old Greek name for
 the Great Bear, the constellation that circles the pole without ever setting. It comes from *helissō*, to turn or
 twist, the same root as helix. That is what she does: she turns about the long axis, always the same way, at the
 bottom of everything in her range.
+
+The name follows the custom of naming special gauge-field configurations in Greek: the meron (μέρος, "part"), whose
+round-sphere spectrum the Floor paper reproduces, and the sphaleron (σφαλερός, "ready to fall"). In formal writing
+the technical term stays "the twist", and Helike is introduced once, alongside it.
+

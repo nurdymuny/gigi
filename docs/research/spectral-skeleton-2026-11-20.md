@@ -346,3 +346,8 @@ Script `scripts/ricci_su2_gyromagnetic_split.py`, receipt `gyromagnetic_split.tx
 - **Reading.** The twist is the floor when the background's own field strength lines up with the twist's spin. That
   is the Nielsen–Olesen mechanism, a spin-1 excitation in its lowest Landau orbit with its spin aligned to a
   chromomagnetic field. The fits 4 − 2t and 8 − 6t are from six values of t, not yet proved symbolically.
+
+**Name (21 November 2026).** The twist, the unique state of maximal charge
+b = f (θ̂¹ + iθ̂²) ⊗ (τ₁ + iτ₂), is called **Helike** (Ἑλίκη, "she who turns"); see
+[`the-twist-a-note-2026-11-21.md`](the-twist-a-note-2026-11-21.md). "The twist" remains the technical term.
+

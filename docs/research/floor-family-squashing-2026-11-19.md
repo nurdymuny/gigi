@@ -326,3 +326,7 @@ rounding-error constant (Higham-type) is needed. All certificates were reissued 
   4,307 blocks and 36,166 block-slices, minimum margin 2.9 × 10⁻³.
 - No failures.
 
+**Name (21 November 2026).** The twist, the unique state of maximal charge
+b = f (θ̂¹ + iθ̂²) ⊗ (τ₁ + iτ₂), is called **Helike** (Ἑλίκη, "she who turns"); see
+[`the-twist-a-note-2026-11-21.md`](the-twist-a-note-2026-11-21.md). "The twist" remains the technical term.
+

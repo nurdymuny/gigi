@@ -88,8 +88,21 @@ def grad_norm(C, g, f, M, h=1e-6):
     return float(np.linalg.norm(gr))
 
 
+SVD_FALLBACKS = []
+
+
+def robust_svd(G):
+    """np.linalg.svd (gesdd); on non-convergence, scipy's gesvd driver (recorded). Same quantity, ker G^*."""
+    try:
+        return np.linalg.svd(G, full_matrices=True)
+    except np.linalg.LinAlgError:
+        import scipy.linalg as sl
+        SVD_FALLBACKS.append(G.shape)
+        return sl.svd(G, full_matrices=True, lapack_driver="gesvd")
+
+
 def slice_spectrum(H, G):
-    U, sv, _ = np.linalg.svd(G, full_matrices=True)
+    U, sv, _ = robust_svd(G)
     rank = int((sv > 1e-10 * sv.max()).sum()) if sv.size and sv.max() > 0 else 0
     K = U[:, rank:]
     return np.linalg.eigvalsh(K.conj().T @ H @ K)
@@ -246,8 +259,10 @@ def su3_point(args):
         qv = np.linalg.eigvalsh(Q)
         if abs(qv.max() - (pq[0] + pq[1] + 4)) > 1e-8:       # pick the overall sign giving +max
             Q = -Q
+        nfb = len(SVD_FALLBACKS)
         row = classify_point(H, G, Q, pq[0] + pq[1] + 4)
         row["signs"] = list(signs[0])
+        row["svd_fallback"] = len(SVD_FALLBACKS) > nfb
         out["sectors"][str(pq)] = row
     return out
 

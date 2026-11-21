@@ -163,10 +163,10 @@ points, so the fit has degrees of freedom and the falsifier can trigger). All wi
 k0–k6 are rescored with Q3-C and reported; k1 is not evidence for Q3-C (it prompted it). Q4 is rerun on
 the new receipt, exploratory as before.
 
-## Amendment 4 (DRAFT, requested by Bee 2026-11-20 after the extension results; not adopted; before any of its code or data)
+## Amendment 4 (adopted by Bee 2026-11-21, after the extension results; before any of its code or data)
 
-**Status.** Draft for Bee. Nothing below is coded. The decisions marked **[Bee]** are open. Once adopted, the
-text is fixed and committed before any code for it, and before any of its fresh configurations are generated.
+**Status.** Adopted 2026-11-21. Bee's decisions: the window choice stays unchanged; k19 is added. The text is fixed
+by this commit, before any code for it and before any of its fresh configurations are generated.
 
 **What prompted it.** Recorded in `docs/HALCYON_Q3_EXTENSION_RESULTS.md`, after scoring:
 
@@ -207,7 +207,7 @@ are **not evidence for it**. It is judged only on fresh seeds (below).
 - The window choice among admissible windows: earliest; three slices before two (Q1-4); Q1-1 to Q1-3.
 - MIN_SIGNAL_SIGMA, Q3-B, the null rule.
 
-Changing the window choice as well would make a pass impossible to attribute. **[Bee]** Confirm that it stays out.
+Changing the window choice as well would make a pass impossible to attribute (Bee confirmed 2026-11-21: it stays out).
 
 **Tests before data** (unit, synthetic; each with a removal arm):
 

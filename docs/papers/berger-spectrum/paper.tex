@@ -151,7 +151,11 @@ below. The \emph{stretch} is the parameter $t$ of the Berger metric $(t,1,1)$ of
 main case is $t=3$. The \emph{twist} of the sector of spin $j/2$ is the field
 $b=f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ of Proposition~\ref{prop:bottom}, with $f$ the top
 weight along the long axis: it turns in the two short directions and, in step, in two internal directions. A
-twist \emph{goes free} at the stretch where its eigenvalue crosses zero; beyond it, it is a growth mode.
+twist \emph{goes free} at the stretch where its eigenvalue crosses zero; beyond it, it is a growth mode.\redins{ The
+\emph{floor} of a sector is its lowest gauge-orthogonal eigenvalue, the bottom of the spectrum of $PHP$ restricted to
+the sector (or, where stated, the lowest eigenvalue of $H+GG^*$ there), and a state \emph{is the floor} if it attains
+it. In Section~\ref{sec:edge} the \emph{edge} is the set of fields at which the twist's eigenvalue meets the lowest
+eigenvalue of another charge block, a level-crossing locus, and that block is the \emph{competitor}.}
 
 \paragraph{The Hessian and the slice.} A variation is $b=\sum_ib_i\hat\theta^i$. The second variation
 of $E=\tfrac12\norm{F}^2$ is the quadratic form
@@ -169,6 +173,14 @@ split into sectors indexed by $j\ge0$. In the sector of spin $j/2$, $b_i\in V_j\
 $V_j$ is the spin-$j/2$ representation (dimension $j+1$) on which $e_i$ acts by an anti-Hermitian
 $\rho_i$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$. So $H$ is a finite Hermitian matrix of size
 $9(j+1)$. Write $J_0=\tfrac i2\rho_0$, with weights $-\tfrac j2,\dots,\tfrac j2$.
+
+\redins{\paragraph{Conventions.} With $[e_a,e_b]=2\varepsilon_{abc}e_c$ the metric $(1,1,1)$ is the unit round
+sphere: its Ricci tensor is $2g$, and the scalar Laplacian has eigenvalue $j(j+2)$ on the sector of spin $j/2$. On
+$(t,1,1)$ the Ricci tensor is $\mathrm{diag}(2t,4-2t,4-2t)$ in the orthonormal frame. Eigenvalues are those of $H$
+defined by $\langle b,Hb\rangle=Q(b)$, with $Q$ exactly as written in~\eqref{eq:Q} and the $L^2$ mass
+$\sum_i\norm{b_i}^2$; a convention that puts a factor $\tfrac12$ in front of $Q$ halves every eigenvalue, and scaling
+the metric by $c$ multiplies every eigenvalue by $1/c$. With these normalisations the round-sphere spectrum is the
+published one (Section~\ref{sec:checks}).}
 
 \paragraph{The Poincar\'e sphere.} The binary icosahedral group $2I$ acts by left translations, and
 the frame, the metric and $A$ descend to $S^3/2I$. The sector of spin $j/2$ survives with
@@ -434,7 +446,10 @@ curvature the internal frame can see (for $t\ge12/7$). The fibre term alone is s
 vanishes, at $j=2t-4$; the transverse term $2j$ moves the minimum of $\lambda_t(j)$ over $j$ to $j=t-4$
 (Corollary~\ref{cor:family}). The statement that
 $b$ is the \emph{floor} is not implied by (2): it needs every other state of the sector to cost more, which is
-Theorem~\ref{thm:range}.
+Theorem~\ref{thm:range}.\redins{ The same three pieces, a momentum along the fibre, a lowest Landau level across
+it and a spin term from $-2[F,\cdot\,]$, make up the unstable mode of Nielsen and Olesen in a constant chromomagnetic
+field on flat space~\cite{nielsenolesen1978}. We note the resemblance only; no limit relating the two is proved
+here.}
 \end{remark}
 
 The certificate of Theorem~\ref{thm:gap} takes $t$ as a parameter; run at $t=3$ it reproduces
@@ -696,7 +711,9 @@ strongly stretched sphere with a strong cross field the twist is the floor even 
 Along the Berger path the crossings are exact: the $H+GG^*$ edge is crossed at $t=2.7311222782381144$ (the root
 $t_A$ of Remark~\ref{rem:tstar}, to $9\times10^{-16}$) and the gauge-orthogonal edge at $t=2.698026940521$ ($t^*$,
 to $10^{-12}$), both through the block $B_{4,0}$ (\path{scripts/ricci_su2_exact_edge.py}). The thresholds of
-Remark~\ref{rem:tstar} are therefore not special to the Berger field: they are where its path meets the edge.
+Remark~\ref{rem:tstar} are therefore not special to the Berger field: they are where its path meets the edge. The edge is a crossing, not an avoided one: the
+twist is alone in its charge block and every competitor found has a different charge, and eigenvalues of different
+symmetry type may cross where those of one type generically do not~\cite{vonneumannwigner1929}.
 
 \begin{figure}[t]
   \centering
@@ -853,7 +870,9 @@ This paper, its source, and the code and data above are archived on Zenodo under
 \bibitem{laquer1984} H.~T.~Laquer, Stability properties of the Yang--Mills functional near the canonical connection, \emph{Michigan Math.\ J.} 31 (1984) 139--159.
 \bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \emph{Bull.\ Lond.\ Math.\ Soc.} 51 (2019) 49--69, \href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
 \bibitem{mpmath} The mpmath development team, mpmath: a Python library for arbitrary-precision floating-point arithmetic, \url{https://mpmath.org}.
+\bibitem{nielsenolesen1978} N.~K.~Nielsen, P.~Olesen, An unstable Yang--Mills field mode, \emph{Nucl.\ Phys.\ B} 144 (1978) 376--396.
 \bibitem{ohnitapan1989} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, \emph{Kodai Math.\ J.} 13 (1990) 317--332.
+\bibitem{vonneumannwigner1929} J.~von Neumann, E.~Wigner, \"Uber das Verhalten von Eigenwerten bei adiabatischen Prozessen, \emph{Phys.\ Z.} 30 (1929) 467--470.
 \end{thebibliography}
 
 \end{document}

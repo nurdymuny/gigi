@@ -103,6 +103,8 @@ def main():
     data = json.loads(Path(sys.argv[1]).read_text())
     od = Path(sys.argv[2]); od.mkdir(parents=True, exist_ok=True)
     fig_map(data, od / "fig_twist_map.png")
+    if len(sys.argv) > 3:
+        fig_map(data, Path(sys.argv[3]))                     # e.g. the paper's figures/fig_twist_map.pdf
     fig_shape(od / "fig_twist_shape.png")
     print("wrote", od / "fig_twist_map.png", od / "fig_twist_shape.png")
 

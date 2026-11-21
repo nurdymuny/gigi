@@ -292,3 +292,45 @@ moments are those of M1c; only the seated arm changes.
   - So **the M1b-moment trend gate ("smaller at n = 3") will fail** for both, unless the cell pass contradicts its
     own prediction. It has matched the prediction to 10⁻¹³ at every level so far.
   - The poke and reconstruction trend gates are still open.
+
+### M1c and M1d at n = 3: the gate verdicts (21 November)
+
+Receipts `research/magnet-m1-20261119/M1c_L2.json` and `M1d_L2.json`, from the fast assembly; about 28 hours each.
+Reading, correction and moments are shared by M1c and M1d. The leftover moment matches pass 1's prediction to 4 ×
+10⁻¹⁴.
+
+| gate (Amendments 1–3) | rule | n = 2 | n = 3 | verdict |
+| --- | --- | --- | --- | --- |
+| M1b-moment | median leftover ≤ 6.2% at n = 2, **smaller at n = 3** | 0.38% | 0.70% | **FAIL** (grew) |
+| M1-poke | ≤ 5.1% at n = 2, no larger at n = 3 | 2.49% | 2.07% | pass |
+| M1-recon | ≤ 2 × M0's (15.3%, 12.9%), not growing | 11.48% | 9.96% | pass |
+| M1-variational | K symmetric | 2 × 10⁻¹⁶ | 2 × 10⁻¹⁶ | pass |
+| M1-wobble (seated) | no wobble modes | 0 | 0 | pass |
+| M1-seam | RMS jump relative | 0.034% | 0.0094% | pass |
+
+Reported, not gated:
+
+| quantity | n = 2 | n = 3 |
+| --- | --- | --- |
+| BW05 relative error, unseated | 11.3% | 9.8% |
+| BW05 relative error, seated, M1c (σ = 1) | 15.0% | 10.8% |
+| BW05 relative error, seated, M1d (σ ∝ h²) | 9.9% | **8.8%** |
+| spring force share, M1c | 17.0% | 14.2% |
+| spring force share, M1d | 4.6% | 1.7% |
+
+(Whitney's BW05 error is 26.0%.)
+
+**Verdict, as registered.**
+- M1c and M1d **fail** the M1b-moment trend gate. The leftover zeroth moment grew from 0.38% to 0.70%, as pass 1
+  predicted before the cell pass.
+- Every other gate passes at both levels. The poke term (Lemma B's defect, the quantity the moment correction exists
+  to remove) falls from 2.49% to 2.07%. The variational force converges in BW05 at every arm. With M1d's
+  h²-scaled spring the seated error is the lowest of any variational force so far (8.8%), and the spring's share
+  falls as designed.
+
+**What this means for the gate.**
+- The moment gate was written as a proxy for the poke term. At n = 3 the proxy and its target disagree: the
+  leftover moment grows while the poke term falls.
+- Whether the moment trend gate should be retired in favour of the poke gate it stands for is a decision for Bee.
+  It is not made here, and the gate is not changed after the fact.
+- As registered, the variational gate is **not closed**.

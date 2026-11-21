@@ -1,0 +1,43 @@
+{
+ "level": 2,
+ "edges": 3786,
+ "cells": 3240,
+ "rho": 0.13545926022811192,
+ "k": 1,
+ "neumann_K": 8,
+ "sigma": 0.12179842726861359,
+ "kind": "M1d (fast assembly of M1c; research script, not an engine run)",
+ "seconds_pass1": 3290.8,
+ "predicted_leftover_moment_median": 0.007027974793422289,
+ "seconds_cells": 100053.8,
+ "leftover_moment_median": 0.0070279747934223116,
+ "leftover_moment_max": 0.04315679488076169,
+ "leftover_vs_prediction_rel": 4.0684760625309824e-14,
+ "gauge_dimension": 545,
+ "seam_rms_jump_relative": 9.391761911999064e-05,
+ "seam_points": 38880,
+ "arms": {
+  "unseated": {
+   "bw05_relative_error": 0.09837846918343698,
+   "reconstruction_term": 0.09957113033729643,
+   "poke_term": 0.02067002121469323,
+   "curvature_relative_error": 0.014189771578683352,
+   "asymmetry": 3.8532410445670195e-16,
+   "wobble_count_below_1": 763,
+   "min_physical_eig": 0.024982336551016122,
+   "negative_physical": 0
+  },
+  "seated": {
+   "bw05_relative_error": 0.08810199031958933,
+   "reconstruction_term": 0.09957113033729643,
+   "poke_term": 0.02067002121469323,
+   "curvature_relative_error": 0.014189771578683352,
+   "asymmetry": 2.1232377892216167e-16,
+   "spring_force_share": 0.017304140317481478,
+   "wobble_count_below_1": 0,
+   "min_physical_eig": 3.9579593828788386,
+   "negative_physical": 0
+  }
+ },
+ "seconds": 100243.0
+}

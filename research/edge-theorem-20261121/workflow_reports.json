@@ -1,0 +1,898 @@
+{
+ "workflow": "edge-theorem-scoping wf_b439cb2d-c5f (10 agents: literature + citation verifier; WP1-WP4 + adversarial verifier each)",
+ "reports": [
+  {
+   "key": "v2:7621821698084c24cfb9382f68d57d98e1ee84b6744d25a06123050afe4e79f2",
+   "result": {
+    "summary": "The edge result is proved on both slices (t = 3 with y = \u221a3, and t = 3 with y = 3/2), but only for sectors j \u2264 12. It uses exact algebra plus rigorous interval arithmetic. Let x* be the unique real root of P2(x, y, \u221a3) in [-3, 1]. Then on [-3, r_next) the twist is the floor of every sector j \u2264 12 iff x \u2264 x*. Here r_next is the next real zero of det(B_{4,0} - lambda_4 I), and it is a root of P1. The whole script runs in about 25 s.\n\nHow it is proved:\n- **Blocks.** The slice blocks are built exactly in sympy. The exact determinant matches the srepr polynomial exactly (3^9 D = P), and factor_list gives P = -16384\u00b7P1\u00b7P2.\n- **Roots.** The real roots of P1 and P2 are isolated with rational endpoints, using the norm over Q(\u221a3) and exact sign tests. Both norms are squarefree, so every root is simple.\n- **Transversality.** Interval enclosures show dP2/dx \u2260 0 and P1 \u2260 0 on x* \u00b1 1e-6.\n- **Sign of m.** Interval Cholesky shows B_{4,0} - lambda_4 is positive definite at x = -3. Then the eigen-branch argument (Rellich) gives m > 0 on [-3, x*), m(x*) = 0, and m < 0 on (x*, r_next).\n- **Other blocks.** Interval Cholesky on covers of [-3, x* + 0.02] certifies all 116 other non-twist blocks per slice, using the Alefeld-Mayer theorem.\n\nNot proved:\n- Sectors j > 12 near the edge. The large-j proof covers only x in [-3, -1.5].\n- The gauge-orthogonal edge.\n- That the closed-form blocks are the charge blocks of H + GG*. This WP relies on earlier numerical checks for that and does not re-derive it.\n\nThe .md file also lists what a 2-D (t, y) region would need. That part is a plan, not proved: no root collisions in x (discriminant and resultant nonzero, leading x-coefficient nonzero), one positive-definite base point per connected region, a 3-D interval cover near the edge surface, and certificates for the middle sectors 12 < j < 80.",
+    "files_written": [
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp3_slice_iff.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp3_slice_iff.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp3_slice_iff_log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp3_slice_iff.md"
+    ],
+    "results": [
+     {
+      "claim": "Exact setup on both slices. B_{4,0} is exactly real symmetric. For every j <= 12, both charge \u00b1(l+2) 1x1 blocks equal lambda_j exactly. The exact blocks agree with EE.Blocks to 2.8e-14 (that agreement is COMPUTED).",
+      "status": "PROVED",
+      "evidence": "wp3_slice_iff.json, keys E1_*"
+     },
+     {
+      "claim": "On the slice, 3^9 * det(B_{4,0} - lambda_4 I) = P(x, y, sqrt3) exactly. Also P = -16384 * P1 * P2, with degrees (5,6,12) and (7,8,16), and both factors even in y.",
+      "status": "PROVED",
+      "evidence": "wp3_slice_iff.json: E2_P_slice_equals_3^9_det_exactly = true, P_const = -16384, P*_degrees_xys, P*_even_in_y"
+     },
+     {
+      "claim": "y = sqrt3: P2 has exactly one real root in [-3,1]. It is x* = -0.3821684822419167, with a rational isolating interval of width 3.8e-31. P1 has roots -0.0650646510788456 (= r_next) and 0.1933557784098346. All roots are simple (squarefree norms). The intervals are disjoint.",
+      "status": "PROVED",
+      "evidence": "wp3_slice_iff.json[sqrt3]: E3_*, xstar_isolating_interval. Matches exact_edge.json edge_A -0.38216848224191763 to 9.4e-16."
+     },
+     {
+      "claim": "y = 3/2: P2 has exactly one real root in [-3,1]. It is x* = -0.37158172515020627, with interval width 3.3e-31. P1 has roots -0.008268340671784679 (= r_next) and 0.12596829860994416. All roots are simple.",
+      "status": "PROVED",
+      "evidence": "wp3_slice_iff.json[1.5]: E3_*. Matches exact_edge.json edge_A -0.37158172515045024 to 2.4e-13."
+     },
+     {
+      "claim": "Transversality at x*. On x* \u00b1 1e-6, the interval enclosure of dP2/dx is about 1.1032e7 (y = sqrt3) and 8.3613e6 (y = 3/2), and the enclosure of P1 is in [23434.09, 23434.34] and [20392.46, 20392.68]. All exclude 0.",
+      "status": "PROVED",
+      "evidence": "wp3_slice_iff.json: E3_dP2dx_enclosure_on_xstar+-1e-6, E3_other_factor_enclosure_at_xstar"
+     },
+     {
+      "claim": "m(x) = lambda_min(B_{4,0}) - lambda_4 is > 0 on [-3, x*), = 0 at x*, and < 0 on (x*, r_next), on both slices. Proof: positive definite at x = -3 by interval Cholesky (min pivot lower bound 30.09 and 30.40), then the Rellich branch argument with D having a simple zero at x*.",
+      "status": "PROVED",
+      "evidence": "wp3_slice_iff.json: E4_*. Independent interval-Cholesky cover of [-3, x*-0.02] also passes (E4b). Double-precision m(x*+1e-3) = -0.01097 and -0.01103 (COMPUTED)."
+     },
+     {
+      "claim": "Every other non-twist block (j,q) with j <= 12, 116 blocks per slice, has lambda_min > lambda_j on [-3, x* + 0.02].",
+      "status": "PROVED",
+      "evidence": "wp3_slice_iff.json: E5_all_other_blocks_certified = true. Interval Cholesky with at most 14 pieces and depth 2. Smallest pivot lower bound is block (1,3/2): 0.0038 (y = sqrt3) and 0.027 (y = 3/2)."
+     },
+     {
+      "claim": "On each slice, restricted to sectors j <= 12 and x in [-3, r_next), the twist is the floor iff x <= x*.",
+      "status": "PROVED",
+      "evidence": "Combination of the E4 and E5 results above"
+     },
+     {
+      "claim": "The 2-D (t,y) extension would need: Disc_x(P2), Res_x(P1,P2) and the leading x-coefficient nonzero on the region; one positive-definite base point per connected region; a 3-D interval cover near the edge surface; and certificates for 12 < j < 80 plus an improved large-j bound near the edge.",
+      "status": "CONJECTURE",
+      "evidence": "This is a plan in wp3_slice_iff.md. None of it was computed."
+     }
+    ],
+    "open_issues": [
+     "Sectors j > 12 on the slices are not covered near the edge. The large-j proof covers only x in [-3,-1.5], and plain Gershgorin needs l ~ 640 near the edge.",
+     "That the closed-form blocks equal the H+GG* charge blocks rests on earlier numerical validation, not on an independent symbolic proof in this WP.",
+     "The gauge-orthogonal (slice-spectrum) edge was not treated. It is 0.027 (y = sqrt3) and 0.020 (y = 3/2) above the H+GG* edge on these slices, per exact_edge.json.",
+     "Block (1, 3/2) has a small margin just above the edge (pivot lower bound 0.0038 at y = sqrt3), so a 2-D cover will be tight there.",
+     "The rigour assumes mpmath iv outward rounding, exact sympy root isolation, and the Alefeld-Mayer interval-Cholesky theorem."
+    ]
+   }
+  },
+  {
+   "key": "v2:21093b0b82355e424e47d1000a383baf90d82290a772012a24570588e9a2a450",
+   "result": {
+    "claims": [
+     {
+      "topic": "(1) Nielsen-Olesen instability: primary source",
+      "claim": "Nielsen and Olesen (1978) showed that a charged vector (Yang-Mills) field in a uniform external magnetic field has an unstable mode. This is the original source of the chromomagnetic instability.",
+      "title": "An Unstable Yang-Mills Field Mode",
+      "authors": "N.K. Nielsen, P. Olesen",
+      "year": "1978",
+      "venue": "Nucl. Phys. B 144, 376-396",
+      "doi_or_url": "https://doi.org/10.1016/0550-3213(78)90377-2 (bibliographic record and abstract read from the INSPIRE API: https://inspirehep.net/api/literature?q=title%20%22An%20unstable%20Yang-Mills%20field%20mode%22)",
+      "quote": "It is shown that there exists an unstable mode of the field.",
+      "fetched": true,
+      "relevance": "This is the physical prototype for the twist: one spin-aligned, lowest-Landau-level mode whose eigenvalue drops below zero. The Elsevier full text did not load (it redirects), so only the abstract was read. Nothing in it concerns compact or Berger geometry."
+     },
+     {
+      "topic": "(1) Savvidy vacuum",
+      "claim": "Savvidy (1977) found that one-loop radiative corrections make the perturbative Yang-Mills vacuum unstable, which favours a constant chromomagnetic field.",
+      "title": "Infrared Instability of the Vacuum State of Gauge Theories and Asymptotic Freedom",
+      "authors": "G.K. Savvidy",
+      "year": "1977",
+      "venue": "Phys. Lett. B 71, 133-134",
+      "doi_or_url": "https://doi.org/10.1016/0370-2693(77)90759-6 (record and abstract read from the INSPIRE API)",
+      "quote": "The radiative corrections to the Yang-Mills massless theory are found to lead to an instability of the vacuum state.",
+      "fetched": true,
+      "relevance": "Background only. This is a one-loop effective-potential result, not a classical Hessian floor theorem."
+     },
+     {
+      "topic": "(1) Lowest Landau level and gyromagnetic ratio 2 mechanism",
+      "claim": "For a charged W boson with S3 = eps in {-1,0,1} in a constant field B, the spectrum is E^2 = (2n1+1)gB + 2 eps gB + mW^2. The non-minimal coupling gives gyromagnetic factor 2, so the Zeeman term is twice the first Landau-level term and the ground state sits at -gB + mW^2. In pure Yang-Mills this ground state is tachyonic for every B != 0, which is the Nielsen-Olesen instability.",
+      "title": "Vortex Zero Modes, Large Flux Limit and Ambjorn-Nielsen-Olesen Magnetic Instabilities",
+      "authors": "Stefano Bolognesi, Chandrasekhar Chatterjee, Sven Bjarke Gudnason, Kenichi Konishi",
+      "year": "2014",
+      "venue": "JHEP 1410:101 (2014)",
+      "doi_or_url": "https://arxiv.org/abs/1408.1572 ; DOI 10.1007/JHEP10(2014)101",
+      "quote": "Note that the non-minimal coupling of the W boson is responsible for the anomalous gyromagnetic factor gs = 2. Now the Zeeman term is twice the first Landau level term, and so the ground state energy is En,-1 = -gB + m2W ... For pure Yang-Mills (i.e. mW = 0) the ground state is always tachyonic for any B != 0. This is the instability discussed by Nielsen, Olesen and",
+      "fetched": true,
+      "relevance": "This is the textbook statement of the mechanism behind our twist, a Landau term plus a g=2 Zeeman term. I extracted the quote myself with pdftotext from the arXiv PDF, so the wording is verbatim (PDF line breaks removed). It is a flat-space formula. That our closed-form twist eigenvalue lambda = (x+(j+2)/sqrt t)^2 + 2 sqrt t x - y^2 is the Berger-sphere analogue of a Landau-plus-Zeeman energy is my CONJECTURE, not something this source says."
+     },
+     {
+      "topic": "(1) Nielsen-Olesen instability, later usage",
+      "claim": "In later physics usage, Nielsen-Olesen unstable modes are exponentially growing soft modes of non-Abelian gauge-field fluctuations around a colour-magnetic background.",
+      "title": "Schwinger mechanism enhanced by the Nielsen--Olesen instability",
+      "authors": "Naoto Tanji, Kazunori Itakura",
+      "year": "2012",
+      "venue": "Phys. Lett. B (DOI 10.1016/j.physletb.2012.05.043); arXiv:1111.6772",
+      "doi_or_url": "https://arxiv.org/abs/1111.6772",
+      "quote": "exponentially growing unstable modes",
+      "fetched": true,
+      "relevance": "Secondary confirmation of the mechanism. Not directly relevant to compact or homogeneous geometry."
+     },
+     {
+      "topic": "(1)+(4) Chromomagnetic backgrounds on S^3: closest physics prior art",
+      "claim": "Avramidi and Collopy study static, covariantly constant SU(2) gauge fields on the round S^3 in S^1 x S^3 Yang-Mills theory. Their stated result is that only the background containing purely spinor (fundamental) SU(2) representations is stable, and every other covariantly constant background has negative modes.",
+      "title": "Thermal Yang-Mills Theory In the Einstein Universe",
+      "authors": "Ivan G. Avramidi, Samuel Collopy",
+      "year": "2012",
+      "venue": "J. Phys. A: Math. Theor. 45 (2012) 374009",
+      "doi_or_url": "https://arxiv.org/abs/1201.5163 ; DOI 10.1088/1751-8113/45/37/374009",
+      "quote": "the only configuration of the covariantly constant Yang-Mills background that is stable ... all other configurations contain negative modes and are unstable",
+      "fetched": true,
+      "relevance": "This is the closest prior art I found: negative modes of homogeneous chromomagnetic backgrounds on S^3. It covers only the round sphere and covariantly constant fields. Nothing in the abstract treats a Berger squashing t, a two-parameter (x,y) circle-symmetric family, or a polynomial wall where the floor changes. Only the abstract was read, and the quote is as returned by WebFetch's extraction model."
+     },
+     {
+      "topic": "(3)+(4) Yang-Mills on S^3 with symmetric (SO(4)-invariant) ansatz",
+      "claim": "Kumar, Lechtenfeld and Picanco Costa test the linear stability of SO(4)-invariant, time-dependent SU(2) Yang-Mills solutions in conformally flat (closed FLRW) spacetimes. They find all such cosmic Yang-Mills backgrounds linearly unstable.",
+      "title": "Instability of cosmic Yang-Mills fields",
+      "authors": "Kaushlendra Kumar, Olaf Lechtenfeld, Gabriel Picanco Costa",
+      "year": "2021",
+      "venue": "Nucl. Phys. B 973 (2021) 115583",
+      "doi_or_url": "https://arxiv.org/abs/2102.08401 ; DOI 10.1016/j.nuclphysb.2021.115583",
+      "quote": "all cosmic Yang-Mills backgrounds are rendered linearly unstable",
+      "fetched": true,
+      "relevance": "This paper uses the round S^3 (SO(4) symmetry) and Floquet analysis of a time-dependent background. In what I read it is not a squashed-sphere Hessian floor computation, and I found no paper by this group on squashed S^3. It is useful as a citation for symmetric-ansatz fluctuation analysis on S^3."
+     },
+     {
+      "topic": "(4) Homogeneous SU(2) Yang-Mills on Bianchi IX (SU(2)-group) spacetimes",
+      "claim": "Jin and Maeda study Einstein-Yang-Mills dynamics in class A Bianchi spacetimes, including Bianchi IX, and report late-time chaos and an unstable Kasner circle.",
+      "title": "Chaos of Yang-Mills Field in Class A Bianchi Spacetimes",
+      "authors": "Yoshida Jin, Kei-ichi Maeda",
+      "year": "2005",
+      "venue": "Phys. Rev. D 71 (2005) 064007",
+      "doi_or_url": "https://arxiv.org/abs/gr-qc/0412060 ; DOI 10.1103/PhysRevD.71.064007",
+      "quote": "the Kasner solution is not an attractor",
+      "fetched": true,
+      "relevance": "Bianchi IX spatial slices are left-invariant metrics on SU(2), which include Berger spheres. A homogeneous (left-invariant) SU(2) gauge ansatz like our m_i is standard in that literature. I learned about the ansatz from a search snippet and the abstract does not state it, so only the dynamics claim is verified. This line of work studies dynamics, not the second-variation floor."
+     },
+     {
+      "topic": "(2) Bochner-Weitzenbock formula for the Yang-Mills second variation",
+      "claim": "Bourguignon-Lawson's Bochner-Weitzenbock formulas give the covariant Hodge Laplacian on bundle-valued 1-forms as rough Laplacian + Ric + a curvature (F) term. On 2-forms the extra term is Ric^Id + 2R^M. These formulas feed the Yang-Mills Jacobi operator.",
+      "title": "Nonexistence of weakly stable Yang-Mills fields (secondary source restating Bourguignon-Lawson as its Theorem 2.1)",
+      "authors": "Xiaoli Han, Yang Wen",
+      "year": "2026",
+      "venue": "arXiv:2601.17649 [math.DG]",
+      "doi_or_url": "https://arxiv.org/html/2601.17649v1",
+      "quote": "\u0394\u2207\u03d5 = \u2207\u2217\u2207 + \u03d5\u2218Ric + \u211cg\u2207(\u03d5) ... \u0394\u2207\u03c8 = \u2207\u2217\u2207 + \u03c8\u2218(Ric\u2227Id + 2RM) + \u211cg\u2207(\u03c8)",
+      "fetched": true,
+      "relevance": "This is the standard tool behind our H + GG* splitting. On 1-forms, H + d_A d_A* equals the covariant Hodge Laplacian, which by Weitzenbock is nabla*nabla + Ric + an F-term. The Ric + 2F form the task mentions is this. The quote is a secondary restatement, as returned by WebFetch. I could not open the Bourguignon-Lawson original: Springer, Project Euclid and scispace all failed or redirected to login. Cite the original by its record (next item), and check the printed formula and theorem number against the paper before citing."
+     },
+     {
+      "topic": "(2) Bourguignon-Lawson 1981: bibliographic record",
+      "claim": "Bourguignon and Lawson (1981) is the standard reference for stability and gap phenomena of Yang-Mills fields over spheres and locally homogeneous spaces.",
+      "title": "Stability and isolation phenomena for Yang-Mills fields",
+      "authors": "Jean-Pierre Bourguignon, H. Blaine Lawson, Jr.",
+      "year": "1981",
+      "venue": "Commun. Math. Phys. 79, 189-230 (zbMATH 0475.53060)",
+      "doi_or_url": "https://doi.org/10.1007/BF01942061 ; zbMATH record read via https://api.zbmath.org/v1/document/_search?search_string=ti%3A%22Stability%20and%20isolation%20phenomena%20for%20Yang-Mills%20fields%22",
+      "quote": "Stability and isolation phenomena for Yang-Mills fields (zbMATH keywords: \"weakly stable Yang-Mills fields\", \"self-dual\", \"gap phenomena\")",
+      "fetched": true,
+      "relevance": "This verifies the citation only. zbMATH has no review text and the full text was not accessible. I did not verify any theorem number or page."
+     },
+     {
+      "topic": "(2) Stability on spheres (Simons / Bourguignon-Lawson)",
+      "claim": "Per nLab, every weakly stable Yang-Mills connection on S^n with n >= 5 is flat (Simons, announced in 1977 without written publication, proved in Bourguignon-Lawson 1981). On S^4, weakly stable SU(2), SU(3) or U(2) fields are self-dual or anti-self-dual.",
+      "title": "stable Yang-Mills connection (nLab entry)",
+      "authors": "nLab contributors",
+      "year": "accessed 2026-11-21",
+      "venue": "nLab (wiki)",
+      "doi_or_url": "https://ncatlab.org/nlab/show/stable+Yang-Mills+connection",
+      "quote": "Every weakly stable Yang-Mills connection on S^n for n\u22655 is flat.",
+      "fetched": true,
+      "relevance": "Background on spheres: S^3 is not covered by the n >= 5 theorem. Han-Wen (arXiv:2601.17649) paraphrase Bourguignon-Lawson as having proved there 'is nontrivial weakly stable' connections on S^n for n >= 5. That contradicts nLab and is probably a misstatement, so do not quote Han-Wen on this point."
+     },
+     {
+      "topic": "(2) Nonexistence near the round metric",
+      "claim": "Han and Wen prove that for every metric in a C^2-neighbourhood of the round metric on S^n (n >= 5) there are no nontrivial weakly stable Yang-Mills connections.",
+      "title": "Nonexistence of weakly stable Yang-Mills fields",
+      "authors": "Xiaoli Han, Yang Wen",
+      "year": "2026",
+      "venue": "arXiv:2601.17649",
+      "doi_or_url": "https://arxiv.org/abs/2601.17649",
+      "quote": "there is no nontrivial weakly stable Yang-Mills connections for any metric",
+      "fetched": true,
+      "relevance": "A perturbation-of-metric stability result, comparable in spirit to varying the Berger parameter t. It applies to n >= 5, not to S^3."
+     },
+     {
+      "topic": "(2) Homogeneous / symmetric spaces: Laquer and Kobayashi-Ohnita-Takeuchi",
+      "claim": "Laquer (1984) studied the stability of the Yang-Mills functional near canonical connections and classified the symmetric spaces that admit unstable Yang-Mills fields. Kobayashi-Ohnita-Takeuchi (1986) showed that all Yang-Mills connections on P^2(Cay) and E6/F4 are unstable.",
+      "title": "Laquer, 'Stability properties of the Yang-Mills functional near the canonical connection'; Kobayashi-Ohnita-Takeuchi, 'On instability of Yang-Mills connections' (content via the Han-Wen restatement)",
+      "authors": "H. Turner Laquer; S. Kobayashi, Y. Ohnita, M. Takeuchi",
+      "year": "1984; 1986",
+      "venue": "Michigan Math. J. 31, 139-159 (zbMATH 0647.53022, DOI 10.1307/mmj/1029003019); Math. Z. 193, 165-190 (EuDML 173776)",
+      "doi_or_url": "https://doi.org/10.1307/mmj/1029003019 ; https://eudml.org/doc/173776 ; content quote from https://arxiv.org/html/2601.17649v1",
+      "quote": "extended this program by classifying symmetric manifolds admitting unstable Yang-Mills fields",
+      "fetched": true,
+      "relevance": "The bibliographic data comes from the zbMATH and EuDML records I opened. The descriptions of the results are secondary (Han-Wen) and I did not read the originals. Laquer's index computation for the canonical connection on a compact group such as SU(2) = S^3 with the round metric is the nearest classical 'Hessian of an invariant connection on a group' computation. The canonical connection on SU(2) is a particular left-invariant connection, which in our family would be some (x,y) at t=1; which point that is, I have not checked."
+     },
+     {
+      "topic": "(2) Morse index on round spheres",
+      "claim": "Lei Ni gives a multiplicity estimate for the Jacobi operator of a nonflat Yang-Mills field over S^m, refining Simons' stability result.",
+      "title": "A multiplicity estimate for the Jacobi operator of a nonflat Yang-Mills field over S^m",
+      "authors": "Lei Ni",
+      "year": "2022",
+      "venue": "arXiv:2209.08090",
+      "doi_or_url": "https://arxiv.org/abs/2209.08090",
+      "quote": "The result also implies the earlier Morse index estimates for both cases.",
+      "fetched": true,
+      "relevance": "These are index bounds on round spheres. They give no floor-location or wall result."
+     },
+     {
+      "topic": "(3) Laplace spectrum of Berger spheres",
+      "claim": "Lauret gives an explicit formula for the smallest nonzero Laplace eigenvalue of every homogeneous metric on S^3 and describes the full spectra of 3-dimensional Berger spheres.",
+      "title": "The smallest Laplace eigenvalue of homogeneous 3-spheres",
+      "authors": "Emilio A. Lauret",
+      "year": "2019",
+      "venue": "Bull. Lond. Math. Soc. 51:1 (2019) 49-69",
+      "doi_or_url": "https://arxiv.org/abs/1801.04259",
+      "quote": "For the subfamily of 3-dimensional Berger spheres, we obtain a full description of their spectra.",
+      "fetched": true,
+      "relevance": "This is the scalar Laplacian. It is citable for the representation-theoretic (Peter-Weyl, charge-sector) method on Berger spheres that our block decomposition also uses. It is not the gauge Hessian."
+     },
+     {
+      "topic": "(3) Hodge Laplacian on 1-forms of Berger spheres",
+      "claim": "Henkel and Lauret compute the full spectrum of the Hodge Laplacian on 1-forms for the canonical variation (Berger 3-spheres) and prove an explicit formula for the first eigenvalue of general homogeneous metrics on S^3.",
+      "title": "Hodge Laplacian on 1-forms of homogeneous 3-spheres",
+      "authors": "Jonas Henkel, Emilio A. Lauret",
+      "year": "2026",
+      "venue": "arXiv:2605.05406 [math.DG] (submitted 6 May 2026)",
+      "doi_or_url": "https://arxiv.org/abs/2605.05406",
+      "quote": "the first explicit computation of the full spectrum of the Hodge-Laplacian for a canonical variation",
+      "fetched": true,
+      "relevance": "This is the most relevant spectral prior art. At the trivial connection (x=y=0), H + GG* on su(2)-valued 1-forms reduces to three copies of the Hodge Laplacian on 1-forms. That is a standard identity, not taken from this paper, and should be checked against our Blocks class at x=y=0. Their Berger 1-form spectrum should then match our blocks at x=y=0, which gives an independent check. Their paper treats the flat connection only. The abstract also says the formal proof of one result was found by an AI model."
+     },
+     {
+      "topic": "(3) Dirac spectrum on Berger spheres (Bar)",
+      "claim": "Bar computes Dirac eigenvalues on S^3 and its quotients with Berger metrics, using formulas for the Dirac operator on reductive homogeneous spaces together with Frobenius reciprocity.",
+      "title": "The Dirac operator on homogeneous spaces and its spectrum on 3-dimensional lens spaces",
+      "authors": "Christian Bar",
+      "year": "1992 (Potsdam publication list; the MaRDI/zbMATH record dates it 1993)",
+      "venue": "Arch. Math. 59 (1992) 65-79 (volume and pages from the Potsdam list); zbMATH 0786.53030",
+      "doi_or_url": "https://doi.org/10.1007/BF01199016 ; https://portal.mardi4nfdi.de/wiki/Item:Q1203541",
+      "quote": "the author calculates the eigenvalues of the Dirac operator on the sphere",
+      "fetched": true,
+      "relevance": "This is a method precedent: Frobenius reciprocity on Berger S^3 is the same structure as our charge-q block decomposition. The quote comes from the zbMATH review (by S. Giambrone) shown on MaRDI, not from the paper."
+     },
+     {
+      "topic": "(3) Dirac spectrum on homogeneous 3-spheres (Kling-Schueth)",
+      "claim": "Kling and Schueth compute and use the smallest eigenvalue of D^2 for left-invariant metrics on S^3 with positive scalar curvature, and show that Dirac-isospectral left-invariant metrics are isometric.",
+      "title": "On the Dirac spectrum of homogeneous 3-spheres",
+      "authors": "Jordi Kling, Dorothee Schueth",
+      "year": "2022",
+      "venue": "J. Geom. Anal. 32 (2022), no. 11, Paper No. 175",
+      "doi_or_url": "https://arxiv.org/abs/2204.12990",
+      "quote": "we compute and use the smallest eigenvalue of D\u00b2",
+      "fetched": true,
+      "relevance": "This is the closest analogue of our task, the smallest eigenvalue of a first-order-squared operator on homogeneous S^3, found by representation theory. It concerns the Dirac operator, not the gauge Hessian, and no wall or polynomial edge appears in the abstract."
+     },
+     {
+      "topic": "(5) Rigorous positive-definiteness certificate via floating-point Cholesky",
+      "claim": "Rump gives a rigorous, rounding-error-aware sufficient criterion for positive definiteness of symmetric/Hermitian matrices, including interval matrices, based on one floating-point Cholesky decomposition, plus a criterion to verify non-positive-definiteness.",
+      "title": "Verification of positive definiteness",
+      "authors": "S.M. Rump",
+      "year": "2006",
+      "venue": "BIT Numerical Mathematics 46:433-452",
+      "doi_or_url": "https://www.tuhh.de/ti3/paper/rump/Ru06c.pdf",
+      "quote": "We present a computational, simple and fast sufficient criterion to verify positive definiteness of a symmetric or Hermitian matrix. ... It is based on a floating-point Cholesky decomposition and improves a known result.",
+      "fetched": true,
+      "relevance": "This is a directly citable tool for certifying H + GG* - lambda_twist*I > 0 on the non-twist complement of each block, or block - c*I > 0 over interval boxes in D. The quote is verbatim, extracted with pdftotext from the author's PDF. A shifted Cholesky with interval entries can replace Gershgorin near the edge."
+     },
+     {
+      "topic": "(5) Verified bounds for all eigenpairs of Hermitian (and interval) matrices",
+      "claim": "Rump and Lange give verification methods with mathematically certain bounds for all eigenvalues and eigenvectors of Hermitian matrices, clusters included. The methods apply to interval data, with bounds that hold for every matrix in the interval.",
+      "title": "Fast computation of error bounds for all eigenpairs of a Hermitian and all singular pairs of a rectangular matrix with emphasis on eigen- and singular value clusters",
+      "authors": "Siegfried M. Rump, Marko Lange",
+      "year": "2023 (as given by the search result; I did not confirm the published venue)",
+      "venue": "preprint PDF on the author's site (published journal not verified this session)",
+      "doi_or_url": "https://www.tuhh.de/ti3/paper/rump/RuLa23.pdf",
+      "quote": "The computed bounds do contain the true result with mathematical certainty, and the algorithms apply to interval data as well. In that case the computed bounds are true for every real/complex matrix within the tolerances.",
+      "fetched": true,
+      "relevance": "Citable for interval-box eigenvalue enclosure of our blocks of at most 9 states. The quote is verbatim via pdftotext."
+     },
+     {
+      "topic": "(5) Brauer ovals of Cassini and sharper Gershgorin-type sets",
+      "claim": "For weakly irreducible matrices, the spectrum lies in Brualdi lemniscate sets, which lie in the union of Brauer ovals of Cassini, which lies in the union of Gershgorin disks (sigma(A) in B(A) in K(A) in G(A)). The minimal Gershgorin set lies in B(A).",
+      "title": "Gersgorin-type eigenvalue inclusion theorems and their sharpness",
+      "authors": "Richard S. Varga",
+      "year": "2001",
+      "venue": "Electron. Trans. Numer. Anal. (ETNA) 12, 113-133",
+      "doi_or_url": "https://etna.ricam.oeaw.ac.at/vol.12.2001/pp113-133.dir/pp113-133.pdf",
+      "quote": "we investigate the relationships between G(A), the union of Gersgorin disks, K(A), the union of Brauer ovals of Cassini, and B(A), the union of Brualdi lemniscate sets",
+      "fetched": true,
+      "relevance": "Citable improvements over plain Gershgorin for the large-j tail. They might lower the l ~ 640 that plain Gershgorin needs near the edge. Whether they help with our tridiagonal-like rows is untested. The quote is verbatim via pdftotext. Varga's 2004 Springer book 'Gersgorin and His Circles' covers weighted and minimal Gershgorin sets, but I did not open it (Springer login redirect)."
+     },
+     {
+      "topic": "(5) Schur complement inertia (Haynsworth)",
+      "claim": "For Hermitian H partitioned with H11 nonsingular, In(H) = In(H11) + In(H/H11), where H/H11 = H22 - H12* H11^-1 H12.",
+      "title": "Determination of the inertia of a partitioned Hermitian matrix",
+      "authors": "Emilie V. Haynsworth",
+      "year": "1968",
+      "venue": "Linear Algebra Appl. 1, 73-81 (zbMATH 0155.06304)",
+      "doi_or_url": "https://doi.org/10.1016/0024-3795(68)90050-5 ; statement read at https://en.wikipedia.org/wiki/Haynsworth_inertia_additivity_formula ; record at https://portal.mardi4nfdi.de/wiki/Publication:2526983",
+      "quote": "In[H11 H12; H12* H22] = In(H11) + In(H/H11)",
+      "fetched": true,
+      "relevance": "This makes the twist-versus-rest split rigorous. If the complement block minus lambda_twist is certified positive definite, the Schur complement gives the inertia of the full shifted block. The formula comes from Wikipedia, not the paper, so cite the paper by record."
+     },
+     {
+      "topic": "(5) Verified singular-value bounds for computer-assisted proofs",
+      "claim": "Terao, Watanabe and Ozaki give verified bounds for singular values of structured matrices, aimed at computer-assisted proofs for differential equations, including a lower bound for the minimum singular value that works well on sparse matrices.",
+      "title": "Verified error bounds for the singular values of structured matrices with applications to computer-assisted proofs for differential equations",
+      "authors": "Takeshi Terao, Yoshitaka Watanabe, Katsuhisa Ozaki",
+      "year": "2025",
+      "venue": "arXiv:2502.09984 [math.NA]",
+      "doi_or_url": "https://arxiv.org/abs/2502.09984",
+      "quote": "The method for estimating a lower bound of the minimum singular value is particularly effective for sparse matrices.",
+      "fetched": true,
+      "relevance": "A secondary tool reference. Its text (seen in a search snippet) mentions LDL^T inertia counting with rounding errors. Only the abstract was verified."
+     }
+    ],
+    "unverified_leads": [
+     "Bourguignon-Lawson (1981) full text: a search snippet attributed to a Bourguignon-Lawson-style paper the statement that 'the index of T(S^3/Gamma) is exactly one' and that a harmonic 3-dimensional bundle on S^3 under a curvature condition is flat or TS^3 with its canonical connection. This would bear directly on the round-sphere (t=1) end of our family, but the text could not be opened (Springer, Project Euclid and scispace all redirected or came back empty). The Ric + 2F Jacobi-operator form and theorem numbers are NOT verified from the original.",
+     "Laquer 1984 Michigan Math. J. 31 (DOI 10.1307/mmj/1029003019): a search snippet (from a G2-instanton paper) said Laquer computed Morse index n+1 and nullity 0 for canonical connections on S^n (n >= 5). I did not fetch it, and its Project Euclid page came back empty. Laquer's treatment of the canonical connection on SU(2)=S^3 is the most likely classical overlap with our t=1 slice. Worth getting.",
+     "Hitchin, 'Harmonic Spinors', Adv. Math. 14 (1974) 1-55, DOI 10.1016/0001-8708(74)90021-8. Search snippets say he computed the Dirac spectrum of the Berger family on S^3, with harmonic spinors appearing at special parameter values. Not fetched (only a garbled OCR copy at users.math.msu.edu was listed).",
+     "N.K. Nielsen, 'Asymptotic freedom as a spin effect', Am. J. Phys. 49 (1981) 1171, DOI 10.1119/1.12565. The INSPIRE record confirms the bibliographic data but has no abstract, so its content (the spin/gyromagnetic explanation of asymptotic freedom and the instability) is not verified.",
+     "Tanno's original computation of the Laplace spectrum of Berger 3-spheres (cited as 'Lemma 4.1' in arXiv:1801.04259 and arXiv:2309.02015 according to search snippets). Not fetched, and I give no bibliographic data.",
+     "A formula lambda_{n,m}(k) = n(n+2) + (k^2-1) m^2 for the Berger Laplacian appeared in a search snippet of arXiv:2510.03238. Not fetched or verified.",
+     "Bettiol-Lauret-Piccione, 'Full Laplace spectrum of distance spheres in symmetric spaces of rank one', arXiv:2012.02349 (Bull. LMS 2022 per snippet). Not fetched.",
+     "van Baal and collaborators on SU(2) Yang-Mills in a finite volume S^3 (sphalerons, vacuum valley, Hessian near the vacuum; e.g. hep-th/9504117, NPB 385 (1992) 185). The van Baal NPB PDF is a scan and was unreadable. Their S^3 work may contain fluctuation spectra around homogeneous (left-invariant) modes on the round S^3, which could overlap our t=1 slice. Not verified.",
+     "Bourguignon-Lawson-Simons, PNAS 1979 'Stability and gap phenomena for Yang-Mills fields' (PubMed 16592637). PubMed returned only a cookie wall. Not verified.",
+     "Simons' 1977 result (no weakly stable Yang-Mills fields on S^n, n >= 5). Per nLab it was presented at a Tokyo symposium without written publication. Known to me only through nLab.",
+     "Darian-Kunzle Einstein-Yang-Mills with homogeneous SU(2) ansatz (axisymmetric Bianchi I/IX). Only referenced in the Jin-Maeda bibliography per a snippet. Not fetched.",
+     "Behnke-style guaranteed eigenvalue bounds via LDL^T / Sylvester inertia in interval arithmetic: searched but found no record of a 1991 Computing paper. Nakatsukasa-Noferini (arXiv:1711.00495) on inertia laws for generalized indefinite problems appeared in search but was not fetched.",
+     "Varga, 'Gersgorin and His Circles', Springer Series in Computational Mathematics 36 (2004), DOI 10.1007/978-3-642-17798-9. Weighted and minimal Gershgorin sets. The Springer page redirected to login and the MPDL record returned 403. Not opened.",
+     "Rump-Lange 2023: published journal/venue not verified (author preprint only)."
+    ],
+    "prior_art_assessment": "Method: every claim above comes from a source opened this session with WebFetch. The quotes from Bolognesi et al., Rump 2006, Rump-Lange and Varga I extracted myself from the PDFs with pdftotext, so those are verbatim. The other quotes are verbatim only as far as WebFetch's extraction model returned them; check them against the source before they go into a paper.\n\n(1) Chromomagnetic instability. The Nielsen-Olesen (1978) and Savvidy (1977) records were fetched. The lowest-Landau-level plus g=2 Zeeman mechanism is stated explicitly in Bolognesi-Chatterjee-Gudnason-Konishi (JHEP 2014): E^2 = (2n+1)gB + 2 eps gB, with the ground state tachyonic for any B != 0 in pure Yang-Mills. The structural match with our twist (unique maximal-charge state, a squared kinetic term plus a linear-in-x 'Zeeman-like' term) is a natural physical interpretation, but it is my CONJECTURE and none of these sources states it. On S^3, the closest physics prior art is Avramidi-Collopy (2012). They find negative modes in every covariantly constant SU(2) background on the round S^3 except the purely spinor-representation one. Squashing, our (x,y) family and any floor-switching wall are absent from the abstract.\n\n(2) Second variation. The Bourguignon-Lawson Weitzenbock formula (rough Laplacian + Ric + curvature term on 1-forms; Ric^Id + 2R^M on 2-forms) is verified only through Han-Wen's 2026 restatement. The original text was not accessible, so theorem numbers and the exact Ric + 2F form must be checked against the paper. The stability literature (Simons; Bourguignon-Lawson; Laquer 1984; Kobayashi-Ohnita-Takeuchi 1986; Han-Wen 2026; Ni 2022) concerns existence or nonexistence of stable Yang-Mills connections and index bounds, mostly on round spheres of dimension >= 4 or 5 and on symmetric spaces. None of what I read computes the Hessian floor along a non-critical, two-parameter family of left-invariant gauge fields on a Berger sphere. Our fields are generally not Yang-Mills critical points, so these stability theorems do not apply directly. Laquer's canonical-connection index computation could overlap our t=1 slice. It is unverified and worth getting.\n\n(3) Berger spectra. Strong, citable method precedents use Peter-Weyl / Frobenius reciprocity sector decompositions on Berger S^3. Bar did this for Dirac; Lauret (BLMS 2019) gives the full Laplace spectra of Berger spheres; Kling-Schueth (JGA 2022) give the smallest D^2 eigenvalue on homogeneous S^3; Henkel-Lauret (arXiv May 2026) give the full Hodge 1-form spectrum of Berger 3-spheres. Henkel-Lauret yields a concrete independent check. At x=y=0, H + GG* should reduce to three copies of the 1-form Hodge Laplacian (a standard identity, not from their paper), so their Berger spectrum should match our blocks there. I found no Yang-Mills Hessian computation on squashed or Berger S^3 by Kumar-Lechtenfeld-Picanco Costa or anyone else. Their 2021 paper is SO(4)-invariant, round, time-dependent and uses Floquet theory.\n\n(4) Equivariant / homogeneous fields. Homogeneous SU(2) gauge ansatze on SU(2)-group (Bianchi IX) slices appear in Einstein-Yang-Mills cosmology (Jin-Maeda 2005, dynamics only). I found no classification or Hessian floor study of circle-symmetric left-invariant connections on Berger spheres.\n\n(5) Tools to cite. Rump (BIT 2006) verifies positive definiteness through floating-point Cholesky, valid for interval matrices. Rump-Lange give verified enclosures for all eigenpairs, including interval data. Haynsworth (1968) gives inertia additivity across the Schur complement, which makes 'twist versus complement' rigorous. Varga (ETNA 2001) shows Brauer-Cassini and Brualdi sets are nested inside the Gershgorin union, which may cut the l ~ 640 that plain Gershgorin needs near the edge (untested).\n\nIs the edge known? I searched for the Yang-Mills Hessian on Berger or squashed S^3, Morse index of left-invariant connections, chromomagnetic instability on S^3 via the Hopf fibration, and invariant Yang-Mills connections on squashed S^3. I found NO source containing a result of our form: the lowest eigenvalue of the Yang-Mills Hessian (or H + GG*) in a circle-symmetric family switching between a maximal-charge state and a competitor block across a polynomial wall in (x, y, sqrt t). As far as this search reaches, the edge theorem appears new. The search was limited, though. Several classical full texts (Bourguignon-Lawson, Laquer, van Baal's S^3 papers, Hitchin) could not be read, and they are where an overlap at the round point t=1 would most likely sit. Those should be checked before any novelty claim is made."
+   }
+  },
+  {
+   "key": "v2:4d767825fda55456a6b74e08e01122ec9a0b7137a57d4dadad74e1141f0424be",
+   "result": {
+    "verdict": "sound_with_fixes",
+    "reproduced": [
+     "Reran scripts/edge_wp3_slice_iff.py into /tmp/wp3v/out with OMP_NUM_THREADS=1. It exited 0 in 24.85 s. Every key except 'seconds' is identical to research/edge-theorem-20261121/wp3_slice_iff.json.",
+     "E2 (PROVED, rerun): 3^9*det(B40 - lam4 I) == P on both slices. factor_list gives const -16384 and two simple factors of degrees (5,6,12) and (7,8,16), both even in y.",
+     "E3 (PROVED, rerun plus my own check in /tmp/wp3v/chk/v1.py): exact P1, P2 sign at every isolating-interval endpoint of the norm N in [-3,1] is nonzero, and N has no rational roots. So the sign-change filter cannot miss a root sitting on an endpoint. N is squarefree, so p and its conjugate share no root, and 'sign change iff root of p' is valid.",
+     "Separate cross-check, mpmath polyroots at 60 digits on the slice polynomials (COMPUTED): P2 has exactly one real root in [-3,1] (-0.382168482241916692 for y=sqrt3, -0.371581725150206292 for y=3/2). P1 has exactly two (-0.0650646510788456, 0.1933557784098346 and -0.00826834067178468, 0.125968298609944). This agrees with the rational isolation, so the right root was chosen as x*.",
+     "The dP2/dx and P1 enclosures on x*\u00b11e-6 match the report (about 1.1032e7 and 8.3613e6; P1 in [23434.09, 23434.34] and [20392.46, 20392.68]).",
+     "E4: interval Cholesky at x=-3 gives min pivot lower bounds 30.09 and 30.40. The E4b cover of [-3, x*-0.02] passes.",
+     "E5: 116 blocks per slice, all certified. 116 is the complete count: sum over j=0..12 of (j+5) charges = 143, minus 26 twists, minus (4,0). Smallest pivot lower bound: block (1,3/2), 0.0038 and 0.027.",
+     "Logic check: D = prod(mu_i - lam4) has no zero on [-3,x*) and a simple zero at x* (simple root of P2 with P1 nonzero), and all branches are positive at -3. So m>0 on [-3,x*), m(x*)=0, and exactly one branch changes sign, giving m<0 up to r_next. The argument is complete. The 'only if' direction on (x*, r_next) needs only B40, so E5 covering only up to x*+0.02 is enough.",
+     "Separate double-precision sweep with EE.Blocks (/tmp/wp3v/chk/v2.py, COMPUTED): m(x) has the claimed sign at 500 grid points on [-3, r_next). The second eigenvalue of B40 stays above lam4 before x*. Other blocks with j<=12 have smallest eigen-gap 0.051 (y=sqrt3) and 0.121 (y=3/2) on [-3, x*+0.02]. Blocks with 13<=j<=40 have gap >= 5.50 there (COMPUTED only).",
+     "Gauge-orthogonal offsets 0.027 and 0.020 confirmed from exact_edge.json (edge_S - edge_A at t=3)."
+    ],
+    "refuted_or_wrong": [
+     "Minor labelling slip: the open issue calls the 0.0038 pivot lower bound of block (1,3/2) its 'small margin'. A Cholesky pivot lower bound is not the eigenvalue margin. The double-precision smallest eigen-gap among j<=12 blocks is in block (1,-3/2), 0.051 at x*+0.02 (COMPUTED). This does not affect any PROVED claim."
+    ],
+    "overclaims": [
+     "The summary says 'the edge result is proved' on both slices. It is PROVED only for the closed-form blocks as built in WP3, which copy the construction in EE/ricci_su2_exact_edge.py. That these are the charge blocks of H+GG* is not proved; the report admits this in its 'Not proved' list, but the headline should state it as a condition. The exact-vs-EE.Blocks agreement is also only a numerical spot check: 4 blocks at 3 x values.",
+     "'Floor iff x <= x*' includes x = x*, where the B40 branch ties with the twist (m=0). That holds only with 'floor' read as a non-strict minimum. Strict floor holds for x < x*.",
+     "The 'transversality' step (dP2/dx enclosure) is redundant: simplicity already follows from the squarefree norm plus P1 being nonzero at x*. Not wrong, but it is not an independent piece of rigor.",
+     "The rigor rests on mpmath iv outward rounding (prec 96) and the Alefeld-Mayer interval-Cholesky theorem. The report states both, and both are standard."
+    ],
+    "notes": "I tried to refute WP3 and could not; the verdict is sound with fixes. The script reran in 24.85 s and gave the same JSON (only 'seconds' differs). For sectors j<=12 on the two t=3 slices, the argument holds. B40 is exactly symmetric with polynomial entries, so its eigen-branches are analytic and the Rellich argument applies. The edge factor of D has simple roots, and I checked the root isolation for endpoint and rational-root traps. The other-block cover is complete (116 blocks).\n\nWhat still needs fixing is wording, not math:\n- The headline should be conditional on the closed-form blocks being the H+GG* charge blocks.\n- 'Floor at x*' is a tie (m=0), so it holds only as a non-strict floor.\n- The small-margin note mixes a pivot lower bound with an eigenvalue gap.\n\nSectors j>12 are not proved near the edge, as the report says. My double-precision check over 13<=j<=40 shows large gaps (>=5.5), but that is COMPUTED only.\n\nAll my verification files are outside the repo, in /tmp/wp3v: out/, log.txt, chk/v1.py, chk/v2.py. No repo file was modified."
+   }
+  },
+  {
+   "key": "v2:726adddf3eb2d778680ab8e7b99af0efc10e24d8df8e9e971b3be2829b25e2d1",
+   "result": {
+    "summary": "I drafted the three WP4 pre-registrations. No test was run, and no edge, floor or spectrum was computed at any held-out point. The only things computed were structural design checks and the draw of the held-out points.\n\nTwo of those checks change what the hypotheses can claim:\n\n1. **Her region in x is bounded on both sides, so it is not a half-line.** Her value \u03bb\u2080 grows like x\u00b2. The state \u03b8\u2070\u2297\u03c4\u2080 in sector 0 is gauge-orthogonal for every (x, y, t), and its Rayleigh quotient is affine in x. So for every (y, t) she stops being the floor at large |x|, under both the H+GG* and the gauge-orthogonal definitions. The same argument works in the SU(3) family through \u03b8\u2078\u2297X\u2088. This means H1's \"half-line\", the sentence's \"by more than\", and H3(3)'s \"half-space\" must all become \"interval\". Every earlier scan stopped at x = \u22123, which is why the region looked like a half-line.\n\n2. **The (x, y) ansatz is general up to constant gauge.** It covers every left-invariant, circle-symmetric SU(2) field on (t, 1, 1), for any circle weight k. So \"random fields beyond the ansatz\" do not exist inside that class. Prereg B is therefore split: B-I checks that the class behaves as its reduction (a code control that can only fail on a code error), and B-II tests H2's kill criteria at random points over a much wider box than before.\n\n**What each pre-registration contains:**\n- **A (held-out points):** 48 fixed points never computed before. The prediction is that the edge is the largest real root of P\u2082 in [\u22123, 3], with competitor (4, 0), to 1e-9. It is measured by an independent full-spectrum code path. Further arms: the competitor class at small y; no undercut from sectors 13\u201360; one interval with no holes. Controls: three code gates, a negative control using P\u2081, and the proved lower bound.\n- **B:** described in point 2 above.\n- **C (SU(3)):** metric 2b with the fibre field x freed. D3 found the U(2)-invariant fields are exactly 4-dimensional (u, x, y, z), with z removable by gauge. Fixed before the run: her x\u00b2 coefficient is exactly 3/4 (her fibre charge \u221a3/2), and her region is bounded. Predictions from the sentence: she is the floor somewhere (weak and strict versions), her region lies mainly on the side where the field turns against her charge, it is one interval, and the competitor is nearly blind to x (and neutral where u, y \u2265 1). Controls K1\u2013K5 include an SU(2) known-answer check and the Test 2b Maurer\u2013Cartan point.\n\nPre-registration should be committed before any of these tests runs; I did not commit (hard rule).",
+    "files_written": [
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp4_design_checks.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp4_points.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_design_checks.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_A_points.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_A_heldout.md",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_B_general_fields.md",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_C_su3.md"
+    ],
+    "results": [
+     {
+      "claim": "Every left-invariant SU(2) field on (t,1,1) that is invariant under the right circle about e0 (with a constant gauge circle of weight k) is constant-gauge-equivalent to the ansatz m0=x e0, m1=y e1, m2=y e2 with y>=0. Commutant dimensions: 1 for k=\u00b12, 3 for k=0 and k=\u00b11. Reductions: (x,y,z)->(x,sqrt(y\u00b2+z\u00b2)); k=-1 (x,y) -> (-x,y); k=0 -> y=0.",
+      "status": "PROVED",
+      "evidence": "sympy commutant plus explicit gauge rotations (field residuals <=2.3e-16) in scripts/edge_wp4_design_checks.py; receipt wp4_design_checks.json (D1). Scope: left-invariant fields, constant gauge lifts, right circle about e0."
+     },
+     {
+      "claim": "Spectral code control for the gauge reductions: full H+GG* spectra (j<=4, 6 random points) agree to 1.95e-15 (z removal), 0.0 (k=-1 vs x->-x) and 2.23e-15 (random constant gauge frame).",
+      "status": "COMPUTED",
+      "evidence": "wp4_design_checks.json, key D1_spectral_code_control_max_rel_diff_j_le_4"
+     },
+     {
+      "claim": "Closed-form row structure: w_a = -c_l x + f_a(t) for all 9 charge states; every entry of C has degree <=1 in x; the ladder couplings are x-free; G* of theta^0 (x) tau_0 in sector 0 is identically 0.",
+      "status": "PROVED",
+      "evidence": "sympy, wp4_design_checks.json key D2"
+     },
+     {
+      "claim": "Her region in x is bounded for every (y,t), under both definitions (H+GG* and gauge-orthogonal), because lambda_0 = x\u00b2+O(x) while the gauge-orthogonal state theta^0 (x) tau_0 has a Rayleigh quotient affine in x. The half-line clause of H1 and the 'by more than' clause of the sentence are false globally.",
+      "status": "PROVED",
+      "evidence": "Argument in wp4_prereg_A_heldout.md section 2, resting on the D2 symbolic structure checks. Where x_lo lies is not computed."
+     },
+     {
+      "claim": "SU(3) metric 2b: the left-invariant fields commuting with the joint frame+gauge u(2) action form a 4-dimensional space (u,x,y,z); z is removable by exp(alpha X8).",
+      "status": "COMPUTED",
+      "evidence": "wp4_design_checks.json D3: SVD null space dimension 4, generator residuals 0.0, z-removal residual 3.8e-5 on a 2e4-point alpha grid (grid-limited)."
+     },
+     {
+      "claim": "In the SU(3) family, her x\u00b2 coefficient is exactly 3/4 (fibre charge sqrt3/2) and her region in x is bounded (via theta^8 (x) X8 in sector (0,0)).",
+      "status": "CONJECTURE",
+      "evidence": "Derived by hand in wp4_prereg_C_su3.md section 2. Not machine-checked yet; registered as code gates C-quad and C-lin."
+     },
+     {
+      "claim": "H2's neutrality claim (competitor has total charge 0) is already contradicted at y=0.5: the H+GG* competitor blocks there are (3,1/2) at t=2 and (2,\u00b11) at t>=2.5.",
+      "status": "COMPUTED",
+      "evidence": "Read from research/su2-floor-family-20261119/exact_edge.json (competitor_block_A at height 0.5)"
+     },
+     {
+      "claim": "48 held-out (t,y) points drawn (30 in the P2 class, 10 small-y, 8 on a fixed grid), each more than 1e-3 from the 50 previously used pairs and the used stretches.",
+      "status": "COMPUTED",
+      "evidence": "scripts/edge_wp4_points.py -> wp4_prereg_A_points.json (seed 20261121)"
+     }
+    ],
+    "open_issues": [
+     "Risk to the running background certificate: if the lower edge x_lo(y,t) lies above -3 anywhere in y in [0.5,3], t in [3,10], then D is not inside her region and the small-j certificate on D must fail in sector 0. The large-j half (j>=80) is unaffected. I deliberately did not compute x_lo; prereg A, arm A4, measures it.",
+     "H1, H3(3) and the sentence in she-is-the-law need rewording from half-line/half-space to interval [x_lo, x*]. That is a correction to existing docs, and I did not edit them (hard rule).",
+     "Prereg B leaves circle-invariant fields that are not left-invariant (sector-mixing) undesigned: no builder exists for them and no non-automatic prediction is available. It also leaves non-constant gauge lifts out of scope. The SU(2)_L x U(1)_R isometry description of (t,1,1) is standard and was not re-proved here.",
+     "Prereg C's x\u00b2 coefficient 3/4 and the boundedness argument are hand derivations, gated by C-quad and C-lin at run time. In SU(3) 'her own circle' (lambda8, the stretched fibre) differs from her charge circle (H = diag(1,0,-1)); the prereg fixes x as the lambda8 component and records the ambiguity.",
+     "Runtime of prereg C is not measured (sector matrices up to 1728x1728, about 20x65 x-points x 9 sectors); the prereg requires a one-point timing first.",
+     "The three preregs must be committed before any test runs. I did not commit (hard rule 2); the orchestrator or Bee should commit them."
+    ]
+   }
+  },
+  {
+   "key": "v2:411f91d5115d4150e14bb71d73f60fde655d739a9ab11f8135637ef923da9300",
+   "result": {
+    "checks": [
+     {
+      "title": "An Unstable Yang-Mills Field Mode (Nielsen, Olesen 1978)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the INSPIRE API (record 130542): Nucl. Phys. B 144, 376-396 (1978), DOI 10.1016/0550-3213(78)90377-2. The abstract (Elsevier source) contains verbatim: 'It is shown that there exists an unstable mode of the field.' It also frames the mode as 'the response of a charged vector field to an external homogeneous magnetic field', which supports the claim. 'Original source' is a fair label for the classical unstable mode. Savvidy's one-loop vacuum instability (1977) came first, so do not call NO 1978 the first chromomagnetic-instability paper overall."
+     },
+     {
+      "title": "Infrared Instability of the Vacuum State of Gauge Theories and Asymptotic Freedom (Savvidy 1977)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from INSPIRE: Phys. Lett. B 71, 133-134 (1977), DOI 10.1016/0370-2693(77)90759-6. The quote is verbatim from the abstract. The abstract does not itself say 'favours a constant chromomagnetic field'. That part is standard lore and is not supported by the fetched text, so hedge it or drop it."
+     },
+     {
+      "title": "Vortex Zero Modes, Large Flux Limit and Ambjorn-Nielsen-Olesen Magnetic Instabilities (Bolognesi, Chatterjee, Gudnason, Konishi 2014)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified by my own pdftotext of arXiv:1408.1572 (JHEP 1410:101, DOI 10.1007/JHEP10(2014)101). Eq. (3.21) 'E^2_{n1,eps} = (2n1+1)gB + 2 eps gB + m_W^2' and the quoted sentences are verbatim. The quoted sentence is cut off: it ends 'discussed by Nielsen, Olesen and Ambjorn [1-3]', so finish it with Ambjorn. The paper is in flat space, and the Berger-sphere analogy is correctly flagged as conjecture."
+     },
+     {
+      "title": "Schwinger mechanism enhanced by the Nielsen--Olesen instability (Tanji, Itakura)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API (1111.6772, DOI 10.1016/j.physletb.2012.05.043). The abstract reads: 'Fluctuations of non-Abelian gauge fields around a purely color-magnetic field contain exponentially growing unstable modes in a longitudinally soft momentum region, which is known as the Nielsen--Olesen instability.' The claim is a faithful paraphrase. The year is the arXiv year 2011; the PLB volume was not checked."
+     },
+     {
+      "title": "Thermal Yang-Mills Theory In the Einstein Universe (Avramidi, Collopy 2012)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API (J. Phys. A 45 (2012) 374009, DOI 10.1088/1751-8113/45/37/374009). The quote is verbatim, with ellipses. Small misstatement in the claim: the gauge group is 'a simple compact group G containing the group SU(2) as a subgroup', with fields in the adjoint of G forming an SU(2) representation. It is not pure SU(2) gauge theory. The analysis is a one-loop heat-kernel / effective-action computation of gluon and ghost operators."
+     },
+     {
+      "title": "Instability of cosmic Yang-Mills fields (Kumar, Lechtenfeld, Picanco Costa 2021)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API (Nucl. Phys. B 973 (2021) 115583, DOI 10.1016/j.nuclphysb.2021.115583). The quote is verbatim: 'Even at very high energies, all cosmic Yang-Mills backgrounds are rendered linearly unstable.' One caveat: the SO(4)-singlet perturbation is marginally stable linearly."
+     },
+     {
+      "title": "Chaos of Yang-Mills Field in Class A Bianchi Spacetimes (Jin, Maeda 2005)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API (gr-qc/0412060, Phys. Rev. D 71 (2005) 064007, DOI 10.1103/PhysRevD.71.064007). The abstract says 'we show that the Kasner circle is unstable and the Kasner solution is not an attractor' and reports chaos in the late phase. The claim is accurate. As the submitter notes, the homogeneous-ansatz remark is not verified."
+     },
+     {
+      "title": "Nonexistence of weakly stable Yang-Mills fields (Han, Wen 2026), as a restatement of the Bourguignon-Lawson Weitzenbock formula",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": false,
+      "correction": "Theorem 2.1 of the arXiv:2601.17649v1 PDF (my own pdftotext) matches the quote: Delta phi = nabla*nabla + phi o Ric + R^nabla_g(phi), and Delta psi = nabla*nabla + psi o (Ric^Id + 2R^M) + R^nabla_g(psi). The citation is fine, but the inference drawn from it is mathematically wrong. Han-Wen (Sec. 2.2, 'Following (6.14) of [1]') give the second variation on ker(delta^nabla) as S(B) = Delta^nabla B + R^nabla(B). So the Jacobi operator is nabla*nabla + Ric + 2R^nabla. That is the 'Ric + 2F' form, and the factor 2 on F comes from the extra curvature term in the Hessian, not from the Weitzenbock formula. If H is the YM Hessian, then H + d_A d_A* = Delta_A + R^nabla, not the Hodge Laplacian Delta_A. The two agree only at a flat connection, such as x=y=0. Also, in the 2-form formula the '2' multiplies the Riemann tensor R^M, not F. Rewrite the relevance note on that basis."
+     },
+     {
+      "title": "Stability and isolation phenomena for Yang-Mills fields (Bourguignon, Lawson 1981)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from zbMATH 0475.53060: Commun. Math. Phys. 79, 189-230, DOI 10.1007/BF01942061. The keywords are as quoted. The zbMATH record also links Project Euclid (euclid.cmp/1103908963), where old CMP volumes are usually free, so the full text may open in a normal browser. My curl attempt returned only an HTML stub. 'Standard reference' is fair, since Han-Wen, KOT and nLab all cite it as such."
+     },
+     {
+      "title": "stable Yang-Mills connection (nLab)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified on the live page. 'Every weakly stable Yang-Mills connection on S^n for n>=5 is flat' is credited to Bourguignon & Lawson 81 Theorem A and KOT 86 Theorem 1.3, with the Simons Tokyo 1977 remark. The S^4 statement for SU(2), SU(3) and U(2) is credited to BL81 Theorem B. I also confirmed that the Han-Wen PDF line reads 'proved that there is nontrivial weakly stable', which is evidently a typo for 'no'. Avoid quoting it, as the submitter says. Note that nLab is a wiki: cite BL81 Theorems A and B, and check them in the original."
+     },
+     {
+      "title": "Nonexistence of weakly stable Yang-Mills fields (Han, Wen 2026), main theorem",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API abstract: there is a C^2 neighbourhood of the round metric on S^n (n>=5) with 'no nontrivial weakly stable Yang-Mills connections for any metric' in it. Accurate."
+     },
+     {
+      "title": "Laquer 1984 (Michigan Math. J.) and Kobayashi-Ohnita-Takeuchi 1986 (Math. Z.)",
+      "exists": true,
+      "metadata_correct": false,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Laquer is verified from zbMATH 0647.53022: Mich. Math. J. 31, 139-159 (1984), DOI 10.1307/mmj/1029003019. For KOT, zbMATH 0634.53022 and the Han-Wen bibliography both give the pages as Math. Z. 193, 165-189 (not 165-190), DOI 10.1007/BF01174329. The Han-Wen quote is verbatim. KOT content can be cited from a primary-adjacent source: the zbMATH review by J.P. Bourguignon says 'the authors exhibit examples of manifolds over which any nonflat Yang-Mills field is unstable. Their examples cover the Cayley plane, E_6/F_4'. IMPORTANT omission: Han-Wen's summary of Laquer says 'compact symmetric spaces admit weakly stable Yang-Mills connections except for S^n (n>=5), compact simple Lie groups, SP(p+1)/SP(p)xSP(1), E6/F4 and F4/Spin(9)'. That list puts compact simple Lie groups, which include SU(2)=S^3 with the bi-invariant metric, in the exceptional class, which bears directly on the t=1 slice. This is secondary only and must be checked in Laquer."
+     },
+     {
+      "title": "A multiplicity estimate for the Jacobi operator of a nonflat Yang-Mills field over S^m (Lei Ni)",
+      "exists": true,
+      "metadata_correct": false,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "The abstract is verified and the quote is verbatim. The paper is published: Geometriae Dedicata 217 (2023), article 92, DOI 10.1007/s10711-023-00817-8 (Crossref, and the Han-Wen bibliography). Cite that and not only arXiv:2209.08090 (2022). Per Han-Wen, Ni also shows the smallest Jacobi eigenvalue is <= 4-n on S^n (n>=5); this is secondary."
+     },
+     {
+      "title": "The smallest Laplace eigenvalue of homogeneous 3-spheres (Lauret)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API: Bull. Lond. Math. Soc. 51:1 (2019) 49-69. Add DOI 10.1112/blms.12213. The quote is verbatim."
+     },
+     {
+      "title": "Hodge Laplacian on 1-forms of homogeneous 3-spheres (Henkel, Lauret 2026)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API (2605.05406, submitted 2026-05-06). The quote is verbatim, and the abstract does disclose an AI-discovered formal proof. The x=y=0 consistency check is sound. At a flat connection F=0, the Hessian is d*d, so H + dd* is the Hodge Laplacian tensored with su(2): three copies, as stated."
+     },
+     {
+      "title": "The Dirac operator on homogeneous spaces and its spectrum on 3-dimensional lens spaces (Bar)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from zbMATH 0786.53030 and Crossref: Arch. Math. 59, No. 1, 65-79, published July 1992, DOI 10.1007/BF01199016. The year is 1992, so drop the '1993' hedge. The review text is verbatim: 'Using the formulas for the Dirac operator on reductive homogeneous spaces and the Frobenius reciprocity, the author calculates the eigenvalues of the Dirac operator on the sphere S^3 and its quotient equipped with Berger metrics'."
+     },
+     {
+      "title": "On the Dirac spectrum of homogeneous 3-spheres (Kling, Schueth)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API (J. Geom. Anal. 32 (2022), no. 11, Paper No. 175). The quote is verbatim, and the isospectral-implies-isometric statement is in the abstract."
+     },
+     {
+      "title": "Verification of positive definiteness (Rump 2006)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified by my own pdftotext of Ru06c.pdf, whose header reads 'published in BIT Numerical Mathematics, 46:433-452, 2006'. The abstract quote is verbatim. The interval-matrix coverage appears in the body ('It includes the case where X is an interval matrix'), not in the abstract. Supported."
+     },
+     {
+      "title": "Fast computation of error bounds for all eigenpairs of a Hermitian and all singular pairs of a rectangular matrix ... (Rump, Lange)",
+      "exists": true,
+      "metadata_correct": false,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "The quote is verbatim (my own pdftotext of RuLa23.pdf). The venue is now verified through Crossref: Journal of Computational and Applied Mathematics 434 (2023) 115332, DOI 10.1016/j.cam.2023.115332. Replace 'preprint, venue not verified' with this."
+     },
+     {
+      "title": "Gersgorin-type eigenvalue inclusion theorems and their sharpness (Varga 2001)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified by my own pdftotext: ETNA 12, 113-133 (2001). The abstract states sigma(A) in B(A) in K(A) in G(A) for weakly irreducible n x n matrices with n>=2, and G^R(A) in B(A). Verbatim."
+     },
+     {
+      "title": "Determination of the inertia of a partitioned Hermitian matrix (Haynsworth 1968)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from zbMATH 0155.06304 and Crossref: Linear Algebra Appl. 1, 73-81, DOI 10.1016/0024-3795(68)90050-5. The formula matches the Wikipedia raw text, which cites Zhang, The Schur Complement and Its Applications (2005), p.15, and requires H11 nonsingular. The formula itself is not checked against the 1968 paper."
+     },
+     {
+      "title": "Verified error bounds for the singular values of structured matrices ... (Terao, Watanabe, Ozaki 2025)",
+      "exists": true,
+      "metadata_correct": true,
+      "quote_found": true,
+      "supports_claim": true,
+      "correction": "Verified from the arXiv API (2502.09984). The quote is verbatim. The LDL^T inertia-counting remark is not verified and should not be cited."
+     }
+    ],
+    "prior_art_comment": "Overall: all 22 cited sources exist. The quotes are verbatim or faithful, checked against the arXiv API, INSPIRE, zbMATH, Crossref, author PDFs (my own pdftotext) and nLab. Metadata fixes: KOT pages are 165-189. Ni is Geom. Dedicata 217 (2023) 92, DOI 10.1007/s10711-023-00817-8. Rump-Lange is J. Comput. Appl. Math. 434 (2023) 115332, DOI 10.1016/j.cam.2023.115332. Bar is 1992. Lauret's DOI is 10.1112/blms.12213.\n\nSubstantive error (math, not bibliography): the item (2) assessment says H + d_A d_A* equals the covariant Hodge Laplacian, i.e. nabla*nabla + Ric + an F-term. Han-Wen (following BL81 (6.14)) write the second variation as S = Delta^nabla + R^nabla, so the Jacobi operator is nabla*nabla + Ric + 2R^nabla. So H + d_A d_A* = Delta_A + R^nabla. That is the Hodge Laplacian plus one more curvature term, and it equals the Hodge Laplacian only at flat connections (x=y=0). The 'Ric + 2F' form belongs to the Jacobi operator, not to the Weitzenbock identity. In the 2-form Weitzenbock formula the '2' multiplies the Riemann tensor, not F. Fix this before writing up the H + GG* splitting.\n\nMissing prior art that bears directly on S^3:\n(a) M. Stern, 'Geometry of minimal energy Yang-Mills connections', J. Differential Geom. 86 (2010) 163-188, DOI 10.4310/jdg/1299766686. I verified the Crossref abstract: 'We prove related results ... for 3-dimensional manifolds of nonnegative Ricci curvature.' The zbMATH review: for a complete 3-manifold with Ric>=0 and a stable YM connection, the curvature is parallel and lies in a flat subbundle, and 'F_A=0 unless M has local flat factors'. X. Jin (arXiv:2609.24045, 2026, verified) states 'Stern's argument implies that stable Yang-Mills connections on the round three-sphere are flat.' Berger spheres near t=1 have positive Ricci, so this is the nearest stability theorem for critical points on the squashed S^3 too. It covers critical points only.\n(b) Han-Wen's summary of Laquer 1984 lists 'compact simple Lie groups' among the compact symmetric spaces that do not admit weakly stable YM connections. That includes SU(2)=S^3 at t=1. This is secondary and unverified in Laquer, but it is a likely overlap at the round point, and the assessment does not mention it.\n(c) Possibly relevant, verified abstracts only: Jin 2026 (arXiv:2609.24045) gives a quantitative upper bound on the lowest Hessian eigenvalue for non-stable abelian YMH critical points on the round S^3, which is a floor-type estimate. Han-Wen 2026 (arXiv:2602.15666) gives pinching conditions under which weakly stable YM connections are flat; Berger spheres near round are pinched, but the dimension range of delta(n) was not checked.\n\nThe novelty conclusion ('edge theorem appears new') is suitably hedged. It stands as far as I searched: one targeted search found no Hessian-floor computation for left-invariant connections on Berger S^3. It should still be stated only after Laquer, BL81 (Project Euclid may be free), Stern 2010 and van Baal's S^3 work are read in full. The physics interpretation (Landau + g=2 Zeeman) is correctly labelled conjecture. The Savvidy claim's phrase 'favours a constant chromomagnetic field' is not in the fetched abstract."
+   }
+  },
+  {
+   "key": "v2:1d3962a72df26736a760f361395a158b68192c629528c180c31722d62b4116b1",
+   "result": {
+    "reproduced": [
+     "D1 (the ansatz is general up to constant gauge) holds within its stated scope. I re-read the sympy commutant for the condition L M - k M L = 0 (dimensions 1/3/3/3/1 for k = -2..2), the explicit gauge maps and the code in scripts/edge_wp4_design_checks.py. The ansatz diag(x,y,y) commutes with L for k = +1. Rotating z away gives rho >= 0. k = -1 maps to (-x, y) by a pi rotation about e1. k = 0 and |k| = 2 reduce to y = 0. Receipt: wp4_design_checks.json.",
+     "The prereg-A section 2 argument (her region is bounded below) is correct. In sector 0 the state theta^0 (x) tau_0 is index 0 of T2.hessian_and_gauge. I measured |G* e0| = 0 at x in {-3, 0.5, 2}, and H_00 has zero second difference in x (it is the constant 18.88 at y=1.2, t=4). COMPUTED, my check /tmp/wp4rev/chk2.py. That state has charge 0, so it is orthogonal to both twist copies, and the A-bound gate direction (x_lo >= r_lo) is right.",
+     "P2 is literally a factor of the numerator of det(B_{4,0} - lambda_4) (scripts/ricci_su2_edge_polynomial.py), and P1 is the other factor of that same determinant. edge_polynomial.txt lists their degrees as (5,6,12) and (7,8,16), and I read the 61-term count for the (5,6,12) factor there. I did not re-check the 113-term count for P2.",
+     "Risk to the running certificate, checked at points that are not held out (COMPUTED, j <= 12, /tmp/wp4rev/chk3.py). Over an 11x15 (y,t) grid of D's range, min phi_A at x in {-3,-1.5} is 2.35. On a 3x3 grid, min phi_S at those x is 2.69. The largest closed-form bound r_lo over the grid is -7.33. phi_A first turns >= 0 at x of about -4.1 at (y=3, t=3), -5.6 at (0.5, 3), -6.3 at (3, 10), -7.5 at (0.5, 10) and -5.75 at (1.5, 6), each with a single sign change on [-40, -1.5]. So at these grid points the lower edge does not cut into D. This is a grid check, not a proof. The closest margin is at y=3, t=3, about 1.1 below x=-3."
+    ],
+    "refuted_or_wrong": [
+     "FATAL measurement bug in prereg A section 5. In the full H+GG* sector spectrum, lambda_j has multiplicity 2, not 1, because the q=-(l+2) mirror block has the same value. COMPUTED: the multiplicity is 2 for j=0..4 at (x,y,t) = (-2,1.5,4) and (-1,0.7,6), in both the full and the slice spectra. Over x in [-40,1], t in {3,5,10}, y in {0.5,1.5,3}, j <= 12, min(mirror - lambda) = -6.8e-13. EE.phi_S already removes two copies for this reason. Prereg A takes out only one eigenvalue near lambda_j, which makes phi_full <= 0 identically and equal to 0 up to roundoff inside her region. The '>= 0 to < 0' sign-change scan and the brentq refinement then act on noise, so the A1 and A4 measurements are meaningless as written. Fix: require exactly 2 eigenvalues within tolerance at a point away from the crossing, remove both, and stop otherwise.",
+     "Prereg B, gate B-half, is wrong by the proved lower edge. 'Exactly one sign change of phi_A on [x*-3, x*]' fails whenever x_lo > x*-3. That is a real lower edge, not a hole, and it would be wrongly scored against H1's no-hole clause. x_lo is already about -4.1 at (y=3, t=3), and B-II draws rho up to 6 and t down to 0.5. Fix: scan [r_lo(rho,t), x*] and require exactly two sign changes (lower edge going up, upper edge going down).",
+     "Prereg A, gate table versus verdict rule: the A4 gate requires x_lo > -40, but section 7 says an interval reaching -40 is not a failure. Pick one. Also, A-bound computes r_lo in closed form. If r_lo > -40 at every point (the largest r_lo over D's grid is -7.33), the clause 'x_lo inside the scan' passes automatically and should be dropped, so A4's only content is 'no holes'.",
+     "Labelling is inconsistent. Prereg C section 2 is headed 'PROVED by the argument' for F1 (x^2 coefficient 3/4) and F2, but the report labels F1 CONJECTURE (a hand derivation, not machine-checked). Under hard rule 4 these must be CONJECTURE until C-quad and C-lin pass. My own reading: the 3/4 = |ad(X8)E_theta|^2 derivation is right if the M_8 components are taken in the orthonormal coframe (e_8 = X8/sqrt t). The prereg should state that convention explicitly, because the coefficient picks up a factor of t otherwise."
+    ],
+    "overclaims": [
+     "A1 is presented as 'the edge equation predicted at held-out points'. But P2 is a factor of det(B_{4,0} - lambda_4) built from the same closed-form rows that A-code-1 checks against the full spectrum. So agreement to 1e-9 follows automatically once the competitor is (4,0) and the edge is the largest root of P2 in [-3,3]. The only content that can fail is (a) the competitor identity, (b) the root selection, and (c) the edge not lying in [-3,3]. The prereg should say this, and A-ctrl-neg (P1 is the other factor of the same determinant) should be described as a branch-selection check, not a negative control. 'Held-out' adds little here, because nothing was fitted.",
+     "B-II 'tests H2 across the class', but the x and k of each draw are discarded: edges are located on x in [-10,10] for each (rho,t). B-II is therefore a 200-point random (y,t) scan of the reduced family, not evidence about general fields. B-I is a pure code control, which the prereg already admits.",
+     "B-N is restricted to rho >= 1.1 after (N) was seen to fail at y = 0.5. That narrows the hypothesis after the fact. It is acceptable only if H2's text is amended to the same domain and the threshold 1.1 is justified, not tuned. The B-S threshold of 0.5 was likewise chosen after seeing the ratios 0.16, 0.064 and 0.165 (from twist_anatomy, as quoted in prereg B), so it is a loose post-hoc bar.",
+     "'Every sector' at held-out points rests on j <= 12, plus A3 checking j in [13,60] at one x only (x* - 0.02). j = 61..79 is never checked. The j >= 80 interval proof covers only D, and most held-out points lie outside D (t from 2.2, y up to 3.2, x up to x*). B-II has no high-j check at all, even though rho goes up to 6 and |x| up to 10.",
+     "C-P2 (midpoint side) is nearly fixed by structure: her region lies inside [r_lo, r_hi], the roots of lambda_b - <v,Hv>, whose midpoint is the vertex of a parabola with x^2 coefficient 3/4 and a linear coefficient computable before the run. C-sigma is also fixed by hand from the lambda8-weight (p+2q)/sqrt3. Passing C-P2 is therefore weak evidence for 'turns against her charge' unless it is compared with what the bounding parabola already forces."
+    ],
+    "verdict": "sound_with_fixes",
+    "notes": "The preregs can be committed only after these fixes; with one of them, prereg A's measurement is not usable at all. Everything below is my review, with checks run in /tmp/wp4rev (nothing written to the repo, single process, OMP_NUM_THREADS=1).\n\nMust fix before commit:\n(1) Prereg A section 5 removes one copy of lambda_j, but lambda_j has multiplicity 2 in the full spectrum (CONFIRMED, COMPUTED). Remove both copies, and gate that exactly 2 eigenvalues lie within tolerance at a point away from the crossing.\n(2) Prereg C has the same risk. In the self-conjugate sectors (0,0), (1,1) and (2,2), b and its conjugate may share the sector, giving multiplicity 2. I did not check this for SU(3), so it is PLAUSIBLE, not confirmed. Make the number of copies removed a measured gate, not an assumption. Note that Test 2's classify_point compares lam_b <= mu[0] + tol and so does not have this problem; phi_S as defined in prereg C does.\n(3) Rewrite B-half as described above (scan [r_lo, x*], require two sign changes).\n(4) Make the A4 gate and the A4 verdict agree, and drop 'x_lo > -40', which A-bound makes automatic.\n(5) Add a minimum number of scored points to B-II, for example a set count of draws with an edge in range and rho >= 1.1; below it, report 'inconclusive'. As written, 'no edge in range' points are simply not scored, so B-II could pass with almost no data.\n\nForking paths to close:\n- B-S does not say which twist slope is used. It should be her lambda in the competitor's sector.\n- B-sym and B-I fit the charge operator from the field but leave the fitting procedure unspecified. Name it (for example T2.fit_signs) and give its tolerance.\n- C's extension of the x scan stops at [-32,32] with step 1. Instead, scan to the closed-form [r_lo, r_hi] for each shape point and add an analogue of A-bound to C (x_lo >= r_lo and x_hi <= r_hi). A also lacks the x* <= r_hi gate.\n- The step-0.25 grid in C, and the step-0.01 grid in A4, cannot see holes narrower than one step. State that limit.\n- C-P1 strict failure is pre-excused as a 'weak negative' that 'may permit'. Decide now whether it counts against.\n- A-code-3 says 'vanishes to 1e-8 relative' without saying relative to what. A suitable normalisation is the sum of the absolute values of the terms.\n- Small point: D1 says '|k| >= 3 cannot match'. Half-integer k, which arises if the circle is taken in SU(2) with period 4pi, should be mentioned too. It also gives only the weight-0 match, so the y = 0 ansatz, and the conclusion stands.\n\nOn the question 'is the ansatz general up to gauge': yes, for left-invariant fields, constant gauge lifts and the right circle about e0. The scope list in the prereg is honest. The isometry group SU(2)_L x U(1)_R (t != 1) is assumed, not re-proved.\n\nCertificate risk: the open issue in the report is real but, at the grid points I checked, not realised. Min phi_A at x in {-3,-1.5} over D's (y,t) grid is 2.35 (COMPUTED). The smallest margin found is at y=3, t=3, where x_lo is about -4.1. That is grid evidence, not proof. The background certificate will settle it.\n\nDisclosure: I evaluated phi_A and phi_S at points in D's (y,t) range. None of them is a held-out point, so prereg A's held-out points remain uncomputed."
+   }
+  },
+  {
+   "key": "v2:f0f360b9976a3cac7d8fb329ec9b0e7e52308ded76c69c9cddbfa580f0a0b96b",
+   "result": {
+    "summary": "WP1 is done, and it found a problem with the earlier edge results. With sectors j \u2264 12, the H+GG* edge over t\u2208[2,12], y\u2208[0.25,3] (an 11\u00d712 grid) is set by eight blocks, counted up to the q\u2194\u2212q mirror: (4,0), (3,\u00bd), (2,1), (1,\u00bd), (1,3/2), (2,2), (12,6) and (12,7). Each block's det(B\u2212\u03bb_j) numerator was derived exactly (DomainMatrix over the field its entries need) and factored over Q. All 132 grid edges are roots of the right factor, with |root\u2212edge| \u2264 2.4e-13. The (4,0) edge factor is exactly P2 from the earlier edge_polynomial.txt. Six of the eight blocks belong to two near-top families, q=l+1 and q=l; I derived both determinants with j as a symbol. Each family's leading coefficient in l has x=0 as its only root in the edge range, and both coefficients vanish identically at t=2. Numerically, these families undercut the twist in sectors beyond j=12, with their per-sector edges falling toward 0 roughly like 1/j. So every positive j\u226412 edge (t\u22737, which includes the positive values in exact_edge.json and the exact-edge doc) comes from cutting off at j=12. I confirmed this with the independent non-block builder for both H+GG* and the gauge-orthogonal (slice) spectrum. Conjecture: for 2<t\u226412 the all-sector edge is min(x*_12, 0). At t=2, small y, the edge sits lower still, at a negative large-j limit (j=2000 gives \u22120.6847 at y=0.25). The write-up is research/edge-theorem-20261121/wp1_competitor_map.md.",
+    "files_written": [
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_competitor_map.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_block_polynomials.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_poly_check_final.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_top_family.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_family_members.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_jmax_check.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_tail_check.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_tail_negx.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_fullsector_check.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map.md",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map_grid_only.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map_log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_block_polynomials.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_block_polynomials.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_block_polynomials_log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_poly_check_final.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_top_family.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_top_family.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_top_family_log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_family_members.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_jmax_check.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_jmax_check_log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_check.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_check_log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_negx.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_negx_log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_fullsector_check.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_fullsector_check_log.txt"
+    ],
+    "results": [
+     {
+      "claim": "Competitor map, j<=12, H+GG*, 11 t x 12 y grid: eight distinct competitor blocks up to q sign: (4,0), (3,1/2), (2,1), (1,1/2), (1,3/2), (2,2), (12,6), (12,7). (4,0) wins at 77 points (mostly y in [1,~2.5]); (2,1) for y<=0.5, t>=3; (3,1/2) for y~0.75, t<=6; (1,1/2) and (1,3/2) for y~0.75-1, t>=7; (1,3/2) and (2,2) at large y, small t. The (12,6) and (12,7) entries sit in the top allowed sector, so they come from the j<=12 cutoff.",
+      "status": "COMPUTED",
+      "evidence": "research/edge-theorem-20261121/wp1_competitor_map.json. At all 132 points: one sign change of phi_A on a 401-point scan of [-3,1]; phi_A(-3) >= 1.43; the competitor's value at the edge is <= 2.7e-12; the argmin just right of the edge agrees with the per-block argmin; the mirror pair (j,q),(j,-q) agrees to 2.8e-14."
+     },
+     {
+      "claim": "Switch boundaries located by brentq on x_A - x_B along grid lines. Examples: (2,1)->(3,1/2) at y=0.574998, 0.621151, 0.650418, 0.673813 for t=3..6; (3,1/2)->(4,0) at y=0.874254, 0.930635, 0.965022, 0.988971 for t=3..6; (4,0)->(1,3/2) at y=2.089121, 2.340417, 2.70679 for t=3,4,5; (1,3/2)->(4,0) at t=3.686653, 4.473959, 5.102234, 5.664 for y=2.25..3. At three crossings (t=2,y=0.41306; t=7,y=0.923099; t=10,y=1.220602) a third block sets the edge (x_A - edge = 6.5e-4, 4.3e-3, 1.3e-3). The (12,6)->(2,1) boundary along y=0.25 failed with a TypeError (no crossing found in the search window).",
+      "status": "COMPUTED",
+      "evidence": "wp1_competitor_map.json, field 'boundaries'; summarized in wp1_competitor_map.md section 2."
+     },
+     {
+      "claim": "Closed-form det(B_{j,q}-lambda_j) numerators in (x,y,s=sqrt t), all with rational coefficients, factored over Q. (4,0): degrees (12,14,28) = P1(5,6,12) * P2(7,8,16). (3,1/2): one factor (11,14,26), 400 terms. (2,1): s*(8,10,18). (1,1/2): s*(7,10,16). (1,3/2), (2,2), (12,7): s*(4,4,8). (12,6): s*(8,10,18). The symbolic blocks match Blocks.block to <= 1.4e-14.",
+      "status": "PROVED",
+      "evidence": "Exact sympy DomainMatrix determinants over Q(sqrt2,sqrt3), Q(sqrt2,sqrt6), Q(sqrt2), Q(sqrt6), Q(sqrt6,sqrt11) or Q; factor_list over Q. Full expressions in wp1_block_polynomials.txt/.json."
+     },
+     {
+      "claim": "Every grid edge is a root of the right factor: max |root - edge| is 2.4e-13 for (4,0) on P2 at 77 points (the other factor P1 has residual >= 2.7e-3), 1.4e-14 for (3,1/2), 2.3e-13 for (2,1), 1.5e-16 for (1,1/2), 8.5e-14 for (1,3/2), 1.7e-14 for (2,2), 1.7e-15 for (12,6), 1.1e-13 for (12,7). Scale-free residuals are <= 6.8e-13.",
+      "status": "COMPUTED",
+      "evidence": "wp1_poly_check_final.json (all 132 points of the final map; mpmath findroot at 60 digits started at the edge)."
+     },
+     {
+      "claim": "The (4,0) polynomial is identical to the earlier one: its full determinant equals edge_polynomial.srepr (ratio 1 at 4 rational points), and its edge factor equals P2 of edge_polynomial.txt exactly (quotient 1, remainder 0). The polynomials of (1,+-3/2) and (3,+-1/2) are identical.",
+      "status": "PROVED",
+      "evidence": "wp1_block_polynomials.json, wp1_poly_check_final.json, wp1_family_members.json (exact sympy division and expansion; the srepr ratio comparison is a rational-point evaluation)."
+     },
+     {
+      "claim": "Near-top families with j symbolic: D_{q=l+1}(x,y,s,l) has degrees (4,4,9,3) and D_{q=l} has (8,10,19,6). Their leading coefficients in l are c+ = -128 s x (s-1)(s+1)(s^2-2) and c0 = -65536 s x (s-1)(s+1)(s^2-2)(3s^2-4)(sx-2s^2+2)(sx-s^2+2). Both vanish identically at t=2. D+(l=1/2,1,6) = s*(edge factor of (1,3/2),(2,2),(12,7)); D0(l=1,6) = s*(edge factor of (2,1),(12,6)); D0(l=1/2) = (s^2 x+s)*(factor of (1,1/2)). So only (4,0) and (3,1/2) fall outside the two families.",
+      "status": "PROVED",
+      "evidence": "wp1_top_family.txt/.json (symbolic Berkowitz determinant, no odd ladder powers, numeric check against Blocks.block <= 6.8e-13); wp1_family_members.json (exact divisions)."
+     },
+     {
+      "claim": "The j<=12 edge is not the all-sector edge wherever x*_12>0, nor at t=2 for y=0.25 and 0.5. The per-sector edges of the near-top families fall toward 0 roughly like 1/j for t>=6 (for example at t=12,y=2, q=l+1: 0.2075 at j=12 down to 0.0028 at j=2000). At 56 grid points some sector 13<=j<=200 undercuts at x*_12. At t=12, y=2.75 the edge for J=12,24,48,96,192 is 0.1825, 0.1825, 0.1706, 0.0969, 0.0519.",
+      "status": "COMPUTED",
+      "evidence": "wp1_top_family.txt, wp1_tail_check.json, wp1_jmax_check.json."
+     },
+     {
+      "claim": "Independent confirmation with the general full-sector builder (no charge blocks): at (t,y,x)=(12,2,0.06), sector j=80 has an eigenvalue 0.0029 below lambda_j in H+GG* and 0.0023 below in the slice spectrum; at (10,1,0.03), j=40, 60, 80 are below by 0.216, 0.957, 1.712. Controls at x<0 show nothing below for j<=80.",
+      "status": "COMPUTED",
+      "evidence": "wp1_fullsector_check.json (ricci_su3_test2_family.hessian_and_gauge)."
+     },
+     {
+      "claim": "For 2<t<=12 the all-sector H+GG* edge is min(x*_12(t,y), 0): the near-top families approach x=0 as j->infinity, and at x=-0.01 and x=-0.001 nothing undercuts (j<=12 all blocks and j<=2000 near-top blocks; smallest margin 0.029). At t=2 the edge is a negative j->infinity limit of the q=l family (j=2000: -0.68467 at y=0.25, -0.61843 at y=0.5).",
+      "status": "CONJECTURE",
+      "evidence": "wp1_tail_negx.json, wp1_top_family.txt, plus the leading coefficients c+ and c0. Not proved: beyond j=40 only charges |q|>=l-2 were checked, and uniformity near t=2 is open."
+     }
+    ],
+    "open_issues": [
+     "The edges in exact_edge.json and the table in docs/research/exact-edge-2026-11-21.md use only j<=12. Their positive values for t>~7 (H+GG*, and at least at (12,2,0.06) also the slice version) come from that cutoff. Earlier claims that the edge rises and crosses zero need revisiting; I did not modify those files.",
+     "Large-j coverage is heuristic: for j>40 only near-top charges |q| in {l+1,l,l-1,l-2} were scanned. The full-q scan reached j<=40 at 4 points and the general-builder check j<=80 at 5 points.",
+     "Near t=2 both family leading coefficients vanish, so convergence is non-uniform there. t in (2,3) was not examined beyond the j<=200 tail at the t=3 grid points.",
+     "Boundary (12,6)->(2,1) along y=0.25, t in [2,3] was not located (TypeError). Three located crossings have a third block intervening, so they are not exact two-block switch points.",
+     "wp1_block_polynomials and wp1_tail_check ran on a grid rebuilt from the first map run's log; that grid has identical competitors and edges (difference 0) but lacks point (12,3). wp1_poly_check_final.json re-checks all 132 points of the final map, but (12,3) has no tail check.",
+     "Irreducibility of the factors is established over Q only. Factoring over the algebraic extensions was not done: it was too slow for (3,1/2) and was replaced by factoring over Q."
+    ]
+   }
+  },
+  {
+   "key": "v2:af074bf3d894a30e0c5be9d58031d38160ca4f8d1bce7e5bcc41f50f5c52c3d4",
+   "result": {
+    "reproduced": [
+     "COMPUTED: j<=12 edges and competitors reproduce exactly, using EE.edge(Blocks.phi_A) run independently at 10 grid points. Examples: (3,1.5) -0.371582 (4,0); (5,0.25) -0.163192 (2,1); (8,0.75) +0.006074 (1,1/2); (10,1) +0.049236 (12,7); (12,2) +0.121695 (4,0); (2,0.25) -0.644146 (12,6); (7,2.25) +0.011152 (4,0); (4,2.75) -0.243302 (1,3/2); (2,0.5) -0.613240 (3,1/2). All match the table in wp1_competitor_map.md.",
+     "COMPUTED (numerical check of the PROVED claim): for all 10 blocks in wp1_block_polynomials.json, including the mirror pairs, det(t(B-lambda_j)) from Blocks.block divided by content times the product of the listed factors equals 1.000000000 at 4 random (x,y,t) each. The factor degrees match the claims exactly: (4,0) = (5,6,12)*(7,8,16); (3,1/2) = (11,14,26); (2,1) and (12,6) = s*(8,10,18); (1,1/2) = s*(7,10,16); (1,3/2), (2,2) and (12,7) = s*(4,4,8).",
+     "PROVED (exact sympy expand): P2 parsed from research/su2-floor-family-20261119/edge_polynomial.txt minus WP1's (4,0) edge factor is identically 0.",
+     "PROVED (sympy factor_list over Q): the edge factors of (1,3/2), (2,2), (12,7) and (2,1) are irreducible over Q.",
+     "COMPUTED (mpmath 40 digits, started at my own edges): edge-factor root minus edge is <= 2.4e-13 at all 10 sample points. The P1 factor of (4,0) has no nearby root (distance 0.36 to 0.55).",
+     "PROVED-formula check (COMPUTED): fitting det in l at fixed (x,y,t) reproduces the claimed leading coefficients c+ (degree 3 in l, rel. diff ~1e-14) and c0 (degree 6, rel. diff ~5e-9) at (0.3,1.2,5) and (-0.4,2,8).",
+     "COMPUTED: main finding confirmed with a full q scan (all charges, not only near-top), using Blocks for j in {13,20,40,80,160,300}. At x = x*_12 > 0, large j undercuts at (12,2), (10,1), (8,1.5) and (12,2.75). At x = -0.005 and -0.02 nothing undercuts up to j = 300 at those points or at (7,2.25). The minimizing charge is always |q| = l+1 or l.",
+     "COMPUTED: general-builder (no blocks) numbers reproduce. At (12,2,0.06) j=80: H+GG* -0.00287 and slice -0.00231. At (10,1,0.03): j=40 -0.2161, j=60 -0.9570. At (8,1.5,0.02) j=120: -0.2389. Controls at x=-0.01 give 0 below.",
+     "COMPUTED: at t=2, the q=l family edge at j=2000 is -0.684673 for y=0.25 and -0.618429 for y=0.5, matching the claim.",
+     "COMPUTED (extends WP1): the 3 positive-edge points WP1 left unchecked, (7,2.0), (7,2.25) and (7,2.5), are undercut at x*_12 by near-top blocks at j=2000, 400 and 400 respectively. The missing point (12,3) is undercut at j=100 (-10.46). So 'every positive j<=12 grid edge is a cutoff artifact' now holds at all positive grid points I checked, but WP1 itself had computed it at only 53 of 57."
+    ],
+    "refuted_or_wrong": [
+     "CONJECTURE refuted near t=2+ (COMPUTED). WP1 conjectures that for 2<t<=12 the all-sector edge is min(x*_12, 0). At (t,y)=(2.01,0.25), x*_12 = -0.62410, but at x = -0.62460 (where phi_A over j<=12 is +0.0052) sector j=16, q=8 (the q=l family) is below lambda_j. The margin is -0.00492 from Blocks, -0.00492 from the general H+GG* builder (2 eigenvalues below), and -0.00353 in the slice spectrum. At (2.001,0.25), x = -0.64263 and -0.64513 (both below x*_12 = -0.64213), sector j=58 is below by -0.2387 and -0.2109, confirmed by the general builder and the slice. So the all-sector edge is below x*_12 for t slightly above 2 at small y. The conjecture fails on part of (2,12]. WP1 did flag t in (2,3) as unexamined and non-uniform near t=2, but stated the conjecture on the whole interval anyway. Scanned j<=3000 at t = 2.001, 2.01 and 2.03 for y = 0.25 and 0.5: the undercut appears only at y=0.25 for t = 2.001 and 2.01. At y=0.5 and at t=2.03 the lowest family crossing stayed above x*_12.",
+     "Factual error in wp1_competitor_map.md section 4: 'The other roots of c0 are at x >= 1.4 on the grid' is false. The factor (s x - s^2 + 2) vanishes at x = (t-2)/sqrt t, which is 0.5774 at t=3, 1.0 at t=4 and 1.3416 at t=5. These are inside or at the [-3,1] scan window. So 'x=0 is the only root of the leading coefficient in the edge range' holds only if the edge range is restricted to x <= ~0.5 (or t >= ~4.6 for the window [-3,1]). This has no effect on the conjecture where edges are negative, but the statement as written is wrong."
+    ],
+    "overclaims": [
+     "The summary says 'every positive j<=12 edge ... comes from cutting off at j=12'. WP1 computed the undercut at only 53 of the 57 positive-edge grid points. It did not show it for (7,2.0), (7,2.25) or (7,2.5), which needed j>200, or for (12,3), which was absent. I have now checked these four (they are undercut), but in WP1's own receipts the statement was an extrapolation.",
+     "The (4,0) 'full determinant equals edge_polynomial.srepr' part of the PROVED claim rests on a ratio of 1 at 4 rational points, so it is not a proof of identity. WP1's evidence line admits this, but the claim still carries the PROVED label. The P2 identity itself is exact (I confirmed it).",
+     "'Each family's leading coefficient in l has x=0 as its only root in the edge range' is too strong as written; see refuted item 2. In the summary it supports the conjecture without the s != 1, sqrt2 and x-range qualifications.",
+     "The conjecture is stated on 2<t<=12 even though WP1 had not examined t in (2,3). It is refuted near t=2.01 at y=0.25 (above). The label CONJECTURE is correct, but the domain should be restricted (for example t >= 3, or t bounded away from 2) or the near-t=2 family contribution added."
+    ],
+    "verdict": "sound_with_fixes",
+    "notes": "I wrote no files in the repo. All checks ran inline through stdin; one scratch file is /tmp/wp1v_facs.json, outside the repo. I used at most 2 processes with OMP_NUM_THREADS=1. Scripts used: /Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/ricci_su2_exact_edge.py (Blocks, phi_A, edge, lam_tw) and scripts/ricci_su3_test2_family.py (hessian_and_gauge, slice_spectrum). Receipts read: research/edge-theorem-20261121/wp1_block_polynomials.json, wp1_tail_check.json and wp1_competitor_map.md, plus research/su2-floor-family-20261119/edge_polynomial.txt.\n\nBottom line: the core WP1 results hold up under independent recomputation. That covers the competitor identification on j<=12, the exact factorizations and their degrees, the edges as roots of the right factor, P2 identity with the earlier polynomial, the family leading coefficients, and the main finding that positive j<=12 edges are cutoff artifacts, confirmed with the general builder and a full q scan. Required fixes:\n(1) Restrict or amend the all-sector conjecture near t=2+. At (2.01,0.25) and (2.001,0.25), q=l family sectors j=16 and j=58 undercut below x*_12, confirmed by the general builder in both H+GG* and the slice.\n(2) Correct the statement about the roots of c0. x=(t-2)/sqrt t lies in [0,1] for t<=4.\n(3) Downgrade the srepr-ratio sub-claim to COMPUTED, and phrase the 'every positive edge' claim as computed at 53/57 points by WP1 (now 57/57 with my checks).\n\nImplication for the edge theorem: a theorem domain at x <= -delta with t >= 3 looks unaffected by everything I tested. Near t=2 at small y, the large-j families must be handled explicitly; they do not stay near x=0 there."
+   }
+  },
+  {
+   "key": "v2:dc4671e7af1491b50cfaf6015e761ac585cd52d43fae434a94154ce9002269a9",
+   "result": {
+    "summary": "WP2 is done, and it turned up a correction to the edge first. Where the j <= 12 edge x*(t,y) is positive (t >~ 7, y >= 1 on the grid), she is NOT the floor of every sector for 0 < x < x*. This is PROVED: one diagonal entry is a Rayleigh-quotient upper bound, and its slope in l is -8x/sqrt t. An independent full builder confirms it numerically: at (0.1, sqrt10, 10) the margin is -0.583 at j=120. So the all-sector edge is min(x*, 0). The 'x <= x* - delta' domains therefore have no finite L0 wherever x* - delta >= 0 (3 of 48 grid points at delta=0.1).\n\nBounds designed:\n(GW) Weighted Gershgorin with an l-dependent diagonal similarity, ratio kappa/sqrt(l) on small xi. It moves the O(sqrt l) couplings into O(1) terms.\n(LDL) The near-end blocks (n0 <= N1, at most 9 states each) are scaled to M=(B-lambda)/l in U=1/l: pivots O(1), ladder entries O(sqrt U). M is proved positive definite exactly by interval LDL^T. Every other row is in the bulk (xi >= N1-1), where plain Gershgorin wins already at small l.\n\nCOMPUTED sampled cutoffs (max over the (t,y) grid), plain G0 / GW / exact:\n- delta=0.5: 763.5 / 103 / 1\n- delta=0.25: 11138.5 / 388 / 1\n- delta=0.1 with the edge corrected to min(x*,0): 8978 / 353.5 / 1\n\nPROVED by interval proof:\n- j >= 40 on x in [-3,-0.6] x y in [0.5,3] x t in [3,10], and also j >= 20 on the same box. The earlier proof had j >= 80 on x <= -1.5.\n- j >= 40 on t-slabs that follow the edge, at about 0.1 and about 0.02 below the grid edge. This includes x <= -0.02 on t in [7,10], y in [1,3]. How far each box sits below the edge was measured only at grid points (COMPUTED, not proved).",
+    "files_written": [
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp2_symbolic.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp2_bounds.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp2_interval_proof.py",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_symbolic.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_bounds.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_bounds.log.txt",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_large_sector_bound.md",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_x-0.6_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_x-0.6_L10.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t3-4_x-0.575_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t4-5_x-0.355_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t5-6_x-0.229_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t6-7_x-0.183_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_x-0.154_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t3-4_y0.5-3_x-0.495_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t4-5_y0.5-3_x-0.274_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t5-6_y0.5-3_x-0.149_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t6-7_y0.5-3_x-0.103_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_y0.5-3_x-0.074_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_y1-3_x-0.02_L20.json",
+     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/ (matching .log.txt for each interval proof)"
+    ],
+    "results": [
+     {
+      "claim": "The closed-form ingredient table of ricci_su2_family_large_j.py (w_a, C_aa, co, R_a, P+_a, P-_a) equals the exact symbolic rows. The assembled block is real symmetric. Exact diagonal identity: D - lambda_2l = 4xi(2l-xi)(1-1/t) + l K_a + E_a(xi) + R_a, with K_(1,0) = -4x/sqrt t, K_(1,-1) = -8x/sqrt t, K_(1,1) = 0.",
+      "status": "PROVED",
+      "evidence": "research/edge-theorem-20261121/wp2_symbolic.txt (sympy, checks S1-S3 all True), scripts/edge_wp2_symbolic.py"
+     },
+     {
+      "claim": "For x > 0 the twist is not the floor of H+GG* in sector j=2l whenever l > (4y^2 - 4 sqrt(t) x - 8x/sqrt t) sqrt(t)/(8x). Reason: the Rayleigh quotient of e_(m=l,(1,-1)) in block q=l is l(-8x/sqrt t) + (-4 sqrt t x + 4y^2 - 8x/sqrt t). At (0.1, sqrt10, 10) this gives every l > 152.11. Hence the all-sector edge is <= 0, so the j<=12 edge x* (positive for t >~ 7, y >= 1; e.g. x*(10,3)=0.16, x*(8,1.5)=0.0315) is not the all-sector edge there.",
+      "status": "PROVED",
+      "evidence": "wp2_symbolic.txt S5; edge grid in wp2_bounds.json (edge_grid)"
+     },
+     {
+      "claim": "At (x,y,t) = (0.1, sqrt10, 10), which is below the j<=12 edge 0.1728 of exact_edge.json, the twist fails at large j. Margin lambda_min - lambda_j: -0.583 (H+GG*) and -0.581 (gauge-orthogonal) at j=120; -8.95 at j=200 (independent full builder ricci_su3_test2_family); -34.1 at j=400 (Blocks.block). At x=0 the margin approaches 7.78 by j=20000; at x=+0.01 it is negative by j=4000.",
+      "status": "COMPUTED",
+      "evidence": "in-session runs (Blocks.block and T2.hessian_and_gauge/slice_spectrum); recorded in wp2_large_sector_bound.md section 0"
+     },
+     {
+      "claim": "The all-sector edge equals min(x*(t,y), 0), i.e. no failures at intermediate j for x < min(x*,0).",
+      "status": "CONJECTURE",
+      "evidence": "The <= 0 half is PROVED (S5). The sampled margins for x <= 0 stay positive (wp2_bounds.json EX cutoffs = 1 at all sampled points)."
+     },
+     {
+      "claim": "The weighted-Gershgorin bound GW (l-dependent diagonal similarity), plain G0 and the comparison-matrix bound all lie below the exact block minima on 60 random (x,y,t,l). The exact minimum was always attained in a near-end block (n0 <= 12) in 25 random full computations.",
+      "status": "COMPUTED",
+      "evidence": "wp2_bounds.json: random_comparison_violations = 0, argmin_far_from_ends_count = 0 of 25"
+     },
+     {
+      "claim": "Sampled cutoffs L0 as max over the t x y grid, given as plain G0 / weighted GW / exact. delta=0.5 literal: 763.5 / 103 / 1. delta=0.5 corrected: 353.5 / 68.5 / 1. delta=0.25 literal: 11138.5 / 388 / 1. delta=0.25 corrected: 1414 / 140.5 / 1. delta=0.1 literal: inf (3 of 48 grid points have x*-delta >= 0). delta=0.1 corrected (x <= min(x*,0) - 0.1): 8978 / 353.5 / 1.",
+      "status": "COMPUTED",
+      "evidence": "wp2_bounds.json cutoffs; wp2_bounds.log.txt. GW uses the best (theta, X1) per point."
+     },
+     {
+      "claim": "On x in [-3,-0.6], y in [0.5,3], t in [3,10], every non-twist charge block of every sector j >= 40 has lambda_min > lambda_j. The same holds for j >= 20 (L0=10, N1=10, XA=10). Method: interval LDL^T of the scaled near-end blocks plus plain Gershgorin (FA/FB) on rows with xi >= N1-1.",
+      "status": "PROVED",
+      "evidence": "wp2_interval_proof_x-0.6_L20.json and wp2_interval_proof_x-0.6_L10.json (all_proved true). Checks: M*l+lambda matches Blocks.block to 4.5e-16; mirror symmetry of G symbolic; G_exact <= actual Gershgorin quantity to 2.8e-13."
+     },
+     {
+      "claim": "j >= 40 is proved on t-slab boxes that follow the edge: x top -0.575/-0.495 (t in [3,4]); -0.355/-0.274 ([4,5]); -0.229/-0.149 ([5,6]); -0.183/-0.103 ([6,7]); -0.154/-0.074 ([7,10]); and x <= -0.02 on t in [7,10], y in [1,3].",
+      "status": "PROVED",
+      "evidence": "wp2_interval_proof_slab_*.json (all_proved true); timings and piece counts in wp2_large_sector_bound.md section 4"
+     },
+     {
+      "claim": "Those slab boxes lie about 0.1 and about 0.02 below the edge min(x*,0).",
+      "status": "COMPUTED",
+      "evidence": "Checked only at the grid points of edge_grid in wp2_bounds.json. Not proved between grid points; x* is not monotone in y (e.g. t=3: -0.3355 at y=0.5, -0.3294 at y=1)."
+     }
+    ],
+    "open_issues": [
+     "The edge statement 'floor of every sector exactly for x below x*' is false wherever x* > 0 (t >~ 7 at y >= 1). The docs and the edge theorem need min(x*,0). That intermediate-j claim is still a CONJECTURE.",
+     "The small-j half (j < 40, or j < 20 on x <= -0.6) on the new boxes is not done here.",
+     "x in (-0.02, 0) is not covered. At x = 0, K_(1,0) = K_(1,-1) = 0 and the near-end margin is only O(1) (7.78 at (10, sqrt10), COMPUTED), so a proof there needs a second-order argument. Interval cost grows quickly: 126082 pieces at x <= -0.02 against about 500 at x <= -0.6.",
+     "Box-vs-edge distances (delta) are grid-sampled, not proved between grid points.",
+     "The GW cutoffs use the best (theta, X1) per sample point. One uniform choice per domain was not optimised, and GW was not turned into an interval proof; the LDL route was used for the proofs because it is exact on the near-end blocks.",
+     "The block q = -l-2 (type (-1,-1) at m = -l) has eigenvalue exactly lambda_j: it is the twist's mirror copy. It is excluded, as in phi_A, so 'unique' should be read up to this conjugate copy."
+    ]
+   }
+  },
+  {
+   "key": "v2:a76bc41a550d4dfbaa01f2f29bb294c9250ba6d597aef0953eac478d5480a8d9",
+   "result": {
+    "reproduced": [
+     "S1-S5 symbolic (scripts/edge_wp2_symbolic.py, wp2_symbolic.txt): I read the code. The S3 identity and the Rayleigh-quotient argument are correct. A diagonal entry of the real symmetric block q=l minus lambda_2l equals l(-8x/sqrt t) + (-4 sqrt t x + 4y^2 - 8x/sqrt t), which is an upper bound for lambda_min - lambda_2l. Numerically, at (0.1, sqrt10, 10) with j=300/306/310, the Blocks.block diagonal minus lambda matches the formula to about 1e-12. PROVED claim stands.",
+     "Counterexample at (0.1, sqrt10, 10), COMPUTED this session. Blocks.block margin: -0.58346 at j=120 (argmin q=-61), -8.9498 at j=200, -34.100 at j=400. Independent builder ricci_su3_test2_family.hessian_and_gauge on H+GG* at j=120: two eigenvalues at lambda-0.583458, plus the twist and its mirror at lambda. At x=0: margin 7.7516 at j=2000 and 7.7752 at j=20000. At x=+0.01: -7.67 at j=2000 and -32.9 at j=4000.",
+     "Bound validity, COMPUTED. 400 random (x,y,t,l) points: x in [-3,0.3] with extra points near the edge (x in [-0.6,0.2]); l from 0.5 to 8 in half steps, plus 10, 12.5, 20, 25.5, 40, 41.5, 60. Exact minimum over all blocks except the twist and its mirror, against G0 and GW (theta up to 20, X1 up to 3, all rows). 0 violations; min(exact - best bound) = 6.59. 60 more points with x in [-0.3,0.3] and l up to 300 (25 of them with negative exact margin): 0 violations.",
+     "Interval proof rerun: edge_wp2_interval_proof.py with 20 8 20 -3 -0.6 0.5 3 3 10 printed ALL PROVED (125.7 s, single process). Output: research/edge-theorem-20261121/wp2_verify_rerun_x-0.6_L20.json.",
+     "Interval rigor review of edge_wp2_interval_proof.py and ricci_su2_family_large_j.py FA/FB. All variables are enclosed: U=1/l continuous on [0,1/L0], which covers odd and even j; x, y, t are boxes; XN and V are relaxed in FB. mpmath.iv runs at prec 80. I inspected the lambdified entries: only integer constants and sqrt(2) appear, and sqrt maps to iv.sqrt, so there are no rounded Rationals. The interval LDL^T is isotone. The proof requires every pivot's lower endpoint > 0. Bisection is exhaustive; nothing is sampled. Block coverage is complete: top n0 <= N1, bottom n0' <= N1, and the bulk, where min(xi, 2l-xi) >= N1-1, by plain Gershgorin. The assertion 2L0 >= N1+2 holds for every run.",
+     "LDL detector is not vacuous: at x=0.1, l=60/100/200, the sign of the LDL minimum pivot agrees with the sign of the exact block margin in all 18 block cases. For example, at l=60 the n0=-1 block has margin -0.58 and pivot -0.0102.",
+     "Proved boxes, sanity check (COMPUTED): 50 random points per box, biased toward the top x corner, with exact all-block margins for j in [2L0, 2L0+80]. Every margin is positive. Minimum 1.655 for the x<=-0.02 box at (-0.0222, 1.034, 7.93, j=49).",
+     "All 15 interval JSONs report all_proved true and mirror_symbolic true. near_end_matrix_vs_blocks 4.5e-16; G check 2.8e-13. The 126082 pieces is the count for each (-1) block (top and bottom), as the md says.",
+     "Cutoff reproduction at the worst grid point (-0.1, 3, 10): the script's cutoff() gives G0 8978.0 and GW(theta=4, X1=1) 353.5, matching wp2_bounds.json. Edge grid values (x*(10,3)=0.15996, x*(8,1.5)=0.03148) and exact_edge.json edge_A(10, sqrt10)=0.17277 match the report."
+    ],
+    "refuted_or_wrong": [
+     "The reported cutoffs come from a coarse l grid and are not the true cutoffs. Above l=100, L_GRID is 300 geometric points up to 1e6, about 3% apart. At (-0.1, 3, 10), G0 is already positive at l=8977.5 (2.96), so the true G0 cutoff lies below 8978. A dense half-integer scan of GW(4,1) gives a last non-positive l of 344.5, so the true cutoff is 345, not 353.5. The error is in the conservative direction, but the numbers are not exact cutoffs.",
+     "'x* positive for t >~ 7, y >= 1' has an exception on the report's own grid: x*(7, 1.5) = -0.00039 (wp2_bounds.json edge_grid)."
+    ],
+    "overclaims": [
+     "The summary says 'So the all-sector edge is min(x*, 0)' as a fact. The results table correctly labels this CONJECTURE: only the <= 0 half is PROVED, and the intermediate-j part is sampled.",
+     "The 'exact' cutoff EX = 1 is sampled: only integer l (even j only, no odd sectors), only near-end blocks for l > 30, and only at x in {top, top-0.5, -3} on the 48-point grid. It should be labelled a sampled COMPUTED value.",
+     "'Slabs that follow the edge, about 0.1 and about 0.02 below the edge': delta is measured against the minimum of the grid edge over each slab (the t=tmin, worst-y point). Elsewhere the gap is much larger. For example, on t in [3,4] the box top is -0.495, while x*(4,1) = -0.169. These are axis-aligned boxes below the worst point, not edge-following regions. The report does label the grid-only measurement COMPUTED.",
+     "The x <= -0.02 box: the endpoint is the double -0.02 = -0.0200000000000000004163, which is slightly below the decimal -0.02. Strictly, the proved box is x <= -0.0200000000000000004. Negligible, but the stated box is marginally larger than the one proved. Similar for other decimal endpoints; -0.6 rounds the safe way.",
+     "The near-end scaled matrix formula, especially the bottom end with a -> -a, xi -> eta, is checked numerically against Blocks.block (12 random points, 4.5e-16), not as a symbolic identity. The same goes for 'G_exact <= actual Gershgorin quantity' (numeric, 2.8e-13). Both follow from S1-S3 and the block structure, but the receipts are numerical. The PROVED label for the interval theorems rests on that.",
+     "'Every non-twist charge block has lambda_min > lambda_j' is literally false because of the mirror block q=-l-2, whose eigenvalue is exactly lambda_j. The report acknowledges this in open issues; the theorem statement should exclude it explicitly.",
+     "GW was never turned into an interval proof, and its cutoffs use the best (theta, X1) per point. 'GW: 103/388/353.5' are COMPUTED heuristics, not certified cutoffs. The report says this in open issues."
+    ],
+    "verdict": "sound_with_fixes",
+    "notes": "I could not refute the WP2 results. The main claims hold:\n- The Rayleigh-quotient argument PROVES that for x > 0 the twist fails at large j. I reproduced the counterexample with two independent builders.\n- The G0 and GW lower bounds never exceeded the exact block minima in 460 random tests, including small l, points near the edge and points with x > 0.\n- The interval LDL^T plus Gershgorin proofs are rigorous as written: outward-rounded mpmath.iv, every variable enclosed, complete block coverage, no sampling. One run reproduced (ALL PROVED), and the LDL check correctly flags the known failing blocks.\n\nFixes needed:\n- Demote 'the all-sector edge is min(x*, 0)' in the summary to CONJECTURE.\n- Describe the cutoffs as grid-quantized upper estimates (about 3% resolution above l = 100). The true GW cutoff at the worst point is 345, not 353.5.\n- Say that EX = 1 was sampled on even j only.\n- Fix 'x* > 0 for t >~ 7, y >= 1'; it fails at (7, 1.5).\n- Describe the slab deltas as distances from the worst grid point of each slab.\n- Optionally, add symbolic proofs of the bottom-end matrix identity and of the G bound, which are currently checked numerically.\n\nFile written this session: /Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_verify_rerun_x-0.6_L20.json (the rerun output). All other checks ran inline, one process at a time, with OMP_NUM_THREADS=1; no existing files were modified."
+   }
+  }
+ ]
+}

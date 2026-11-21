@@ -1,0 +1,36 @@
+P loaded, factors [(5, 6, 12), (7, 8, 16)] const -16384 2.2745468616485596
+sqrt3 E1 done 2.41888689994812 {'t': 3, 'y': 'sqrt3', 'E1_B40_exactly_real_symmetric': True, 'E1_both_max_charge_blocks_equal_lambda_j_exactly_j<=12': True, 'E1_check_exact_blocks_vs_EE_Blocks_maxabs_COMPUTED': 2.842170943040401e-14}
+sqrt3 E2 done 3.7190277576446533 True
+sqrt3 E3 done 3.974447727203369 -0.3821684822419167 {'interval': ['-107380692525923/1650369144311535', '-91480710854051/1405997101916282'], 'float': -0.0650646510788456, 'factor': 'P1'}
+sqrt3 E4 done 4.03958797454834 True {'ok': True, 'pieces': 14, 'max_depth': 2, 'min_pivot_lower': 0.0351128267932964}
+sqrt3 E5 j = 0 ok so far: True 4.084406852722168
+sqrt3 E5 j = 1 ok so far: True 4.173256874084473
+sqrt3 E5 j = 2 ok so far: True 4.327696800231934
+sqrt3 E5 j = 3 ok so far: True 4.557840824127197
+sqrt3 E5 j = 4 ok so far: True 4.775441884994507
+sqrt3 E5 j = 5 ok so far: True 5.147119760513306
+sqrt3 E5 j = 6 ok so far: True 5.539087772369385
+sqrt3 E5 j = 7 ok so far: True 5.995935916900635
+sqrt3 E5 j = 8 ok so far: True 6.530210971832275
+sqrt3 E5 j = 9 ok so far: True 7.124835968017578
+sqrt3 E5 j = 10 ok so far: True 7.8296709060668945
+sqrt3 E5 j = 11 ok so far: True 8.685524940490723
+sqrt3 E5 j = 12 ok so far: True 9.605661869049072
+1.5 E1 done 2.6747686862945557 {'t': 3, 'y': '1.5', 'E1_B40_exactly_real_symmetric': True, 'E1_both_max_charge_blocks_equal_lambda_j_exactly_j<=12': True, 'E1_check_exact_blocks_vs_EE_Blocks_maxabs_COMPUTED': 2.842170943040401e-14}
+1.5 E2 done 4.241067886352539 True
+1.5 E3 done 4.476407051086426 -0.37158172515020627 {'interval': ['-10151046786979/1227700597971122', '-9322795340498/1127529175510583'], 'float': -0.008268340671784679, 'factor': 'P1'}
+1.5 E4 done 4.538688898086548 True {'ok': True, 'pieces': 13, 'max_depth': 2, 'min_pivot_lower': 0.16534651060725436}
+1.5 E5 j = 0 ok so far: True 4.577854871749878
+1.5 E5 j = 1 ok so far: True 4.683718919754028
+1.5 E5 j = 2 ok so far: True 4.871150970458984
+1.5 E5 j = 3 ok so far: True 5.140767812728882
+1.5 E5 j = 4 ok so far: True 5.3876988887786865
+1.5 E5 j = 5 ok so far: True 5.834670066833496
+1.5 E5 j = 6 ok so far: True 6.304485082626343
+1.5 E5 j = 7 ok so far: True 6.883305788040161
+1.5 E5 j = 8 ok so far: True 7.50908899307251
+1.5 E5 j = 9 ok so far: True 8.19161081314087
+1.5 E5 j = 10 ok so far: True 8.950958967208862
+1.5 E5 j = 11 ok so far: True 9.757442951202393
+1.5 E5 j = 12 ok so far: True 10.63293194770813
+total 24.482480764389038

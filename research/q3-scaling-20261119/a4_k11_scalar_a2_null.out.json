@@ -1,0 +1,62 @@
+{
+  "block": 100,
+  "gevp": null,
+  "C_t": [
+    6.95560230951181,
+    0.02901081936379676,
+    -0.014615137626349013,
+    -0.02275810101101174,
+    0.04662869794933779,
+    -0.006794421946492436,
+    0.04662869794933781,
+    -0.022758101011011767,
+    -0.014615137626349053,
+    0.029010819363796774
+  ],
+  "C_err_t": [
+    0.033440402951062397,
+    0.023163667884749252,
+    0.021997635638749465,
+    0.021945002790057913,
+    0.022040220425442823,
+    0.031181536544888568,
+    0.02204022042544283,
+    0.021945002790057917,
+    0.021997635638749458,
+    0.02316366788474926
+  ],
+  "m_eff_t": [
+    null,
+    5.477512975415218,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "m_eff_err_t": [
+    null,
+    0.8028611847930497,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "m_eff_err_t_halcyon_normalisation": [],
+  "plateau": {
+    "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+    "t": 1
+  },
+  "plateau_as_fixed": {
+    "refused": "EFFECTIVE_MASS: no plateau: the effective mass is undefined or unstable under the jackknife (at t = 2)",
+    "t": 2
+  },
+  "seconds": 0.0070218
+}

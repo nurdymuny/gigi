@@ -124,3 +124,7 @@ ingest_receipt_a4_k0_k10_run1_stale_null.json) failed I-null only because of a h
 reused the null bundle stored from the Q3-C vector while the probe shuffled the A4 vector (both refused). The null
 bundle is now keyed to its vector's hash. Run 2 (ingest_receipt_a4_k0_k10.json): I-load, I-store, I-parity (including
 the GEVP path), I-null, I-persist all pass.
+
+## 2026-11-21: Amendment 4 scored
+
+k11-k19 sampled (all exit 0). test_q3_a4.py run with the frozen q3a4 probe: outcome failure (one beta passes Q3-a/Q3-v). k17 reproduces k9 excess (pull 5.2); k18 large-volume sigma pull 5.0. A4-start bound changed nothing. Q4: C1 vacuous, C2 holds at 2.2986, K nowhere. See docs/HALCYON_Q3_A4_RESULTS.md.

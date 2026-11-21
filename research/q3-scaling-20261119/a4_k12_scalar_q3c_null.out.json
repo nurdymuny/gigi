@@ -1,0 +1,70 @@
+{
+  "block": 100,
+  "gevp": null,
+  "C_t": [
+    4.229028284047682,
+    0.0038629302997649118,
+    -0.02098813486788196,
+    0.006013054782137155,
+    0.015866113432129434,
+    0.006928862236765713,
+    -0.011285855234129753,
+    0.006928862236765711,
+    0.015866113432129448,
+    0.00601305478213716,
+    -0.02098813486788195,
+    0.003862930299764919
+  ],
+  "C_err_t": [
+    0.018515858921187484,
+    0.014094846903263472,
+    0.012228778088682236,
+    0.012010137270352599,
+    0.012019167506640076,
+    0.012560990732058686,
+    0.0166349947593568,
+    0.012560990732058684,
+    0.012019167506640083,
+    0.0120101372703526,
+    0.01222877808868224,
+    0.014094846903263476
+  ],
+  "m_eff_t": [
+    null,
+    6.993325412335191,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "m_eff_err_t": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "m_eff_err_t_halcyon_normalisation": [],
+  "plateau": {
+    "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+    "t": 0
+  },
+  "plateau_as_fixed": {
+    "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+    "t": 0
+  },
+  "seconds": 0.010754
+}

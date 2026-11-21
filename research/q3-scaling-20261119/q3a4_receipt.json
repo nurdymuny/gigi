@@ -1,0 +1,2469 @@
+{
+ "kind": "Q3 Amendment 4",
+ "spec": "docs/HALCYON_Q3_RUN_SPEC.md (Amendment 4)",
+ "gates": {
+  "A4-null": true,
+  "Q3-a_beta2.2986": true,
+  "Q3-v_beta2.2986": true,
+  "Q3-a_beta2.3715": true,
+  "Q3-v_beta2.3715": false,
+  "Q3-a_beta2.4265": false,
+  "Q3-v_beta2.4265": false,
+  "Q3-a_beta2.5115": false,
+  "Q3-v_beta2.5115": false,
+  "Q3-s": false
+ },
+ "outcome": "failure",
+ "n_beta_passing": 1,
+ "per_beta": {
+  "2.2986": {
+   "Q3-v_by_refusal": false
+  },
+  "2.3715": {
+   "Q3-v_by_refusal": true
+  },
+  "2.4265": {
+   "Q3-v_by_refusal": false
+  },
+  "2.5115": {
+   "Q3-v_by_refusal": false
+  }
+ },
+ "scaling": {
+  "points": [
+   [
+    2.2986,
+    0.13057199314381324,
+    3.241075401567966,
+    0.21146044266585481
+   ]
+  ],
+  "note": "fewer than two betas passed Q3-a and Q3-v"
+ },
+ "A4-path_fallback": [
+  "k12_torelon",
+  "k14_torelon",
+  "k19_torelon"
+ ],
+ "A4-null_failures": [],
+ "A4-null_record": {
+  "k11_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k11_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k11_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k11_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k12_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k12_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k12_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k12_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k13_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k13_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k13_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k13_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k14_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k14_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k14_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k14_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k15_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k15_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k15_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 6)",
+   "t": 6
+  },
+  "k15_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 3)",
+   "t": 3
+  },
+  "k16_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k16_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k16_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 3)",
+   "t": 3
+  },
+  "k16_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 3)",
+   "t": 3
+  },
+  "k17_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k17_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k17_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k17_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k18_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k18_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+   "t": 1
+  },
+  "k18_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k18_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k19_scalar_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k19_scalar_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k19_torelon_a2": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  },
+  "k19_torelon_q3c": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  }
+ },
+ "A4-start": {},
+ "k17_replicate": {
+  "am0": {
+   "t_lo": 2,
+   "t_hi": 5,
+   "mass": 0.7467438311160575,
+   "error": 0.013748058069886996,
+   "chi2_dof": 1.317090922427183
+  },
+  "pull_vs_LTW": 5.220143168511479,
+  "reproduces_k9_excess": true
+ },
+ "k18_large_volume_sigma": {
+  "pull_a_sqrt_sigma_vs_LTW": 5.028109656475172
+ },
+ "k19": {
+  "a_sqrt_sigma": null,
+  "a_sqrt_sigma_err": null,
+  "pull_a_sqrt_sigma_vs_LTW": null,
+  "am0": {
+   "t_lo": 2,
+   "t_hi": 3,
+   "mass": 1.2562046696661529,
+   "error": 0.05158087915071001,
+   "chi2_dof": 0.09749536723919075
+  },
+  "pull_am0_vs_LTW": 0.7882905779453038,
+  "torelon_plateau": {
+   "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+   "t": 2
+  },
+  "A4-start": {
+   "scalar": null,
+   "torelon": null
+  }
+ },
+ "rescored_not_evidence": {
+  "Q3-r_k6": true,
+  "rows": {
+   "0": {
+    "beta": 2.2986,
+    "L": 10,
+    "a_sqrt_sigma": 0.36027956425409746,
+    "a_sqrt_sigma_err": 0.007592945377029923,
+    "ratio": 3.28551101391544,
+    "ratio_err": 0.17871056120500836,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.1837024764454946,
+      "error": 0.059254731437235364,
+      "chi2_dof": 0.13742885697086146
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.1932938890715636,
+      "error": 0.05471166103683009,
+      "chi2_dof": 0.14746359992713798
+     },
+     "path": "a2",
+     "gevp_refused": null
+    }
+   },
+   "1": {
+    "beta": 2.2986,
+    "L": 14,
+    "a_sqrt_sigma": null,
+    "a_sqrt_sigma_err": null,
+    "ratio": null,
+    "ratio_err": null,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.1517342037206524,
+      "error": 0.03849837411218567,
+      "chi2_dof": 1.0611751381207586
+     },
+     "path": "q3c_fallback",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+      "t": 2
+     },
+     "path": "q3c_fallback",
+     "gevp_refused": null
+    }
+   },
+   "2": {
+    "beta": 2.3715,
+    "L": 12,
+    "a_sqrt_sigma": 0.29117250867143385,
+    "a_sqrt_sigma_err": 0.002891484451640441,
+    "ratio": 3.562030743179175,
+    "ratio_err": 0.12581711410340948,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.0371654274562458,
+      "error": 0.03541056130632707,
+      "chi2_dof": 0.26939693776148366
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 4,
+      "mass": 0.9301106950724781,
+      "error": 0.02020609875764622,
+      "chi2_dof": 0.99087922836901
+     },
+     "path": "a2",
+     "gevp_refused": null
+    }
+   },
+   "3": {
+    "beta": 2.3715,
+    "L": 16,
+    "a_sqrt_sigma": 0.2941779312938447,
+    "a_sqrt_sigma_err": 0.004790372686656009,
+    "ratio": 3.3079944695148567,
+    "ratio_err": 0.1254631523179298,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 0.9731389697734154,
+      "error": 0.03563231697652333,
+      "chi2_dof": 0.663228002107977
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.3192006372154288,
+      "error": 0.04509510166678405,
+      "chi2_dof": 0.37310385444200106
+     },
+     "path": "a2",
+     "gevp_refused": null
+    }
+   },
+   "4": {
+    "beta": 2.4265,
+    "L": 16,
+    "a_sqrt_sigma": 0.242446730011346,
+    "a_sqrt_sigma_err": 0.002455463340663043,
+    "ratio": 3.661006680714621,
+    "ratio_err": 0.10909924448554352,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 4,
+      "mass": 0.8875990982888952,
+      "error": 0.02532016511792223,
+      "chi2_dof": 0.07871357286055287
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 4,
+      "mass": 0.8750368233413247,
+      "error": 0.019050209843407696,
+      "chi2_dof": 0.14371757244433264
+     },
+     "path": "a2",
+     "gevp_refused": null
+    }
+   },
+   "5": {
+    "beta": 2.4265,
+    "L": 20,
+    "a_sqrt_sigma": 0.24487893385933096,
+    "a_sqrt_sigma_err": 0.002797923660035883,
+    "ratio": 3.515776713455536,
+    "ratio_err": 0.20456781595378215,
+    "scalar": {
+     "plateau": {
+      "t_lo": 3,
+      "t_hi": 4,
+      "mass": 0.8609396532784496,
+      "error": 0.049355997848211736,
+      "chi2_dof": 0.31826842584044024
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.1469539674018219,
+      "error": 0.02740610251557537,
+      "chi2_dof": 0.32850569334920987
+     },
+     "path": "a2",
+     "gevp_refused": null
+    }
+   },
+   "6": {
+    "beta": 2.3,
+    "L": 16,
+    "a_sqrt_sigma": null,
+    "a_sqrt_sigma_err": null,
+    "ratio": null,
+    "ratio_err": null,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.1904234065731456,
+      "error": 0.039405319993067046,
+      "chi2_dof": 0.19683134198344798
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+      "t": 2
+     },
+     "path": "q3c_fallback",
+     "gevp_refused": null
+    }
+   },
+   "7": {
+    "beta": 2.2986,
+    "L": 12,
+    "a_sqrt_sigma": 0.36609538984982903,
+    "a_sqrt_sigma_err": 0.0074162471950192325,
+    "ratio": 3.343539601629938,
+    "ratio_err": 0.15360460094038653,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.2240544339370423,
+      "error": 0.049977852715894056,
+      "chi2_dof": 0.13647265043968965
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.5210435510318634,
+      "error": 0.0651612937939984,
+      "chi2_dof": 0.3563131460467328
+     },
+     "path": "q3c_fallback",
+     "gevp_refused": null
+    }
+   },
+   "8": {
+    "beta": 2.2986,
+    "L": 14,
+    "a_sqrt_sigma": null,
+    "a_sqrt_sigma_err": null,
+    "ratio": null,
+    "ratio_err": null,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.2343382269278225,
+      "error": 0.04344189805996407,
+      "chi2_dof": 0.37437280741655365
+     },
+     "path": "q3c_fallback",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+      "t": 2
+     },
+     "path": "q3c_fallback",
+     "gevp_refused": null
+    }
+   },
+   "9": {
+    "beta": 2.5115,
+    "L": 20,
+    "a_sqrt_sigma": 0.17618502805065564,
+    "a_sqrt_sigma_err": 0.004340994059527617,
+    "ratio": 4.049889416541655,
+    "ratio_err": 0.12852539889113473,
+    "scalar": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 5,
+      "mass": 0.7135298804554634,
+      "error": 0.014080761239248252,
+      "chi2_dof": 0.8602327540296738
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 4,
+      "t_hi": 5,
+      "mass": 0.5684634046243765,
+      "error": 0.03059272640582411,
+      "chi2_dof": 0.7733725101030083
+     },
+     "path": "a2",
+     "gevp_refused": null
+    }
+   },
+   "10": {
+    "beta": 2.5115,
+    "L": 24,
+    "a_sqrt_sigma": 0.18434790481880073,
+    "a_sqrt_sigma_err": 0.0012051087110930897,
+    "ratio": 3.5958745458575274,
+    "ratio_err": 0.11304815733605957,
+    "scalar": {
+     "plateau": {
+      "t_lo": 3,
+      "t_hi": 6,
+      "mass": 0.662891938520147,
+      "error": 0.021060234671095496,
+      "chi2_dof": 1.0447855992234711
+     },
+     "path": "a2",
+     "gevp_refused": null
+    },
+    "torelon": {
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 4,
+      "mass": 0.7719863689661005,
+      "error": 0.010663644766507033,
+      "chi2_dof": 0.6574083020160376
+     },
+     "path": "a2",
+     "gevp_refused": null
+    }
+   }
+  }
+ },
+ "rows": {
+  "11": {
+   "beta": 2.2986,
+   "L": 10,
+   "seed": 20272193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6017421532875266,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.3107128081719666,
+      0.24465320998551615,
+      0.09039415573288885,
+      0.002821163678567326
+     ],
+     "vector": [
+      -0.038342420032948,
+      0.6177049235596958,
+      -1.2356055269336128,
+      1.8187381773070048
+     ],
+     "condition_t0": 12314.031949125278,
+     "kept": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.1711543922579373,
+     "error": 0.07513756758943389,
+     "chi2_dof": 0.36551160271489697
+    },
+    "plateau_as_fixed": {
+     "refused": "EFFECTIVE_MASS: no plateau: consecutive effective masses disagree by more than 1 combined standard errors (at t = 2)",
+     "t": 2
+    },
+    "m_eff_t": [
+     null,
+     1.9637477676293356,
+     1.15606305443008,
+     1.3307567689998314,
+     0.500949627395009,
+     null,
+     0.5009496273950119,
+     1.3307567689998314,
+     1.1560630544300805,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.025989644753915474,
+     0.0849282013478886,
+     0.27618986204607743,
+     null,
+     null,
+     null,
+     0.2761898620460776,
+     0.0849282013478889,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.1711543922579373,
+      "error": 0.07513756758943389,
+      "chi2_dof": 0.36551160271489697
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.30049012724239316,
+      0.15828007279778078,
+      -0.10547576526149449
+     ],
+     "vector": [
+      0.0,
+      0.29498878261184547,
+      -0.3290253583280492,
+      0.2536339725664996
+     ],
+     "condition_t0": 3106.9960422562035,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.2010001763184728,
+     "error": 0.04230180623723031,
+     "chi2_dof": 0.7177237991791434
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 8,
+     "mass": 1.2017510942691212,
+     "error": 0.030857378231821626,
+     "chi2_dof": 0.24853592968746918
+    },
+    "m_eff_t": [
+     null,
+     1.459751749995414,
+     1.2130915118147263,
+     1.086748030120546,
+     1.2734888529842971,
+     1.242944882863262,
+     1.2734888529842967,
+     1.0867480301205468,
+     1.2130915118147263,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.016017690336046577,
+     0.046135462905240274,
+     0.14181753426240679,
+     0.43612381656756416,
+     1.2602028326883183,
+     0.4361238165675639,
+     0.14181753426240662,
+     0.046135462905240295,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.2010001763184728,
+      "error": 0.04230180623723031,
+      "chi2_dof": 0.7177237991791434
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "a2sigma": 0.13057199314381324,
+   "a2sigma_err": 0.004230180623723031,
+   "a_sqrt_sigma": 0.36134746871095313,
+   "a_sqrt_sigma_err": 0.005853341990762375,
+   "aL_sqrt_sigma": 3.613474687109531,
+   "sigma_refused": false,
+   "ratio": 3.241075401567966,
+   "ratio_err": 0.21146044266585481
+  },
+  "12": {
+   "beta": 2.2986,
+   "L": 12,
+   "seed": 20273193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6018638815462586,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.3181162043199607,
+      0.15128130025018363,
+      0.021594205047952213,
+      -0.38537073847948705
+     ],
+     "vector": [
+      0.008383174743676992,
+      0.023105367223309827,
+      0.11589263872526784,
+      0.5647089375171803
+     ],
+     "condition_t0": 14966.772341442085,
+     "kept": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.1415801852605105,
+     "error": 0.04321617222619726,
+     "chi2_dof": 0.08832023885252098
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 1.1426050705878428,
+     "error": 0.04959935587983745,
+     "chi2_dof": 0.10076750386074587
+    },
+    "m_eff_t": [
+     null,
+     1.667643191906188,
+     1.1463650369937952,
+     1.095999734749107,
+     1.414361533820887,
+     null,
+     null,
+     null,
+     1.414361533820887,
+     1.095999734749107,
+     1.1463650369937952,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.015309364230667739,
+     0.05223599207317769,
+     0.16122222537930275,
+     0.8091811081568359,
+     null,
+     null,
+     null,
+     0.8091811081568361,
+     0.16122222537930284,
+     0.0522359920731775,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.1415801852605105,
+      "error": 0.04321617222619726,
+      "chi2_dof": 0.08832023885252098
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.22717068433437237
+     ],
+     "vector": [
+      0.0,
+      0.1049054968849026,
+      0.07808275179915275,
+      0.060282575352742646
+     ],
+     "condition_t0": 1.0,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": true,
+     "directions_kept": 1,
+     "direction_snr_t1": [
+      12.972561639528283,
+      2.030484199371836,
+      0.4746952238475942
+     ],
+     "path": "q3c_fallback",
+     "a2_failure": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.4840884802656096,
+     "error": 0.07027696180799321,
+     "chi2_dof": 0.4385852323917559
+    },
+    "plateau_as_fixed": {
+     "refused": "EFFECTIVE_MASS: no plateau: consecutive effective masses disagree by more than 1 combined standard errors (at t = 2)",
+     "t": 2
+    },
+    "m_eff_t": [
+     null,
+     1.710848313438486,
+     1.4963321340242248,
+     1.3034818585648802,
+     0.43620904532048244,
+     3.2083279568950718,
+     null,
+     3.208327956895082,
+     0.436209045320483,
+     1.3034818585648797,
+     1.4963321340242246,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.015712707637225265,
+     0.07337340089697458,
+     0.2818058238584083,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.28180582385840813,
+     0.07337340089697462,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "q3c_fallback",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.4840884802656096,
+      "error": 0.07027696180799321,
+      "chi2_dof": 0.4385852323917559
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "a2sigma": 0.13094624523877715,
+   "a2sigma_err": 0.005856413483999435,
+   "a_sqrt_sigma": 0.3618649544219185,
+   "a_sqrt_sigma_err": 0.008091987649584761,
+   "aL_sqrt_sigma": 4.342379453063022,
+   "sigma_refused": false,
+   "ratio": 3.154713302049941,
+   "ratio_err": 0.12873351436376165
+  },
+  "13": {
+   "beta": 2.3715,
+   "L": 12,
+   "seed": 20274193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6227303097654936,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.35577672400548654,
+      0.18243597770775213,
+      0.11133833117796665,
+      0.08826384148168927
+     ],
+     "vector": [
+      -0.00658662554466454,
+      0.13269721278677823,
+      -0.2056782677609671,
+      0.9383202779316869
+     ],
+     "condition_t0": 6699.364004411623,
+     "kept": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.031314799096222,
+     "error": 0.031965318385013576,
+     "chi2_dof": 1.3210102773188626
+    },
+    "plateau_as_fixed": {
+     "t_lo": 3,
+     "t_hi": 5,
+     "mass": 0.9535279102601404,
+     "error": 0.08561658248951341,
+     "chi2_dof": 0.19779813683658043
+    },
+    "m_eff_t": [
+     null,
+     1.3951145328588075,
+     1.0455941349672238,
+     0.9326781192143726,
+     1.0896986298634392,
+     1.1082559526304758,
+     0.6545762222376538,
+     1.1082559526304752,
+     1.0896986298634397,
+     0.9326781192143718,
+     1.0455941349672238,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.013513491525308771,
+     0.03493644245546173,
+     0.09182139729063962,
+     0.2558703144648522,
+     0.6274353555873279,
+     null,
+     0.6274353555873277,
+     0.25587031446485226,
+     0.09182139729063926,
+     0.03493644245546195,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.031314799096222,
+      "error": 0.031965318385013576,
+      "chi2_dof": 1.3210102773188626
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.39136508485190946,
+      0.1761609886048563,
+      -0.1554407913535048
+     ],
+     "vector": [
+      0.0,
+      -0.019174494466163226,
+      0.07705207637331675,
+      0.05552560767757029
+     ],
+     "condition_t0": 2966.825879180494,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 0.937130800801251,
+     "error": 0.020151975566425562,
+     "chi2_dof": 1.2211766178325736
+    },
+    "plateau_as_fixed": {
+     "t_lo": 3,
+     "t_hi": 5,
+     "mass": 0.8955557818370428,
+     "error": 0.05345856009409196,
+     "chi2_dof": 0.39048533295164417
+    },
+    "m_eff_t": [
+     null,
+     1.0343409754705355,
+     0.9466920692224344,
+     0.8775745730344129,
+     0.9756727033190614,
+     1.1368793091982334,
+     null,
+     1.1368793091982319,
+     0.975672703319062,
+     0.8775745730344129,
+     0.9466920692224344,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.00983909449230646,
+     0.023262828227539847,
+     0.05805883934861108,
+     0.14644137605423121,
+     0.388553494481972,
+     null,
+     0.38855349448197124,
+     0.14644137605423108,
+     0.0580588393486113,
+     0.02326282822753986,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 0.937130800801251,
+      "error": 0.020151975566425562,
+      "chi2_dof": 1.2211766178325736
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "a2sigma": 0.0853664386167473,
+   "a2sigma_err": 0.0016793312972021301,
+   "a_sqrt_sigma": 0.29217535593671706,
+   "a_sqrt_sigma_err": 0.0028738414501424626,
+   "aL_sqrt_sigma": 3.5061042712406048,
+   "sigma_refused": false,
+   "ratio": 3.529780243750577,
+   "ratio_err": 0.11328501683950405
+  },
+  "14": {
+   "beta": 2.3715,
+   "L": 16,
+   "seed": 20275193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6227604282973631,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.3596465338542751,
+      0.24220331384889254,
+      0.16652875485911933
+     ],
+     "vector": [
+      0.0,
+      0.37131456067729796,
+      -0.7963834700343384,
+      0.9491625007359136
+     ],
+     "condition_t0": 1106.3707640185341,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.025998970302767,
+     "error": 0.030503005170216358,
+     "chi2_dof": 0.02717469113104181
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 1.023964246559636,
+     "error": 0.0369099346036505,
+     "chi2_dof": 0.3547103741506263
+    },
+    "m_eff_t": [
+     null,
+     1.5604867045637998,
+     1.02345133460555,
+     1.0407716976683226,
+     0.7973670562507332,
+     1.5868020174326003,
+     null,
+     0.6199750959305914,
+     0.7871469003209168,
+     0.6199750959305914,
+     null,
+     1.5868020174326,
+     0.797367056250732,
+     1.0407716976683232,
+     1.02345133460555,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.010908351033168173,
+     0.04029627021696781,
+     0.09703457963839998,
+     0.3100467978512895,
+     0.796109937195881,
+     null,
+     1.3470741275980345,
+     null,
+     1.347074127598035,
+     null,
+     0.79610993719588,
+     0.31004679785128986,
+     0.09703457963839993,
+     0.040296270216967835,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.025998970302767,
+      "error": 0.030503005170216358,
+      "chi2_dof": 0.02717469113104181
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.2912614913781443,
+      0.10814119353297048
+     ],
+     "vector": [
+      0.0,
+      -0.07251326170183939,
+      0.0470581946488791,
+      0.11118451763143548
+     ],
+     "condition_t0": 27.561033138890124,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": true,
+     "directions_kept": 2,
+     "direction_snr_t1": [
+      25.21852585378671,
+      3.2586788756244456,
+      -1.2038213678245946
+     ],
+     "path": "q3c_fallback",
+     "a2_failure": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero (no window slice before t = 2, Amendment 4) (at t = 3)"
+    },
+    "plateau": {
+     "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero (no window slice before t = 2, Amendment 4) (at t = 3)",
+     "t": 3
+    },
+    "plateau_as_fixed": {
+     "refused": "EFFECTIVE_MASS: no plateau: consecutive effective masses disagree by more than 1 combined standard errors (at t = 2)",
+     "t": 2
+    },
+    "m_eff_t": [
+     null,
+     1.5244526144396404,
+     1.2101385526391397,
+     1.4773238609154569,
+     3.175014010485778,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     3.175014010485773,
+     1.477323860915457,
+     1.21013855263914,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.01251592891944879,
+     0.03903629092484736,
+     0.16213456894577682,
+     7.405677668898435,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     7.405677668897946,
+     0.16213456894577702,
+     0.039036290924847714,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "q3c_fallback",
+     "refused": null,
+     "plateau": {
+      "refused": "EFFECTIVE_MASS: no plateau: consecutive effective masses disagree by more than 2 combined standard errors (at t = 2)",
+      "t": 2
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   }
+  },
+  "15": {
+   "beta": 2.4265,
+   "L": 16,
+   "seed": 20276193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.636317542317248,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.40630111813449576,
+      0.23757132814468757,
+      0.10477601038688282
+     ],
+     "vector": [
+      0.0,
+      0.1399711121300348,
+      -0.24872692804072677,
+      0.7018064720759204
+     ],
+     "condition_t0": 864.4939638491315,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.9031036045629016,
+     "error": 0.020998115244022595,
+     "chi2_dof": 0.48869810669893543
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.9031036045629016,
+     "error": 0.02057942588263797,
+     "chi2_dof": 0.48869810669893543
+    },
+    "m_eff_t": [
+     null,
+     1.1832579120643567,
+     0.8945353816407539,
+     0.951220010083909,
+     0.8934425642542527,
+     0.525281888848935,
+     0.9186936165691264,
+     0.49231408676031885,
+     null,
+     0.49231408676031924,
+     0.9186936165691267,
+     0.5252818888489333,
+     0.8934425642542531,
+     0.9512200100839092,
+     0.8945353816407537,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.008596782602806484,
+     0.022699582633791536,
+     0.05284333855870582,
+     0.12662770408900023,
+     0.3187623140663286,
+     0.46153084018113355,
+     0.9064243679810392,
+     null,
+     0.9064243679810371,
+     0.4615308401811333,
+     0.3187623140663292,
+     0.12662770408900062,
+     0.052843338558705905,
+     0.022699582633791536,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 4,
+      "mass": 0.9031036045629016,
+      "error": 0.020998115244022595,
+      "chi2_dof": 0.48869810669893543
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.42453801029879823,
+      0.19467825894533222,
+      -0.05125305373100541
+     ],
+     "vector": [
+      0.0,
+      0.04035432384079149,
+      -0.1101682864175575,
+      0.1353453106560487
+     ],
+     "condition_t0": 2008.749896303591,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.8568865719165475,
+     "error": 0.015051934437253417,
+     "chi2_dof": 0.28685576499838683
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 7,
+     "mass": 0.8559065195145038,
+     "error": 0.01666095748662341,
+     "chi2_dof": 0.20990924275307857
+    },
+    "m_eff_t": [
+     null,
+     1.0120026961996813,
+     0.8564516918536843,
+     0.8744138100518897,
+     0.8033445692114942,
+     0.76854215164916,
+     0.6302939512357789,
+     0.7880669309579981,
+     null,
+     0.7880669309579951,
+     0.6302939512357808,
+     0.76854215164916,
+     0.803344569211495,
+     0.8744138100518893,
+     0.8564516918536842,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.00808587394020448,
+     0.018535138812552084,
+     0.044084922466822406,
+     0.08310409565863756,
+     0.21372748806310257,
+     0.42432124040382285,
+     0.45116985681004945,
+     null,
+     0.4511698568100494,
+     0.4243212404038229,
+     0.21372748806310257,
+     0.08310409565863751,
+     0.04408492246682244,
+     0.018535138812552244,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 4,
+      "mass": 0.8568865719165475,
+      "error": 0.015051934437253417,
+      "chi2_dof": 0.28685576499838683
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 6)",
+      "t": 6
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 3)",
+      "t": 3
+     }
+    }
+   },
+   "a2sigma": 0.05764602617914593,
+   "a2sigma_err": 0.0009407459023283386,
+   "a_sqrt_sigma": 0.2400958687256945,
+   "a_sqrt_sigma_err": 0.0019591047262106894,
+   "aL_sqrt_sigma": 3.841533899611112,
+   "sigma_refused": false,
+   "ratio": 3.761429171422736,
+   "ratio_err": 0.0902254323933169
+  },
+  "16": {
+   "beta": 2.4265,
+   "L": 20,
+   "seed": 20277193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6363052143879365,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.41870980316981093,
+      0.2465165058241257,
+      0.15603812547580015
+     ],
+     "vector": [
+      0.0,
+      0.15765179928790501,
+      -0.45297533953282276,
+      0.8049572266354689
+     ],
+     "condition_t0": 815.6780194495884,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 0.871187020446334,
+     "error": 0.017297280779953364,
+     "chi2_dof": 0.0049068826924262825
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 6,
+     "mass": 0.8710599163258039,
+     "error": 0.019572614107818218,
+     "chi2_dof": 0.13946929191311716
+    },
+    "m_eff_t": [
+     null,
+     1.292703784128925,
+     0.8705775087527933,
+     0.8743457867439922,
+     0.8285938269363777,
+     1.0694764942594412,
+     0.75085851160146,
+     null,
+     null,
+     1.6575668902368514,
+     null,
+     1.6575668902368528,
+     null,
+     null,
+     0.7508585116014623,
+     1.0694764942594397,
+     0.8285938269363791,
+     0.874345786743992,
+     0.8705775087527933,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.008369033222653208,
+     0.021635137026202435,
+     0.04925239762662641,
+     0.1446958384071193,
+     0.3067955998057706,
+     0.545667911684666,
+     null,
+     null,
+     1.7344101998777666,
+     null,
+     1.7344101998777697,
+     null,
+     null,
+     0.5456679116846658,
+     0.3067955998057704,
+     0.1446958384071192,
+     0.04925239762662625,
+     0.02163513702620245,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 0.871187020446334,
+      "error": 0.017297280779953364,
+      "chi2_dof": 0.0049068826924262825
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.29909246740917267,
+      0.14327916688621198,
+      -0.013399655162327861
+     ],
+     "vector": [
+      0.0,
+      0.144214252089353,
+      -0.21828915123348683,
+      0.17127763799440474
+     ],
+     "condition_t0": 1070.8473226172775,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.2057316866028092,
+     "error": 0.030990208855254563,
+     "chi2_dof": 0.06123657283764019
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 1.206628420873874,
+     "error": 0.03097618123508145,
+     "chi2_dof": 0.05592267541745571
+    },
+    "m_eff_t": [
+     null,
+     1.3563742022998826,
+     1.2083738169481508,
+     1.1832789202318228,
+     1.2901591635837835,
+     1.5014305106831922,
+     0.8205011732033568,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.8205011732033568,
+     1.5014305106831933,
+     1.2901591635837841,
+     1.1832789202318217,
+     1.2083738169481508,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.008175320010606873,
+     0.03290518882398672,
+     0.0959228771044673,
+     0.3248968032367489,
+     1.4814113472038875,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     1.4814113472038883,
+     0.32489680323674863,
+     0.0959228771044669,
+     0.03290518882398679,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.2057316866028092,
+      "error": 0.030990208855254563,
+      "chi2_dof": 0.06123657283764019
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 3)",
+      "t": 3
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 3)",
+      "t": 3
+     }
+    }
+   },
+   "a2sigma": 0.06290457820813196,
+   "a2sigma_err": 0.0015495104427627282,
+   "a_sqrt_sigma": 0.25080785116924065,
+   "a_sqrt_sigma_err": 0.0030890389506131257,
+   "aL_sqrt_sigma": 5.016157023384813,
+   "sigma_refused": false,
+   "ratio": 3.4735237209877727,
+   "ratio_err": 0.08137427360303848
+  },
+  "17": {
+   "beta": 2.5115,
+   "L": 20,
+   "seed": 20278193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6541975366929567,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.4741248774177399,
+      0.24337707796971056,
+      0.03386864695348903
+     ],
+     "vector": [
+      0.0,
+      0.1338653277581601,
+      -0.4764548116324872,
+      1.002529602357039
+     ],
+     "condition_t0": 552.2537036543665,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 0.7467438311160575,
+     "error": 0.013748058069886996,
+     "chi2_dof": 1.317090922427183
+    },
+    "plateau_as_fixed": {
+     "t_lo": 4,
+     "t_hi": 6,
+     "mass": 0.6345993710453391,
+     "error": 0.06256832751591958,
+     "chi2_dof": 0.28670938449956446
+    },
+    "m_eff_t": [
+     null,
+     1.0901699614683054,
+     0.7544566534923758,
+     0.7474228114987205,
+     0.617684129484348,
+     0.6349822313758121,
+     0.8042559507693297,
+     0.13797898700265185,
+     null,
+     1.1887940076697026,
+     null,
+     1.1887940076697026,
+     null,
+     0.13797898700264702,
+     0.8042559507693302,
+     0.6349822313758114,
+     0.617684129484348,
+     0.7474228114987209,
+     0.7544566534923758,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.007475497306392785,
+     0.016265553164363237,
+     0.03562343436009211,
+     0.07395920531891094,
+     0.13543184000737202,
+     0.2350223720630834,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.2350223720630834,
+     0.13543184000737202,
+     0.07395920531891108,
+     0.035623434360092784,
+     0.0162655531643636,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 5,
+      "mass": 0.7467438311160575,
+      "error": 0.013748058069886996,
+      "chi2_dof": 1.317090922427183
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.5412435451167287,
+      0.22923327399185234,
+      0.037212828836261154
+     ],
+     "vector": [
+      0.0,
+      0.07291080001937536,
+      -0.1348830731156543,
+      0.10902134456298408
+     ],
+     "condition_t0": 2054.1102816868915,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 0.6131512313631977,
+     "error": 0.010706977203955024,
+     "chi2_dof": 0.6681660427654238
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.6153158144056637,
+     "error": 0.009445083090101046,
+     "chi2_dof": 0.08221955101591326
+    },
+    "m_eff_t": [
+     null,
+     0.728333725380366,
+     0.6132142530173914,
+     0.6167732213104785,
+     0.6266474861598447,
+     0.5394809231060873,
+     0.6337818873098354,
+     0.429225883492096,
+     2.465974957948262,
+     null,
+     null,
+     null,
+     2.4659749579482666,
+     0.429225883492097,
+     0.6337818873098354,
+     0.5394809231060865,
+     0.6266474861598447,
+     0.6167732213104785,
+     0.6132142530173911,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.0060223656336138845,
+     0.01169470863863141,
+     0.018515544554870342,
+     0.03192962179277063,
+     0.055101687633832296,
+     0.11160400487520765,
+     0.2943003123272951,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.29430031232729503,
+     0.11160400487520776,
+     0.05510168763383214,
+     0.031929621792770695,
+     0.01851554455487033,
+     0.01169470863863163,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 5,
+      "mass": 0.6131512313631977,
+      "error": 0.010706977203955024,
+      "chi2_dof": 0.6681660427654238
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     }
+    }
+   },
+   "a2sigma": 0.03327555544615138,
+   "a2sigma_err": 0.0005353488601977512,
+   "a_sqrt_sigma": 0.18241588594788388,
+   "a_sqrt_sigma_err": 0.0014673855224174393,
+   "aL_sqrt_sigma": 3.648317718957678,
+   "sigma_refused": false,
+   "ratio": 4.093633771180524,
+   "ratio_err": 0.07934074432956281
+  },
+  "18": {
+   "beta": 2.5115,
+   "L": 24,
+   "seed": 20279193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6542008878691439,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.4808182273927969,
+      0.2198245360134785,
+      0.16134066836879957
+     ],
+     "vector": [
+      0.0,
+      0.06399004014510759,
+      -0.2744774254252935,
+      0.7028575332360348
+     ],
+     "condition_t0": 525.7477398386067,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 6,
+     "mass": 0.7323788578101779,
+     "error": 0.011654391835461584,
+     "chi2_dof": 0.7313413859215994
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 0.7332058687060001,
+     "error": 0.012301898574057446,
+     "chi2_dof": 0.4017373467677558
+    },
+    "m_eff_t": [
+     null,
+     1.0646567953842712,
+     0.7374998810772333,
+     0.7303225198370245,
+     0.6746805416487671,
+     0.7282048199689574,
+     0.41843085101616084,
+     0.519177006500489,
+     0.24741541558086635,
+     0.2885600060749054,
+     1.0378639378510601,
+     0.26256028804800097,
+     null,
+     0.26256028804799925,
+     1.0378639378510586,
+     0.2885600060749107,
+     0.24741541558086272,
+     0.5191770065004907,
+     0.4184308510161604,
+     0.728204819968958,
+     0.6746805416487671,
+     0.7303225198370247,
+     0.7374998810772333,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.007503603564532433,
+     0.013917036317490925,
+     0.030767492045893248,
+     0.055813223663189915,
+     0.12185551768624897,
+     0.2396875032005574,
+     0.31171395966258175,
+     null,
+     null,
+     0.9144537065298394,
+     null,
+     null,
+     null,
+     0.9144537065298384,
+     null,
+     null,
+     0.3117139596625818,
+     0.23968750320055693,
+     0.12185551768624893,
+     0.05581322366319005,
+     0.030767492045893477,
+     0.013917036317490871,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 6,
+      "mass": 0.7323788578101779,
+      "error": 0.011654391835461584,
+      "chi2_dof": 0.7313413859215994
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (at t = 1)",
+      "t": 1
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.4592951155490265,
+      0.17666896956959835,
+      0.1101902910726309
+     ],
+     "vector": [
+      0.0,
+      0.1595535111301893,
+      -0.22790281500490053,
+      0.1384571012832662
+     ],
+     "condition_t0": 1240.793018271081,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 0.7764189736297594,
+     "error": 0.012300876204459984,
+     "chi2_dof": 0.5581526459712856
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 0.7764189736297594,
+     "error": 0.012866818247320548,
+     "chi2_dof": 0.5581526459712856
+    },
+    "m_eff_t": [
+     null,
+     1.0722171313215467,
+     0.7841906897427107,
+     0.7636365533569461,
+     0.7361840292398618,
+     0.6569168849170429,
+     1.0264078143162605,
+     0.2412765210477884,
+     0.5520318967309097,
+     null,
+     0.8716952872607956,
+     0.5587913542493058,
+     null,
+     0.5587913542493058,
+     0.8716952872607944,
+     null,
+     0.5520318967309085,
+     0.24127652104778563,
+     1.0264078143162618,
+     0.6569168849170419,
+     0.736184029239862,
+     0.7636365533569461,
+     0.7841906897427107,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.0064776553487021415,
+     0.015111957107961574,
+     0.027191254811727662,
+     0.06267950429830378,
+     0.1355760870642258,
+     0.22741899292140075,
+     null,
+     0.36058471346434867,
+     null,
+     0.4866241240428826,
+     0.7242946413714897,
+     null,
+     0.72429464137149,
+     0.48662412404288297,
+     null,
+     0.36058471346434945,
+     null,
+     0.2274189929214009,
+     0.1355760870642257,
+     0.06267950429830357,
+     0.02719125481172762,
+     0.01511195710796152,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 5,
+      "mass": 0.7764189736297594,
+      "error": 0.012300876204459984,
+      "chi2_dof": 0.5581526459712856
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     }
+    }
+   },
+   "a2sigma": 0.0341688418720674,
+   "a2sigma_err": 0.000512536508519166,
+   "a_sqrt_sigma": 0.18484815896315387,
+   "a_sqrt_sigma_err": 0.0013863716885092992,
+   "aL_sqrt_sigma": 4.436355815115693,
+   "sigma_refused": false,
+   "ratio": 3.9620565436963022,
+   "ratio_err": 0.06935078679888863
+  },
+  "19": {
+   "beta": 2.2986,
+   "L": 14,
+   "seed": 20280193,
+   "n_meas": 10000,
+   "mean_plaquette": 0.6018392327523325,
+   "scalar": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.2849958039335818,
+      0.18618520183218207,
+      0.011054261128095329,
+      -0.11690444543561494
+     ],
+     "vector": [
+      0.009655767136041313,
+      0.1480128964208112,
+      -0.30839129300498846,
+      0.7975999747843872
+     ],
+     "condition_t0": 10935.97267257988,
+     "kept": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": false,
+     "directions_kept": null,
+     "direction_snr_t1": [],
+     "path": "a2",
+     "a2_failure": null
+    },
+    "plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.2562046696661529,
+     "error": 0.05158087915071001,
+     "chi2_dof": 0.09749536723919075
+    },
+    "plateau_as_fixed": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 1.2546322117263042,
+     "error": 0.052611751088010535,
+     "chi2_dof": 0.1479944356883427
+    },
+    "m_eff_t": [
+     null,
+     1.728419917128484,
+     1.2514021466762681,
+     1.31265027472614,
+     0.9052242679374884,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.9052242679374884,
+     1.3126502747261402,
+     1.2514021466762681,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.015015257463129044,
+     0.05492741319066556,
+     0.1883083103237555,
+     0.786021944881002,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.7860219448810024,
+     0.18830831032375533,
+     0.054927413190665714,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "a2",
+     "refused": null,
+     "plateau": {
+      "t_lo": 2,
+      "t_hi": 3,
+      "mass": 1.2562046696661529,
+      "error": 0.05158087915071001,
+      "chi2_dof": 0.09749536723919075
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     }
+    }
+   },
+   "torelon": {
+    "gevp": {
+     "t0": 1,
+     "t1": 2,
+     "eigenvalues": [
+      0.17592256913151677
+     ],
+     "vector": [
+      0.0,
+      0.11623956794444418,
+      0.08568415932207643,
+      0.06605412327338572
+     ],
+     "condition_t0": 1.0,
+     "kept": [
+      1,
+      2,
+      3
+     ],
+     "rule": "a4",
+     "truncate": true,
+     "directions_kept": 1,
+     "direction_snr_t1": [
+      8.598714825903908,
+      0.4603306545227806,
+      0.3913639285399546
+     ],
+     "path": "q3c_fallback",
+     "a2_failure": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+    },
+    "plateau": {
+     "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "t": 2
+    },
+    "plateau_as_fixed": {
+     "refused": "EFFECTIVE_MASS: no plateau: consecutive effective masses disagree by more than 1 combined standard errors (at t = 2)",
+     "t": 2
+    },
+    "m_eff_t": [
+     null,
+     2.00949619791125,
+     1.7431140148269832,
+     1.6695948322040997,
+     0.46500382982371974,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.4650038298237202,
+     1.6695948322040999,
+     1.7431140148269835,
+     null
+    ],
+    "m_eff_err_t": [
+     null,
+     0.019147612796350254,
+     0.11406781012066398,
+     0.4982927367705897,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     0.49829273677059016,
+     0.11406781012066386,
+     null
+    ],
+    "nostart": {
+     "gevp_path": "q3c_fallback",
+     "refused": null,
+     "plateau": {
+      "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero (at t = 2)",
+      "t": 2
+     }
+    },
+    "nulls": {
+     "a2": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     },
+     "q3c": {
+      "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+      "t": 0
+     }
+    }
+   }
+  }
+ }
+}

@@ -334,3 +334,40 @@ Reported, not gated:
 - Whether the moment trend gate should be retired in favour of the poke gate it stands for is a decision for Bee.
   It is not made here, and the gate is not changed after the fact.
 - As registered, the variational gate is **not closed**.
+
+## Amendment 5: the moment trend gate is retired in favour of the poke gate (Bee's decision, 21 November, after the n = 3 data)
+
+**Decision.** The M1b-moment trend gate ("median leftover … smaller at n = 3") is retired. The M1-poke gate, the
+quantity it was written as a proxy for, decides in its place. No other gate changes.
+
+**Made after the data, said plainly.** This amendment was made after the n = 3 results, which failed the moment
+trend gate and passed every other. It is recorded as such so a reader can weigh it.
+
+**Rationale:**
+- Lemma B (Part 1 audit) identifies the poke term as the zeroth-moment defect: cosine 0.9993 at n = 2. The moment
+  gate stood in for the poke term because the poke term was what had to fall.
+- At n = 3 the two disagree: the median leftover moment rose from 0.38% to 0.70%, while the poke term fell from 2.49%
+  to 2.07%.
+- The target is what matters. The moment gate's own n = 2 threshold (≤ 6.2%) is still met by a wide margin at n = 3.
+- The leftover moment matched pass 1's prediction to 4 × 10⁻¹⁴. Its growth is a property of the truncated Neumann
+  correction (K = 8), not an error.
+
+**Verdict under the amended gates.**
+
+| gate | n = 2 | n = 3 | verdict |
+| --- | --- | --- | --- |
+| M1-poke (≤ 5.1%, no larger at n = 3) | 2.49% | 2.07% | pass |
+| M1-recon (≤ 2 × M0's, not growing) | 11.48% | 9.96% | pass |
+| M1-variational | 2 × 10⁻¹⁶ | 2 × 10⁻¹⁶ | pass |
+| M1-wobble (seated) | 0 | 0 | pass |
+| M1-seam | 0.034% | 0.0094% | pass |
+| moment, absolute (≤ 6.2%) | 0.38% | 0.70% | pass |
+
+**M1c and M1d pass every gate at n = 2 and n = 3. Under Amendment 5 the variational gate is closed.**
+
+- The recommended force is **M1d**: moment-corrected bumps, a K = 8 Neumann correction, and the seat spring scaled
+  with h².
+- Its BW05 relative error, seated, is 9.9% at n = 2 and **8.8%** at n = 3, against Whitney's 26.0%. Its spring
+  force share falls from 4.6% to 1.7%.
+- Status: **Numerical**, the research-script assembly (`scripts/ricci_magnet_m1c_fast.py`), not an engine run.
+  Promoting it to the engine and checking it at n = 4 are the natural next steps.

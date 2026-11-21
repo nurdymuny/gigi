@@ -1,7 +1,8 @@
 """Q3 step 2 (docs/HALCYON_Q3_INGEST_SPEC.md): the Q3 ensembles as GIGI bundles, every Q3 number read back through
 GQL and REST on the stored data and compared with the frozen Q3-C probe on the files.
 
-Gates: I-load, I-store, I-parity, I-persist, I-null (see the spec). Idempotent: a bundle that already holds the right
+Gates: I-load, I-store, I-parity, I-persist, I-null (see the spec). With an Amendment-4 engine and probe (the
+probe's default rule is then "a4") I-parity also compares the GEVP path. Idempotent: a bundle that already holds the right
 record count is not reloaded. Own port (never 3142 / 3147), own key, own data directory.
 
 usage: python test_q3_ingest.py GIGI_STREAM_EXE PROBE_EXE RUN_DIR DATA_DIR RECEIPT.json
@@ -139,7 +140,9 @@ def compare_em(row_status, row, pr):
     checks = {"mass": rel(r["mass"], p["mass"]), "error": rel(r["error"], p["error"]),
               "window": float((int(r["t_lo"]), int(r["t_hi"])) != (p["t_lo"], p["t_hi"])),
               "kept": float([int(x) for x in r["gevp_kept"]] != g["kept"]),
-              "directions": float(int(r["gevp_directions_kept"]) != g["directions_kept"])}
+              "directions": float(int(r["gevp_directions_kept"]) != (g.get("directions_kept") or 0))}
+    if "path" in g:  # Amendment 4 probe: the engine must report the same GEVP path
+        checks["path"] = float(r.get("gevp_path") != g["path"])
     if "mass" in af:
         checks["as_fixed_mass"] = rel(r["as_fixed_mass"], af["mass"])
         checks["as_fixed_error"] = rel(r["as_fixed_error"], af["error"])
@@ -205,11 +208,14 @@ def main():
         pr0 = probe({"ops": e0["scalar"], "t0": 1, "t1": 2, "block": BLOCK})
         v = np.array(pr0["gevp"]["vector"]); s = np.einsum("a,act->ct", v, np.array(e0["scalar"]))
         rng = np.random.default_rng(e0["seed"] + 7); flat = s.flatten(); rng.shuffle(flat); s = flat.reshape(s.shape)
-        load("q3_k0_null", {"n": s.tolist()}, s.shape[0], s.shape[1])
-        st_n, r_n = call("POST", "/v1/gql", {"query": f"EFFECTIVE_MASS q3_k0_null ON n BLOCK {BLOCK};"})
+        # the null bundle is keyed to the projection vector, so a bundle stored from another rule's vector is
+        # never reused (the idempotent loader checks only the record count)
+        nb = "q3_k0_null_" + hashlib.sha256(np.array(v).tobytes()).hexdigest()[:12]
+        load(nb, {"n": s.tolist()}, s.shape[0], s.shape[1])
+        st_n, r_n = call("POST", "/v1/gql", {"query": f"EFFECTIVE_MASS {nb} ON n BLOCK {BLOCK};"})
         pn = probe({"p": s.tolist(), "block": BLOCK})["plateau"]
         gates["I-null"] = st_n != 200 and "refused" in pn and pn["refused"] in json.dumps(r_n)
-        rec["null_k0"] = {"engine": [st_n, r_n], "probe": pn}
+        rec["null_k0"] = {"bundle": nb, "engine": [st_n, r_n], "probe": pn}
         before = em_gql("q3_k0", CH["scalar"])
     finally:
         stop(srv)

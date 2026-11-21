@@ -1,0 +1,894 @@
+{
+ "kind": "Q3 step 2: ensembles inside GIGI",
+ "spec": "docs/HALCYON_Q3_INGEST_SPEC.md",
+ "port": 56608,
+ "data_dir": "C:\\Users\\nurdm\\gigi-data\\q3-ingest-20261120",
+ "engine_sha256": "6422f11170c35aa3ec2a4bcc320c902831df6775d305084c3dd84c9e13c71b0f",
+ "probe_sha256": "bde9f81396de89c5fcc637a016f132ee87dc7505a1ae12ed898046ee1429d083",
+ "points": {
+  "k0": {
+   "bundle": "q3_k0",
+   "records": 100000,
+   "expected": 100000,
+   "ingest": "present",
+   "seconds": 1.9,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.1837024764454946,
+     "error": 0.059254731437235364,
+     "chi2_dof": 0.13742885697086146
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.1932938890715636,
+     "error": 0.05471166103683009,
+     "chi2_dof": 0.14746359992713798
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k1": {
+   "bundle": "q3_k1",
+   "records": 140000,
+   "expected": 140000,
+   "ingest": "present",
+   "seconds": 2.6,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_refused": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_refused": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.1517342037206524,
+     "error": 0.03849837411218567,
+     "chi2_dof": 1.0611751381207586
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "probe_refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "engine": [
+      500,
+      {
+       "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+      }
+     ]
+    },
+    "rest": {
+     "probe_refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "engine": [
+      422,
+      {
+       "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+      }
+     ]
+    },
+    "probe_plateau": {
+     "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "t": 2
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k2": {
+   "bundle": "q3_k2",
+   "records": 120000,
+   "expected": 120000,
+   "ingest": "present",
+   "seconds": 2.2,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.0371654274562458,
+     "error": 0.03541056130632707,
+     "chi2_dof": 0.26939693776148366
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.9301106950724781,
+     "error": 0.02020609875764622,
+     "chi2_dof": 0.99087922836901
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k3": {
+   "bundle": "q3_k3",
+   "records": 160000,
+   "expected": 160000,
+   "ingest": "present",
+   "seconds": 3.0,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 0.9731389697734154,
+     "error": 0.03563231697652333,
+     "chi2_dof": 0.663228002107977
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_refused": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_refused": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.3192006372154288,
+     "error": 0.04509510166678405,
+     "chi2_dof": 0.37310385444200106
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k4": {
+   "bundle": "q3_k4",
+   "records": 160000,
+   "expected": 160000,
+   "ingest": "present",
+   "seconds": 3.0,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.8875990982888952,
+     "error": 0.02532016511792223,
+     "chi2_dof": 0.07871357286055287
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.8750368233413247,
+     "error": 0.019050209843407696,
+     "chi2_dof": 0.14371757244433264
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k5": {
+   "bundle": "q3_k5",
+   "records": 200000,
+   "expected": 200000,
+   "ingest": "present",
+   "seconds": 3.7,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 3,
+     "t_hi": 4,
+     "mass": 0.8609396532784496,
+     "error": 0.049355997848211736,
+     "chi2_dof": 0.31826842584044024
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.1469539674018219,
+     "error": 0.02740610251557537,
+     "chi2_dof": 0.32850569334920987
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k6": {
+   "bundle": "q3_k6",
+   "records": 160000,
+   "expected": 160000,
+   "ingest": "present",
+   "seconds": 3.1,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.1904234065731456,
+     "error": 0.039405319993067046,
+     "chi2_dof": 0.19683134198344798
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "probe_refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "engine": [
+      500,
+      {
+       "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+      }
+     ]
+    },
+    "rest": {
+     "probe_refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "engine": [
+      422,
+      {
+       "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+      }
+     ]
+    },
+    "probe_plateau": {
+     "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "t": 2
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k7": {
+   "bundle": "q3_k7",
+   "records": 120000,
+   "expected": 120000,
+   "ingest": "present",
+   "seconds": 2.2,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.2240544339370423,
+     "error": 0.049977852715894056,
+     "chi2_dof": 0.13647265043968965
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.5210435510318634,
+     "error": 0.0651612937939984,
+     "chi2_dof": 0.3563131460467328
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k8": {
+   "bundle": "q3_k8",
+   "records": 140000,
+   "expected": 140000,
+   "ingest": "present",
+   "seconds": 2.6,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 3,
+     "mass": 1.2343382269278225,
+     "error": 0.04344189805996407,
+     "chi2_dof": 0.37437280741655365
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "probe_refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "engine": [
+      500,
+      {
+       "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+      }
+     ]
+    },
+    "rest": {
+     "probe_refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "engine": [
+      422,
+      {
+       "error": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)"
+      }
+     ]
+    },
+    "probe_plateau": {
+     "refused": "EFFECTIVE_MASS: no plateau: the correlator is less than 3 standard errors from zero wherever the effective mass is defined (no window slice before t = 2, Amendment 4) (at t = 2)",
+     "t": 2
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k9": {
+   "bundle": "q3_k9",
+   "records": 200000,
+   "expected": 200000,
+   "ingest": "present",
+   "seconds": 1.0,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 5,
+     "mass": 0.7135298804554634,
+     "error": 0.014080761239248252,
+     "chi2_dof": 0.8602327540296738
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_refused": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_refused": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 4,
+     "t_hi": 5,
+     "mass": 0.5684634046243765,
+     "error": 0.03059272640582411,
+     "chi2_dof": 0.7733725101030083
+    },
+    "probe_gevp_refused": null
+   }
+  },
+  "k10": {
+   "bundle": "q3_k10",
+   "records": 240000,
+   "expected": 240000,
+   "ingest": "present",
+   "seconds": 1.0,
+   "store_worst_rel": 0.0,
+   "scalar": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 3,
+     "t_hi": 6,
+     "mass": 0.662891938520147,
+     "error": 0.021060234671095496,
+     "chi2_dof": 1.0447855992234711
+    },
+    "probe_gevp_refused": null
+   },
+   "torelon": {
+    "gql_ok": true,
+    "rest_ok": true,
+    "gql": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "rest": {
+     "mass": 0.0,
+     "error": 0.0,
+     "window": 0.0,
+     "kept": 0.0,
+     "directions": 0.0,
+     "path": 0.0,
+     "as_fixed_mass": 0.0,
+     "as_fixed_error": 0.0
+    },
+    "probe_plateau": {
+     "t_lo": 2,
+     "t_hi": 4,
+     "mass": 0.7719863689661005,
+     "error": 0.010663644766507033,
+     "chi2_dof": 0.6574083020160376
+    },
+    "probe_gevp_refused": null
+   }
+  }
+ },
+ "null_k0": {
+  "bundle": "q3_k0_null_42b3b4c2490f",
+  "engine": [
+   500,
+   {
+    "error": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)"
+   }
+  ],
+  "probe": {
+   "refused": "EFFECTIVE_MASS: no plateau: no time slice has an effective mass that is defined in every jackknife sample (at t = 0)",
+   "t": 0
+  }
+ },
+ "persist_k0": {
+  "before": [
+   200,
+   {
+    "rows": [
+     {
+      "as_fixed_error": 0.06339192249804272,
+      "as_fixed_mass": 1.1820081826981705,
+      "as_fixed_t_hi": 4.0,
+      "as_fixed_t_lo": 2.0,
+      "block": 100.0,
+      "chi2_dof": 0.13742885697086146,
+      "error": 0.059254731437235364,
+      "gevp_condition": 18055.477095218717,
+      "gevp_direction_snr_t1": [],
+      "gevp_directions_kept": 0.0,
+      "gevp_eigenvalues": [
+       0.30791535045905666,
+       0.19383849577083148,
+       0.02378907220970313,
+       -0.09968074784153672
+      ],
+      "gevp_kept": [
+       0.0,
+       1.0,
+       2.0,
+       3.0
+      ],
+      "gevp_path": "a2",
+      "gevp_t0": 1.0,
+      "gevp_t1": 2.0,
+      "gevp_vector": [
+       0.029732305600568,
+       -0.16017140014566783,
+       1.221952158508602,
+       -0.9315517688224187
+      ],
+      "mass": 1.1837024764454946,
+      "rule": "Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error; Q1-4 two-slice window; Q3-B operator selection; Amendment 4: Q3-C (C(t0) directions without a 3-sigma t1 signal dropped) only as a fallback when the Amendment-2 GEVP or its plateau refuses, and no GEVP plateau slice before t1",
+      "t_hi": 3.0,
+      "t_lo": 2.0
+     }
+    ],
+    "count": 1
+   }
+  ],
+  "after": [
+   200,
+   {
+    "rows": [
+     {
+      "as_fixed_error": 0.06339192249804272,
+      "as_fixed_mass": 1.1820081826981705,
+      "as_fixed_t_hi": 4.0,
+      "as_fixed_t_lo": 2.0,
+      "block": 100.0,
+      "chi2_dof": 0.13742885697086146,
+      "error": 0.059254731437235364,
+      "gevp_condition": 18055.477095218717,
+      "gevp_direction_snr_t1": [],
+      "gevp_directions_kept": 0.0,
+      "gevp_eigenvalues": [
+       0.30791535045905666,
+       0.19383849577083148,
+       0.02378907220970313,
+       -0.09968074784153672
+      ],
+      "gevp_kept": [
+       0.0,
+       1.0,
+       2.0,
+       3.0
+      ],
+      "gevp_path": "a2",
+      "gevp_t0": 1.0,
+      "gevp_t1": 2.0,
+      "gevp_vector": [
+       0.029732305600568,
+       -0.16017140014566783,
+       1.221952158508602,
+       -0.9315517688224187
+      ],
+      "mass": 1.1837024764454946,
+      "rule": "Q1-1 3-sigma correlator floor; Q1-2 2-sigma agreement; Q1-3 jackknifed plateau error; Q1-4 two-slice window; Q3-B operator selection; Amendment 4: Q3-C (C(t0) directions without a 3-sigma t1 signal dropped) only as a fallback when the Amendment-2 GEVP or its plateau refuses, and no GEVP plateau slice before t1",
+      "t_hi": 3.0,
+      "t_lo": 2.0
+     }
+    ],
+    "count": 1
+   }
+  ]
+ },
+ "gates": {
+  "I-load": true,
+  "I-store": true,
+  "I-parity": true,
+  "I-null": true,
+  "I-persist": true
+ },
+ "all_pass": true
+}

@@ -118,3 +118,9 @@ Frozen at target-ym6/q3a4/ (sha256 prefixes): correlator_probe.exe bde9f81396de8
 6422f11170c35aa3, lattice4d_ensemble.exe 670f68e54075c509 (the extension's sampler, copied unchanged).
 k11-k19: statistics as before, 1,000 thermalisation, 10,000 measurements, 1 HB + 4 OR, levels 0,4,8,16, alpha 0.5,
 seeds 20261193 + 1000 k. Completion in done_a4.txt.
+
+I-parity rerun with the A4 engine and probe on the stored k0-k10 bundles: run 1 (receipt
+ingest_receipt_a4_k0_k10_run1_stale_null.json) failed I-null only because of a harness bug: the idempotent loader
+reused the null bundle stored from the Q3-C vector while the probe shuffled the A4 vector (both refused). The null
+bundle is now keyed to its vector's hash. Run 2 (ingest_receipt_a4_k0_k10.json): I-load, I-store, I-parity (including
+the GEVP path), I-null, I-persist all pass.

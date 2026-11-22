@@ -28,6 +28,7 @@ before it is cited, posted or put in the book. The reviewer's job is to refute, 
 | **The Davis Manifold, second edition (draft)** | paper: `docs/papers/davis-manifold/the_davis_manifold_v2.tex` (PDF beside it; the 2025 text is unchanged next to it). Argument: [review note](davis-manifold-review-2026-11-22.md). Lean: `DavisManifold/Review.lean` on `feat/helike-lean` (13 theorems) | see the list below |
 | **The spectral branch (Branch IX), review note** | [review note](spectral-branch-review-2026-11-22.md); recomputation `spectral-branch-2026-11-22/checks.py` + `checks_output.json`; Lean `SpectralBranch/Review.lean` on `feat/helike-lean` (10 theorems). The paper itself (`davis_plasma/theory/spectral_branch.tex`) is not yet revised | see the list below |
 | **The Non-Decoupling Theorem, review note** | [review note](non-decoupling-review-2026-11-22.md); Lean `NonDecoupling/Review.lean` on `feat/helike-lean` (5 theorems). The paper (`davis-wilson-lattice/docs/reports/no_paralellel_lines.tex`, not committed anywhere) is not yet revised | see the list below |
+| **The Davis Duality, review note** | [review note](davis-duality-review-2026-11-22.md); Lean `DavisManifold/Duality.lean` on `feat/helike-lean` (5 theorems). The Non-Decoupling review §2.2 was amended in the same commit | see the list below |
 
 **What to attack in the Davis Manifold draft:**
 1. **The five repairs.** For each one, check two things: that the first-edition step really fails (re-derive its
@@ -83,6 +84,16 @@ read.
    follow above dimension 4. Either find a source or construct the concentration example.
 4. **§3.** Does the arc note's bridge (§4.2 of *The phone in the house*) survive at INCIDENCE, as the review says?
 5. **The Lean.** Does each theorem state what the note says it states?
+
+**What to attack in the Davis Duality review:**
+1. **§2.1:** is the per-cell form really the strongest true version? Is the shape-regularity condition (a ball of
+   radius h/2 inside the cell) needed and correctly stated?
+2. **§2.3, the connection case:** state the small-loop expansion d_G(Hol, e) = |F_x(u,v)|·a² + O(a³) with a citation
+   (page and theorem), and check the constant 1 and the norm used.
+3. **§2.3, Routes 1–3:** is each failure real? Try to rescue each route before accepting the review's verdict.
+4. **Re-run the Zenodo `validation_suite.py`** in a clean environment, and report which of the 11 tests reproduce.
+5. **§3:** check the amended Non-Decoupling paragraph and the Davis Manifold second edition's "per cell" wording
+   against this review.
 
 More items will join this table as they are finished.
 

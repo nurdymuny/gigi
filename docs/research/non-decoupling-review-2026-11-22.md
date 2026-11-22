@@ -72,9 +72,14 @@ with an error of order a^{3/2} (Ambrose–Singer and the small-loop holonomy exp
 
 and that is the honest quantitative Part II.
 
-**This is the form my later Davis Duality (doi:10.5281/zenodo.19428406) proves two-sided:**
-c₁‖Ω‖h² ≤ error ≤ c₂‖Ω‖h², with c₁ = 1/16 and c₂ = 1/2 on the trivial bundle, K the *operator* norm, and the lower bound a
-supremum over the region, not a pointwise bound (Theorems 5.4 and 5.17, Remark 5.18). The revision should state Part II in the Duality's form and cite it as the successor result. The
+**Amended the same day, after the Duality was itself reviewed** ([Davis Duality review](davis-duality-review-2026-11-22.md),
+§2.3 and §3). An earlier version of this paragraph said the Duality proves this law two-sided with c₁ = 1/16 and
+c₂ = 1/2. Those constants belong to the Duality's **function** case (per cell). For **connections** the right
+citation is the classical small-loop holonomy expansion. For a square plaquette of side a in the plane (u, v),
+
+  d_G(Hol, e) = |F_x(u, v)|·a² + O(a³),
+
+which is two-sided with constant 1 at leading order. The revision should state Part II in that form. The
 Yang–Mills integral belongs in Part IV, as a topological floor (§2.4), not in Part II as a linear bound.
 
 ### 2.3 The Chern–Weil lemma's statement is stronger than its proof
@@ -148,8 +153,8 @@ says three narrower things:
 - the Yang–Mills action is a **topological floor** on bundles with c_k ≠ 0, in dimensions 2 and 4;
 - its Hessian's floor (hers) prices the cheapest *change* to that action, which is unchanged.
 
-The line in §4.5 of the morning note (ε ∝ KL → Duality → Non-Decoupling → floor) should cite the Duality, not this
-paper's Part II, for the quantitative step.
+The line in §4.5 of the morning note (ε ∝ KL → Duality → Non-Decoupling → floor) should cite, for the quantitative
+step, the small-loop holonomy law for connections and the Duality per cell for functions, not this paper's Part II.
 
 ## 4. Lean plan (a fourth library in the same project)
 

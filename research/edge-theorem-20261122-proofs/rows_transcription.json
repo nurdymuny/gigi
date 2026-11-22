@@ -1,0 +1,21 @@
+{
+ "w": [],
+ "C": [],
+ "Omega_plus": [],
+ "Omega_minus": [],
+ "block_cert_w": [],
+ "block_cert_C": [],
+ "block_cert_Lp": [],
+ "block_cert_Lm": [],
+ "wp1_w": [],
+ "wp1_C": [],
+ "wp1_Op": [],
+ "wp1_Omn": [],
+ "wp3_w": [],
+ "wp3_C": [],
+ "wp3_Op": [],
+ "wp3_Omn": [],
+ "edge_polynomial_block_B40": [],
+ "all_exact": true,
+ "status": "PROVED (exact sympy equality of the code's symbolic rows with the operator-derived rows)"
+}

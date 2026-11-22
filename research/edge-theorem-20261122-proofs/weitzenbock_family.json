@@ -1,0 +1,491 @@
+{
+ "kind": "Weitzenbock identity and charge-block rows of the circle-symmetric SU(2) family, exact (sympy)",
+ "script": "scripts/ricci_su2_weitzenbock_family_symbolic.py",
+ "conventions": {
+  "frame": "[e_a, e_b] = 2 eps_abc e_c; metric (t,1,1); E_i = e_i/s_i, s = (sqrt t, 1, 1)",
+  "gauge_algebra": "[tau_a, tau_b] = eps_abc tau_c (the cross product); ad(M) acts as cross(m); tau_a ~ e_a/2",
+  "family": "m_0 = x e_0, m_1 = y e_1, m_2 = y e_2; x, y real symbols, t positive symbol",
+  "generators": "rho_a represents e_a: [rho_a, rho_b] = 2 eps_abc rho_c, rho_a^* = -rho_a",
+  "H": "operator of Q(b) = sum_{i<k} |D_ik b|^2 + 2<F_ik,[b_i,b_k]> against sum_i |b_i|^2; G xi = (E_i xi + m_i x xi)_i",
+  "Omega_i": "I (x) cross(m_i) - Gamma_i (x) I, Gamma_i[a,b] = <nabla_{E_i} E_a, E_b>",
+  "charge_basis": "U = U3 (x) U3 as in ricci_su2_exact_edge.symbolic_rows; states (c_f, c_l), frame first",
+  "J": "J_z = (i/2) rho_0, J_+- = (i/2)(rho_1 +- i rho_2)"
+ },
+ "status": "PROVED",
+ "geometry": {
+  "Ric_computed": [
+   "2*t",
+   "0",
+   "0",
+   "0",
+   "4 - 2*t",
+   "0",
+   "0",
+   "0",
+   "4 - 2*t"
+  ],
+  "Ric_eq_diag(2t,4-2t,4-2t)": true,
+  "Gamma_i_antisymmetric": true,
+  "Levi_Civita_field_m": [
+   [
+    "(2 - t)/sqrt(t)",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "sqrt(t)",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "sqrt(t)"
+   ]
+  ],
+  "Levi_Civita_field_is_family_member_x=(2-t)/sqrt(t),y=sqrt(t)": true,
+  "F_matches_eq_B": true
+ },
+ "part1_family": {
+  "nonconstant_residual_words": {},
+  "R0_minus_formula_zero": true,
+  "R0_symmetric": true,
+  "identity_holds_in_U_su2_all_x_y_t": true
+ },
+ "part1_general_constant_M": {
+  "nonconstant_residual_words": {},
+  "R0_minus_formula_zero": true,
+  "R0_symmetric": true,
+  "identity_holds_in_U_su2_all_M_t": true
+ },
+ "part2_rows": {
+  "U_unitary": true,
+  "U3_columns_are_charge_-1_0_+1_under_cross_e0": true,
+  "Omega_i_real_antisymmetric": true,
+  "Omc_i_antihermitian": true,
+  "Omc_0_diagonal": true,
+  "w_real": true,
+  "Omega_plus_raises_charge_by_1": true,
+  "Omega_minus_lowers_charge_by_1": true,
+  "Omega_minus_eq_minus_Omega_plus_H": true,
+  "C_preserves_charge": true,
+  "C_hermitian": true,
+  "block_operator_residual_words": {},
+  "block_operator_identity_holds": true,
+  "twist_index_8_is_charge_(1,1)": true,
+  "twist_row_D_minus_lambda": "0",
+  "mirror_row_D_minus_lambda": "0",
+  "twist_row_identically_lambda": true,
+  "mirror_row_identically_lambda": true,
+  "Omega_plus_column_(1,1)_zero": true,
+  "Omega_minus_column_(-1,-1)_zero": true,
+  "twist_block_1x1": true
+ },
+ "exact_rows": {
+  "charge_states_(c_f,c_l)": [
+   [
+    -1,
+    -1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    1,
+    1
+   ]
+  ],
+  "w": [
+   "-sqrt(t) + x + 2/sqrt(t)",
+   "(2 - t)/sqrt(t)",
+   "-sqrt(t) - x + 2/sqrt(t)",
+   "x",
+   "0",
+   "-x",
+   "sqrt(t) + x - 2/sqrt(t)",
+   "(t - 2)/sqrt(t)",
+   "sqrt(t) - x - 2/sqrt(t)"
+  ],
+  "C": [
+   [
+    "4*sqrt(t)*x - t - y**2 + 4",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "-t + 2*y**2 + 4",
+    "0",
+    "2*y*(-sqrt(t)*x + t + 2)/sqrt(t)",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "-4*sqrt(t)*x - t + 3*y**2 + 4",
+    "0",
+    "2*y*(sqrt(t)*x - t - 2)/sqrt(t)",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "2*y*(-sqrt(t)*x + t + 2)/sqrt(t)",
+    "0",
+    "4*t + y**2",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "2*y*(sqrt(t)*x - t - 2)/sqrt(t)",
+    "0",
+    "4*t + 2*y**2",
+    "0",
+    "2*y*(sqrt(t)*x - t - 2)/sqrt(t)",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "4*t + y**2",
+    "0",
+    "2*y*(-sqrt(t)*x + t + 2)/sqrt(t)",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "2*y*(sqrt(t)*x - t - 2)/sqrt(t)",
+    "0",
+    "-4*sqrt(t)*x - t + 3*y**2 + 4",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "2*y*(-sqrt(t)*x + t + 2)/sqrt(t)",
+    "0",
+    "-t + 2*y**2 + 4",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "4*sqrt(t)*x - t - y**2 + 4"
+   ]
+  ],
+  "Omega_plus": [
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "-sqrt(2)*I*y",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "sqrt(2)*I*y",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "-sqrt(2)*I*sqrt(t)",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "-sqrt(2)*I*sqrt(t)",
+    "0",
+    "-sqrt(2)*I*y",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "-sqrt(2)*I*sqrt(t)",
+    "0",
+    "sqrt(2)*I*y",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "sqrt(2)*I*sqrt(t)",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "sqrt(2)*I*sqrt(t)",
+    "0",
+    "-sqrt(2)*I*y",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "sqrt(2)*I*sqrt(t)",
+    "0",
+    "sqrt(2)*I*y",
+    "0"
+   ]
+  ],
+  "Omega_minus": [
+   [
+    "0",
+    "-sqrt(2)*I*y",
+    "0",
+    "-sqrt(2)*I*sqrt(t)",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "sqrt(2)*I*y",
+    "0",
+    "-sqrt(2)*I*sqrt(t)",
+    "0",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "-sqrt(2)*I*sqrt(t)",
+    "0",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "-sqrt(2)*I*y",
+    "0",
+    "sqrt(2)*I*sqrt(t)",
+    "0",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "sqrt(2)*I*y",
+    "0",
+    "sqrt(2)*I*sqrt(t)",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "sqrt(2)*I*sqrt(t)"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "-sqrt(2)*I*y",
+    "0"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "sqrt(2)*I*y"
+   ],
+   [
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0"
+   ]
+  ],
+  "C_diagonal": [
+   "4*sqrt(t)*x - t - y**2 + 4",
+   "-t + 2*y**2 + 4",
+   "-4*sqrt(t)*x - t + 3*y**2 + 4",
+   "4*t + y**2",
+   "2*(2*t + y**2)",
+   "4*t + y**2",
+   "-4*sqrt(t)*x - t + 3*y**2 + 4",
+   "-t + 2*y**2 + 4",
+   "4*sqrt(t)*x - t - y**2 + 4"
+  ]
+ },
+ "part3_tie_to_code": {
+  "status": "COMPUTED",
+  "points_(x,y,t)": [
+   [
+    -2.0,
+    1.5,
+    3.0
+   ],
+   [
+    -3.0,
+    0.5,
+    10.0
+   ],
+   [
+    -1.5,
+    3.1,
+    7.3
+   ],
+   [
+    0.7,
+    0.2,
+    0.5
+   ],
+   [
+    -2.4,
+    2.0,
+    1.1
+   ],
+   [
+    1.9,
+    2.9,
+    8.0
+   ]
+  ],
+  "max_abs_diff_rows_vs_exact_edge_symbolic_rows": 0.0
+ },
+ "assumed": [
+  "Peter-Weyl: on sector j the frame fields act through the spin-j/2 representation, where ((i/2)rho_1, (i/2)rho_2, (i/2)rho_0) is a standard angular-momentum triple with orthonormal basis |l,m>, J_z|l,m> = m|l,m>, J_+-|l,m> = sqrt((l -+ m)(l +- m + 1))|l,m+-1>, l = j/2 (standard).",
+  "Q above is the second variation of E = 1/2 sum_{i<k}|F_ik|^2 (from F(A+b) = F + D b + [b_i,b_k]); this is the definition of H used by all the scripts (hessian_and_gauge) and the paper.",
+  "rho_a^* = -rho_a in L2 (unitary right-regular representation of a unimodular group)."
+ ],
+ "seconds": 21.7
+}

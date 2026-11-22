@@ -140,7 +140,7 @@ def b2_point(bl, rho_, tv):
 
 
 def main():
-    out_path = Path(sys.argv[1]); res = {"protocol": "wp4_prereg_B_general_fields.md @ 232ab8d"}
+    out_path = Path(sys.argv[1]); res = {"protocol": "wp4_prereg_B_general_fields.md @ 232ab8d + Amendment B1"}
     S, C2, eps = T2.su2_data(); reps = {j: S.spin_rep(j) for j in range(JB + 1)}
     rng = np.random.default_rng(1122)
     draws = []
@@ -179,8 +179,15 @@ def main():
     for r in rows:
         e = upper_edge(bl, r["y"], r["t"])
         comp = list(bl.phi_A(e + 1e-4, r["y"], r["t"], True)[1]) if e is not None else None
-        ok = (e is not None and r["edge_A"] is not None and abs(e - r["edge_A"]) <= 1e-9
-              and comp == list(r["competitor_block_A"])) or (e is None and r["edge_A"] is None)
+        ref_c = list(r["competitor_block_A"]) if r["competitor_block_A"] is not None else None
+        same = comp == ref_c
+        if not same and comp is not None and ref_c is not None and comp[0] == ref_c[0] and comp[1] == -ref_c[1]:
+            d_ = bl.data(e + 1e-4, r["y"], r["t"])          # Amendment B1: mirror pair, degenerate to 1e-12 relative
+            l1 = np.linalg.eigvalsh(bl.block(d_, comp[0], comp[1], r["t"])[1])[0]
+            l2 = np.linalg.eigvalsh(bl.block(d_, comp[0], -comp[1], r["t"])[1])[0]
+            same = abs(l1 - l2) <= 1e-12 * max(1.0, abs(l1))
+        ok = (e is not None and r["edge_A"] is not None and abs(e - r["edge_A"]) <= 1e-9 and same) \
+            or (e is None and r["edge_A"] is None)
         code.append({"t": r["t"], "height": r["height"], "edge": e, "edge_A": r["edge_A"], "comp": comp,
                      "comp_ref": r["competitor_block_A"], "ok": bool(ok)})
     res["B_II_code_rows"] = code; res["B_II_code"] = all(c["ok"] for c in code)

@@ -1,0 +1,1308 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.1in,headsep=18pt]{geometry}
+\usepackage{amsmath, amsthm, amssymb}
+\newcommand{\dgshorttitle}{By Enough, But Not Too Much}
+\newcommand{\dgauthorshort}{B. R. Davis}
+\input{../dgstyle}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\newcommand{\su}{\mathfrak{su}(2)}
+\newcommand{\norm}[1]{\lVert #1\rVert}
+\newcommand{\RR}{\mathbb{R}}
+
+\title{By Enough, But Not Too Much\\[4pt] \large Where the Twist Is the Floor of the Yang--Mills Hessian on Berger Spheres}
+\author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
+{\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
+\date{November 2026 (draft)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+On the Berger spheres $(t,1,1)$, every left-invariant $SU(2)$ field that is symmetric under the rotation about the
+long circle is, up to a constant gauge transformation, $M_0=x\,\tau_0$, $M_1=y\,\tau_1$, $M_2=y\,\tau_2$: a strength
+$x$ along the long circle and a strength $y$ across it. At every such field the twist
+$f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ is an exact gauge-orthogonal eigenvector of the
+Yang--Mills Hessian in the sector of spin $j/2$, with eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$. The set of $x$
+where it is the floor of every sector is bounded on both sides, an interval $[x_{\mathrm{lo}},x^*]$: above by the
+edge, below by a state of the sector $j=0$. For $x>0$ it is never the floor of every sector, and the region is bounded
+below; both are proved. Where the charge-$0$ block of the sector $j=4$ competes, the edge computed in the sectors
+$j\le12$ is a root of an explicit factor $P_2$ of degrees $7$, $8$ and $16$ in $x$, $y$ and $\sqrt t$, whose
+restriction to the Berger path contains the polynomial of the threshold $t_A$ of the Floor paper. These polynomial
+identities are also checked in Lean~4. On the domain $x\in[-3,-1.5]$, $y\in[0.5,3]$, $t\in[3,10]$, interval
+certificates prove that the twist is the floor of every sector, with multiplicity two. The all-sector edge is at most
+$\min(x^*_{12},0)$, where $x^*_{12}$ is the edge computed in the sectors $j\le12$; equality is conjectured for
+$t\ge3$ and is refuted near $t=2.01$. Three simpler readings, each written down before its data, failed: that the
+rotation symmetry makes the twist the floor, that a field strength aligned with its spin does, and that alignment
+together with the curvature term singling it out does. Three further tests are pre-registered and described; their
+results are pending.
+\end{abstract}
+
+\noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Peter--Weyl decomposition; Weitzenb\"ock identity;
+spectral gap; level crossing; computer-assisted proof; formal verification.
+
+\noindent\textbf{MSC 2020.} 58J50, 81T13, 58E15, 53C30, 65G30, 03B35.
+
+% ---------------------------------------------------------------------------------------------------
+\section{Introduction}\label{sec:intro}
+
+The second variation of the Yang--Mills energy says which directions at a gauge field lead downhill and which lead
+up. In~\cite{davisfloor2026} I computed it at the \emph{Berger field}, the Levi-Civita connection of the Berger
+metric $(t,1,1)$ on $S^3=SU(2)$ read as an $SU(2)$ connection. In every Peter--Weyl sector $j$ (spin $j/2$) the
+field $b=f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$, with $f$ the top weight along the long axis, is an
+exact eigenvector of the Hessian, orthogonal to every gauge direction, with eigenvalue
+\[
+  \lambda_t(j)=\frac{j(j+2)-2(t-3)j-2(t-2)(t+4)}{t}.
+\]
+I call this field Helike (``she who turns''); below it is \emph{the twist}. The paper~\cite{davisfloor2026} proved
+that $\lambda_t(j)$ is the lowest eigenvalue of every sector for every $t\in[2.75,10]$. Below that range it found, in
+double precision, that the floor is lost below $t^*\approx2.6980$ for the gauge-orthogonal spectrum and below the
+algebraic threshold $t_A=2.7311222782\ldots$ for $H+GG^*$.
+
+The Berger field is one point of a larger family. This paper asks where in that family the twist is the floor, and
+what sets the edge of that region. Stability of Yang--Mills fields on spheres and homogeneous spaces is
+classical~\cite{bl1981,laquer1984,ohnitapan1990,kot1986}, results for minimal-energy Yang--Mills connections on
+three-manifolds of nonnegative Ricci curvature are in~\cite{stern2010}, and a recent quantitative upper bound for the
+lowest Hessian eigenvalue of abelian Yang--Mills--Higgs critical points on the round $S^3$ is~\cite{jin2026}. Those
+results concern critical points. The fields here are in general not critical points. On Berger spheres, spectra are
+known for the scalar Laplacian~\cite{lauret2019}, the Dirac operator~\cite{bar1992,klingschueth2022} and the Hodge
+Laplacian on $1$-forms~\cite{henkellauret2026}; B\"ar's computation~\cite{bar1992} uses Frobenius reciprocity, the
+same sector decomposition used here.
+
+\paragraph{Main results.} Section~\ref{sec:setting} fixes the operator and the family $M_0=x\tau_0$, $M_1=y\tau_1$,
+$M_2=y\tau_2$.
+\begin{itemize}
+  \item \emph{The family is general} up to constant gauge, within the class of left-invariant fields symmetric under
+    the rotation about the long circle (Proposition~\ref{prop:general}).
+  \item \emph{Charge blocks} (Lemma~\ref{lem:blocks}): a conserved charge splits every sector into blocks of at most
+    nine states, with rows in closed form in $(x,y,t)$.
+  \item \emph{The twist across the family} (Section~\ref{sec:twist}): its eigenvalue is
+    $\lambda=(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$ (Proposition~\ref{prop:closed}). The cost of lifting it from sector
+    $0$ to sector $j\ge1$ carries a discount $2xj/\sqrt t$, negative if and only if $x<0$ (Corollary~\ref{cor:lift}).
+    Its anatomy is exact: fibre momentum squared, a lowest-Landau-level transverse term, and a curvature term
+    (Proposition~\ref{prop:anatomy}).
+  \item \emph{The edge polynomial} (Section~\ref{sec:edge}): the determinant numerator for the charge-$0$ block of
+    sector $4$ factors as $-16384\,P_1P_2$ (Proposition~\ref{prop:edgepoly}), and on the Berger path
+    $P_2=-32(s-1)(s+1)Q_{16}(s)$ with $Q_{16}$ the polynomial of $t_A$ (Proposition~\ref{prop:bergerrestriction}).
+    Both identities, and a bracket for the crossing, are checked in Lean~4: sixteen theorems in all
+    (Section~\ref{subsec:lean}).
+  \item \emph{For $x>0$ the twist is never the floor of every sector}; high sectors undercut it
+    (Section~\ref{sec:interval}).
+  \item \emph{The region is bounded below} by the sector-$0$ state $\hat\theta^0\otimes\tau_0$, so in $x$ it lies in an
+    interval $[x_{\mathrm{lo}},x^*]$ (Section~\ref{sec:interval}).
+  \item \emph{An exact ``if and only if''} for the sectors $j\le12$ on two slices ($t=3$ with $y=\sqrt3$ and with
+    $y=3/2$), conditional on the closed-form blocks being the blocks of $H+GG^*$ (Section~\ref{sec:interval}).
+  \item \emph{Large-sector slab proofs} for every sector $j\ge40$, on boxes reaching to within about $0.1$ of the edge
+    ($0.02$ in one slab), and \emph{the floor on a domain}
+    $D=\{x\in[-3,-1.5],\,y\in[0.5,3],\,t\in[3,10]\}$, every sector, by interval certificates
+    (Section~\ref{sec:domain}).
+\end{itemize}
+The theorem on $D$ also appears in the forthcoming version~3 of~\cite{davisfloor2026}.
+% Bee: confirm this sentence about version 3.
+
+\paragraph{What is computed.} In double precision: tables of the edge in the sectors $j\le12$, and a map of the
+eight charge blocks that set it (Section~\ref{subsec:competitors}). Along the Berger path the $H+GG^*$ edge is crossed
+at $t_A$ to $9\times10^{-16}$ and the gauge-orthogonal edge at $t^*$ to $1.1\times10^{-12}$
+(Section~\ref{subsec:berger}). Every positive edge found within $j\le12$ is an artefact of the cut-off: at all $58$
+such grid points a higher sector undercuts the twist ($54$ in the map's tail run, the remaining four in an
+independent check; Section~\ref{sec:interval}).
+
+\paragraph{What failed.} Three readings were tested, each written down before its data, and each failed: that the
+rotation symmetry makes the twist the floor, that a field strength aligned with the twist's spin does, and that
+alignment together with the curvature term singling the twist out does (Section~\ref{sec:decide}). A model of the
+edge as $c_1/t+c_2/t^2$ failed both of its pre-registered predictions. The conjecture that the all-sector edge equals
+$\min(x^*_{12},0)$ is refuted near $t=2.01$ and is kept only for $t\ge3$. The statement that the edge is the largest
+real root of $P_2$ is false: $P_2$ has further real roots where a higher eigenvalue of the competitor meets the twist.
+Three further tests (held-out family points, general circle-symmetric fields, and $SU(3)$) are pre-registered;
+Section~\ref{sec:prereg} describes them, and their results are pending.
+
+\paragraph{By enough, but not too much.} The field along the long circle must turn against the twist by enough that
+the discount $2xj/\sqrt t$ carries her below her competitor, but not by so much that the sector-$0$ state
+$\hat\theta^0\otimes\tau_0$ undercuts her: $x_{\mathrm{lo}}\le x\le x^*$.
+
+The thresholds $t^*$ and $t_A$ of~\cite{davisfloor2026} are therefore not special to the Berger field. They are where
+the Berger path meets the edge. The literature I checked (the chromomagnetic
+instability~\cite{nielsenolesen1978,savvidy1977}, homogeneous backgrounds on the round
+$S^3$~\cite{avramidicollopy2012,klc2021}) did not contain such an edge; the nearest is the negative modes of covariantly
+constant backgrounds on the round sphere~\cite{avramidicollopy2012}.
+
+Section~\ref{sec:setting} sets up the operator, the family and the charge blocks. Section~\ref{sec:twist} gives the
+twist's eigenvalue and its anatomy. Section~\ref{sec:edge} derives the edge, its polynomial, the Berger crossings and the
+Lean check. Section~\ref{sec:interval} proves that the region is bounded on both sides and that $x>0$ loses.
+Section~\ref{sec:domain} proves the floor on a domain. Section~\ref{sec:decide} reports what decides the edge and what
+does not. Section~\ref{sec:prereg} describes the pre-registered tests and Section~\ref{sec:scope} the scope and open
+problems; the closing statement on availability lists the code and data.
+
+% ---------------------------------------------------------------------------------------------------
+\section{Setting: the operator, the circle-symmetric family, charge blocks}\label{sec:setting}
+
+\subsection{Conventions}\label{subsec:conventions}
+
+The conventions are those of~\cite{davisfloor2026}, stated compactly. $S^3=SU(2)$ carries the left-invariant frame
+$e_0,e_1,e_2$ with $[e_a,e_b]=2\epsilon_{abc}e_c$. The Berger metric $(t,1,1)$ is diagonal in it, with $e_0$ the long
+axis; the parameter $t>0$ is \emph{the stretch}, and the orbits of $e_0$ are \emph{the long circle} (the fibre).
+$\hat\theta^i$ is the orthonormal coframe. A field is $A=\sum_iM_i\hat\theta^i$ with $M_i$ constant in $\su$, which
+has the basis $\tau_0,\tau_1,\tau_2$ with the same brackets, $\tau_0$ along the long axis. Its curvature is
+$F_{ij}=[M_i,M_j]-\sum_kc_{ij}^{\,k}M_k$.
+
+The second variation is $Q(b)=\sum_{i<j}\norm{D_{ij}b}^2+2\langle F_{ij},[b_i,b_j]\rangle$, and $H$ is its operator
+against the $L^2$ mass $\sum_i\norm{b_i}^2$. The gauge map is $G\xi=(\hat e_i\xi+[M_i,\xi])_i$. The fields studied are
+in general not Yang--Mills critical points, so gauge directions are not zero modes; the \emph{gauge-orthogonal
+spectrum} is the spectrum of $PHP$ on $\ker G^*$. In the Peter--Weyl sector $j\ge0$ (spin $j/2$), $b_i\in V_j\otimes\su$
+and $H$ is a $9(j+1)\times9(j+1)$ Hermitian matrix. The Ricci tensor of $(t,1,1)$ is $\mathrm{diag}(2t,4-2t,4-2t)$ in
+the orthonormal frame.
+
+The operator $H+GG^*$ has the Weitzenb\"ock form
+\begin{equation}\label{eq:weitz}
+  H+GG^*=\sum_iX_i^*X_i+R_0,\qquad X_i=\rho_i/\sqrt{g_i}+\Omega_i,\qquad R_0=\mathrm{Ric}\otimes I-2[F,\cdot\,],
+\end{equation}
+with $([F,\cdot\,]b)_i=\sum_j[F_{ij},b_j]$: the Ricci curvature plus the field strength with the factor $2$ of the
+Hessian, as in the Bochner--Weitzenb\"ock formula of~\cite{bl1981} (an accessible statement is~\cite{hanwen2026}). The
+split of $R_0$ is checked on the operator in Remark~\ref{rem:split}. Here $\rho_0,\rho_1,\rho_2=-2iJ_z,-2iJ_x,-2iJ_y$
+act on $V_j$, and $\Omega_i$ is the connection part on the frame and Lie indices.
+
+The \emph{floor} of a sector is its lowest gauge-orthogonal eigenvalue, or, where stated, its lowest eigenvalue of
+$H+GG^*$. The \emph{edge} is the level-crossing locus where the twist's eigenvalue meets the lowest eigenvalue of
+another charge block, \emph{the competitor}.
+
+\subsection{The circle-symmetric family}\label{subsec:family}
+
+The family is
+\[
+  M_0=x\,\tau_0,\qquad M_1=y\,\tau_1,\qquad M_2=y\,\tau_2 ,
+\]
+a strength $x$ along the long circle and a strength $y$ across it. Three members recur. The Berger field is
+$x=(2-t)/\sqrt t$, $y=\sqrt t$; I call the curve it traces \emph{the Berger path}. The multiples $A=s\theta$ of the
+Maurer--Cartan form are $x=2s/\sqrt t$, $y=2s$. The squashed meron lies in the family too, at $x>0$ (its coordinates
+are computed numerically). The field strength of a member is
+\begin{equation}\label{eq:B}
+  F_{12}=B\,\tau_0,\quad B=y^2-2\sqrt t\,x,\qquad F_{01}=(xy-2y/\sqrt t)\,\tau_2,\quad F_{02}=-(xy-2y/\sqrt t)\,\tau_1 ,
+\end{equation}
+so $B$ is the field along the fibre and $F_{01},F_{02}$, of size $|y(x-2/\sqrt t)|$, lie across it. On the Berger path
+$B=3t-4$; on $A=s\theta$, $B=4s(s-1)$ (\path{scripts/ricci_su2_twist_anatomy.py}, receipt \path{twist_anatomy.json}).
+
+\begin{proposition}[Generality up to constant gauge]\label{prop:general}
+Let $A=\sum_iM_i\hat\theta^i$ be a left-invariant $SU(2)$ field on $(t,1,1)$ that is invariant under the right circle
+generated by $e_0$, lifted by a constant gauge circle of weight $k$ about a Lie axis. Then $A$ is constant-gauge-equivalent
+to a member of the family with $y\ge0$. At $y=0$ the members $(x,0)$ and $(-x,0)$ are gauge-equivalent.
+\end{proposition}
+\begin{proof}
+Write $M=(M_{ia})$ (frame $i$, Lie $a$) and take the gauge axis to be $\tau_0$. The infinitesimal condition is
+$LM-kML=0$, with $L$ the $\mathfrak{so}(2)$ generator on the indices $1,2$. Its solution space (the commutant), found
+symbolically, has dimension $1$, $3$, $3$, $3$, $1$ for $k=-2,\dots,2$. For $k=\pm2$ it is $m_0=x\,\tau_0$,
+$m_1=m_2=0$. For $k=0$ it is $m_0$ arbitrary, $m_1=m_2=0$. For $k=+1$ it is $m_0=x\tau_0$, $m_1=y\tau_1-z\tau_2$,
+$m_2=z\tau_1+y\tau_2$, and for $k=-1$ it is $m_0=x\tau_0$, $m_1=-y\tau_1+z\tau_2$, $m_2=z\tau_1+y\tau_2$. For
+$|k|\ge3$ and for half-integer $k$ only the weight-$0$ solution with $y=0$ remains. Constant gauge rotations reduce each
+case. For $k=+1$, the rotation by $\arg(y+iz)$ about $\tau_0$ maps $(x,y,z)$ to $(x,\sqrt{y^2+z^2},0)$. For $k=-1$,
+a rotation by $\pi$ about the first axis maps the $(x,y)$ member to the family member at $(-x,y)$. For $k=0$, a
+rotation maps $m_0$ to $|m_0|\tau_0$, a member with $y=0$; a rotation by $\pi$ about $\tau_1$ shows $(x,0)\sim(-x,0)$.
+The gauge maps were checked on the fields to $2.2\times10^{-16}$ (\path{scripts/edge_wp4_design_checks.py}, receipt
+\path{research/edge-theorem-20261121/wp4_design_checks.json}).
+\end{proof}
+
+The proposition says nothing outside its class. It does not cover fields that are circle-invariant but not
+left-invariant, lifts by non-constant gauge transformations, or circles other than the right circle about $e_0$. For
+$t\ne1$ it assumes, without re-proving it, that the isometry group is $SU(2)_L\times U(1)_R$. As a code control
+(computed), full spectra of $H+GG^*$ in the sectors $j\le4$ at six random points agree after removing $z$ to
+$1.95\times10^{-15}$, after the $k=-1$ reduction to $x\mapsto-x$ exactly ($0.0$), and after a random constant gauge
+frame to $2.23\times10^{-15}$. At $y=0$ the spectrum is therefore even in $x$.
+
+\subsection{Charge blocks}\label{subsec:blocks}
+
+On $V_j$ take the weights $m\in\{-l,\dots,l\}$, $l=j/2$, along the long axis. Write the frame index and the Lie index in
+the eigenbasis of the rotation, with charges $c_f,c_l\in\{-1,0,1\}$.
+
+\begin{lemma}[Charge blocks]\label{lem:blocks}
+For every member of the family, the charge $q=m+c_f+c_l$ is conserved by $H+GG^*$. Each sector is the orthogonal sum
+of charge blocks $B_{j,q}$, spanned by the at most nine states $(m,c_f,c_l)$ with $m=q-c_f-c_l$, $|m|\le l$. An
+antiunitary map commutes with $H+GG^*$ and reverses $q$, so the blocks $B_{j,q}$ and $B_{j,-q}$ have the same spectrum.
+\end{lemma}
+\begin{proof}
+$\rho_0$ is diagonal and $\rho_1\pm i\rho_2=-2iJ_\pm$ shift $m$ by $\pm1$; $\Omega_0$ is diagonal and $\Omega_\pm$ shift
+the charge $c=c_f+c_l$ by $\pm1$. So $X_0$ preserves $q$ and $X_\pm$ shift it by $\pm1$, and
+$\sum_iX_i^*X_i=X_0^*X_0+\tfrac12(X_+^*X_++X_-^*X_-)$ preserves $q$. The curvature term $R_0$ preserves $c$ and does not
+touch $m$. For the mirror, take $J\otimes K$, with $J$ the real ($j$ even) or quaternionic ($j$ odd) structure of $V_j$
+and $K$ complex conjugation on the frame and Lie indices. This is the argument of~\cite[Lemma ``Charge
+blocks'']{davisfloor2026} with $x$ and $y$ free (\path{scripts/ricci_su2_exact_edge.py}; on the Berger path the exact
+check is \path{research/su2-floor-family-20261119/charge_selection_symbolic.txt}).
+\end{proof}
+
+\paragraph{Closed-form rows.} The rows of every block are symbolic in $(x,y,t)$. For a state $(m,a)$, $a=(c_f,c_l)$,
+the diagonal entry is
+\begin{equation}\label{eq:diag}
+  D(m,a)=\Bigl(w_a-\frac{2m}{\sqrt t}\Bigr)^2+4\bigl(l(l+1)-m^2\bigr)+C_{aa},\qquad C=-(\Omega_1^2+\Omega_2^2)+R_0,
+\end{equation}
+and the ladder couplings are $2i\sqrt{(l-m)(l+m+1)}\,(\Omega_-)_{a'a}$ to $m+1$ and
+$2i\sqrt{(l+m)(l-m+1)}\,(\Omega_+)_{a'a}$ to $m-1$. Here $\Omega_i$ is the action of $M_i$ on the Lie index together
+with the Levi-Civita part on the frame index, written in the charge basis. The fibre rotations $w_a$ are
+\begin{center}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+$(c_f,c_l)$ & $w_a$ & $(c_f,c_l)$ & $w_a$\\
+\midrule
+$(1,1)$ & $\sqrt t-x-2/\sqrt t$ & $(0,0)$ & $0$\\
+$(1,0)$ & $(t-2)/\sqrt t$ & $(0,-1)$ & $x$\\
+$(1,-1)$ & $\sqrt t+x-2/\sqrt t$ & $(-1,1)$ & $-\sqrt t-x+2/\sqrt t$\\
+$(0,1)$ & $-x$ & $(-1,0)$ & $(2-t)/\sqrt t$\\
+ & & $(-1,-1)$ & $-\sqrt t+x+2/\sqrt t$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Read off the table, $w_a=c_f(t-2)/\sqrt t-c_l\,x$. Every entry of $C$ has degree at most one in $x$, and the ladder
+couplings $\Omega_\pm$ do not involve $x$ (exact; receipt \path{wp4_design_checks.json}). On the Berger path
+$w_a=c\,(t-2)/\sqrt t$ and every nonzero entry of $\Omega_\pm$ has modulus $\sqrt{2t}$
+(\path{charge_selection_symbolic.txt}). In double precision the blocks reproduce the full sector spectra at $12$ random
+points to $1.47\times10^{-15}$ (\path{research/su2-floor-family-20261119/exact_edge.json}), and the closed-form rows
+agree with the general sector builder to $1.7\times10^{-13}$ (receipt \path{family_block_cert_j80.json}).
+
+% ---------------------------------------------------------------------------------------------------
+\section{The twist and its closed form}\label{sec:twist}
+
+\begin{proposition}[The twist is exact]\label{prop:exact}
+At every member of the family and in every sector $j$, the twist $b=f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$
+is an eigenvector of $H+GG^*$ and of $H$, and it is gauge-orthogonal. Its eigenvalue has multiplicity at least two in
+the full spectrum, shared with its mirror.
+\end{proposition}
+\begin{proof}
+In charge coordinates $b$ is $(m,c_f,c_l)=(l,1,1)$, of charge $q=l+2$. It is the unique state of maximal charge, so it
+spans a $1\times1$ block and is an eigenvector of $H+GG^*$. A gauge parameter $\xi$ carries only a weight and a Lie
+index, so the charges in the range of $G$ reach at most $l+1$. Hence $G^*b=0$ and $Hb=(H+GG^*)b$. By
+Lemma~\ref{lem:blocks}, the block of charge $-l-2$ has the same entry. This is the counting of~\cite{davisfloor2026}
+with $x$ and $y$ free.
+\end{proof}
+
+In the computations the multiplicity is exactly two where checked: in the sectors $j\le4$ at
+$(x,y,t)=(-2,1.5,4)$ and $(-1,0.7,6)$, in both the full and the gauge-orthogonal spectra. Over $x\in[-40,1]$,
+$t\in\{3,5,10\}$, $y\in\{0.5,1.5,3\}$, $j\le12$, the mirror copy is present: the mirror's value minus $\lambda$ is at least
+$-6.8\times10^{-13}$ (double precision). A single-copy removal of the twist is therefore an error; every edge computation
+removes two copies.
+
+\begin{proposition}[The closed form]\label{prop:closed}
+For every $t>0$, $x,y\in\RR$ and $j\ge0$, the twist's eigenvalue is
+\begin{equation}\label{eq:closed}
+  \lambda(x,y,t,j)=\Bigl(x+\frac{j+2}{\sqrt t}\Bigr)^2+2\sqrt t\,x-y^2 .
+\end{equation}
+On the Berger field it equals $\lambda_t(j)$ exactly. On $A=s\theta$ it equals $(j+2s+2)^2/t+4s(1-s)$.
+\end{proposition}
+\begin{proof}
+The twist is alone in its charge block, so its eigenvalue is the diagonal entry of $H+GG^*$ there: by
+\eqref{eq:weitz}, $\norm{X_0b}^2+\norm{X_1b}^2+\norm{X_2b}^2+\langle\beta,R_0\beta\rangle$ for $\norm b=1$, with $\beta$
+its internal frame. Equivalently, take \eqref{eq:diag} at $m=l$, $a=(1,1)$, with $w=\sqrt t-x-2/\sqrt t$ and
+$C=4\sqrt t\,x-t-y^2+4$. Then $(w-j/\sqrt t)^2=(x+(j+2)/\sqrt t)^2-2\sqrt t\,x-2(j+2)+t$, the second term of
+\eqref{eq:diag} is $4l=2j$, and the sum is \eqref{eq:closed}. Substituting $x=(2-t)/\sqrt t$, $y=\sqrt t$ gives
+$\lambda_t(j)$ with difference $0$, and substituting $x=2s/\sqrt t$, $y=2s$ gives the second formula. The computation is
+symbolic in $x$, $y$, $t$ (\path{scripts/ricci_su2_twist_family_closed_form.py}, receipt
+\path{research/su2-floor-family-20261119/twist_family_closed_form.txt}). As a check (computed), it agrees with the
+general builder at $40$ random $(x,y,t,j)$ to $1.4\times10^{-15}$.
+\end{proof}
+
+\begin{corollary}[The lift and its discount]\label{cor:lift}
+The cost of lifting the twist from the sector $0$ to the sector $j$ is
+\[
+  \lambda(j)-\lambda(0)=\frac{j^2+4j}{t}+\frac{2xj}{\sqrt t}.
+\]
+For $j\ge1$ the second term lowers the cost if and only if $x<0$, that is, when the field along the long circle turns
+against the twist's own rotation.
+\end{corollary}
+\begin{proof}
+Expand \eqref{eq:closed}: $(x+(j+2)/\sqrt t)^2-(x+2/\sqrt t)^2=2xj/\sqrt t+((j+2)^2-4)/t$.
+\end{proof}
+
+On the Berger field $x=(2-t)/\sqrt t$, which changes sign at $t=2$. That is the stretch at which, by the Casimir remark
+of~\cite{davisfloor2026}, the coupling of the lift to the stretch vanishes: $\lambda_2(j)-\lambda_2(0)=(j^2+4j)/2$, and
+$\lambda_2(0)=0$. For $t>2$ the Berger field lies on the side $x<0$, where the discount helps the twist.
+
+\begin{proposition}[Anatomy]\label{prop:anatomy}
+Let $\beta=(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ be the twist's internal frame. For every $x,y,t$ and $j$:
+\begin{enumerate}
+  \item $X_0b=i\kappa\,b$ with $\kappa=(t-2)/\sqrt t-x-j/\sqrt t$. The three terms are the Levi-Civita rotation of the
+    frame, the gauge field acting on the twist's Lie charge (minimal coupling), and the orbital motion along the fibre.
+  \item $(\Omega_1+i\Omega_2)\beta=0$, so with the top weight $X_+b=0$: the twist is a lowest Landau level across the
+    whole family.
+  \item $R_0\beta=(\mathrm{Ric}_\perp-2B)\beta$ with $\mathrm{Ric}_\perp=4-2t$ and $B$ as in \eqref{eq:B}; the part
+    $-2[F,\cdot\,]$ contributes $4\sqrt t\,x-2y^2=-2B$.
+  \item $\lambda=\kappa^2+(2j+t+y^2)+(\mathrm{Ric}_\perp-2B)$: fibre momentum squared, the transverse lowest-Landau-level
+    term, and the curvature term (Ricci across the fibre, and spin against the fibre field).
+  \item $\partial\lambda/\partial x=-2\kappa+4\sqrt t$. The strength $x$ enters twice: through $\kappa$ by minimal
+    coupling, and through $B$ by the spin.
+  \item On the Berger path the gauge part of $\kappa$ equals the frame part, and $\kappa=(2t-4-j)/\sqrt t$, the transverse
+    term is $2(j+t)$, the curvature term is $12-8t$, and $B=3t-4$.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+Exact symbolic computation of each identity; the parts in (4) minus \eqref{eq:closed} is $0$
+(\path{scripts/ricci_su2_twist_anatomy.py}, receipt \path{research/su2-floor-family-20261119/twist_anatomy.json}).
+Item (5) is the derivative of \eqref{eq:closed}: $-2\kappa+4\sqrt t=2(x+(j+2)/\sqrt t)+2\sqrt t$. Item (6) recovers the
+proposition of~\cite{davisfloor2026} that the twist is a lowest Landau level on the Berger field. Item (4) and the
+Berger slice of (6) are also proved in Lean~4 (\texttt{price\_anatomy}, \texttt{kappa\_berger},
+\texttt{fieldCurv\_berger}, \texttt{price\_berger}; Section~\ref{subsec:lean}).
+\end{proof}
+
+Near the edge the twist's slope in $x$ is about $10$ at every point computed ($9.74$, $9.62$, $10.18$ at the three
+points of Section~\ref{subsec:competitor}; computed). The competitor's is much smaller (Section~\ref{subsec:competitor}).
+
+\begin{remark}[A reading]\label{rem:landau}
+The structure of Proposition~\ref{prop:anatomy} resembles a lowest-Landau-level kinetic term plus a Zeeman term with
+gyromagnetic factor $2$. That is the flat-space mechanism of the unstable mode of Nielsen and
+Olesen~\cite{nielsenolesen1978}, stated explicitly in~\cite{bcgk2014}. Landau levels on spheres are a standard
+construction~\cite{haldane1983,wuyang1976}. I note the resemblance only; no limit relating the two is proved, and none
+of these sources says anything about Berger spheres.
+\end{remark}
+
+\begin{remark}[The split of $R_0$]\label{rem:split}
+The identity $R_0=\mathrm{Ric}\otimes I-2[F,\cdot\,]$ was checked numerically to $4\times10^{-15}$ on the Berger field
+and the squashed meron at $t=1,2,3,4,6,8$. On the twist's internal frame the Ricci share is $4-2t$ on both fields.
+The field-strength share is $8-6t$ on the Berger field ($-4$ at $t=2$, $-40$ at $t=8$), but positive on the squashed
+meron: $+1.2614$ at $t=2$, $+0.9265$ at $t=3$, $+0.7334$ at $t=4$, $+0.5183$ at $t=6$, $+0.4010$ at $t=8$ (computed;
+\path{research/su2-floor-family-20261119/gyromagnetic_split.txt}). Read through item (3) of
+Proposition~\ref{prop:anatomy}, on the squashed meron the field strength is opposed to the twist's spin.
+Section~\ref{sec:decide} shows that this alone does not decide the floor.
+\end{remark}
+
+% ---------------------------------------------------------------------------------------------------
+\section{The edge}\label{sec:edge}
+
+\subsection{Edge functions}\label{subsec:edgefunctions}
+
+By Lemma~\ref{lem:blocks}, whether the twist is the floor of the sectors $j\le J$ is a comparison between $\lambda$ and
+the lowest eigenvalues of finitely many blocks. For $H+GG^*$ define
+\[
+  \phi_A(x)=\min_{j\le J}\ \min_{q\ne\pm(l+2)}\bigl[\lambda_{\min}(B_{j,q})-\lambda_j\bigr],
+\]
+with both twist blocks excluded, and for the gauge-orthogonal spectrum $\phi_S(x)=\min_{j\le J}[\mu_{\min,j}-\lambda_j]$,
+where $\mu$ is the slice spectrum from the general builder after removing two copies of $\lambda_j$. The edge $x^*_A$
+(resp.\ $x^*_S$) is the largest $x$ in the scan window where $\phi$ changes sign from $\ge0$ to $<0$, located by Brent's
+method to $10^{-12}$; $x^*_{12}$ denotes the $H+GG^*$ edge with $J=12$. At the edge $\lambda_j$ is an eigenvalue of the
+competitor block, so the edge is a root of $\det(B_{j,q}(x,y,t)-\lambda_j)=0$. The gauge-orthogonal edge is slightly
+higher than the $H+GG^*$ edge at every point of Table~\ref{tab:edge}: at $t=3$ by $0.027$ ($y=\sqrt3$) and $0.020$
+($y=3/2$). In double precision the gauge-orthogonal edges agree with the independent bisection of the earlier edge test
+at its $21$ points to $3\times10^{-5}$, within that bisection's tolerance $10^{-4}$ (\path{scripts/ricci_su2_exact_edge.py},
+receipt \path{exact_edge.json}).
+
+\begin{table}[t]
+\centering
+\caption{The edge in the sectors $j\le12$, $x^*_A$ / $x^*_S$ (double precision; not certified). For $y\ge1.5$ and
+$y=\sqrt t$ the competitor is $B_{4,0}$ throughout. Every positive entry is an artefact of the cut-off $j\le12$
+(Section~\ref{sec:interval}). Receipt \texttt{research/su2-floor-family-20261119/}\allowbreak\texttt{exact\_edge.json}.}
+\label{tab:edge}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+$t$ & $y=0.5$ & $y=1.5$ & $y=\sqrt t$\\
+\midrule
+$2$ & $-0.613240$ / $-0.605292$ & $-0.682793$ / $-0.657567$ & $-0.677814$ / $-0.655100$\\
+$3$ & $-0.335488$ / $-0.318061$ & $-0.371582$ / $-0.351580$ & $-0.382168$ / $-0.355187$\\
+$4$ & $-0.202972$ / $-0.191702$ & $-0.208048$ / $-0.191652$ & $-0.221163$ / $-0.189150$\\
+$6$ & $-0.082842$ / $-0.078032$ & $-0.044874$ / $-0.033249$ & $-0.035386$ / $+0.008031$\\
+$8$ & $-0.033799$ / $-0.031530$ & $+0.031482$ / $+0.040169$ & $+0.082513$ / $+0.138269$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:edge} gives the edge at five stretches. At $t=2$ and $y=0.5$ the competitor is $B_{3,1/2}$; at $t=3$,
+$y=0.5$ it is $B_{2,-1}$, the mirror of $B_{2,1}$. Within $j\le12$ the edge rises with the stretch and turns positive for
+strongly stretched spheres with a strong cross field. That is an artefact of the cut-off: Section~\ref{sec:interval}
+proves that for $x>0$ high sectors undercut the twist.
+
+\subsection{The competitor}\label{subsec:competitor}
+
+For a cross field $y$ around $1$ and above, the edge is set by $B_{4,0}$, the $9\times9$ charge-$0$ block of the sector
+$j=4$, with entries in $\mathbb Q(\sqrt2,\sqrt3)$. (In the map of Section~\ref{subsec:competitors}, for $t\le6$ its
+region runs from $y\approx0.75$--$0.99$ up to a curve from $y\approx1.9$ at $t=2$ to $y\approx3$ at $t\approx5.7$.) At
+the three points computed, its lowest state is a mirror-symmetric superposition dominated by
+$(m,c_f,c_l)=(+2,-1,-1)$ and $(-2,+1,+1)$: orbit and internal spin opposed, total fibre charge zero. The twist is
+charged, with orbit and spin aligned. The competitor is nearly blind to $x$. In double precision:
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+point & weight in $m=\pm2$ & slope of competitor & slope of twist ($j=4$)\\
+\midrule
+Berger at $t^*$ ($x=-0.42496$, $y=1.64257$, $t=2.69803$) & $0.62$ & $-1.561$ & $9.741$\\
+$t=4$, $y=2$, $x=-0.19$ & $0.66$ & $-0.623$ & $9.620$\\
+$t=8$, $y=\sqrt8$, $x=0.14$ & $0.73$ & $+1.684$ & $10.179$\\
+\bottomrule
+\end{tabular}
+\end{center}
+The function $\lambda_{\min}(B_{4,0})-\lambda(x,y,t,4)$ is strictly decreasing on $x\in[-3,3]$ at all $48$ pairs
+$(t,y)$ tested, $t$ from $2$ to $10$ and $y$ from $0.5$ to $3$ (computed; receipt \path{twist_anatomy.json}). An
+operator-norm bound on $\partial_xB_{4,0}$ is not enough to prove this: it works at $21$ of $27$ edge points and fails at
+every point with $y=\sqrt t$, $t\ge4$.
+
+\subsection{The edge polynomial}\label{subsec:edgepoly}
+
+\begin{proposition}[The edge polynomial]\label{prop:edgepoly}
+Let $s=\sqrt t$ and let $P(x,y,s)$ be the numerator of $\det\bigl(B_{4,0}(x,y,s^2)-\lambda(x,y,s^2,4)\,I\bigr)$. Then $P$
+has rational coefficients, $473$ terms, degrees $(12,14,28)$ in $(x,y,s)$ and total degree $32$, and
+\[
+  P=-16384\,P_1P_2 ,
+\]
+with $P_1$, $P_2$ irreducible over $\mathbb Q$, each of multiplicity one and each even in $y$. $P_1$ has degrees
+$(5,6,12)$ in $(x,y,s)$ and $61$ terms; $P_2$ has degrees $(7,8,16)$ and $113$ terms. They begin
+\begin{align*}
+  P_2&=-8s^{16}x^2+24s^{15}x^3+8s^{15}xy^2-4s^{14}x^4-42s^{14}x^2y^2-320s^{14}x^2-2s^{14}y^4-11s^{13}x^5+\cdots,\\
+  P_1&=2s^{12}x^2-5s^{11}x^3-3s^{11}xy^2-24s^{11}x-s^{10}x^4+\cdots .
+\end{align*}
+\end{proposition}
+\begin{proof}
+Exact symbolic determinant over $\mathbb Q(\sqrt2+\sqrt3)[x,y,s]$ and exact factorization~\cite{sympy2017}
+(\path{scripts/ricci_su2_edge_polynomial.py}; full polynomials in
+\path{research/su2-floor-family-20261119/edge_polynomial.txt} and \path{edge_polynomial.srepr}). The factorization is
+also proved in Lean (Theorem~\texttt{edgeDet\_factor}, Section~\ref{subsec:lean}). A second, independent builder of
+the blocks recovers the same edge factor exactly (quotient $1$, remainder $0$;
+\path{research/edge-theorem-20261121/wp1_block_polynomials.txt}). Its full determinant was compared with
+\path{edge_polynomial.srepr} only by the ratio $1$ at four rational points, which is a computed check, not a proof.
+\end{proof}
+
+$P_2$ vanishes on the numerically located edge wherever $B_{4,0}$ is the competitor: at all $77$ grid edges of the map
+the nearest root of $P_2$ lies within $2.4\times10^{-13}$ of the edge, while the scale-free residual of $P_1$ there is
+at least $2.7\times10^{-3}$, and at ten sample points the nearest root of $P_1$ is $0.36$--$0.55$ away (computed).
+\emph{The edge is not in general the largest real root of $P_2$.} On the $18$ known-answer rows of
+Table~\ref{tab:edge}'s receipt with $y=1.5$ or $y=\sqrt t$, $P_2$ has three or four further real roots in $[-3,3]$ above
+the edge, from about $0.55$ ($t=2$) to $3.5$ ($t=12$, $y=\sqrt t$), where a higher eigenvalue of $B_{4,0}$ meets
+$\lambda_4$. The edge is the root at which the \emph{lowest} eigenvalue of $B_{4,0}$ equals $\lambda_4$. This was found
+by a known-answer gate of a pre-registered test, before any of its held-out points was computed
+(Section~\ref{sec:prereg}); the earlier statement ``largest real root'' is withdrawn.
+
+\subsection{The Berger crossings}\label{subsec:berger}
+
+\begin{proposition}[Berger restriction]\label{prop:bergerrestriction}
+For $s\ne0$,
+\[
+  P_2\Bigl(\frac{2-s^2}{s},s,s\Bigr)=-32\,(s-1)(s+1)\,Q_{16}(s),
+\]
+\[
+  Q_{16}(s)=3s^{16}+121s^{14}+1066s^{12}-2836s^{10}-18624s^8+20992s^6+181248s^4-425984s^2+262144 ,
+\]
+the polynomial of~\cite[Remark ``Below the range'']{davisfloor2026} whose largest positive root is $s=\sqrt{t_A}$,
+$t_A=2.7311222782381135$. So $t_A$ is algebraically a root of the edge polynomial on the Berger path.
+\end{proposition}
+\begin{proof}
+Exact polynomial division with zero remainder (\path{scripts/ricci_su2_edge_polynomial.py}, receipt
+\path{edge_polynomial.txt}). Also proved in Lean (\texttt{edgeFactor\_berger}), together with a root of $Q_{16}$ in
+$[1.65261,1.65262]$ and a zero of the restriction with $s^2\in[2.73111,2.73116]$.
+\end{proof}
+
+Along the Berger path $x=(2-t)/\sqrt t$, $y=\sqrt t$, the computed edges are crossed as follows (double precision,
+root-finding to $10^{-12}$ on exact ingredients; receipt \path{exact_edge.json}). The $H+GG^*$ edge is crossed at
+$t=2.7311222782381144$, which is $t_A$ to $9\times10^{-16}$. The gauge-orthogonal edge is crossed at
+$t=2.6980269405211303$, which is $t^*=2.6980269405200263$ to $1.1\times10^{-12}$. Both crossings go through the sector
+$j=4$, the first through the block $B_{4,0}$. That $t_A$ is a root of $P_2$ on the path is proved
+(Proposition~\ref{prop:bergerrestriction}); that the path crosses the edge there is computed. Between $t^*$ and $t_A$ the
+eigenvalue of $H+GG^*$ below $\lambda_t(4)$ is not gauge-orthogonal (computed; \cite[Remark ``Below the
+range'']{davisfloor2026}).
+
+The thresholds of~\cite{davisfloor2026} are therefore where the Berger path meets the edge, not properties of the Berger
+field alone. The edge is a crossing, not an avoided one: the twist is alone in its charge block, every competitor found
+has a different charge, and eigenvalues of different symmetry type may cross where those of one type generically do
+not~\cite{vonneumannwigner1929}.
+
+\subsection{Other competitors}\label{subsec:competitors}
+
+On a grid of $132$ points, $t=2,\dots,12$ by $y=0.25,\dots,3$, with $j\le12$ and the window $[-3,1]$, eight blocks (up
+to the mirror $q\leftrightarrow-q$) set the $H+GG^*$ edge (computed). Their edge factors were derived exactly
+(Table~\ref{tab:competitors}); the determinants and factorizations over $\mathbb Q$ are exact algebra, and the edge
+factors of $B_{1,3/2}$, $B_{2,2}$, $B_{12,7}$ and $B_{2,1}$ were checked irreducible over $\mathbb Q$ again by an
+independent rerun. All $132$ grid edges are roots of the right factor, to $2.4\times10^{-13}$ (computed). At every grid
+point $\phi_A$ has a single sign change on a $401$-point scan of $[-3,1]$, and $\phi_A(-3)\ge1.43$.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Blocks that set the edge in the sectors $j\le12$ (map computed; polynomials exact). Degrees are in
+$(x,y,s)$; ``$s\cdot$'' marks a factor $s$ split off. $\dagger$: block of the top sector allowed, a cut-off
+artefact. Receipts \texttt{research/edge-theorem-20261121/}\allowbreak\texttt{wp1\_competitor\_map.md} and
+\texttt{wp1\_block\_polynomials.txt}.}
+\label{tab:competitors}
+\begin{tabular}{@{}lclcccc@{}}
+\toprule
+block & size & entries in & edge factor & terms & grid edges & max $|\text{root}-\text{edge}|$\\
+\midrule
+$(4,0)$ & $9$ & $\mathbb Q(\sqrt2,\sqrt3)$ & $P_2$, $(7,8,16)$ & $113$ & $77$ & $2.4\times10^{-13}$\\
+$(3,\tfrac12)$ & $8$ & $\mathbb Q(\sqrt2,\sqrt6)$ & $(11,14,26)$ & $400$ & $6$ & $1.4\times10^{-14}$\\
+$(2,1)$ & $6$ & $\mathbb Q$ & $s\cdot(8,10,18)$ & $169$ & $20$ & $2.3\times10^{-13}$\\
+$(1,\tfrac12)$ & $5$ & $\mathbb Q(\sqrt2)$ & $s\cdot(7,10,16)$ & $133$ & $4$ & $1.5\times10^{-16}$\\
+$(1,\tfrac32)$ & $3$ & $\mathbb Q(\sqrt2)$ & $s\cdot(4,4,8)$ & $26$ & $15$ & $8.5\times10^{-14}$\\
+$(2,2)$ & $3$ & $\mathbb Q$ & $s\cdot(4,4,8)$ & $27$ & $2$ & $1.7\times10^{-14}$\\
+$(12,6)^\dagger$ & $6$ & $\mathbb Q(\sqrt6,\sqrt{11})$ & $s\cdot(8,10,18)$ & $172$ & $1$ & $1.7\times10^{-15}$\\
+$(12,7)^\dagger$ & $3$ & $\mathbb Q(\sqrt6)$ & $s\cdot(4,4,8)$ & $27$ & $7$ & $1.1\times10^{-13}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The regimes are ordered by the cross field. At small $y$ the competitor is $B_{2,1}$, up to $y\approx0.57$--$0.67$;
+then $B_{3,1/2}$, up to $y\approx0.75$--$0.99$; then $B_{4,0}$; and at large $y$ and small $t$, $B_{1,3/2}$ (and $B_{2,2}$
+at $t=2$, $y\ge2.75$). For $t\ge7$ at $y\approx0.75$--$1$ the blocks $B_{1,1/2}$ and $B_{1,3/2}$ compete. Examples of
+switches (computed): from $B_{3,1/2}$ to $B_{2,1}$ along $y=0.5$ at $t=2.304727$ (edge $-0.49703$); from $B_{3,1/2}$ to
+$B_{4,0}$ at $t=2$, $y=0.752443$ (edge $-0.611741$); from $B_{4,0}$ to $B_{1,3/2}$ at $t=2$, $y=1.896879$ (edge
+$-0.699953$). At $t=3,4,5,6$ the switch from $B_{2,1}$ to $B_{3,1/2}$ is at $y=0.574998$, $0.621151$, $0.650418$,
+$0.673813$, and from $B_{3,1/2}$ to $B_{4,0}$ at $y=0.874254$, $0.930635$, $0.965022$, $0.988971$. The closest runner-up
+gap is $0.0053$, at $(t,y)=(2,0.75)$. One boundary, from $B_{12,6}$ to $B_{2,1}$ along $y=0.25$ for $t\in[2,3]$, was not
+located. The smallest of these blocks has a short edge factor; for $B_{1,3/2}$ it is
+\begin{multline*}
+2s^8x-5s^7x^2-s^7y^2-s^6x^3+7s^6xy^2+s^5x^4+2s^5x^2y^2-23s^5x^2-s^5y^4+7s^5y^2-3s^4x^3y^2\\
++9s^4x^3+3s^4xy^4-7s^4xy^2-30s^4x+2s^3x^4-10s^3x^2y^2+4s^3x^2+6s^3y^4+2s^3y^2\\
++20s^2x^3-28s^2xy^2-20s^2x+56sx^2-40sy^2+48x .
+\end{multline*}
+Six of the eight blocks belong to two near-top families of charge $q=l+1$ and $q=l$; only $B_{4,0}$ and $B_{3,1/2}$
+are sporadic. Those families govern the high sectors, and Section~\ref{sec:interval} uses them.
+
+\subsection{Lean formalisation}\label{subsec:lean}
+
+The algebraic identities above, and the closed form's anatomy, are proved in Lean~4~\cite{lean4} (v4.36.0) with
+Mathlib~\cite{mathlib2020}: sixteen theorems, with no \texttt{sorry} and no axioms beyond \texttt{propext},
+\texttt{Classical.choice} and \texttt{Quot.sound} (\path{docs/papers/berger-spectrum/lean/Helike/Edge.lean} and
+\path{Price.lean}).
+
+\paragraph{\texttt{Helike/Edge.lean} (four theorems).} The polynomials are those of the receipt
+\path{edge_polynomial.srepr}; the $473$-term determinant numerator is entered in ten parts of at most $48$ terms, checked
+equal to the receipt by sympy before the Lean was written.
+\begin{itemize}
+  \item \texttt{edgeDet\_factor}: for all real $x,y,s$, $\mathtt{edgeDet}=-16384\,P_1P_2$.
+  \item \texttt{edgeFactor\_berger}: for $s\ne0$, $P_2((2-s^2)/s,s,s)=-32(s-1)(s+1)Q_{16}(s)$.
+  \item \texttt{tA\_poly\_root}: $Q_{16}$ has a root $s\in[1.65261,1.65262]$, by the intermediate value theorem
+    ($Q_{16}(1.65261)<0<Q_{16}(1.65262)$).
+  \item \texttt{berger\_crosses\_edge}: there is $s\in[1.65261,1.65262]$ with $P_2((2-s^2)/s,s,s)=0$ and
+    $s^2\in[2.73111,2.73116]$.
+\end{itemize}
+
+\paragraph{\texttt{Helike/Price.lean} (twelve theorems).} With $t=s^2$, $s\ne0$, the closed form \eqref{eq:closed} is
+\texttt{price}, $\kappa$ is \texttt{kappa}, $B$ is \texttt{fieldCurv}, and $\lambda_t(j)$ is
+$\mathtt{floorLaw}\,t\,j=(j^2+(8-2t)j-2t^2-4t+16)/t$. The theorems are \texttt{price\_anatomy} (item (4) of
+Proposition~\ref{prop:anatomy}); \texttt{floorLaw\_paper\_form}; \texttt{kappa\_berger}, \texttt{fieldCurv\_berger} and
+\texttt{price\_berger} (the Berger slice, and $\lambda=\lambda_t(j)$ there); \texttt{floorLaw\_three},
+\texttt{floorLaw\_three\_sector0} ($-14/3$) and \texttt{floorLaw\_three\_sector12} ($154/3$) at $t=3$;
+\texttt{floorLaw\_vertex\_form}, $\lambda_t(j)=(j-(t-4))^2/t+(4-3t)$, with \texttt{floorLaw\_ge\_vertex} and
+\texttt{vertex\_on\_line}; and \texttt{floorLaw\_cutoff}, $\lambda_t(t-4+\sqrt{t(3t-4)})=0$ for $t\ge4/3$.
+
+The builds completed on two machines (Price: $18254$ jobs; a full rebuild: $18256$ jobs, with \texttt{Helike.Edge}
+taking $231$\,s for the factorization, of degree $28$ in $s$).
+
+\paragraph{What Lean does not check.} Lean checks polynomial identities and the two brackets. It does not check that
+\texttt{edgeDet} is the determinant of $B_{4,0}-\lambda_4I$ (a computer-algebra step), that the root of $P_2$ is the
+edge (an eigenvalue comparison), that the twist is the floor anywhere, or that \texttt{price} is an eigenvalue of the
+Hessian. Those rest on Propositions~\ref{prop:exact}--\ref{prop:edgepoly} and on the certificates of
+Sections~\ref{sec:interval} and~\ref{sec:domain}.
+
+% ===================================================================================================
+\section{The region is an interval, and $x>0$ loses}\label{sec:interval}
+
+Section~\ref{sec:edge} locates the edge in the sectors $j\le12$. Two facts change the picture once all sectors and
+all $x$ are allowed. On the side of positive $x$ the twist always loses, to high sectors. On the side of very negative
+$x$ it loses too, to a state of the sector $j=0$. Its region in $x$ is therefore bounded on both sides.
+
+Throughout, $l=j/2$, and a row of a charge block is labelled by its weight $m=l-\xi$ and its type $a=(c_f,c_l)$, as in
+Section~\ref{sec:setting}. Write $\lambda_j=\lambda(x,y,t,j)$ for the twist's eigenvalue of
+Proposition~\ref{prop:closed}.
+
+\subsection{Positive $x$}
+
+\begin{theorem}[For $x>0$ the twist is not the floor of every sector]\label{thm:xpos}
+Let $t>0$, $x,y\in\mathbb{R}$ and $l\in\frac12\mathbb{Z}_{\ge0}$.
+\begin{enumerate}
+  \item In the charge block $B_{2l,l}$, the state $e_-$ of weight $m=l$ and type $(1,-1)$ satisfies
+  \[
+    \langle e_-,(H+GG^*)e_-\rangle-\lambda_{2l}
+      =-\frac{8lx}{\sqrt t}-4\sqrt t\,x+4y^2-\frac{8x}{\sqrt t}.
+  \]
+  \item In the charge block $B_{2l,l+1}$, the state $e_0$ of weight $m=l$ and type $(1,0)$ satisfies
+  \[
+    \langle e_0,(H+GG^*)e_0\rangle-\lambda_{2l}
+      =-\frac{4lx}{\sqrt t}-2\sqrt t\,x-x^2+3y^2-\frac{4x}{\sqrt t}.
+  \]
+  \item Consequently, if $x>0$, the twist is not the lowest eigenvalue of $H+GG^*$ in the sector $j=2l$ for every
+  \[
+    l>\frac{\sqrt t\,\bigl(4y^2-4\sqrt t\,x-8x/\sqrt t\bigr)}{8x}
+  \]
+  (for every $l$ if the right side is negative). In particular, for $x>0$ the twist is not the floor of every sector.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+The diagonal entries of every charge block are known in closed form (Section~\ref{sec:setting}). For the row
+$m=l-\xi$ of type $a$ they satisfy the exact identity
+\[
+  D_{m,a}-\lambda_{2l}=4\xi(2l-\xi)\Bigl(1-\frac1t\Bigr)+l\,K_a+E_a(\xi)+R_a,\qquad
+  K_a=4-\frac8t-\frac{4(w_a+x)}{\sqrt t},
+\]
+in which the remaining terms $E_a(\xi)$ and $R_a$ do not involve $l$. For the twist's own type, $K_{(1,1)}=0$. The two
+types next to it have $K_{(1,0)}=-4x/\sqrt t$ and $K_{(1,-1)}=-8x/\sqrt t$, and at $\xi=0$ the identity gives the two
+displayed formulas. Both states are unit vectors of charge $l$ and $l+1$, while the twist has charge $l+2$, so they
+lie in blocks other than the twist's. A one-vector Rayleigh quotient bounds the lowest eigenvalue of a block above by
+any of its diagonal entries. For $x>0$ the coefficient of $l$ in item~1 is $-8x/\sqrt t<0$, which gives item~3.
+The identity is verified symbolically for all nine types, and the Rayleigh bound for both states, with $l$, $x$, $y$
+and $t$ symbolic (\path{scripts/edge_wp2_symbolic.py}, receipt
+\path{research/edge-theorem-20261121/wp2_symbolic.txt}, ``ALL SYMBOLIC CHECKS PASS''). As a numerical cross-check, the
+diagonal of the double-precision block builder minus $\lambda$ matches the formula at $(x,y,t)=(0.1,\sqrt{10},10)$ for
+$j=300$, $306$ and $310$ to about $10^{-12}$ (\path{research/edge-theorem-20261121/workflow_reports.json}).
+\end{proof}
+
+The theorem is stated for $H+GG^*$. The states $e_-$ and $e_0$ are not shown to be gauge-orthogonal, so for the
+gauge-orthogonal spectrum the same conclusion is supported by the computations below but not proved.
+
+\begin{corollary}\label{cor:edgebound}
+Let $x^*_{12}(t,y)$ be the upper end of the set of $x$ at which the twist is the floor of $H+GG^*$ in every sector
+$j\le12$ (Section~\ref{sec:edge}; it is located numerically on grids). The set of $x$ at which the twist is the floor of
+$H+GG^*$ in every sector lies in $x\le\min(x^*_{12},0)$. In short, the all-sector edge is at most
+$\min(x^*_{12},0)$.
+\end{corollary}
+
+\begin{proof}
+The bound $\le0$ is Theorem~\ref{thm:xpos}. The bound $\le x^*_{12}$ holds because the all-sector condition contains
+the condition in $j\le12$.
+\end{proof}
+
+\paragraph{A worked example (double precision, except the threshold).} At $(x,y,t)=(0.1,\sqrt{10},10)$ the type
+$(1,-1)$ has $K=-0.252982212813$ and constant term $38.4821067231$, so by Theorem~\ref{thm:xpos} the twist loses in
+every sector with $l>152.113883008$. The type $(1,0)$ has $K=-0.126491106407$ and constant term $29.2310533616$, and
+loses for $l>231.091767571$. The actual undercut comes earlier, because the lowest eigenvalue of a block is below its
+diagonal. From the blocks, the margin $\min_q\lambda_{\min}(B_{j,q})-\lambda_j$ is $-0.58346$ at $j=120$ (minimising
+charge $q=-61$), $-8.9498$ at $j=200$ and $-34.100$ at $j=400$. An independent full-sector builder gives $-0.583$
+for $H+GG^*$ and $-0.581$ for the gauge-orthogonal spectrum at $j=120$, and $-8.95$ at $j=200$
+(\path{research/edge-theorem-20261121/wp2_large_sector_bound.md}, Section~0, and the verifier's rerun in
+\path{workflow_reports.json}).
+
+\paragraph{Near $x=0$ (double precision; not certified).} At $(t,y)=(10,\sqrt{10})$ and $x=0$ the margin stays
+positive and rises slowly: $7.7516$ at $j=2000$ and $7.7752$ at $j=20000$. At $x=+0.01$ it is negative at large $j$:
+$-7.67$ at $j=2000$ and $-32.9$ at $j=4000$ (\path{workflow_reports.json}). The point $x=0$ is degenerate. There
+$K_{(1,0)}=K_{(1,-1)}=0$, the margin at the near end of each sector is of order one, and a proof would need a
+second-order argument. No proof below covers $x\in(-0.02,0)$.
+
+\paragraph{The positive edges of the cut-off (double precision; not certified).} Within $j\le12$ the edge turns
+positive for strongly stretched spheres with a strong cross field (Section~\ref{sec:edge}). That is an artefact of the
+cut-off. At all $58$ grid points of the competitor map with $x^*_{12}>0$, some sector $j>12$ undercuts the twist at
+$x^*_{12}$: at $54$ points within $13\le j\le200$ (\path{wp1_tail_check.json}, near-top charges only), and, in the
+verifier's rerun, at $(7,2.0)$, $(7,2.25)$ and $(7,2.5)$ by the sectors $j=2000$, $400$ and $400$, and at $(12,3)$ by
+$j=100$, with margin $-10.46$. In a full charge scan at four of these points the minimising charge was $|q|=l+1$ or
+$l$. Table~\ref{tab:cutoff} shows how the edge falls as the cut-off $J$ is raised at one point. In the other direction,
+at $x=-0.01$ and $x=-0.001$, at each of the $57$ positive-edge points of the tail run (all but $(12,3)$), neither the
+near-top blocks of $13\le j\le2000$ nor any block of $j\le12$ undercuts the twist; the smallest margin is $0.029$
+(\path{research/edge-theorem-20261121/wp1_tail_check.json}, \path{wp1_tail_negx.json}, \path{wp1_fullsector_check.json},
+\path{workflow_reports.json}).
+
+\begin{table}[t]\centering\small
+\caption{The edge of the sectors $j\le J$ at $(t,y)=(12,2.75)$ (double precision; \texttt{wp1\_competitor\_map.md},
+Section~4).}\label{tab:cutoff}
+\begin{tabular}{lccccc}\toprule
+$J$ & $12$ & $24$ & $48$ & $96$ & $192$\\ \midrule
+edge & $0.1825$ & $0.1825$ & $0.1706$ & $0.0969$ & $0.0519$\\
+\bottomrule\end{tabular}
+\end{table}
+
+\subsection{Very negative $x$}
+
+\begin{proposition}[The lower edge]\label{prop:lower}
+Let $v=\hat\theta^0\otimes\tau_0$ in the sector $j=0$ (weight $m=0$, type $(0,0)$, charge $0$). For every
+$(x,y,t)$ with $t>0$:
+\begin{enumerate}
+  \item $G^*v=-[M_0,\tau_0]=0$, so $v$ is gauge-orthogonal; it has charge $0$, so it is orthogonal to both copies of the
+  twist (charge $\pm2$ in the sector $0$);
+  \item $\langle v,(H+GG^*)v\rangle=\langle v,Hv\rangle=4t+2y^2$, independent of $x$;
+  \item the twist is neither the lowest eigenvalue of $H+GG^*$ nor the lowest gauge-orthogonal eigenvalue in the sector
+  $j=0$ whenever $x<r_{\mathrm{lo}}$ or $x>r_{\mathrm{hi}}$, where
+  \[
+    r_{\mathrm{lo},\mathrm{hi}}(t,y)=-\Bigl(\sqrt t+\frac2{\sqrt t}\Bigr)\mp\sqrt{5t+3y^2+4}
+  \]
+  are the roots of $\lambda_0(x)=4t+2y^2$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+Item~1: $M_0=x\tau_0$ commutes with $\tau_0$, and $v$ carries no weight, so $G^*v=0$; this holds symbolically for all
+$(x,y,t)$ (\path{scripts/edge_wp4_design_checks.py}, receipt \path{wp4_design_checks.json}, entry
+\path{Gstar_theta0_tau0_sector0}). Item~2: the row of type $(0,0)$ at $l=0$ in
+\path{wp2_symbolic.txt} gives the diagonal entry minus $\lambda_0$ as $-2\sqrt t\,x+4t-x^2+3y^2-4/t-4x/\sqrt t$. Adding
+$\lambda_0=(x+2/\sqrt t)^2+2\sqrt t\,x-y^2$ leaves $4t+2y^2$ (exact symbolic check). A rerun measured the constant
+value $18.88$ at $(y,t)=(1.2,4)$, with zero second difference in $x$. Item~3: $\lambda_0(x)$ grows like $x^2$, while the
+Rayleigh quotient of $v$ does not move. Where $\lambda_0>4t+2y^2$, the vector $v$, orthogonal to the twist and its
+mirror and inside the gauge slice, has Rayleigh quotient below $\lambda_0$ for both $H+GG^*$ and the operator on the
+slice. Solving the quadratic $\lambda_0(x)=4t+2y^2$ gives $r_{\mathrm{lo},\mathrm{hi}}$.
+\end{proof}
+
+Examples: $r_{\mathrm{lo}}(3,0.5)=-7.3308$, $r_{\mathrm{lo}}(3,3)=-9.6691$, $r_{\mathrm{lo}}(10,0.5)=-11.1941$ and
+$r_{\mathrm{lo}}(10,3)=-12.7947$. Since $r_{\mathrm{lo}}$ decreases in $y$ and, for $t>2$, in $t$, it follows that
+$r_{\mathrm{lo}}\le r_{\mathrm{lo}}(3,0.5)<-7.33$ on the whole domain $D$ of Section~\ref{sec:domain}.
+
+\paragraph{Where the lower edge is (double precision; not certified).} The function $\phi_A$ of
+Section~\ref{sec:edge}, scanned on $[-40,-1.5]$, changes sign once. It first turns non-negative at about $x=-4.1$ for
+$(y,t)=(3,3)$, $-5.6$ for $(0.5,3)$, $-6.3$ for $(3,10)$, $-7.5$ for $(0.5,10)$ and $-5.75$ for $(1.5,6)$. Every earlier
+scan stopped at $x=-3$, which hid the lower end; the region had been read as a half-line.
+
+\begin{corollary}[The region is bounded]\label{cor:interval}
+For each $(t,y)$, every $x$ at which the twist is the floor of every sector, for $H+GG^*$ or for the gauge-orthogonal
+spectrum, satisfies $r_{\mathrm{lo}}(t,y)\le x\le r_{\mathrm{hi}}(t,y)$; for $H+GG^*$ it also satisfies
+$x\le\min(x^*_{12},0)$. Writing $x_{\mathrm{lo}}$ for the lower end of the region, $x_{\mathrm{lo}}\ge r_{\mathrm{lo}}$.
+\end{corollary}
+
+\begin{proof}
+Proposition~\ref{prop:lower} and Corollary~\ref{cor:edgebound}.
+\end{proof}
+
+This is the two-sided condition the title names. That the region is exactly one interval $[x_{\mathrm{lo}},x^*]$, with
+no holes, is computed on grids and not proved. What is proved is narrower: Theorem~\ref{thm:domain} shows that the
+region contains $[-3,-1.5]$ for every $(t,y)\in[3,10]\times[0.5,3]$, and Theorem~\ref{thm:slice} gives, in the sectors
+$j\le12$ on two slices, the exact upper end on $[-3,r_{\mathrm{next}})$.
+
+\subsection{The upper edge on two slices}
+
+\begin{theorem}[The edge on two slices, sectors $j\le12$]\label{thm:slice}
+Let $t=3$ and $y\in\{\sqrt3,\,3/2\}$. Assume that the closed-form charge blocks of Section~\ref{sec:setting} are the
+charge blocks of $H+GG^*$. Let $x^*$ be the unique real root of $P_2(x,y,\sqrt3)$ in $[-3,1]$, and let $r_{\mathrm{next}}$
+be the next real root above it of $\det(B_{4,0}-\lambda_4)$, a root of $P_1(x,y,\sqrt3)$ (Proposition~\ref{prop:edgepoly}).
+Then:
+\begin{enumerate}
+  \item $m(x)=\lambda_{\min}(B_{4,0})-\lambda_4$ is positive on $[-3,x^*)$, zero at $x^*$ and negative on
+  $(x^*,r_{\mathrm{next}})$, and $x^*$ is a simple zero;
+  \item every charge block $B_{j,q}$ with $j\le12$ other than $B_{4,0}$ and the two twist blocks has
+  $\lambda_{\min}(B_{j,q})>\lambda_j$ on $[-3,x^*+0.02]$;
+  \item hence, for $x\in[-3,r_{\mathrm{next}})$, the twist is the lowest eigenvalue of $H+GG^*$ in every sector $j\le12$
+  if and only if $x\le x^*$. It is the strict floor for $x<x^*$; at $x^*$ the value $\lambda_4$ ties one eigenvalue of
+  $B_{4,0}$.
+\end{enumerate}
+\end{theorem}
+
+\begin{table}[t]\centering\footnotesize
+\caption{The two slices of Theorem~\ref{thm:slice} (\texttt{wp3\_slice\_iff.json}). $x^*_A$ is the double-precision
+edge of \texttt{exact\_edge.json}.}\label{tab:slice}
+\begin{tabular}{lcc}\toprule
+ & $y=\sqrt3$ & $y=3/2$\\ \midrule
+$x^*$ & $-0.3821684822419167$ & $-0.37158172515020627$\\
+$r_{\mathrm{next}}$ & $-0.0650646510788456$ & $-0.008268340671784679$\\
+$\partial_xP_2$ on $x^*\pm10^{-6}$ & $\approx1.1032\times10^{7}$ & $\approx8.3613\times10^{6}$\\
+$P_1$ on $x^*\pm10^{-6}$ & $[23434.09,\,23434.34]$ & $[20392.46,\,20392.68]$\\
+smallest pivot bound, block $(1,3/2)$ & $0.0038$ & $0.027$\\
+$x^*-x^*_A$ (computed) & $9.4\times10^{-16}$ & $2.4\times10^{-13}$\\
+\bottomrule\end{tabular}
+\end{table}
+
+\begin{proof}
+\emph{(E1)} The blocks are built exactly in \textsc{SymPy}~\cite{sympy2017}. $B_{4,0}$ is exactly real symmetric, and
+the two $1\times1$ blocks of charge $\pm(l+2)$ equal $\lambda_j$ exactly and are set aside. The exact blocks agree with
+the double-precision blocks to $2.8\times10^{-14}$.
+\emph{(E2)} On the slice, $3^9D=P(x,y,\sqrt3)$ with $D$ the determinant, and the factorization $P=-16384\,P_1P_2$ is
+recomputed, with degrees $(5,6,12)$ and $(7,8,16)$, both factors even in $y$.
+\emph{(E3)} Write $P_i=A+\sqrt3B$ with $A$, $B$ polynomials in $x$ with rational coefficients. The norms $N=A^2-3B^2$ are squarefree, so every real
+root is simple, and rational isolating intervals of width below $4\times10^{-31}$ are computed. In $[-3,1]$, $P_2$ has
+one root, $x^*$, and $P_1$ has two, $r_{\mathrm{next}}$ and one near $+0.19$ (resp.\ $+0.13$). The enclosures of
+$\partial_xP_2$ and of $P_1$ on $x^*\pm10^{-6}$ in Table~\ref{tab:slice} are bounded away from zero.
+\emph{(E4)} Interval Cholesky~\cite{alefeldmayer1993} of $B_{4,0}(-3)-\lambda_4(-3)$ succeeds (smallest pivot lower
+bounds $30.09$ and $30.40$), so $m(-3)>0$. Between $-3$ and $r_{\mathrm{next}}$ the function $\det(B_{4,0}-\lambda_4)$
+vanishes only at $x^*$, and there simply. By the analytic dependence of the eigenvalue branches on $x$ (Rellich),
+exactly one branch crosses $\lambda_4$ at $x^*$, and it is the lowest. A double-precision check gives
+$m(x^*+10^{-3})=-0.0110$ on both slices.
+\emph{(E5)} The $116$ other blocks of each slice are certified positive definite after subtracting $\lambda_j$, by
+interval Cholesky on $[-3,x^*+0.02]$ with at most $14$ pieces and bisection depth $2$, at $96$ bits in
+\textsc{mpmath}~\cite{mpmath}. The smallest pivot lower bound is a bound, not an eigenvalue gap; the smallest
+double-precision gap is $0.051$ ($y=\sqrt3$, in the block $(1,-3/2)$) and $0.121$ ($y=3/2$)
+(\path{scripts/edge_wp3_slice_iff.py}, receipts \path{wp3_slice_iff.json}, \path{wp3_slice_iff.md},
+\path{wp3_slice_iff_log.txt}; about $25$\,s, and a rerun gave an identical receipt, apart from the run time, in
+$24.85$\,s).
+\end{proof}
+
+The theorem is conditional: the closed-form blocks are checked against the full sector spectra to $1.5\times10^{-15}$
+at $12$ random points, not re-derived symbolically inside this proof. It concerns $H+GG^*$ only. The gauge-orthogonal
+edge on these slices is higher, at $-0.3552$ and $-0.3516$, and is not treated. The sectors $j>12$ are open there; in
+$13\le j\le40$ every block keeps a gap of at least $5.50$ (double precision).
+
+\subsection{Large sectors close to the edge}
+
+\begin{theorem}[Large sectors on slabs]\label{thm:slabs}
+On each box of Table~\ref{tab:slabs}, for every $(x,y,t)$ in the box and every sector $j\ge40$, every charge block of
+the sector other than the twist and its mirror has lowest eigenvalue greater than $\lambda_j$. On
+$[-3,-0.6]\times[0.5,3]\times[3,10]$ the same holds for every $j\ge20$.
+\end{theorem}
+
+\begin{table}[t]\centering\small
+\caption{Boxes $x\times y\times t$ of Theorem~\ref{thm:slabs}, all sectors $j\ge2L_0$. $\delta$: how far the top of
+the box lies below the smallest value of $\min(x^*,0)$ over the grid points of its slab (computed). Pieces: bisection
+pieces for the hardest blocks. Receipts \texttt{research/edge-theorem-20261121/}\allowbreak\texttt{wp2\_interval\_proof\_*.json}.}
+\label{tab:slabs}
+\begin{tabular}{lcccr}\toprule
+box & $L_0$ & $\delta$ & pieces & seconds\\ \midrule
+$[-3,-0.575]\times[0.5,3]\times[3,4]$ & 20 & $0.1006$ & $498$ & $23.1$\\
+$[-3,-0.495]\times[0.5,3]\times[3,4]$ & 20 & $0.0206$ & $551$ & $84.7$\\
+$[-3,-0.355]\times[0.5,3]\times[4,5]$ & 20 & $0.1010$ & $359$ & $19.1$\\
+$[-3,-0.274]\times[0.5,3]\times[4,5]$ & 20 & $0.0200$ & $384$ & $63.3$\\
+$[-3,-0.229]\times[0.5,3]\times[5,6]$ & 20 & $0.1007$ & $404$ & $21.0$\\
+$[-3,-0.149]\times[0.5,3]\times[5,6]$ & 20 & $0.0207$ & $954$ & $21.1$\\
+$[-3,-0.183]\times[0.5,3]\times[6,7]$ & 20 & $0.1002$ & $590$ & $24.4$\\
+$[-3,-0.103]\times[0.5,3]\times[6,7]$ & 20 & $0.0202$ & $1{,}579$ & $31.6$\\
+$[-3,-0.154]\times[0.5,3]\times[7,10]$ & 20 & $0.1005$ & $2{,}892$ & $55.7$\\
+$[-3,-0.074]\times[0.5,3]\times[7,10]$ & 20 & $0.0205$ & $12{,}445$ & $212.0$\\
+$[-3,-0.02]\times[1,3]\times[7,10]$ & 20 & $0.0196$ & $126{,}082$ & $4{,}445.8$\\
+$[-3,-0.6]\times[0.5,3]\times[3,10]$ & 10 & $0.1256$ & $4{,}005$ & $109.5$\\
+$[-3,-0.6]\times[0.5,3]\times[3,10]$ & 20 & $0.1256$ & $1{,}653$ & $40.5$\\
+\bottomrule\end{tabular}
+\end{table}
+
+\begin{proof}
+The mirror block of charge $-(l+2)$ has eigenvalue exactly $\lambda_j$ and is excluded. The blocks split
+into two kinds. \emph{Near-end blocks} ($l-q\le N_1$ or $l+q\le N_1$, each with at most nine states): the block is scaled to
+$M=(B-\lambda_j)/l$ and written in $U=1/l$; $M$ is proved positive definite for all $U\in(0,1/L_0]$ by interval
+$LDL^\top$ with bisection. \emph{Bulk rows} ($\min(\xi,2l-\xi)\ge N_1-1$): plain Gershgorin
+discs~\cite{varga2001} with the quantity $G$ of Theorem~\ref{thm:domain}. All arithmetic is \textsc{mpmath}
+interval arithmetic at $80$ bits~\cite{mpmath}; $N_1=8$ and $X_A=20$ for $L_0=20$, and $N_1=X_A=10$ for $L_0=10$. Every
+receipt reports \texttt{all\_proved} true and the mirror exclusion checked symbolically. The near-end matrices agree
+with the blocks to $4.5\times10^{-16}$ and the closed-form $G$ bounds the actual Gershgorin quantity with excess at
+most $2.8\times10^{-13}$ (both double precision). A rerun of the box $x\le-0.6$, $L_0=20$ reproduced the proof in
+$125.7$\,s (\path{scripts/edge_wp2_interval_proof.py}, receipts as in the caption and
+\path{wp2_verify_rerun_x-0.6_L20.json}; design in \path{wp2_large_sector_bound.md}).
+\end{proof}
+
+Four limits. The column $\delta$ is measured from the worst grid point of each slab, so between grid points the
+distance to the edge is not proved. The sectors $j<40$ on these boxes are not done, so the theorem does not by itself
+make the twist the floor there. And $x\in(-0.02,0)$ is not covered. Finally, the scaled near-end matrices and the
+bound $G$ are checked against the blocks numerically (the two double-precision checks above), not as symbolic
+identities; the theorem rests on those checks. (The decimal box endpoints are entered as doubles; for instance the
+top $-0.02$ is the double just below $-0.02$, a negligible difference.)
+
+\begin{remark}[Why plain Gershgorin is not enough near the edge]\label{rem:gersh}
+At the near end of a sector ($\xi=0$) the diagonal gap is $lK_a$, while the ladder coupling grows like $\sqrt l$. So
+plain Gershgorin needs $l$ of order $1/K_a^2$, and $K_a$ becomes small as $x\to0$. The true margin is $lK_a+O(1)$.
+Sampled cutoffs (double precision; not certified) show the cost: at distance $0.1$ below the edge $\min(x^*,0)$, the
+worst grid point $(t,y)=(10,3)$ needs $l\approx8978$ for plain Gershgorin and $l\approx353.5$ for a weighted
+Gershgorin bound with an $l$-dependent diagonal similarity; a direct check puts the true weighted cutoff there at $345$.
+The cutoffs are grid-quantised estimates. The weighted bound was not turned into an interval proof; the near-end
+$LDL^\top$ of Theorem~\ref{thm:slabs} replaced it (\path{wp2_bounds.json}).
+\end{remark}
+
+\subsection{The all-sector edge}
+
+\begin{conjecture}\label{conj:edge}
+For $t\ge3$ and $y>0$, the all-sector edge of $H+GG^*$ equals $\min(x^*_{12}(t,y),0)$.
+\end{conjecture}
+
+The evidence for it lies in $3\le t\le12$, $0.25\le y\le3$: the competitor map, the tail checks above, and the
+near-top families below.
+
+\paragraph{The conjecture fails near $t=2$ (double precision; two builders).} The same statement on $2<t\le12$ is
+false. At $(t,y)=(2.01,0.25)$, $x^*_{12}=-0.62410$. At $x=-0.62460$, where $\phi_A$ over $j\le12$ is still $+0.0052$,
+the block $q=8$ of the sector $j=16$ lies below $\lambda_{16}$ by $0.00492$, both from the blocks and from the general
+$H+GG^*$ builder (two eigenvalues below), and by $0.00353$ in the gauge-orthogonal spectrum. At $(2.001,0.25)$, at
+$x=-0.64263$ and $x=-0.64513$, both below $x^*_{12}=-0.64213$, the sector $j=58$ lies below by $0.2387$ and
+$0.2109$. A scan of $j\le3000$ at $t=2.001$, $2.01$ and $2.03$, $y=0.25$ and $0.5$, found an undercut only at
+$y=0.25$ for $t=2.001$ and $2.01$ (\path{research/edge-theorem-20261121/workflow_reports.json}, the competitor-map
+rerun).
+
+\paragraph{The mechanism: two near-top families.} The blocks $q=l+1$ (three states) and $q=l$ (six states) can be
+written with $l$ symbolic. Their determinant numerators are $D_+(x,y,s,l)$, of degrees $(4,4,9,3)$, and $D_0(x,y,s,l)$, of
+degrees $(8,10,19,6)$, with $s=\sqrt t$ (checked numerically against the blocks to $6.8\times10^{-13}$). Their leading
+coefficients in $l$ are
+\[
+  c_+=-128\,s\,x\,(s-1)(s+1)(s^2-2),
+\]
+\[
+  c_0=-65536\,s\,x\,(s-1)(s+1)(s^2-2)(3s^2-4)(sx-2s^2+2)(sx-s^2+2),
+\]
+and both vanish identically at $s=\sqrt2$, that is at $t=2$. Away from $t=2$ the factor $x$ pulls the family edges
+towards $x=0$ as $j$ grows. The factor $(sx-s^2+2)$ of $c_0$ vanishes at $x=(t-2)/\sqrt t$ ($0.5774$ at $t=3$), so the
+statement that $x=0$ is the only root of $c_0$ in the range of the edge holds only for $x\lesssim0.5$. These polynomials
+and coefficients are exact algebra (\path{scripts/edge_wp1_block_polynomials.py}, receipts \path{wp1_top_family.txt},
+\path{wp1_family_members.json}); the family edges below are double precision. At $(t,y)=(12,2)$ the edge of the family
+$q=l+1$ falls roughly like $1/j$ (Table~\ref{tab:family}). At $t=2$ the family edges appear instead to converge to a
+negative limit: the family $q=l$ at $j=2000$ gives $-0.68467$ for $y=0.25$ and $-0.61843$ for $y=0.5$.
+
+\begin{table}[t]\centering\small
+\caption{Edge of the near-top family $q=l+1$ at $(t,y)=(12,2)$ (double precision; \texttt{wp1\_competitor\_map.md},
+Section~4).}\label{tab:family}
+\begin{tabular}{lcccccccc}\toprule
+$j$ & $12$ & $24$ & $48$ & $96$ & $200$ & $400$ & $1000$ & $2000$\\ \midrule
+edge & $0.2075$ & $0.1458$ & $0.0905$ & $0.0513$ & $0.0264$ & $0.0137$ & $0.0056$ & $0.0028$\\
+\bottomrule\end{tabular}
+\end{table}
+
+Six of the eight competitors found in $j\le12$ belong to these two families: $D_+$ at $l=\tfrac12,1,6$ gives
+$(1,3/2)$, $(2,2)$ and $(12,7)$; $D_0$ at $l=1,6$ gives $(2,1)$ and $(12,6)$; $D_0$ at $l=\tfrac12$ gives $(1,1/2)$ up to a
+spurious factor. Only $(4,0)$ and $(3,1/2)$ are sporadic. Because $c_+$ and $c_0$ vanish at $t=2$, near $t=2$ the
+families need not fall back to $x=0$, and there they can take over from the $j\le12$ competitors. That is what the
+refutation shows, and it is why the conjecture is stated for $t\ge3$ only.
+
+\section{The floor on a domain}\label{sec:domain}
+
+Inside its region the twist can be proved to be the floor of every sector on a box of positive volume.
+
+\begin{theorem}[The floor on a domain]\label{thm:domain}
+On $D=\{x\in[-3,-1.5],\ y\in[0.5,3],\ t\in[3,10]\}$ the twist is the lowest eigenvalue of $H+GG^*$ in every sector,
+with multiplicity exactly two, and the lowest gauge-orthogonal eigenvalue there.
+\end{theorem}
+
+It is also Theorem~7.3 of the version~3 draft of~\cite{davisfloor2026}; it is not in the published version~2.
+
+\begin{proof}
+\emph{(a) Reduction to charge blocks.} By Lemma~\ref{lem:blocks} each sector is the orthogonal sum of its charge
+blocks. The two twist blocks are $1\times1$ with entry $\lambda_j$ (Proposition~\ref{prop:closed} and the
+antiunitary map $J\otimes K$ that reverses the charge). It suffices to show that every other block has lowest
+eigenvalue above $\lambda_j$ on $D$. Then $\lambda_j$ is the lowest eigenvalue of $H+GG^*$ with multiplicity exactly two,
+and since the twist is gauge-orthogonal and $H+GG^*=H$ on the slice, it is also the lowest gauge-orthogonal
+eigenvalue. The closed-form rows, built symbolically with $x$ and $y$ free, agree with the general sector builder to
+$1.7\times10^{-13}$ (receipt entry \texttt{point\_check}).
+
+\emph{(b) Sectors $j\ge80$.} For the row $m=l-\xi$ of type $a$ the Gershgorin quantity is
+\[
+  G=4\xi(2l-\xi)\Bigl(1-\frac1t\Bigr)+lK_a+E_a-(\text{ladder}),\qquad K_a=4-\frac8t-\frac{4(w_a+x)}{\sqrt t},
+\]
+built on the identity in the proof of Theorem~\ref{thm:xpos}. On $D$, $K_a>0$ for every non-twist type. $G$ is
+proved positive for all $l\ge40$ on $D$ by interval bisection, split into region~A ($\xi\le20$) and region~B
+($\xi\ge20$, with a relaxed bound). In region~B the smallest lower bounds run from $0.7226$ (type $(0,0)$) to $1.5918$
+(type $(-1,1)$). In region~A the smallest lower bound is $1.0678\times10^{-4}$ (type $(0,1)$, $\xi=0$, $1360$ pieces); this
+is the overall minimum. The closed-form $G$ is a lower bound on the actual Gershgorin quantity, checked on random rows
+with excess at most $2.84\times10^{-13}$ (double precision). The run takes $13.5$\,s
+(\path{scripts/ricci_su2_family_large_j.py}, receipt \path{family_large_j.json}).
+
+\emph{(c) Sectors $j<80$.} Every non-twist block is certified above $\lambda_j$ on $D$ by a mean-value interval
+certificate. $D$ is cut into boxes. On each box the lowest eigenvalue of $B-\lambda_jI$ at the centre is bounded below
+by an interval $LDL^\top$ certificate with outward rounding and an a~posteriori residual
+(\path{scripts/ricci_su2_outward.py}). Its variation over the box is bounded by
+$\sum_i\sup\lVert\partial_iA\rVert_F$ times the half-widths, with the derivatives enclosed in interval
+arithmetic~\cite{mpmath}. A box whose bound is not positive is split. In all, $80$ sectors and $3400$ blocks were
+certified on $1{,}640{,}935$ boxes with no failure. The smallest certified margin is $1.2220726\times10^{-6}$, in the
+sector $j=1$ (Table~\ref{tab:domain}). The summed run time is $229{,}134.7$\,s, about $63.6$ CPU-hours
+(\path{scripts/ricci_su2_family_block_cert.py}, receipt \path{family_block_cert_j80.json}, \texttt{all\_certified}
+true). Receipts are in \path{research/su2-floor-family-20261119/}.
+\end{proof}
+
+\begin{table}[t]\centering\small
+\caption{The small-sector certificate of Theorem~\ref{thm:domain}: the sector $j=0$, the four sectors with the
+smallest margins, and the total (\texttt{family\_block\_cert\_j80.json}).}\label{tab:domain}
+\begin{tabular}{lrrr}\toprule
+sector & boxes & smallest margin & seconds\\ \midrule
+$j=0$ & $11{,}431$ & $1.41\times10^{-4}$ & $400.0$\\
+$j=1$ & $71{,}052$ & $1.2220726\times10^{-6}$ & $3{,}152.2$\\
+$j=2$ & $71{,}729$ & $2.94\times10^{-5}$ & $5{,}360.8$\\
+$j=3$ & $54{,}736$ & $5.77\times10^{-6}$ & $5{,}501.7$\\
+$j=36$ & $14{,}015$ & $6.90\times10^{-5}$ & $2{,}103.3$\\ \midrule
+$j=0,\dots,79$ & $1{,}640{,}935$ & $1.2220726\times10^{-6}$ & $229{,}134.7$\\
+\bottomrule\end{tabular}
+\end{table}
+
+\begin{remark}[Why $D$ stops at $x=-1.5$]\label{rem:Dstop}
+Plain Gershgorin needs large $l$ unless the domain stays away from the edge (Remark~\ref{rem:gersh}). Sampled cutoffs
+(double precision) are $l\approx640$ for $x\in[-2,-0.5]$, $l\approx160$ for $[-2,-1]$ and $l\approx40$ for $[-3,-1.5]$. The
+near-end treatment of Theorem~\ref{thm:slabs} is the route closer to the edge; it covers $j\ge40$ up to about $0.02$
+below the grid edge, but the small sectors there remain to be certified.
+\end{remark}
+
+\begin{remark}[$D$ lies inside the region]\label{rem:Dinside}
+On $D$, $x\le-1.5<0$, and $r_{\mathrm{lo}}<-7.33$ on all of $D$, so $D$ sits well inside the bounds of
+Corollary~\ref{cor:interval}. In double precision, $\min\phi_A$ at $x\in\{-3,-1.5\}$ over an $11\times15$ grid of $D$'s
+$(y,t)$ range is $2.35$ ($j\le12$) and $\min\phi_S$ on a $3\times3$ grid is $2.69$. These grid values are evidence only;
+the inclusion itself is settled by the certificate of Theorem~\ref{thm:domain}.
+\end{remark}
+
+\section{What decides the edge, and what does not}\label{sec:decide}
+
+Three simpler readings of why the twist is the floor were tested (Tests~2, 4 and~5), each written down before its
+data, and each failed. A fourth test (Test~6), of a two-parameter model for the edge, failed in both of its
+pre-registered predictions.
+
+\paragraph{Symmetry (Test~2; failed).} The reading was that the rotation symmetry itself makes the maximal-charge state
+the floor. On the squashed meron, which has the same symmetry, the twist is an exact gauge-orthogonal eigenvector, yet it
+is the floor of no sector at any of the $2{,}600$ pairs $(t,j)$ checked (eigenvector residual at most
+$4.7\times10^{-12}$, $\lVert G^*b\rVert\le8.5\times10^{-15}$). The Berger field, run through the same code, became the
+floor of every sector $j\le12$ from $t=2.70$. In two $SU(3)$ families with the Maurer--Cartan field $A=\tfrac12\theta$,
+one stretching the $U(2)$ fibre and one the hypercharge circle, the extremal state is the floor of none of nine sectors
+at any of $200$ grid points; one of the $1{,}800$ point-sector pairs needed a fallback singular value routine. One
+difference, observed after the test and not pre-registered, is in the curvature term
+$R_0=\mathrm{Ric}\otimes I-2[F,\cdot\,]$: on the twist's internal frame the field-strength share is $8-6t$ on the Berger
+field, but positive on the squashed meron, from $+1.26$ at $t=2$ to $+0.40$ at $t=8$. Tests~4 and~5 then showed that
+this term does not decide the floor (\path{scripts/ricci_su2_test2_family.py}, \path{scripts/ricci_su2_gyromagnetic_split.py},
+receipts \path{test2_meron.json}, \path{su3_test2_family2a.json}, \path{su3_test2_family2b.json}, \path{gyromagnetic_split.txt}).
+
+\paragraph{Alignment (Test~4; failed).} The reading was that a field strength aligned with the twist's spin makes it the
+floor. For $A=s\theta$ on the round sphere, $s=1.05,\dots,3.00$ ($40$ points), the field strength is aligned throughout
+(its field-strength share $s_F$ on the twist's frame runs from $-0.42$ at $s=1.05$ to $-48$ at $s=3$). In $SU(2)$ the
+twist is the floor of $j=0$ for $s\ge1.5$ and of no sector $j\ge1$ at any $s$; in the sector $j=1$ the gap grows from
+$16.5$ to $35.9$. In $SU(3)$ it is the floor of the sector $(0,0)$ for $s\ge1.5$ and of no other
+(\path{scripts/ricci_alignment_test.py}, receipts \path{alignment_test_4a.json}, \path{alignment_test_4b.json}).
+
+\paragraph{Alignment and the curvature term (Test~5; failed).} The reading was that the twist is the floor when it alone
+spans the lowest eigenspace of $R_0$. On $A=s\theta$ over $(t,1,1)$, $72$ points were classified from $R_0$ alone
+before any floor was computed: $35$ singled out, $5$ shared, $32$ not lowest. The twist is the floor of every sector at
+none of them. At every singled-out point it is the floor of $j=0$ only. The gap grows with $j$ (at $s=1.5$, $t=3$:
+$6.6$, $12.6$, $25.7$, $41.1$ for $j=1,2,4,8$) and shrinks with the stretch (at $j=1$, $s=1.5$: $13.8$, $6.6$, $2.1$ at
+$t=1.5$, $3$, $8$) (\path{scripts/ricci_stretch_test.py}, receipt \path{stretch_test.json}).
+
+\paragraph{A model for the edge (Test~6; failed).} The model $x^*(t)=c_1/t+c_2/t^2$ was fitted to the gauge-orthogonal
+edge of $j\le12$ at $t=2,3,4,6$ and heights $y=0.5$, $1.5$, $\sqrt t$. Prediction~E1 asked for agreement to $0.05$ at
+held-out stretches. Interpolation held at $6$ of $6$ points ($t=2.5$ and $5$; errors $-0.018$, $-0.038$, $-0.047$,
+$+0.010$, $+0.024$, $+0.029$). Extrapolation to $t=8$ held at $y=0.5$ ($+0.033$) but failed at $y=1.5$ (predicted
+$-0.052$, measured $+0.040$, error $+0.092$) and at $y=\sqrt t$ (predicted $-0.041$, measured $+0.138$, error $+0.179$).
+Prediction~E2 failed: the model puts the Berger crossing at $t_c=2.6315$, against $t^*=2.6980$, a distance
+$0.067>0.05$ (\path{scripts/ricci_su2_edge_test.py}, receipts \path{edge_test_predictions.json},
+\path{edge_test_results.json}). Two later findings bear on this test. The positive edges measured at $t=8$ are
+artefacts of the cut-off $j\le12$ (Section~\ref{sec:interval}), and the region reported there as $[-3,x^*]$ is part of
+an interval bounded below (Proposition~\ref{prop:lower}).
+
+\paragraph{Neutrality.} A further reading is that the competitor is neutral, with total fibre charge zero, as the
+lowest state of $B_{4,0}$ is. Data already in hand count against it as a necessary condition. At $y=0.5$ the
+competitors are blocks of non-zero charge (Section~\ref{sec:edge}), and at $14$ grid points with $y\ge1.1$ and
+$x^*_{12}\le0$ the competitor is $(1,\pm3/2)$ or $(2,\pm2)$ (\path{wp1_competitor_map.json}). This finding predates
+pre-registration~B (Section~\ref{sec:prereg}) and is not one of its results.
+
+\paragraph{What does decide it.} In each sector, whether the twist is the floor is a comparison between $\lambda_j$ and
+the lowest eigenvalues of that sector's other charge blocks. Its structure is exact. In every block, $x$ enters the
+diagonal through $(w_a-2m/\sqrt t)^2$, with $w_a$ affine in $x$; every entry of the remaining matrix $C$ has degree at
+most one in $x$; and the ladder couplings do not involve $x$ (Section~\ref{sec:setting}). In the twist, $x$ enters
+twice: by minimal coupling, through the fibre momentum $\kappa$, and by spin, through the field strength
+$B=y^2-2\sqrt t\,x$ along the fibre; the slope is $\partial_x\lambda=-2\kappa+4\sqrt t$ (Section~\ref{sec:twist}).
+Numerically the two sides behave very differently near the edge. At three points, the Berger field at $t^*$,
+$(t,y,x)=(4,2,-0.19)$ and $(8,\sqrt8,0.14)$ (the last at a positive $j\le12$ edge, itself a cut-off artefact), the
+twist's slope in the sector $j=4$ is $9.741$, $9.620$ and $10.179$, while the lowest eigenvalue of $B_{4,0}$ has slope
+$-1.561$, $-0.623$ and $+1.684$ (double precision; \path{twist_anatomy.json}). The competitor is nearly blind to $x$;
+the twist is not. An exploratory map, not pre-registered, agrees: over $t=1,2,3,4,6$, $x\in[-3,3]$ ($49$ values),
+$y\in[0,3]$ ($37$ values) and $j\le8$, all $3{,}294$ cells where the twist is the floor of all nine sectors have
+$x\le0$, and $3{,}286$ have $x<0$ (\path{scripts/ricci_su2_twist_family_map.py}, receipt \path{twist_family_map.json}).
+This is consistent with Theorem~\ref{thm:xpos}.
+
+\paragraph{The literature.} The twist is a cousin of the unstable mode of a charged vector field in a homogeneous
+magnetic background~\cite{nielsenolesen1978}, the classical face of the chromomagnetic instability whose one-loop form
+appears in~\cite{savvidy1977}; see also~\cite{tanjiitakura2012} for the standard usage. The flat-space mechanism is
+stated explicitly in~\cite{bcgk2014} as a Landau-level energy plus a Zeeman term with gyromagnetic factor~$2$. The
+decomposition of $\lambda$ in Section~\ref{sec:twist} has the same shape; I note the resemblance only, and no limit
+relating the two is proved. Instabilities of homogeneous backgrounds on the round $S^3$ are treated
+in~\cite{avramidicollopy2012,klc2021}, and spectra on Berger spheres in~\cite{lauret2019,henkellauret2026}. The closest
+is~\cite{avramidicollopy2012}, on the negative modes of covariantly constant backgrounds, on the round sphere only. In
+the literature checked I found no edge of this kind and no Berger-sphere family of this kind; several classical full
+texts could not be read, so this is a statement about the search, not a priority claim.
+
+\section{Pre-registered tests A, B and C}\label{sec:prereg}
+
+Three further tests were written down, reviewed and fixed before any scored data were computed, as were Tests~2, 4, 5
+and~6 of Section~\ref{sec:decide}. This section reports their designs, gates and amendments only. Each amendment was
+made after a code gate fired (for Amendment~C1, after a smoke test showed that a gate would fire) and before any scored
+quantity was computed. Their documents are
+\path{research/edge-theorem-20261121/wp4_prereg_A_heldout.md} (with \path{wp4_prereg_A_points.json}),
+\path{wp4_prereg_B_general_fields.md} and \path{wp4_prereg_C_su3.md}.
+
+\subsection{Test A: the edge at held-out points of the family}
+
+\paragraph{Points.} $48$ points $(t,y)$, drawn with seed $20261121$: $30$ in the class where $P_2$ governs
+($t\sim U[2.2,11.5]$, $y\sim U[1.1,3.2]$), $10$ at small $y$ ($y\sim U[0.3,0.7]$), and $8$ on a fixed grid
+($t\in\{2.2,3.5,7.0,11.0\}$, $y\in\{1.2,2.5\}$). None lies within $10^{-3}$ of the $50$ pairs $(t,y)$ used before.
+
+\paragraph{Predictions.} A1: the edge is a root of $P_2$, with competitor $B_{4,0}$, at the $38$ points outside the
+small-$y$ class. A2: at small $y$ the competitor is a block of the sector $j=2$ or $3$. A3: no sector $13\le j\le79$
+undercuts the twist at three values of $x<0$ (just below $\min(x^*,0)$, at the midpoint of the region, and just above
+$x_{\mathrm{lo}}$); $x>0$ is excluded, since the undercut there is proved. A4: on a $0.01$ grid over
+$[r_{\mathrm{lo}}-0.5,\,x^*+0.5]$ the region of the sectors $j\le12$ is a single interval.
+
+\paragraph{Measurement and gates.} The edge is measured on an independent code path, the full $H+GG^*$ sector, with
+both copies of $\lambda_j$ removed. Gates: A-code-1 (blocks against the full spectrum, $10^{-12}$ relative); A-code-2
+($18$ known rows to $10^{-9}$); A-code-3 (the Berger path at $t_A$, $10^{-8}$ relative); A-mult (exactly two eigenvalues
+at $\lambda_j$); A-branch (the largest real root of $P_1$ must miss the measured edge by more than $10^{-6}$ at no fewer
+than $80\%$ of the $P_2$-class points, or A1 is inconclusive); A-bound ($x_{\mathrm{lo}}\ge r_{\mathrm{lo}}$); A-bound-hi
+($x^*\le r_{\mathrm{hi}}$). Verdict rule: A1 is supported if it holds at all $38$ points, and a failure counts against the
+edge clause; a failure of A3 counts against the claim for $x<0$; a hole in A4 counts against the interval. Three caveats
+were written down in advance. A1 agreement is partly automatic, because $P_2$ comes from the same closed-form rows that
+A-code-1 checks. ``Held-out'' means not yet computed. The claims cover $j\le79$ only.
+
+\paragraph{Amendment~1.} Gate A-code-3 passed (relative residual $1.0\times10^{-18}$). Gate A-code-2 fired, with
+maximum deviation $3.67$. On the $18$ known rows alone, $P_2$ was recovered exactly (degrees $(7,8,16)$, $113$ terms) and the
+edge is a real root at every row, but not the largest root in $[-3,3]$. $P_2$ has three or four further real roots above
+the edge, from about $0.55$ at $t=2$ to $3.5$ at $t=12$, $y=\sqrt t$, where a higher eigenvalue of $B_{4,0}$ meets
+$\lambda_4$. The rule was amended: the predicted edge is the largest real root $r$ of $P_2$ in $[-3,3]$ at which the lowest
+eigenvalue of $B_{4,0}(r,y,t)$ equals $\lambda_4(r)$ to $10^{-8}\max(1,|\lambda_4|)$; if there is none, A1 fails there.
+A-branch uses the same selection for $P_1$. Nothing else changed. The known-answer rows thus count against the
+statement ``the edge is the largest real root of $P_2$''.
+
+\subsection{Test B: general circle-symmetric fields}
+
+\paragraph{B-I, a code control.} The class of Proposition~\ref{prop:general} reduces to the ansatz by constant gauge
+transformations. B-I checks this in code and is not evidence. $200$ members are drawn (generator seed $1122$, weight
+$k=\pm1$, $x\sim U[-10,10]$, $y\sim U[0,6]$, $z\sim U[-6,6]$, $t\sim U[0.5,15]$, a random constant gauge frame), sectors
+$j\le8$. Gates: B-sym, B-exact, B-red (the twist's value equals $\lambda$ at the reduced coordinates to $10^{-10}$
+relative), B-spec (full spectra equal those of the reduced field to $10^{-12}$ relative) and B-even ($10$ extra draws at
+$y=z=0$).
+
+\paragraph{B-II, the part that can fail.} A random scan of the reduced family over $(\rho,t)$, $\rho=\sqrt{y^2+z^2}$,
+at the $200$ reduced draws, with $x$ and $k$ discarded and the edge located on $x\in[-10,10]$ in $j\le12$. Gates:
+B-II-code (the $27$ rows of \path{exact_edge.json} reproduced to $10^{-9}$); B-count (at least $60$ scored points, or B-S
+and B-half are inconclusive); B-S (the competitor's slope ratio $|\partial_x\lambda_{\mathrm{comp}}|/|\partial_x\lambda|<0.5$
+at every scored edge; the threshold was chosen after seeing ratios $0.16$, $0.064$ and $0.165$, so a pass is weak
+evidence); B-half (exactly two sign changes of $\phi_A$ on a $0.01$ grid over $[r_{\mathrm{lo}}-0.5,\,x^*+0.5]$);
+B-N, the competitor's charge, descriptive only.
+
+\paragraph{Amendment~B1.} Gate B-II-code stopped the run before any B-II point was computed. At all $27$ known rows the
+edge was reproduced (largest deviation about $4\times10^{-15}$), but at two rows ($t=3$ and $t=4$, height $0.5$) the
+competitor was read as $(2,+1)$ where the receipt has $(2,-1)$, and the reverse. At every known row whose competitor has
+$q\ne0$, the blocks $(j,q)$ and $(j,-q)$ have the same lowest eigenvalue to $6.7\times10^{-15}$ (double precision), and which
+one is reported is decided by rounding. The gate was amended to accept the competitor up to $(j,q)\leftrightarrow(j,-q)$
+when the two lowest eigenvalues agree to $10^{-12}$ relative at $x^*+10^{-4}$. The scored arms are unaffected: B-N asks
+whether $q=0$, B-S uses a slope that the mirror shares, and B-half does not use the competitor.
+
+\subsection{Test C: $SU(3)$ with a free fibre field}
+
+\paragraph{The family.} On $SU(3)$ with the metric that stretches the hypercharge circle by $t$ (on $\lambda_8$), the
+left-invariant fields commuting with the joint frame-and-gauge action of $U(2)$ form a space of dimension $4$ (computed
+by SVD to machine precision). Up to gauge they are $M_a=uX_a$ ($a=1,2,3$), $M_8=xX_8$, $M_a=yX_a$ ($a=4,\dots,7$),
+$y\ge0$, with components in the orthonormal coframe and $x$ the field along the stretched fibre. The Maurer--Cartan
+member $u=y=\tfrac12$, $x=1/(2\sqrt t)$ is the field of the second $SU(3)$ family of Section~\ref{sec:decide}, where the
+extremal state was the floor nowhere; here $x$ is free. The analogue of the twist has charge $q_8=\sqrt3/2$ under the
+fibre generator. Three structural statements were labelled conjectures until their gates pass: F1, the coefficient of
+$x^2$ in its eigenvalue is $q_8^2=3/4$ in every sector; F2, its region in $x$ is bounded, via the gauge-orthogonal state
+$\hat\theta^8\otimes X_8$ of the sector $(0,0)$, whose Rayleigh quotient is affine in $x$; F3, the lift discount is linear
+in $x$ with one sign $\sigma$ across the sectors.
+
+\paragraph{Predictions.} C-P1, existence: with $x$ free, the region where the twist is the floor of all nine sectors
+(gauge-orthogonal spectrum) is non-empty, strictly at every grid point with $t\ge3$, weakly at one point at least.
+C-P2, side: at every informative point the midpoint of the region satisfies $\sigma x<0$. C-P3: the region is one
+interval. C-P4: at the upper edge the competitor's slope ratio is below $0.5$ (scored); its charge is descriptive.
+C-P5: the upper edge against $t$, descriptive. Every claim of Test~C is about the nine listed sectors.
+
+\paragraph{Grid and gates.} $t\in\{2,3,4,6,8\}$ and $(u,y)\in\{(\tfrac12,\tfrac12),(\tfrac12,1),(1,1),(1,2)\}$, $20$ shape points,
+the nine sectors $(p,q)$ of Test~2 listed below, $x$ scanned in steps of $0.25$ on $[r_{\mathrm{lo}}-0.5,\,r_{\mathrm{hi}}+0.5]$. Gates:
+C-K1 to C-K5 (the earlier $SU(3)$ controls, an $SU(2)$ analogue against \path{exact_edge.json}, and a known answer at
+the Maurer--Cartan member), C-sym, C-quad (second difference $3/2$ to $10^{-9}$), C-lin, C-sigma, C-mult and C-bound.
+
+\paragraph{Amendment~C1.} A smoke test of the structure gates at one shape point, $(t,u,y)=(8,1,2)$, was run before any
+floor, edge or competitor was computed. C-quad passed ($3/2$ to $5.3\times10^{-15}$ in all nine sectors), C-lin passed
+(second difference $0.0$), $\sigma=+1$, and $[r_{\mathrm{lo}},r_{\mathrm{hi}}]=[-7.656,4.120]$. Gate C-mult would have stopped
+the run: the number $n_b$ of slice eigenvalues equal to the twist's value was $6$, $4$, $8$, $5$, $5$, $6$, $10$, $6$, $7$ in the sectors
+$(0,0)$, $(1,0)$, $(1,1)$, $(2,0)$, $(2,1)$, $(3,0)$, $(2,2)$, $(3,1)$, $(4,0)$, not $1$ or $2$. The family commutes with a non-abelian $U(2)$, so
+eigenvalues come in multiplets of its $SU(2)$; the twist has spin $p/2+1$ there, and the count is
+$n_b=(p+3)(2\text{ if }p=q\text{, else }1)$, which matches all nine. This formula was derived after seeing the counts.
+The amended gate requires that count and removes exactly $n_b$ copies. The predictions C-P1 to C-P5 are unchanged. These
+gate values are design-stage quantities and say nothing about the predictions.
+
+\paragraph{Amendment~C2.} The rerun passed C-K1 to C-K5 again (C-K5 to $2.6\times10^{-14}$), and the shape point
+$(2,\tfrac12,\tfrac12)$ passed every structure gate. At $(2,\tfrac12,1)$ the amended C-mult stopped the run: the counts
+were $6$ in $(1,0)$, where the formula gives $4$, and $12$ in $(1,1)$, where it gives $8$, the same at all three $x$
+values. The extra states form a second $SU(2)$ doublet, with charges $3$ and $4$, outside the twist's multiplet, whose
+eigenvalue equals the twist's identically in $x$ at $(u,y)=(\tfrac12,1)$; this was seen at $t=2$, $2.0001$ and $3$, and
+not at the other shapes examined. They are tied competitors, not copies of the twist. The gate was amended again: $n_b$
+must be at least the multiplet count $(p+3)(2\text{ if }p=q\text{, else }1)$ and the same at the three $x$ values, exactly
+the multiplet count is removed, and any further states at the twist's value stay in the spectrum as competitors. Under
+the registered non-strict floor rule a tie leaves the twist the floor; the extra counts are reported, and where they are
+identical in $x$ the twist is never the unique floor in that sector. In the same amendment the spectra were moved, as an
+implementation change, to the eigenbasis of the field-independent charge, block by block (a unitary change of basis,
+agreeing with the dense computation to $2\times10^{-13}$ on the largest sector). The predictions are unchanged, and no
+floor, edge or competitor had been computed.
+
+\subsection{Results}
+
+\textbf{[RESULTS PENDING: preregistrations A, B, C]}
+
+\section{Scope and open problems}\label{sec:scope}
+
+\paragraph{Scope.} The results concern the classical linearised operator. Both the $L^2$ (Coulomb) slice and $H+GG^*$
+are given, and where only one is proved the text says which. Nothing here is a statement about the quantum theory or a
+mass gap. Most members of the family are not Yang--Mills critical points, so the edge describes the landscape at a
+field, not a dynamical transition; at the Berger field the Yang--Mills flow moves away faster than any twist grows
+(\cite{davisfloor2026}, ``Further observations''). The stability theorems for Yang--Mills
+fields~\cite{bl1981,ohnitapan1990,kot1986,stern2010} and the recent floor-type estimate for abelian Yang--Mills--Higgs
+fields on the round sphere~\cite{jin2026} concern critical points. The class of fields is the one of
+Proposition~\ref{prop:general}: left-invariant, symmetric under the right circle about the long axis lifted by a constant
+gauge circle. Outside $D$ and the two slices of Theorem~\ref{thm:slice}, every statement about the region is computed in
+$j\le12$ or bounded by Theorems~\ref{thm:xpos} and~\ref{thm:slabs} and Proposition~\ref{prop:lower}.
+
+\paragraph{Open problems.}
+\begin{enumerate}
+  \item \emph{The all-sector edge as a theorem.} Conjecture~\ref{conj:edge} for $t\ge3$. The ``if and only if'' on
+  $(-1.5,x^*]$ in every sector: $j>12$ is open on the slices of Theorem~\ref{thm:slice}, $x\in(-0.02,0)$ is not covered by
+  Theorem~\ref{thm:slabs}, and the small sectors $j<40$ on its boxes are not certified. The gauge-orthogonal edge in exact
+  form.
+  \item \emph{Near $t=2$.} The near-top families take over there ($c_+$ and $c_0$ vanish at $s=\sqrt2$). The all-sector edge
+  near $t=2$ is unknown.
+  \item \emph{The lower edge.} $x_{\mathrm{lo}}$ in closed form (only the bound $r_{\mathrm{lo}}$ is known), and the
+  one-interval structure, which is computed on grids but not proved.
+  \item \emph{Fields that mix sectors.} Circle-invariant fields that are not left-invariant, lifts by non-constant gauge
+  transformations, other circles. There the twist is no longer alone in its charge block, so its exactness is itself open.
+  \item \emph{Other groups.} $SU(3)$ (Test~C is designed; Section~\ref{sec:prereg}) and beyond.
+  \item \emph{Competitors in closed form.} The block $(3,1/2)$ has one edge factor of degrees $(11,14,26)$, irreducible
+  over $\mathbb{Q}$. The polynomials of the small-$y$ blocks are known, but no two-dimensional region theorem at small $y$ is.
+  \item \emph{A reading.} The decomposition of $\lambda$ invites reading the edge as the point where the field along the
+  long circle turns against the twist's charge by enough, but not too much, as the shape of space sets. That is a
+  hypothesis, not a result.
+\end{enumerate}
+
+\section*{Funding and competing interests}
+This work received no funding. The author declares no competing interests.
+
+\section*{Code and data availability}\label{sec:availability}
+All programs and certificates are in the \textsc{GIGI} repository, \url{https://github.com/nurdymuny/gigi}
+(tag \textbf{[TAG TO BE SUPPLIED]}). The exact parts use \textsc{SymPy}~\cite{sympy2017} and the interval parts
+\textsc{mpmath}~\cite{mpmath}. Scripts by result:
+\begin{itemize}
+  \item the class of fields and the lower edge: \path{scripts/edge_wp4_design_checks.py};
+  \item charge blocks and edge functions: \path{scripts/ricci_su2_exact_edge.py},
+    \path{scripts/ricci_su2_charge_selection_symbolic.py};
+  \item the closed form: \path{scripts/ricci_su2_twist_family_closed_form.py};
+  \item the anatomy of the eigenvalue: \path{scripts/ricci_su2_twist_anatomy.py};
+  \item the split of $R_0$: \path{scripts/ricci_su2_gyromagnetic_split.py};
+  \item the edge polynomial: \path{scripts/ricci_su2_edge_polynomial.py};
+  \item the competitor map and block polynomials: \path{scripts/edge_wp1_competitor_map.py},
+    \path{scripts/edge_wp1_block_polynomials.py};
+  \item Theorem~\ref{thm:xpos}: \path{scripts/edge_wp2_symbolic.py};
+  \item Theorem~\ref{thm:slabs}: \path{scripts/edge_wp2_interval_proof.py};
+  \item Theorem~\ref{thm:slice}: \path{scripts/edge_wp3_slice_iff.py};
+  \item Theorem~\ref{thm:domain}: \path{scripts/ricci_su2_family_block_cert.py},
+    \path{scripts/ricci_su2_family_large_j.py}, \path{scripts/ricci_su2_outward.py};
+  \item the exploratory map: \path{scripts/ricci_su2_twist_family_map.py};
+  \item the tests of Section~\ref{sec:decide}: \path{scripts/ricci_su2_test2_family.py},
+    \path{scripts/ricci_su3_test2_family.py}, \path{scripts/ricci_alignment_test.py},
+    \path{scripts/ricci_stretch_test.py}, \path{scripts/ricci_su2_edge_test.py}.
+\end{itemize}
+Receipts:
+\begin{itemize}
+  \item in \path{research/su2-floor-family-20261119/}: \path{twist_family_closed_form.txt}, \path{twist_anatomy.json},
+    \path{gyromagnetic_split.txt}, \path{exact_edge.json}, \path{edge_polynomial.txt} and \path{.srepr},
+    \path{family_block_cert_j80.json}, \path{family_large_j.json}, \path{charge_selection_symbolic.txt},
+    \path{edge_test_*.json}, \path{alignment_test_*.json}, \path{stretch_test.json}, \path{test2_*.json},
+    \path{su3_test2_*.json}, \path{twist_family_map.json};
+  \item in \path{research/edge-theorem-20261121/}: \path{wp1_*}, \path{wp2_symbolic.txt},
+    \path{wp2_interval_proof_*.json}, \path{wp2_large_sector_bound.md}, \path{wp3_slice_iff.md} and \path{.json},
+    \path{wp4_design_checks.json}, \path{workflow_reports.json}, and the pre-registrations
+    \path{wp4_prereg_A_heldout.md} (with \path{wp4_prereg_A_points.json}), \path{wp4_prereg_B_general_fields.md} and
+    \path{wp4_prereg_C_su3.md}, with their amendments;
+  \item the pre-registration notes of the earlier tests in \path{docs/research/}.
+\end{itemize}
+Sixteen algebraic statements, among them the factorisation of the edge determinant as $-16384\,P_1P_2$ and a crossing
+of $P_2=0$ by the Berger path, are also checked in Lean~4~\cite{lean4} (v4.36.0) with Mathlib~\cite{mathlib2020}:
+\path{docs/papers/berger-spectrum/lean/Helike/Price.lean} and \path{Helike/Edge.lean}, with \path{README.md} and
+\path{RESULTS.md}. There are $16$ theorems, with no \texttt{sorry}, depending only on the axioms \texttt{propext},
+\texttt{Classical.choice} and \texttt{Quot.sound}. They build with \texttt{lake exe cache get} and \texttt{lake build},
+and \texttt{lake env lean Axioms.lean} lists the axioms. This paper, its source, and the code and data above are
+archived on Zenodo (DOI \textbf{[TO BE ASSIGNED]}).
+
+\begin{thebibliography}{99}\small
+\bibitem{alefeldmayer1993} G.~Alefeld, G.~Mayer, The Cholesky method for interval data, \emph{Linear Algebra Appl.} 194 (1993) 161--182, \href{https://doi.org/10.1016/0024-3795(93)90120-D}{doi:10.1016/0024-3795(93)90120-D}.
+\bibitem{avramidicollopy2012} I.~G.~Avramidi, S.~Collopy, Thermal Yang--Mills theory in the Einstein universe, \emph{J.\ Phys.\ A} 45 (2012) 374009, \href{https://doi.org/10.1088/1751-8113/45/37/374009}{doi:10.1088/1751-8113/45/37/374009}, \href{https://arxiv.org/abs/1201.5163}{arXiv:1201.5163}.
+\bibitem{bar1992} C.~B\"ar, The Dirac operator on homogeneous spaces and its spectrum on $3$-dimensional lens spaces, \emph{Arch.\ Math.} 59 (1992) 65--79, \href{https://doi.org/10.1007/BF01199016}{doi:10.1007/BF01199016}.
+\bibitem{bcgk2014} S.~Bolognesi, C.~Chatterjee, S.~B.~Gudnason, K.~Konishi, Vortex zero modes, large flux limit and Ambj{\o}rn--Nielsen--Olesen magnetic instabilities, \emph{JHEP} 10 (2014) 101, \href{https://doi.org/10.1007/JHEP10(2014)101}{doi:10.1007/JHEP10(2014)101}, \href{https://arxiv.org/abs/1408.1572}{arXiv:1408.1572}.
+\bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230, \href{https://doi.org/10.1007/BF01942061}{doi:10.1007/BF01942061}.
+\bibitem{davisfloor2026} B.~R.~Davis, The Floor Theorem for the Yang--Mills Hessian at the Berger field: a floor law across the Berger spheres, 2026, \url{https://doi.org/10.5281/zenodo.24412603} (concept DOI \href{https://doi.org/10.5281/zenodo.24386613}{10.5281/zenodo.24386613}).
+\bibitem{haldane1983} F.~D.~M.~Haldane, Fractional quantization of the Hall effect: a hierarchy of incompressible quantum fluid states, \emph{Phys.\ Rev.\ Lett.} 51 (1983) 605--608, \href{https://doi.org/10.1103/PhysRevLett.51.605}{doi:10.1103/PhysRevLett.51.605}.
+\bibitem{hanwen2026} X.~Han, Y.~Wen, Nonexistence of weakly stable Yang--Mills fields, 2026, \href{https://arxiv.org/abs/2601.17649}{arXiv:2601.17649}.
+\bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
+\bibitem{jin2026} X.~Jin, Stable abelian Yang--Mills--Higgs fields on the round three-sphere, 2026, \href{https://arxiv.org/abs/2609.24045}{arXiv:2609.24045}.
+\bibitem{klc2021} K.~Kumar, O.~Lechtenfeld, G.~Pican\c{c}o Costa, Instability of cosmic Yang--Mills fields, \emph{Nucl.\ Phys.\ B} 973 (2021) 115583, \href{https://doi.org/10.1016/j.nuclphysb.2021.115583}{doi:10.1016/j.nuclphysb.2021.115583}, \href{https://arxiv.org/abs/2102.08401}{arXiv:2102.08401}.
+\bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \emph{J.\ Geom.\ Anal.} 32 (2022), no.~11, Paper No.~175, \href{https://doi.org/10.1007/s12220-022-00997-x}{doi:10.1007/s12220-022-00997-x}, \href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.
+\bibitem{kot1986} S.~Kobayashi, Y.~Ohnita, M.~Takeuchi, On instability of Yang--Mills connections, \emph{Math.\ Z.} 193 (1986) 165--189, \href{https://doi.org/10.1007/BF01174329}{doi:10.1007/BF01174329}.
+\bibitem{laquer1984} H.~T.~Laquer, Stability properties of the Yang--Mills functional near the canonical connection, \emph{Michigan Math.\ J.} 31 (1984) 139--159, \href{https://doi.org/10.1307/mmj/1029003019}{doi:10.1307/mmj/1029003019}.
+\bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \emph{Bull.\ Lond.\ Math.\ Soc.} 51 (2019) 49--69, \href{https://doi.org/10.1112/blms.12213}{doi:10.1112/blms.12213}, \href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
+\bibitem{lean4} L.~de Moura, S.~Ullrich, The Lean 4 theorem prover and programming language, in \emph{Automated Deduction -- CADE 28}, Lecture Notes in Comput.\ Sci.\ 12699, Springer, 2021, 625--635, \href{https://doi.org/10.1007/978-3-030-79876-5_37}{doi:10.1007/978-3-030-79876-5\_37}.
+\bibitem{mathlib2020} The mathlib Community, The Lean mathematical library, in \emph{Proc.\ 9th ACM SIGPLAN Int.\ Conf.\ Certified Programs and Proofs (CPP 2020)}, 2020, 367--381, \href{https://doi.org/10.1145/3372885.3373824}{doi:10.1145/3372885.3373824}.
+\bibitem{mpmath} The mpmath development team, mpmath: a Python library for arbitrary-precision floating-point arithmetic, \url{https://mpmath.org}.
+\bibitem{nielsenolesen1978} N.~K.~Nielsen, P.~Olesen, An unstable Yang--Mills field mode, \emph{Nucl.\ Phys.\ B} 144 (1978) 376--396, \href{https://doi.org/10.1016/0550-3213(78)90377-2}{doi:10.1016/0550-3213(78)90377-2}.
+\bibitem{ohnitapan1990} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, \emph{Kodai Math.\ J.} 13 (1990) 317--332, \href{https://doi.org/10.2996/kmj/1138039277}{doi:10.2996/kmj/1138039277}.
+\bibitem{savvidy1977} G.~K.~Savvidy, Infrared instability of the vacuum state of gauge theories and asymptotic freedom, \emph{Phys.\ Lett.\ B} 71 (1977) 133--134, \href{https://doi.org/10.1016/0370-2693(77)90759-6}{doi:10.1016/0370-2693(77)90759-6}.
+\bibitem{stern2010} M.~Stern, Geometry of minimal energy Yang--Mills connections, \emph{J.\ Differential Geom.} 86 (2010) 163--188, \href{https://doi.org/10.4310/jdg/1299766686}{doi:10.4310/jdg/1299766686}, \href{https://arxiv.org/abs/0808.0667}{arXiv:0808.0667}.
+\bibitem{sympy2017} A.~Meurer et al., SymPy: symbolic computing in Python, \emph{PeerJ Comput.\ Sci.} 3 (2017) e103, \href{https://doi.org/10.7717/peerj-cs.103}{doi:10.7717/peerj-cs.103}.
+\bibitem{tanjiitakura2012} N.~Tanji, K.~Itakura, Schwinger mechanism enhanced by the Nielsen--Olesen instability, \emph{Phys.\ Lett.\ B} (2012), \href{https://doi.org/10.1016/j.physletb.2012.05.043}{doi:10.1016/j.physletb.2012.05.043}, \href{https://arxiv.org/abs/1111.6772}{arXiv:1111.6772}.
+\bibitem{varga2001} R.~S.~Varga, Ger\v{s}gorin-type eigenvalue inclusion theorems and their sharpness, \emph{Electron.\ Trans.\ Numer.\ Anal.} 12 (2001) 113--133.
+\bibitem{vonneumannwigner1929} J.~von Neumann, E.~Wigner, \"Uber das Verhalten von Eigenwerten bei adiabatischen Prozessen, \emph{Phys.\ Z.} 30 (1929) 467--470.
+\bibitem{wuyang1976} T.~T.~Wu, C.~N.~Yang, Dirac monopole without strings: monopole harmonics, \emph{Nucl.\ Phys.\ B} 107 (1976) 365--380, \href{https://doi.org/10.1016/0550-3213(76)90143-7}{doi:10.1016/0550-3213(76)90143-7}.
+\end{thebibliography}
+\end{document}

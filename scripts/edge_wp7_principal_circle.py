@@ -118,11 +118,15 @@ class GroupK:
         pr = self.prepare(shape, s); P = pr["P"]
         Hp = P["H0"] + x * P["H1"] + x * x * P["H2"]; Gs = P["Gs0"] + x * P["Gs1"]
         top, bot = pr["top"], pr["bot"]
-        lam_top = np.real(np.diag(Hp)[top]); lam = float(lam_top.mean())
-        lam_bot = np.real(np.diag(Hp)[bot])
-        mirror_tied = bool(np.abs(lam_bot.mean() - lam) <= 1e-9 * max(1.0, abs(lam)))
-        resid = max(float(np.linalg.norm(np.delete(Hp[:, k], top))) for k in top)
-        gstar = max(float(np.linalg.norm(Gs[:, k])) for k in top)
+        # Amendment 2: her state is the cheapest exact state of top charge (identical to the registered rule when the
+        # top-charge space is one-dimensional); the mirror likewise in the bottom-charge space
+        Ht = Hp[np.ix_(top, top)]; Ht = 0.5 * (Ht + Ht.conj().T); wt, vt = np.linalg.eigh(Ht)
+        Hb = Hp[np.ix_(bot, bot)]; Hb = 0.5 * (Hb + Hb.conj().T); wb = np.linalg.eigvalsh(Hb)
+        lam = float(wt[0]); top_spread = float(np.ptp(wt))
+        mirror_tied = bool(abs(wb[0] - lam) <= 1e-9 * max(1.0, abs(lam)))
+        others = np.setdiff1d(np.arange(Hp.shape[0]), top)
+        resid = float(np.linalg.norm(Hp[np.ix_(others, top)]))
+        gstar = float(np.linalg.norm(Gs[:, top] @ vt[:, 0]))
         svs = {c: np.linalg.svd(Gs[:, idx], compute_uv=False) for c, idx in pr["blocks"].items()}
         gmax = max((v.max() for v in svs.values() if v.size), default=0.0)
         mu, vecs = [], []
@@ -140,8 +144,9 @@ class GroupK:
                 else:
                     mu.extend(np.linalg.eigvalsh(A))
         mu = np.array(mu); o = np.argsort(mu)
-        ncopies = len(top) + (len(bot) if mirror_tied else 0)
-        out = {"lam": lam, "lam_top_spread": float(np.ptp(lam_top)), "mirror_tied": mirror_tied, "resid": resid,
+        ncopies = 1 + (1 if mirror_tied else 0)
+        out = {"lam": lam, "lam_top_spread": 0.0, "top_block_spread": top_spread, "top_dim": int(len(top)),
+               "mirror_tied": mirror_tied, "resid": resid,
                "gstar": gstar, "mu": mu[o], "ncopies": ncopies}
         if want_vec:
             out["W"] = np.hstack(vecs)[:, o]
@@ -289,10 +294,17 @@ def main():
 
     def stop(msg):
         res["stopped"] = msg; save(); raise SystemExit("stop: " + msg)
-    ka = known_answers(); res.update(ka); print("known answers", ka, flush=True)
+    prev = json.loads(out_path.read_text()) if out_path.exists() else {}
+    if "F_K0" in prev:                                      # resume (Amendment 2): keep gates and computed points
+        ka = {k: prev[k] for k in ("F_K0", "F_K1", "F_K0_by_orientation", "F_K1_by_orientation") if k in prev}
+        res["resumed_after"] = prev.get("stopped"); res["amendment"] = "wp7_prereg_F_amendment2_wall.md"
+    else:
+        ka = known_answers()
+    res.update(ka); print("known answers", {k: ka[k] for k in ("F_K0", "F_K1")}, flush=True)
     if ka["F_K0"] > 1e-9 or ka["F_K1"] > 1e-9:
         stop("F-K0/F-K1")
-    rows = []
+    rows = list(prev.get("points", []))
+    done = {(o["group"], o["angle"], tuple(o["shape"])) for o in rows}
     for gname in ("sp2", "su4"):
         main_s, extra_s = sectors_for(gname)
         for ang in ANGLES:
@@ -311,12 +323,18 @@ def main():
             if worst > 1e-12:
                 stop(f"F-S5 {gname} {ang}: {worst}")
             for sh in SHAPES:
+                if (gname, ang, tuple(sh)) in done:
+                    continue
                 t0 = time.time()
                 quad = []; sym = 0.0; mult = {}
                 for s in main_s:
-                    lam = [g.evaluate(xv, sh, s)["lam"] for xv in (-1.0, 0.0, 1.0)]
-                    quad.append(abs(lam[0] - 2 * lam[1] + lam[2] - 2 * g.qK ** 2))
                     pr = g.prepare(sh, s)
+                    if len(pr["top"]) == 1:
+                        lam = [g.evaluate(xv, sh, s)["lam"] for xv in (-1.0, 0.0, 1.0)]
+                        quad.append(abs(lam[0] - 2 * lam[1] + lam[2] - 2 * g.qK ** 2))
+                    else:                                  # Amendment 2: quadratic part of the top block is q_K^2 I
+                        H2t = pr["P"]["H2"][np.ix_(pr["top"], pr["top"])]
+                        quad.append(float(np.abs(H2t - g.qK ** 2 * np.eye(len(pr["top"]))).max()))
                     for xv in (-1.0, 0.0, 1.0):
                         ev = g.evaluate(xv, sh, s)
                         Hx = pr["P"]["H0"] + xv * pr["P"]["H1"] + xv * xv * pr["P"]["H2"]

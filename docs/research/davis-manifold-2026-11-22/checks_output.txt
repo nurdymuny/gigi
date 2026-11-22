@@ -1,0 +1,11 @@
+toy argmax L=6.0304  LB=0.20788
+ L=3 LB=0.1650
+ L=6 LB=0.2079
+ L=10 LB=0.1622
+ L=15 LB=0.0540
+E_sum=0.70+, product (1-e)^4 = 0.4633, union 1-sum = 0.3000
+m_eff=0.500  Delta_cfg=0.000  claimed lower bound m_eff/L_eff=0.250
+ kL=0.1  1-chord/arc=0.00042  (kL)^2/24=0.00042
+ kL=0.3  1-chord/arc=0.00375  (kL)^2/24=0.00375
+ kL=0.5  1-chord/arc=0.01038  (kL)^2/24=0.01042
+ kL=1.0  1-chord/arc=0.04115  (kL)^2/24=0.04167

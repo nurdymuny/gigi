@@ -3,13 +3,12 @@
 Open this file in your breaks: it says what is running, what landed and where to read it.
 Nothing here is a result in itself. Each result lives in its own note, scored as registered.
 
-**Last updated: 22 November 2026, midday: the arc deep-dive has landed.**
+**Last updated: 22 November 2026, early afternoon: Test D is scored.**
 
 ## Running
 
 | what | started | expected | where it lands |
 | --- | --- | --- | --- |
-| **Test D**: SU(3) along her own charge circle | 22 Nov, early morning | 1–2 h more (15 of 20 shapes done at last check) | results note `edge-prereg-D-results-2026-11-22.md`; receipt `research/edge-theorem-20261122-d/` |
 | **Test F**: which circle? A sweep across the chamber of Sp(2) and SU(4) | 22 Nov, late morning | 6–10 h | results note `edge-prereg-F-results-2026-11-22.md`; receipt `research/edge-theorem-20261122-f/` |
 
 The deep-dive covers:
@@ -19,6 +18,16 @@ The deep-dive covers:
 - a principal-circle survey of SU(5), Sp(3) and G₂.
 
 ## Landed today
+
+- **Test D is scored** ([results](edge-prereg-D-results-2026-11-22.md)). **Along her own charge circle, SU(3) gives
+  her back.**
+  - She is the floor at 19 of 20 shapes, and at all 16 with t ≥ 3.
+  - Her region is always one interval, always on the "against her charge" side (15 of 15 scorable).
+  - The result is not truncation-sensitive.
+  - The blind-rival clause failed again: the charged (4,0) rival rides the field at 0.61–0.76, as in SU(2).
+  - Same group as C, same method; only the circle changed.
+  - The edge paper is updated (abstract, introduction, Test D section and appendix).
+  - **Next:** the book's H3 and "What the failures taught me" go to Drive as v5.2.
 
 - **The arc deep-dive** ([note](arc-deep-dive-2026-11-22.md); receipts in `research/arc-deepdive-20261122/`). In
   plain words:

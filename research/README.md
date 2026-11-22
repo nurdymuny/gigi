@@ -14,7 +14,7 @@ Published papers cite these folders by path, so **folders here are never renamed
 | [`edge-paper-figures-20261122/`](edge-paper-figures-20261122/) | 3 | by-enough (paper) |
 | [`edge-paper-review-20261122/`](edge-paper-review-20261122/) | 30 | — |
 | [`edge-theorem-20261121/`](edge-theorem-20261121/) | 68 | [edge-prereg-A-results-2026-11-22.md](../docs/research/edge-prereg-A-results-2026-11-22.md), [edge-prereg-B-results-2026-11-22.md](../docs/research/edge-prereg-B-results-2026-11-22.md), [edge-prereg-C-results-2026-11-22.md](../docs/research/edge-prereg-C-results-2026-11-22.md), [edge-workflow-findings-2026-11-21.md](../docs/research/edge-workflow-findings-2026-11-21.md), [exact-edge-2026-11-21.md](../docs/research/exact-edge-2026-11-21.md), [she-is-the-law-2026-11-21.md](../docs/research/she-is-the-law-2026-11-21.md), berger-spectrum (paper), by-enough (paper) |
-| [`edge-theorem-20261122-d/`](edge-theorem-20261122-d/) | 2 | [edge-prereg-D-interim-2026-11-22.md](../docs/research/edge-prereg-D-interim-2026-11-22.md), by-enough (paper) |
+| [`edge-theorem-20261122-d/`](edge-theorem-20261122-d/) | 5 | [edge-prereg-D-interim-2026-11-22.md](../docs/research/edge-prereg-D-interim-2026-11-22.md), [edge-prereg-D-results-2026-11-22.md](../docs/research/edge-prereg-D-results-2026-11-22.md), by-enough (paper) |
 | [`edge-theorem-20261122-e/`](edge-theorem-20261122-e/) | 9 | [edge-prereg-E-results-2026-11-22.md](../docs/research/edge-prereg-E-results-2026-11-22.md) |
 | [`edge-theorem-20261122-proofs/`](edge-theorem-20261122-proofs/) | 7 | berger-spectrum (paper), by-enough (paper) |
 | [`henrici-t1-20261119/`](henrici-t1-20261119/) | 2 | [henrici-t1-results-2026-11-19.md](../docs/research/henrici-t1-results-2026-11-19.md) |

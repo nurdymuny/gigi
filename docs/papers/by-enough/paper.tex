@@ -60,7 +60,8 @@ $13\le j\le79$ undercuts the twist at the three tested values of $x<0$, and the 
 points. At $193$ random circle-symmetric fields the region in $j\le12$ is again one interval, but the reading that the
 competitor is nearly blind to $x$ fails at $129$. In an $SU(3)$ family stretched along the hypercharge circle with a
 free fibre field, the twist is the floor of all nine tested sectors at no $x$ of the $0.25$ scan, at any of $20$ shapes.
-A fourth test, $SU(3)$ stretched along the twist's own charge circle, is running.
+Stretched instead along the twist's own charge circle, the same group gives her back: she is the floor at $19$ of $20$
+shapes, in one interval, on the side where the field along her circle turns against her charge.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Peter--Weyl decomposition; Weitzenb\"ock identity;
@@ -106,8 +107,9 @@ Berger field she shows up as the floor; here I follow her as the field moves, an
 exact eigenvalue formula while her standing as the floor depends on the field along her own circle. That is my reading,
 not a theorem. The $SU(3)$ test of Section~\ref{sec:prereg} (Test~C) is a check on it: in an $SU(3)$ family stretched
 along the hypercharge circle she is the floor of the tested sectors nowhere on the scan, so the behaviour found here
-does not carry over to every setting I have tested. A test of $SU(3)$ stretched along her own charge circle is
-running.
+does not carry over to every setting I have tested. Stretched instead along her own charge circle (Test~D), the same
+group gives her back, at $19$ of $20$ shapes. So in $SU(3)$ the circle decides; which circle in general is the question
+of a further test, which is running.
 
 % ---------------------------------------------------------------------------------------------------
 \section{Introduction}\label{sec:intro}
@@ -190,7 +192,8 @@ Three further tests were pre-registered (Section~\ref{sec:prereg}). At held-out 
 $38$ points, where other blocks reach the twist first. At random circle-symmetric fields the reading that the competitor
 is nearly blind to $x$ failed at $129$ of $193$ points. In an $SU(3)$ family with a free fibre field the twist is the
 floor of all nine tested sectors at no $x$ of the $0.25$ scan, at any of the $20$ shapes, so the behaviour found here
-does not carry over to that family. A fourth test is running.
+does not carry over to that family. In a fourth test, the same group stretched along the twist's own charge circle,
+she is the floor at $19$ of $20$ shapes, in one interval, on the predicted side; the competitor is again not blind.
 
 \paragraph{By enough, but not too much.} The field along the long circle must turn against the twist by enough that
 the discount $2xj/\sqrt t$ carries her below her competitors in the higher sectors, but not by so much that a state of
@@ -1275,7 +1278,7 @@ registered protocol. Receipts \texttt{research/edge-paper-figures-20261122/su2\_
 \label{fig:su3}
 \end{figure}
 
-\paragraph{Test D: $SU(3)$ stretched along the twist's own charge circle (registered; running).} Test~C stretched the
+\paragraph{Test D: $SU(3)$ stretched along the twist's own charge circle.} Test~C stretched the
 hypercharge circle. Its write-up named the obvious next test, and Test~D is it: stretch $SU(3)$ along the circle of the
 twist's own charge, $H=-i\,\mathrm{diag}(1,0,-1)$. It was chosen after Test~C failed; it is a new hypothesis and does not
 rescue Test~C. The metric is $t$ on $e_H=\tfrac12X_3+\tfrac{\sqrt3}2X_8$ and $1$ on the other seven directions. The
@@ -1287,8 +1290,23 @@ strict), D-P2 (her floor set lies on the side $x\le0$, scored only where neither
 forces it), D-P3 (one interval), D-P4 (the competitor's slope ratio, post hoc) and D-P5 (descriptive). A pass of D-P1 is
 reported as truncation-sensitive unless two further sectors confirm it. The design was revised after an adversarial
 review, before any floor, edge or competitor of the family was computed
-(\path{research/edge-theorem-20261122-d/wp5_prereg_D_su3_own_circle.md}; details in Appendix~\ref{app:prereg}). The run
-is in progress; its results will be reported.
+(\path{research/edge-theorem-20261122-d/wp5_prereg_D_su3_own_circle.md}; details in Appendix~\ref{app:prereg}).
+
+\emph{Results} (\COMPUTED; receipt \path{research/edge-theorem-20261122-d/wp5_su3_own_circle.json}). Every gate passed:
+the Test~C controls, the rotated-basis and wrong-axis controls ($7.7\times10^{-15}$ and $3.0\times10^{-14}$), D-quad
+($5.3\times10^{-15}$), D-kappa, D-sym ($\norm{[Q,H]}$ to $6.4\times10^{-15}$), D-lin, D-mult and D-bound. Along her own
+charge circle the twist is the floor of all nine listed sectors at $19$ of the $20$ shapes, and at all $16$ with $t\ge3$:
+D-P1 held, weakly and strictly. The pass is not truncation-sensitive: at one shape with $t=2$ the sectors $(5,0)$ and
+$(6,0)$ remove every grid point of her region, and at every other non-empty shape between $2$ and $8$ grid points
+survive them. D-P2 held at all $15$ scorable shapes (her region lies at $x<0$ at all $19$). D-P3 held: one interval at
+every non-empty shape. D-P4 failed: the competitor at the upper edge is the neutral block $(3,0)$, with slope ratio
+$0.15$ to $0.19$, or the charged block $(4,0)$, with charge $-7$ and slope ratio $0.61$ to $0.76$; the charged one takes
+over as $t$ grows. Hypercharge (Test~C) and her own charge circle (Test~D) differ only in the stretched circle, and the
+twist is the floor nowhere along the first and almost everywhere along the second. Every clause of the reading except
+the blind competitor carries over to this $SU(3)$ slice along her own circle: exactness, minimal coupling with charge~$1$,
+the lift slope $(p+q)/\sqrt t$, the bounded region in one interval, and the side. In $SU(3)$ her charge circle is at once
+the principal circle, the coroot of her highest root and a regular circle; which of these she needs is the question of
+Test~F (registered, running), which sweeps the stretched circle across the Weyl chambers of $SU(4)$ and $Sp(2)$.
 
 % ===================================================================================================
 \section{Scope and open problems}\label{sec:scope}
@@ -1324,7 +1342,9 @@ and~\ref{prop:lowblock}.
   \item \emph{Other groups.} In the $SU(3)$ family of Test~C, stretched along the hypercharge circle, the twist is the
   floor of all nine listed sectors at none of the $20$ shapes on the scan (step $0.25$, double precision); at $t=4$ the
   post-hoc margins in $(4,0)$ are about $-6$ or lower. Whether a family stretched along the circle of the twist's own
-  charge behaves like $SU(2)$ is the question of Test~D, which is running.
+  charge behaves like $SU(2)$ was the question of Test~D: it does, at $19$ of $20$ shapes in that slice
+  (Section~\ref{sec:prereg}). Which circle is needed in general (the principal circle, the coroot of her highest root, or
+  any regular circle) is the question of Test~F, which is running.
   \item \emph{Competitors in closed form.} The block $(3,1/2)$ has one edge factor of degrees $(11,14,26)$, irreducible
   over $\mathbb{Q}$. The polynomials of the small-$y$ blocks are known, but no two-dimensional region theorem at small $y$ is.
   \item \emph{A reading.} The decomposition of $\lambda$ invites reading the edge as the point where the field along the
@@ -1387,7 +1407,7 @@ Test A & \path{edge_wp4_points.py}, \path{edge_wp4_heldout.py} & \texttt{E}/\pat
 Test B & \path{edge_wp4_general_fields.py} & \texttt{E}/\path{wp4_general_fields.json}, \path{wp4_general_fields_log.txt}; prereg \path{wp4_prereg_B_general_fields.md} & \COMPUTED\\
 Test C & \path{edge_wp4_su3_free_fibre.py} & \texttt{E}/\path{wp4_su3_free_fibre.json}, \path{wp4_su3_free_fibre_log.txt}; prereg \path{wp4_prereg_C_su3.md} & \COMPUTED\\
 Test C diagnostic (post hoc) & \path{edge_wp4_su3_diagnostic.py} & \texttt{E}/\path{wp4_su3_diagnostic_posthoc.json}, \path{wp4_su3_diagnostic_posthoc_log.txt} & \COMPUTED\\
-Test D (registered, running) & \path{edge_wp5_design_checks.py}, \path{edge_wp5_su3_own_circle.py} & \texttt{D}/\path{wp5_prereg_D_su3_own_circle.md}, \path{wp5_design_checks.json} & design only; no results\\
+Test D & \path{edge_wp5_design_checks.py}, \path{edge_wp5_su3_own_circle.py} & \texttt{D}/\path{wp5_prereg_D_su3_own_circle.md}, \path{wp5_design_checks.json}, \path{wp5_su3_own_circle.json} & \COMPUTED\\
 Figures \ref{fig:helike}--\ref{fig:su3} & \path{edge_paper_figures.py} & \texttt{G}/\path{region_j12.json}, \path{berger_path.json}, \path{su2_margins_t4.json} & \COMPUTED{} (Fig.~\ref{fig:helike}: closed forms)\\
 Lean theorems (16) & \path{docs/papers/berger-spectrum/lean/Helike/} & \path{README.md}, \path{RESULTS.md}, \path{Axioms.lean} & \PROVED{} (polynomial identities)\\
 \end{longtable}
@@ -1819,7 +1839,7 @@ moved, as an implementation change, to the eigenbasis of the field-independent c
 of basis, agreeing with the dense computation to $2\times10^{-13}$ on the largest sector). No floor, edge or competitor
 had been computed.
 
-\subsection{Test D (registered; running)}
+\subsection{Test D}
 
 \paragraph{Family.} $SU(3)$ with $X_a=-(i/2)\lambda_a$ and $\langle X,Y\rangle=-2\,\mathrm{tr}\,XY$; orthonormal Cartan
 basis $e_H=\tfrac12X_3+\tfrac{\sqrt3}2X_8$, $e_K=\tfrac{\sqrt3}2X_3-\tfrac12X_8$; metric $t$ on $e_H$ and $1$ on the other
@@ -1845,8 +1865,8 @@ the twist's own circle; a failure of D-P2 where informative counts against ``tur
 failure of D-P3 against the interval form; a failure of D-P4 against ``nearly blind''. If all hold, the reading is
 supported in one $SU(3)$ family, in nine sectors, which would itself be a hypothesis for a further test. The verdict is
 scoped to this slice (diagonal Cartan block, zero phases, $y_{12}=y_{23}$), these shapes and these sectors. The design was
-revised after an adversarial review, before any floor, edge or competitor was computed. The run is in progress; its
-results will be reported.
+revised after an adversarial review, before any floor, edge or competitor was computed. The results are reported in
+Section~\ref{sec:prereg}: D-P1 (weak and strict), D-P2 and D-P3 held; D-P4 failed.
 
 \begin{thebibliography}{99}\small
 \bibitem{alefeldmayer1993} G.~Alefeld, G.~Mayer, The Cholesky method for interval data, \emph{Linear Algebra Appl.} 194 (1993) 161--182, \href{https://doi.org/10.1016/0024-3795(93)90120-D}{doi:10.1016/0024-3795(93)90120-D}.

@@ -1,5 +1,6 @@
 import Helike
 import DavisManifold
+import SpectralBranch
 #print axioms Helike.price_anatomy
 #print axioms Helike.floorLaw_paper_form
 #print axioms Helike.kappa_berger
@@ -56,3 +57,13 @@ import DavisManifold
 #print axioms DavisManifold.one_sub_sin_div_lt
 #print axioms DavisManifold.chord_arc_distortion
 #print axioms DavisManifold.nonvacuity_quarter_half
+#print axioms SpectralBranch.polarity_A
+#print axioms SpectralBranch.polarity_B
+#print axioms SpectralBranch.polarity_shidoku
+#print axioms SpectralBranch.polarity_latin
+#print axioms SpectralBranch.shidoku_top_eigvec
+#print axioms SpectralBranch.shidoku_paper_values_not_unit
+#print axioms SpectralBranch.finite_poincare
+#print axioms SpectralBranch.isoperimetric_capacity_lower
+#print axioms SpectralBranch.n4_counts
+#print axioms SpectralBranch.row_change_counting

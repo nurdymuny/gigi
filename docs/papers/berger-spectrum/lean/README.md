@@ -61,6 +61,19 @@ They are not about the floor.
 
 All twelve depend only on `propext`, `Classical.choice` and `Quot.sound`. `lake build` builds both libraries.
 
+## A third library: the spectral branch (Branch IX), reread (`SpectralBranch/Review.lean`, 2026-11-22)
+
+Ten theorems from `docs/research/spectral-branch-review-2026-11-22.md`.
+- **S1:** spectral polarity on semiregular bipartite graphs, general and for the Shidoku and Latin square
+  instances.
+- **S2:** the Shidoku top eigenvector is (-1/24, 1/12). The paper's stated values have squared norm 2.
+- **S3:** the finite Poincare inequality.
+- **S6:** under Ric >= 0, h^2 D^2 >= pi^2/c, so the bottleneck example contradicts the paper's own theorem.
+- **S9:** the N_4 class counts.
+- **S10:** the row-change counting step of the intercalate lemma.
+
+All ten use only the standard axioms (`row_change_counting` needs only `propext` and `Quot.sound`).
+
 ## What is *not* checked here
 
 These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check

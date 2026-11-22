@@ -3,7 +3,7 @@
 Open this file in your breaks: it says what is running, what landed and where to read it.
 Nothing here is a result in itself. Each result lives in its own note, scored as registered.
 
-**Last updated: 22 November 2026, early afternoon: Test D is scored.**
+**Last updated: 22 November 2026, afternoon: F resumed under Amendment 2.**
 
 ## Running
 
@@ -74,6 +74,16 @@ read.
 More items will join this table as they are finished.
 
 ## Landed today
+
+- **Test F, Amendment 2** (892d538):
+  - **What happened.** F stopped at its F-mult gate at Sp(2) 45°, the C-type wall. There her top-charge space is
+    degenerate and the states in it are not tied in price (spread 1.08), so "her copies" was undefined.
+  - **The new rule.** Her state is the cheapest exact state of top charge, which is conservative against H_C. Other
+    top states are competitors.
+  - **Nothing else moves.** It is identical to the registered rule wherever her top is unique, so computed points are
+    kept, and the run resumed at Sp(2) 45°.
+  - **What I had seen.** Written after the stop, before any further data. Nothing beyond the stop message and the
+    three 0° printouts already disclosed.
 
 - **Test D is scored** ([results](edge-prereg-D-results-2026-11-22.md)). **Along her own charge circle, SU(3) gives
   her back.**

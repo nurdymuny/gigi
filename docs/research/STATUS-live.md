@@ -26,6 +26,7 @@ before it is cited, posted or put in the book. The reviewer's job is to refute, 
 | item | where | what to attack |
 | --- | --- | --- |
 | **The Davis Manifold, second edition (draft)** | paper: `docs/papers/davis-manifold/the_davis_manifold_v2.tex` (PDF beside it; the 2025 text is unchanged next to it). Argument: [review note](davis-manifold-review-2026-11-22.md). Lean: `DavisManifold/Review.lean` on `feat/helike-lean` (13 theorems) | see the list below |
+| **The spectral branch (Branch IX), review note** | [review note](spectral-branch-review-2026-11-22.md); recomputation `spectral-branch-2026-11-22/checks.py` + `checks_output.json`; Lean `SpectralBranch/Review.lean` on `feat/helike-lean` (10 theorems). The paper itself (`davis_plasma/theory/spectral_branch.tex`) is not yet revised | see the list below |
 
 **What to attack in the Davis Manifold draft:**
 1. **The five repairs.** For each one, check two things: that the first-edition step really fails (re-derive its
@@ -49,7 +50,28 @@ before it is cited, posted or put in the book. The reviewer's job is to refute, 
 Write the findings as a review note (`davis-manifold-adversarial-review-<date>.md`). **Do not edit the paper's text
 in the same pass.** Repairs come after the findings are read.
 
-More items will join this table as they are finished. The spectral branch is next.
+**What to attack in the spectral-branch review:**
+1. **Each "breaks" item.**
+   - §2.1: does Ric ≥ 0 really force h²D² ≥ π²/c_B, and is the Buser constant as stated?
+   - §2.2: the semigroup repair.
+   - §2.3: the slice, and second variation against gauge fixing.
+   - §2.4: is Laquer's index-one canonical connection on S³ a non-flat Yang–Mills critical point? Read Laquer 1984
+     directly.
+   - §2.5–2.6: re-run the barbell counterexamples.
+   - §2.7: the normalization.
+   - §2.8: rebuild the relaxed Test C graphs in full, with the minimum-distance rule, and report what actually
+     happens.
+2. **The citations the note could not verify:** Buser's constant, Li–Yau's original constant, and Berger's
+   variation formula with its trace terms. Fetch and quote each.
+3. **The "holds" list.** Recompute anything it lists that `checks.py` does not cover.
+4. **The Lean.** Does each theorem state what the note says it states?
+5. **The labelling rule in §2.10.** Is every statement that rests on an unrefereed manuscript marked as
+   conditional?
+
+Same rule as above: write the findings as a review note first. The paper is revised only after the findings are
+read.
+
+More items will join this table as they are finished.
 
 ## Landed today
 

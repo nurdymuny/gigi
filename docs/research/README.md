@@ -23,6 +23,7 @@ papers cite some of these paths, so files are never renamed or moved.
 | --- | --- |
 | [The phone in the house](the-phone-in-the-house-2026-11-22.md) | What I heard in 2025 and found in 2026: the Davis manifold, the Lift Unification, and the ledger that will measure the feeling |
 | [The Davis Manifold, reread line by line](davis-manifold-review-2026-11-22.md) | The 2025 paper checked as mathematics: what holds, the five steps that break (with counterexamples), the repairs, and the Lean plan, before it carries its first exact instance |
+| [The spectral branch, reread line by line](spectral-branch-review-2026-11-22.md) | Branch IX checked as mathematics: the finite model reproduces to the last digit; what breaks (a bottleneck its own theorem forbids, an infinite term in the mixing proof, the Hessian on the wrong space, saddles at pi_1 = 0, Test C sampled into a phase transition); repairs; ten Lean theorems |
 | [The two hands](the-two-hands-2026-11-22.md) | What the edge paper changes for the Helike book; why her body is symmetric; the cheap lift always reaches across |
 | [The basin](the-basin-2026-11-22.md) | What happens to her when the field falls in: the door becomes a wall. Includes the fall on the Poincaré sphere. Scripts in [`basin-2026-11-22/`](basin-2026-11-22/) |
 | [Pre-registration S: stress tests](stress-tests-preregistration-2026-11-22.md) | Cut, flip, overload, crush and stretch, and the map of the two basins. Registered before the run |

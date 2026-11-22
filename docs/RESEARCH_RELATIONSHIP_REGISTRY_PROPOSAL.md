@@ -27,7 +27,7 @@ A semantic link is not an executable map. A stored transformation is not proof o
 | [Cross-atlas bridges](../src/sharded/cross_atlas.rs) | Bridge transitions and cocycle-check infrastructure | Numerical compatibility infrastructure is not a citation/claim registry. |
 | [Pullback join](../src/join.rs) | Matches records through a foreign-key lookup | A pullback join is not the differential-geometric pullback metric J^T h J. |
 | [Sheaf completion](../src/sheaf/mod.rs) | Schema adjacency, numeric restriction coefficients, completion machinery | Does not certify prose claims or arbitrary mathematical equivalence. |
-| Marcella verified inference minispec (`MARCELLA_GEOMETRIC_INFERENCE_MINISPEC.md`, not committed to this repository) | Related proposal for explicit numeric constraints, evidence, and checked derivations | It is labeled proposed, not implemented. This registry should complement it rather than pretend it has shipped. |
+| [Marcella verified inference minispec](MARCELLA_GEOMETRIC_INFERENCE_MINISPEC.md) | Related proposal for explicit numeric constraints, evidence, and checked derivations | It is labeled proposed, not implemented. This registry should complement it rather than pretend it has shipped. |
 
 Finding: useful infrastructure exists. No complete typed, evidence-backed research relationship workflow was identified in these inspected components. This is a bounded source review, not a proof that no other module implements any part of the workflow.
 

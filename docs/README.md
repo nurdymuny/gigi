@@ -40,6 +40,7 @@ Where everything in this repository lives. The engine itself is `src/`; nothing 
 | file | title |
 | --- | --- |
 | [`DAVIS_CONJECTURE_LAMBDA_RIDEALONG.md`](DAVIS_CONJECTURE_LAMBDA_RIDEALONG.md) | Davis Conjecture λ-Budget Ride-Along |
+| [`MARCELLA_GEOMETRIC_INFERENCE_MINISPEC.md`](MARCELLA_GEOMETRIC_INFERENCE_MINISPEC.md) | Marcella: Verified Geometric Inference |
 | [`MONODROMY_GROUP_ORDER_RESULTS.md`](MONODROMY_GROUP_ORDER_RESULTS.md) | MONODROMY_GROUP_ORDER: 120 versus 1 |
 | [`MONODROMY_GROUP_ORDER_SPEC.md`](MONODROMY_GROUP_ORDER_SPEC.md) | MONODROMY_GROUP_ORDER: bounded SU(2) closure |
 | [`RECOVER_CURVATURE_SPEC.md`](RECOVER_CURVATURE_SPEC.md) | RECOVER_CURVATURE: spec |

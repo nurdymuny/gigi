@@ -3,7 +3,7 @@
 Open this file in your breaks: it says what is running, what landed and where to read it.
 Nothing here is a result in itself. Each result lives in its own note, scored as registered.
 
-**Last updated: 22 November 2026, morning (before Bee left for work).**
+**Last updated: 22 November 2026, midday: the arc deep-dive has landed.**
 
 ## Running
 
@@ -11,7 +11,6 @@ Nothing here is a result in itself. Each result lives in its own note, scored as
 | --- | --- | --- | --- |
 | **Test D**: SU(3) along her own charge circle | 22 Nov, early morning | 1–2 h more (15 of 20 shapes done at last check) | results note `edge-prereg-D-results-2026-11-22.md`; receipt `research/edge-theorem-20261122-d/` |
 | **Test F**: which circle? A sweep across the chamber of Sp(2) and SU(4) | 22 Nov, late morning | 6–10 h | results note `edge-prereg-F-results-2026-11-22.md`; receipt `research/edge-theorem-20261122-f/` |
-| **The arc deep-dive** (workflow, 9 agents) | 22 Nov, late morning | 1–3 h | note `arc-deep-dive-2026-11-22.md`; briefs and receipts in `research/arc-deepdive-20261122/` |
 
 The deep-dive covers:
 - five fetched-and-quoted literature briefs: the principal circle, McKay/E₈, the η-invariant, Morse theory, and the
@@ -20,6 +19,21 @@ The deep-dive covers:
 - a principal-circle survey of SU(5), Sp(3) and G₂.
 
 ## Landed today
+
+- **The arc deep-dive** ([note](arc-deep-dive-2026-11-22.md); receipts in `research/arc-deepdive-20261122/`). In
+  plain words:
+  - **The fall carries winding one (PROVED).** The exact Chern–Simons of the family is
+    CS = (t x² + 2y² − √t·x y²)/4. It lands at CS = 1 and never crosses ½, the pass (the deformed meron). So in the
+    reading the fall actually lands in, the last thing settling is her **shadow**.
+  - The literature weakened two bridges:
+    - **Morse fails as worded:** a flow line never crosses a stratum boundary.
+    - **η is downgraded:** the Hessian is orientation-blind.
+  - **E₈:** only 3 of 9 nodes are flat SU(2) connections. But the Poincaré fall lands on **CS = 1/120**, the
+    Fintushel–Stern minimum, pending one sign convention.
+  - **Principal circle:** no source ties it to a Hessian floor. The brief asks for regular non-principal controls,
+    which F's sweep already has.
+  - **Ancient:** Clifford himself called the left and right isometries of S³ "twists", right- and left-handed.
+  - The verifier fixed 9 items. What is still unverified is listed in the note.
 
 - **Test F registered**, after an adversarial review (6ad473c). Its known-answer gates pass: the new code reproduces
   D's numbers to 3 × 10⁻¹⁵ and C's to 2 × 10⁻¹⁴.

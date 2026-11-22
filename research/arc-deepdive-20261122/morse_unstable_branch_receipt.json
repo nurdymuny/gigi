@@ -1,0 +1,128 @@
+[
+ {
+  "t": 0.5,
+  "branch_end": [
+   2.82843,
+   2.0
+  ],
+  "min_over_branch_of_her_lowest_price": 21.282823302481145,
+  "her_lowest_price_at_saddle": 21.282823302481145
+ },
+ {
+  "t": 0.5,
+  "branch_end": [
+   -0.0,
+   0.0
+  ],
+  "min_over_branch_of_her_lowest_price": 7.9999999999995115,
+  "her_lowest_price_at_saddle": 21.282810085695708
+ },
+ {
+  "t": 1.0,
+  "branch_end": [
+   2.0,
+   2.0
+  ],
+  "min_over_branch_of_her_lowest_price": 10.000004242640685,
+  "her_lowest_price_at_saddle": 10.000004242640685
+ },
+ {
+  "t": 1.0,
+  "branch_end": [
+   0.0,
+   0.0
+  ],
+  "min_over_branch_of_her_lowest_price": 3.9999999999994644,
+  "her_lowest_price_at_saddle": 9.999995757359311
+ },
+ {
+  "t": 2.0,
+  "branch_end": [
+   1.41421,
+   2.0
+  ],
+  "min_over_branch_of_her_lowest_price": 4.768946388188793,
+  "her_lowest_price_at_saddle": 4.768946388188793
+ },
+ {
+  "t": 2.0,
+  "branch_end": [
+   0.0,
+   0.0
+  ],
+  "min_over_branch_of_her_lowest_price": 1.9999999999993177,
+  "her_lowest_price_at_saddle": 4.768941099457724
+ },
+ {
+  "t": 3.0,
+  "branch_end": [
+   1.1547,
+   2.0
+  ],
+  "min_over_branch_of_her_lowest_price": 3.116129628288194,
+  "her_lowest_price_at_saddle": 3.116129628288194
+ },
+ {
+  "t": 3.0,
+  "branch_end": [
+   0.0,
+   0.0
+  ],
+  "min_over_branch_of_her_lowest_price": 1.3333333333326398,
+  "her_lowest_price_at_saddle": 3.116125711130807
+ },
+ {
+  "t": 3.55,
+  "branch_end": [
+   1.06149,
+   2.0
+  ],
+  "min_over_branch_of_her_lowest_price": 2.6154691796781435,
+  "her_lowest_price_at_saddle": 2.6154691796781435
+ },
+ {
+  "t": 3.55,
+  "branch_end": [
+   0.0,
+   0.0
+  ],
+  "min_over_branch_of_her_lowest_price": 1.1267605633795725,
+  "her_lowest_price_at_saddle": 2.61546574384962
+ },
+ {
+  "t": 5.0,
+  "branch_end": [
+   0.89443,
+   2.0
+  ],
+  "min_over_branch_of_her_lowest_price": 1.8358543528304876,
+  "her_lowest_price_at_saddle": 1.8358543528304876
+ },
+ {
+  "t": 5.0,
+  "branch_end": [
+   0.0,
+   0.0
+  ],
+  "min_over_branch_of_her_lowest_price": 0.799999999999246,
+  "her_lowest_price_at_saddle": 1.835851753212576
+ },
+ {
+  "t": 10.0,
+  "branch_end": [
+   0.63246,
+   2.0
+  ],
+  "min_over_branch_of_her_lowest_price": 0.9040206536771761,
+  "her_lowest_price_at_saddle": 0.9040206536771761
+ },
+ {
+  "t": 10.0,
+  "branch_end": [
+   0.0,
+   0.0
+  ],
+  "min_over_branch_of_her_lowest_price": 0.39999999999908814,
+  "her_lowest_price_at_saddle": 0.9040192393653155
+ }
+]

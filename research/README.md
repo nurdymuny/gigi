@@ -9,6 +9,7 @@ Published papers cite these folders by path, so **folders here are never renamed
 | [`adjacent-ideas-20261119/`](adjacent-ideas-20261119/) | 1 | [adjacent-ideas-grid-2026-11-19.md](../docs/research/adjacent-ideas-grid-2026-11-19.md) |
 | [`basin-floor-20261122/`](basin-floor-20261122/) | 1 | [the-basin-2026-11-22.md](../docs/research/the-basin-2026-11-22.md) |
 | [`book-receipts-20261122/`](book-receipts-20261122/) | 4 | the Helike book's receipts table (four numbers that had no committed receipt): `scripts/book_receipt_*.py` |
+| [`arc-deepdive-20261122/`](arc-deepdive-20261122/) | 24 | [arc-deep-dive-2026-11-22.md](../docs/research/arc-deep-dive-2026-11-22.md) |
 | [`binary-icosahedral-fold-20261118/`](binary-icosahedral-fold-20261118/) | 1 | [unit-curvature-2026-11-18.md](../docs/research/unit-curvature-2026-11-18.md) |
 | [`edge-paper-figures-20261122/`](edge-paper-figures-20261122/) | 3 | by-enough (paper) |
 | [`edge-paper-review-20261122/`](edge-paper-review-20261122/) | 30 | — |

@@ -31,6 +31,7 @@ papers cite some of these paths, so files are never renamed or moved.
 | [Pre-registration S7: the tear](tear-test-preregistration-2026-11-22.md) | Quotient the sphere by eight finite groups (Z₂ to the binary icosahedral) and see who is left standing. Registered before the run |
 | [Pre-registration S7: results](tear-test-results-2026-11-22.md) | All five held. No tear removes her; a cyclic tear keeps her shadow on the basin's floor, a non-abelian tear hands it to her rival at rest |
 | [The arc](the-arc-2026-11-22.md) | Where the work stands (end of act one) and, on purpose, where she might go: the principal circle, E₈ basins, the η of the two hands, Morse doors; and the old roots, tagged IMAGINED and RESONANCE |
+| [The arc: deep dive](arc-deep-dive-2026-11-22.md) | Five fetched-and-quoted literature briefs and two computations on the imagined arc: the fall carries winding one (exact Chern–Simons; the shadow, not her, is last at the bottom); Morse and η bridges weakened; the Poincaré fall lands on CS 1/120 (sign convention unverified); Clifford's own word for these isometries was "twists". Receipts in [`research/arc-deepdive-20261122/`](../../research/arc-deepdive-20261122/) |
 
 ## Helike: the twist and the law she obeys
 

@@ -54,5 +54,13 @@ The deep-dive covers:
     margin φ\* = `phi_grid_best` largest at 18.43°?). It was registered before any F result was in the repository. If
     this session saw F's progress printouts before reading the amendment, the results note must say so, and the
     amendment is reported as not blind.
+  - **Disclosure from the session running F, written when the amendment reached it (before F finished):** this
+    session had seen F's printouts for its first **3 of 36 points**, all at **Sp(2), 0°**:
+    - shape (½, ½, ¼): floor set [−1.63, −1.03], survives the check;
+    - shape (½, ½, ¾): floor set [−1.97, −0.84], survives the check;
+    - shape (½, 1, 1): empty, with a golden-section best margin of −0.36 (blocked by sector 14).
+
+    No φ\* (`phi_grid_best`) at any other angle had been seen. By the amendment's rule, Amendment 1 is reported as
+    **not blind (3 of 36 points, all at 0°)**.
 - **Book updates** (H3 and the end of "What the failures taught me"): a v5.2 PDF and zip go to Drive once D is
   scored.

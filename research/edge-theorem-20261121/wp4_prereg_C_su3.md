@@ -176,3 +176,40 @@ normalization the x² coefficient picks up a factor of t.
 - I have not timed this. A timing on one point is taken first and reported before the scan.
 - Script: `scripts/edge_wp<N>_su3_free_fibre.py`.
 - Receipt: `research/edge-theorem-20261121/wp<N>_su3_free_fibre.json`.
+
+## Amendment C1 (21 November, after a gate smoke test, before any floor, edge or competitor was computed)
+
+**What happened.** Before launching, I evaluated the structure gates (C-quad, C-lin, C-sigma, the bounding interval,
+the copy count) at one shape point, (t, u, y) = (8, 1, 2). These are gate quantities, not predictions.
+- C-quad passed: the second x-difference of λ_b equals 3/2 to 5.3 × 10⁻¹⁵ in all nine sectors. F1 holds there.
+- C-lin passed: second difference 0.0. σ = +1. [r_lo, r_hi] = [−7.656, 4.120].
+- **C-mult would have stopped the run.** The number n_b of slice eigenvalues equal to λ_b was the same at all three
+  x values, but it was **not 1 or 2**:
+
+  | sector | (0,0) | (1,0) | (1,1) | (2,0) | (2,1) | (3,0) | (2,2) | (3,1) | (4,0) |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | n_b | 6 | 4 | 8 | 5 | 5 | 6 | 10 | 6 | 7 |
+
+**Diagnosis: the gate was designed for an abelian symmetry, and this family has a non-abelian one.**
+- By construction (D3), every member commutes with the joint frame-and-gauge action of **U(2)** = span(X₁, X₂, X₃, X₈),
+  not just with the circle Q. So H and G commute with an SU(2)₁₂₃, and every eigenvalue comes in SU(2)₁₂₃ multiplets.
+- b is the highest-weight state of her multiplet. Its SU(2)₁₂₃ spin is (frame E_θ: ½) + (gauge E_θ: ½) + (the highest
+  weight e₁^{⊗p} ⊗ e₃\*^{⊗q}: p/2) = p/2 + 1. So the multiplet has dimension p + 3.
+- In a self-conjugate sector (p = q), the conjugate multiplet (top charge −(p + q + 4)) has the same value, which
+  doubles the count.
+- **Prediction from this:** n_b = (p + 3)·(2 if p = q else 1), which gives 6, 4, 8, 5, 5, 6, 10, 6, 7. It matches
+  all nine counts.
+- **Honesty about order:** I derived this formula **after** seeing the counts. It follows from the symmetry D3
+  already established, and it is a structural gate, not evidence for or against any prediction.
+
+**Amended gate (fixed now, before the run):**
+- **C-mult:** in each sector, n_b is the same at the three x values **and equals (p + 3)·(2 if p = q else 1)**.
+  Exactly n_b copies are removed. Otherwise stop.
+- The SU(2) analogue C-K4 is unchanged (there n_b is measured; it is 2, she and her mirror).
+
+**Consequences for the predictions.** None of C-P1 to C-P5 changes. Removing her whole multiplet is what "the lowest
+eigenvalue other than b's copies" meant. The multiplet partners **are** copies of her value, forced by the symmetry,
+and not competitors.
+
+**Implementation change, not a protocol change.** The H + GG\* floor set (reported alongside, no gate) is read from
+the same evaluations as the slice scan, on the scan grid only.

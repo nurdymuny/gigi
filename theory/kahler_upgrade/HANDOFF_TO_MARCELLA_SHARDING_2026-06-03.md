@@ -151,12 +151,12 @@ cargo test --lib --features "kahler sharded"
 
 | Path | Lines | Public surface |
 |---|---|---|
-| [`src/sharded/mod.rs`](../../../src/sharded/mod.rs) | 43 | Module root, `ShardId(u32)`, re-exports |
-| [`src/sharded/atlas.rs`](../../../src/sharded/atlas.rs) | 177 | `Atlas`, `ChartId`, `ChartMetadata`, `Transition`, `ChartRegion`, `TransitionKey`, `TransitionRepresentation`, `Atlas::trivial(shard_id)` |
-| [`src/sharded/regime.rs`](../../../src/sharded/regime.rs) | 75 | `SpectralRegime` enum with `allows_naive_recipe()` / `requires_distributed_lanczos()` routing |
-| [`src/sharded/gates.rs`](../../../src/sharded/gates.rs) | 124 | `non_vacuity_check`, `cocycle_budget_check`, `GateError` (these are *real* implementations, not stubs) |
-| [`src/sharded/resolver.rs`](../../../src/sharded/resolver.rs) | 181 | `WriteConflict`, `sharded_write_resolve`, `ResolverTrace`, `ResolverError` — full implementation matching T6 Python validation |
-| [`src/sharded/execution.rs`](../../../src/sharded/execution.rs) | 107 | Per-verb stubs with regime routing (Expander → refuse; Cluster → NotImplementedYet) |
+| [`src/sharded/mod.rs`](../../src/sharded/mod.rs) | 43 | Module root, `ShardId(u32)`, re-exports |
+| [`src/sharded/atlas.rs`](../../src/sharded/atlas.rs) | 177 | `Atlas`, `ChartId`, `ChartMetadata`, `Transition`, `ChartRegion`, `TransitionKey`, `TransitionRepresentation`, `Atlas::trivial(shard_id)` |
+| [`src/sharded/regime.rs`](../../src/sharded/regime.rs) | 75 | `SpectralRegime` enum with `allows_naive_recipe()` / `requires_distributed_lanczos()` routing |
+| [`src/sharded/gates.rs`](../../src/sharded/gates.rs) | 124 | `non_vacuity_check`, `cocycle_budget_check`, `GateError` (these are *real* implementations, not stubs) |
+| [`src/sharded/resolver.rs`](../../src/sharded/resolver.rs) | 181 | `WriteConflict`, `sharded_write_resolve`, `ResolverTrace`, `ResolverError` — full implementation matching T6 Python validation |
+| [`src/sharded/execution.rs`](../../src/sharded/execution.rs) | 107 | Per-verb stubs with regime routing (Expander → refuse; Cluster → NotImplementedYet) |
 
 Feature flag declared in `Cargo.toml`:
 
@@ -220,9 +220,9 @@ Given these, six moves become forced:
 The math: your fiber bundle has no intrinsic scale ceiling. Single-node
 was an engineering bound on memory, not a substrate bound. With Phase
 A live, the **degenerate** case becomes single-node (`n_shards=1`
-trivial atlas via [`Atlas::trivial(shard_id)`](../../../src/sharded/atlas.rs#L130))
+trivial atlas via [`Atlas::trivial(shard_id)`](../../src/sharded/atlas.rs#L130))
 and the **general** case becomes multi-shard. This forces a
-[`BundleSchema`](../../../src/bundle.rs) change: every new schema gains
+[`BundleSchema`](../../src/bundle.rs) change: every new schema gains
 an optional `atlas: Option<AtlasDeclaration>` field, mirroring the
 current `kahler` optionality. Opting in is the default for new bundles
 at SaaS scale; opting out is for embedded/edge.
@@ -316,7 +316,7 @@ CROSS_ATLAS_JOINS.md §7 pre-conditions:
 sharded substrate carrying its own metric,
 `SECTION sensors WITHIN GEODESIC_BALL(s, ε)` is *also* O(1) — chart
 routing locates the relevant shard; geodesic-ball membership uses the
-Phase P index (Sprint P, [`src/membership_index.rs`](../../../src/membership_index.rs)).
+Phase P index (Sprint P, [`src/membership_index.rs`](../../src/membership_index.rs)).
 
 **Action for you.** This is your retrieval moat. Make the GQL surface
 explicit: `SECTION corpus WITHIN GEODESIC_BALL(query_embedding, ε)`
@@ -330,7 +330,7 @@ should be the first-class retrieval verb, with cosine fallback as the
 ### Force 7 — DGP becomes per-shard hardware
 
 Move 3 makes each shard's computation embarrassingly parallel. The
-graphene chip ([`~/Documents/dpu`](../../../../dpu)) can be replicated
+graphene chip (`~/Documents/dpu` (`../../../../dpu`, in the DPU repository, outside this repository)) can be replicated
 per-shard with no coordination overhead. N shards × M DGP chips per
 shard = N·M parallel substrates. The chip's role shifts from "GIGI's
 coprocessor" to **"the substrate per shard."**
@@ -344,7 +344,7 @@ vertical-layer matrix.
 DHOOM currently is the HTTP wire format for geometric responses. With
 sharding, transitions between shards need a binary format. DHOOM
 already encodes geometric primitives optimally (per
-[`#112`](../../../src/dhoom.rs)). With sharding, DHOOM becomes the
+[`#112`](../../src/dhoom.rs)). With sharding, DHOOM becomes the
 canonical cross-shard transit format:
 
 - **Chern compression of transition functions** (line bundle data per

@@ -25,11 +25,11 @@ All 5 DEC operators you asked for are in the tree. Verbatim references:
 
 | Operator | File:Line | Signature |
 |---|---|---|
-| `d_0` | [src/lattice/dec/d.rs:35](src/lattice/dec/d.rs#L35) | `pub fn d_0(lwm: &LatticeWithMetric, phi: &[f64]) -> Result<Vec<f64>, DecError>` |
-| `hodge_star_0` | [src/lattice/dec/hodge.rs:38](src/lattice/dec/hodge.rs#L38) | `pub fn hodge_star_0(lwm: &LatticeWithMetric, phi: &[f64]) -> Result<Vec<f64>, DecError>` |
-| `hodge_star_1` | [src/lattice/dec/hodge.rs:75](src/lattice/dec/hodge.rs#L75) | `pub fn hodge_star_1(lwm: &LatticeWithMetric, u: &[f64]) -> Result<Vec<f64>, DecError>` |
-| `hodge_star_2` | [src/lattice/dec/hodge.rs:116](src/lattice/dec/hodge.rs#L116) | `pub fn hodge_star_2(lwm: &LatticeWithMetric, omega: &[f64]) -> Result<Vec<f64>, DecError>` |
-| **δ (divergence)** | [src/lattice/dec/codifferential.rs:75](src/lattice/dec/codifferential.rs#L75) | `pub fn delta_1(lwm: &LatticeWithMetric, u: &[f64]) -> Result<Vec<f64>, DecError>` |
+| `d_0` | [src/lattice/dec/d.rs:35](../../src/lattice/dec/d.rs#L35) | `pub fn d_0(lwm: &LatticeWithMetric, phi: &[f64]) -> Result<Vec<f64>, DecError>` |
+| `hodge_star_0` | [src/lattice/dec/hodge.rs:38](../../src/lattice/dec/hodge.rs#L38) | `pub fn hodge_star_0(lwm: &LatticeWithMetric, phi: &[f64]) -> Result<Vec<f64>, DecError>` |
+| `hodge_star_1` | [src/lattice/dec/hodge.rs:75](../../src/lattice/dec/hodge.rs#L75) | `pub fn hodge_star_1(lwm: &LatticeWithMetric, u: &[f64]) -> Result<Vec<f64>, DecError>` |
+| `hodge_star_2` | [src/lattice/dec/hodge.rs:116](../../src/lattice/dec/hodge.rs#L116) | `pub fn hodge_star_2(lwm: &LatticeWithMetric, omega: &[f64]) -> Result<Vec<f64>, DecError>` |
+| **δ (divergence)** | [src/lattice/dec/codifferential.rs:75](../../src/lattice/dec/codifferential.rs#L75) | `pub fn delta_1(lwm: &LatticeWithMetric, u: &[f64]) -> Result<Vec<f64>, DecError>` |
 
 **One naming note on δ:** your letter calls the divergence operator `delta_0 = ⋆₁ d_0 ⋆₀`. Substrate ships it as `delta_1`. Same operator, different naming convention:
 
@@ -46,14 +46,14 @@ Everything you described in your DEC analog table for the state buffer is reacha
 
 | What you need | File:Line | API |
 |---|---|---|
-| edge count `N_e` | [src/lattice/mod.rs:119](src/lattice/mod.rs#L119) | `lwm.n_edges() -> usize` |
-| face count `N_f` | [src/lattice/mod.rs:124](src/lattice/mod.rs#L124) | `lwm.n_faces() -> usize` |
-| **edge → face adjacency** with signs | [src/lattice/mod.rs:157](src/lattice/mod.rs#L157) | `lwm.build_edge_face_incidence() -> Vec<Vec<(face_id, sign)>>` |
-| face → edges with orientation | [src/lattice/mod.rs:214](src/lattice/mod.rs#L214) | `lwm.signed_face_orientations() -> Vec<Vec<(EdgeId, EdgeOrientation)>>` |
-| vertex → edges with orientation | [src/lattice/mod.rs:202](src/lattice/mod.rs#L202) | `lwm.build_vertex_edge_incidence() -> Vec<Vec<(EdgeId, EdgeOrientation)>>` |
-| Euler characteristic sanity | [src/lattice/mod.rs:129](src/lattice/mod.rs#L129) | `lwm.euler_characteristic() -> i64` |
-| Cubed-sphere constructor | [src/lattice/topology/cubed_sphere.rs:83](src/lattice/topology/cubed_sphere.rs#L83) | `cubed_sphere(name, panel_size) -> LatticeWithMetric` |
-| EdgeOrientation enum | [src/lattice/mod.rs:60](src/lattice/mod.rs#L60) | `pub enum EdgeOrientation { Forward, Reverse }` with `sign() -> i8` |
+| edge count `N_e` | [src/lattice/mod.rs:119](../../src/lattice/mod.rs#L119) | `lwm.n_edges() -> usize` |
+| face count `N_f` | [src/lattice/mod.rs:124](../../src/lattice/mod.rs#L124) | `lwm.n_faces() -> usize` |
+| **edge → face adjacency** with signs | [src/lattice/mod.rs:157](../../src/lattice/mod.rs#L157) | `lwm.build_edge_face_incidence() -> Vec<Vec<(face_id, sign)>>` |
+| face → edges with orientation | [src/lattice/mod.rs:214](../../src/lattice/mod.rs#L214) | `lwm.signed_face_orientations() -> Vec<Vec<(EdgeId, EdgeOrientation)>>` |
+| vertex → edges with orientation | [src/lattice/mod.rs:202](../../src/lattice/mod.rs#L202) | `lwm.build_vertex_edge_incidence() -> Vec<Vec<(EdgeId, EdgeOrientation)>>` |
+| Euler characteristic sanity | [src/lattice/mod.rs:129](../../src/lattice/mod.rs#L129) | `lwm.euler_characteristic() -> i64` |
+| Cubed-sphere constructor | [src/lattice/topology/cubed_sphere.rs:83](../../src/lattice/topology/cubed_sphere.rs#L83) | `cubed_sphere(name, panel_size) -> LatticeWithMetric` |
+| EdgeOrientation enum | [src/lattice/mod.rs:60](../../src/lattice/mod.rs#L60) | `pub enum EdgeOrientation { Forward, Reverse }` with `sign() -> i8` |
 
 Your AURORA-side state buffer construction works today:
 

@@ -6,7 +6,7 @@
 **Status:** Shipped end-to-end. HTTP wire live at `gigi-stream.fly.dev`,
 deployment `0e35e21`. 1372/1372 lib green with the `wish` feature on,
 B sweep showed +27.6pp mean lift across 41 unique-solution 9x9 puzzles.
-**Spec:** [WISH_SPEC_v0.1.md](WISH_SPEC_v0.1.md). **Commits:** Phase 2
+**Spec:** `WISH_SPEC_v0.1.md` (not committed to this repository). **Commits:** Phase 2
 `99101b6`, Phase 3 `0773038`, Phase 4 `3556290`, Phase 5 `0e35e21`.
 
 ---

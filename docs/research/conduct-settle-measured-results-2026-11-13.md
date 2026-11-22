@@ -118,10 +118,10 @@ does not establish that a particular instrument is adequately modeled by RC.
 
 Evidence is under `output/conduct-settle/measured-20261113/`:
 
-- [Final numerical report, source/data hashes](../../output/conduct-settle/measured-20261113/live-02/report.json)
-- [Exact HTTP requests and responses](../../output/conduct-settle/measured-20261113/live-02/receipts.json)
-- [Six-trace comparison figure](../../output/conduct-settle/measured-20261113/live-02/measured-comparison.png)
-- [Final helper and mechanism-removal receipts](../../output/conduct-settle/measured-20261113/harness-audit.json)
+- [Final numerical report, source/data hashes](evidence/conduct-settle-20261113/report.json)
+- Exact HTTP requests and responses (`../../output/conduct-settle/measured-20261113/live-02/receipts.json`, not committed to this repository)
+- Six-trace comparison figure (`../../output/conduct-settle/measured-20261113/live-02/measured-comparison.png`, not committed to this repository)
+- [Final helper and mechanism-removal receipts](evidence/conduct-settle-20261113/harness-audit.json)
 
 The live directory also contains all downloaded source CSVs, all six pointwise
 comparison CSVs, build log and server log. No third-party data redistribution

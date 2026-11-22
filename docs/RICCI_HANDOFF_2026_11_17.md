@@ -5,7 +5,7 @@ her ChatGPT credits are nearly exhausted. She would like an independent look
 and a carefully bounded attempt, not repetition of the previous experiments.
 
 Git checkpoint: `codex/feat-ricci-correspondence-checkpoint`. See the
-[checkpoint README](C:/Users/nurdm/OneDrive/Documents/gigi/research/ricci-checkpoint-20261117/README.md)
+[checkpoint README](../research/ricci-checkpoint-20261117/README.md)
 for archived evidence, exact source snapshots and historical replay caveats.
 The scientific receipts retain their pre-checkpoint HEAD and absolute paths;
 after the checkpoint commit, a provenance refusal is not a new numerical failure.
@@ -36,7 +36,7 @@ Do not interpret it as authorization for an unlimited global computation.
 - The worktree is very dirty, with substantial unrelated work. Do not reset,
   revert, clean, stage everything, or assume HEAD identifies the experiment.
   Final evidence manifests pin the actual source and input hashes.
-- Read [AGENTS.md](C:/Users/nurdm/OneDrive/Documents/gigi/AGENTS.md).
+- Read [AGENTS.md](../AGENTS.md).
 - Bee requires: spec first, RED tests before implementation, GREEN tests,
   deliberate mechanism-removal failures, then a convincing worked example.
   A refusal is not an engine defect; an example failing its numerical target
@@ -179,45 +179,45 @@ global_gate = UNCHANGED_OPEN
 
 ## Read these files in order
 
-1. [Latest spec](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_BOUNDARY_EXTENSION_SPEC.md)
-   and [latest results](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_BOUNDARY_EXTENSION_RESULTS.md).
-2. [Successful local construction spec](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_SHARED_CURVATURE_PATCH_SPEC.md)
-   and [local results](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_SHARED_CURVATURE_PATCH_RESULTS.md).
-3. [Historical handoff and exact consistency question](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_HANDOFF.md).
-4. [Prior research synthesis](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_FINAL_BOUNDED_ATTEMPT.md)
-   and [last global attempt](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_FINAL_BOUNDED_RESULTS.md).
-5. [Local push attribution](C:/Users/nurdm/OneDrive/Documents/gigi/docs/RICCI_LOCAL_PUSH_RESULTS.md).
+1. [Latest spec](RICCI_BOUNDARY_EXTENSION_SPEC.md)
+   and [latest results](RICCI_BOUNDARY_EXTENSION_RESULTS.md).
+2. [Successful local construction spec](RICCI_SHARED_CURVATURE_PATCH_SPEC.md)
+   and [local results](RICCI_SHARED_CURVATURE_PATCH_RESULTS.md).
+3. [Historical handoff and exact consistency question](RICCI_HANDOFF.md).
+4. [Prior research synthesis](RICCI_FINAL_BOUNDED_ATTEMPT.md)
+   and [last global attempt](RICCI_FINAL_BOUNDED_RESULTS.md).
+5. [Local push attribution](RICCI_LOCAL_PUSH_RESULTS.md).
 
 Useful picture:
-[Shared-face pushes](C:/Users/nurdm/OneDrive/Documents/gigi/output/ricci-local-push-20261117/shared-face-pushes-v3.png).
+Shared-face pushes (`output/ricci-local-push-20261117/shared-face-pushes-v3.png`, not committed to this repository).
 
 ## Code and data entry points
 
 | File | Important contents |
 | --- | --- |
-| [Boundary extension](C:/Users/nurdm/OneDrive/Documents/gigi/scripts/ricci_boundary_extension.py) | `exact_lift`, `boundary_system`, `edge_audit`, `finalize`, `build_receipt`, `verify` |
-| [Boundary tests](C:/Users/nurdm/OneDrive/Documents/gigi/scripts/test_ricci_boundary_extension.py) | Planted weighted minimum, refusal, derivative and fixed-patch controls |
-| [Boundary gate](C:/Users/nurdm/OneDrive/Documents/gigi/scripts/ricci_boundary_gate.py) | Focused tests, removals, real evidence attacks |
-| [Common patch construction](C:/Users/nurdm/OneDrive/Documents/gigi/scripts/ricci_shared_curvature_patch.py) | `geometry`, `rank_audit`, `construct`, `owner_field`, `face_diagnostics` |
-| [Polynomial algebra](C:/Users/nurdm/OneDrive/Documents/gigi/scripts/ricci_shared_curvature_math.py) | Closure, potential, curl, exact-degree integration, constrained energy |
-| [Unchanged trace checker](C:/Users/nurdm/OneDrive/Documents/gigi/scripts/ricci_shared_face_math.py) | Physical trace norm and three original Whitney face moments |
+| [Boundary extension](../scripts/ricci_boundary_extension.py) | `exact_lift`, `boundary_system`, `edge_audit`, `finalize`, `build_receipt`, `verify` |
+| [Boundary tests](../scripts/test_ricci_boundary_extension.py) | Planted weighted minimum, refusal, derivative and fixed-patch controls |
+| [Boundary gate](../scripts/ricci_boundary_gate.py) | Focused tests, removals, real evidence attacks |
+| [Common patch construction](../scripts/ricci_shared_curvature_patch.py) | `geometry`, `rank_audit`, `construct`, `owner_field`, `face_diagnostics` |
+| [Polynomial algebra](../scripts/ricci_shared_curvature_math.py) | Closure, potential, curl, exact-degree integration, constrained energy |
+| [Unchanged trace checker](../scripts/ricci_shared_face_math.py) | Physical trace norm and three original Whitney face moments |
 
 Frozen inputs:
-- [Patch arrays](C:/Users/nurdm/OneDrive/Documents/gigi/output/ricci-local-push-20261117/attributions.npz):
+- Patch arrays (`output/ricci-local-push-20261117/attributions.npz`, not committed to this repository):
   `patch_ids`, aligned `patch_points`, original `chart`, saved adjoints. Deck
   transforms are already reflected in the retained cover points.
-- [Original native geometry](C:/Users/nurdm/OneDrive/Documents/gigi/output/ricci-shape-regular-20261117/berger/level1_berger_q6.input.json):
+- Original native geometry (`output/ricci-shape-regular-20261117/berger/level1_berger_q6.input.json`, not committed to this repository):
   960 cells,1124 edges. The folder says Berger; the recent experiment uses the
   original scalar ABELIAN control, not the Berger link values.
-- [Original Abelian arrays](C:/Users/nurdm/OneDrive/Documents/gigi/output/ricci-consistency-20261117/diagnostic/level1_q6.arrays.npz):
+- Original Abelian arrays (`output/ricci-consistency-20261117/diagnostic/level1_q6.arrays.npz`, not committed to this repository):
   `abelian_edge_integrals`, `abelian_velocity`.
 
-Latest [diagnostic](C:/Users/nurdm/OneDrive/Documents/gigi/output/ricci-boundary-extension-20261117/diagnostic.json)
-and [final gate](C:/Users/nurdm/OneDrive/Documents/gigi/output/ricci-boundary-extension-20261117/final-gate.json).
+Latest diagnostic (`output/ricci-boundary-extension-20261117/diagnostic.json`, not committed to this repository)
+and final gate (`output/ricci-boundary-extension-20261117/final-gate.json`, not committed to this repository).
 Diagnostic SHA256:
 `d8297e815db09ddf2adb89f55cb024bb2b86b16624cec05074159daf5387fe5a`.
 
-Successful local construction [diagnostic](C:/Users/nurdm/OneDrive/Documents/gigi/output/ricci-shared-curvature-20261117/diagnostic.json)
+Successful local construction diagnostic (`output/ricci-shared-curvature-20261117/diagnostic.json`, not committed to this repository)
 SHA256: `b37c290a021504763b4289f687a6f29326c72ce73ddd11f1377656c68e45c0fe`.
 
 ## Cheap checks, only if needed

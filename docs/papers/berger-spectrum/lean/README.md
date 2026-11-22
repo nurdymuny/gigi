@@ -22,6 +22,18 @@ There is no `sorry` anywhere. Every theorem depends only on Lean's three standar
 
 Here t = s² with s ≠ 0, so the statements need no square roots, except the cutoff.
 
+## What is checked (`Helike/Edge.lean`): the edge polynomial
+
+| theorem | statement |
+| --- | --- |
+| `edgeDet_factor` | the determinant numerator of the competing block B₄,₀ (473 terms) equals −16384 · P₁ · P₂ |
+| `edgeFactor_berger` | on the Berger path x = (2 − s²)/s, y = s: P₂ = −32 (s − 1)(s + 1) · Q₁₆(s), with Q₁₆ the t_A polynomial |
+| `tA_poly_root` | Q₁₆ has a root s with 1.65261 ≤ s ≤ 1.65262, by the intermediate value theorem |
+| `berger_crosses_edge` | there, P₂ vanishes on the Berger path, and t = s² ∈ [2.73111, 2.73116] |
+
+The polynomials are entered verbatim from the computer-algebra receipt (`research/su2-floor-family-20261119/edge_polynomial.srepr`).
+That they are det(B₄,₀ − λ₄ I), and that P₂'s root is the edge, are not checked in Lean.
+
 ## What is *not* checked here
 
 These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check

@@ -11,3 +11,7 @@ import Helike
 #print axioms Helike.floorLaw_ge_vertex
 #print axioms Helike.vertex_on_line
 #print axioms Helike.floorLaw_cutoff
+#print axioms Helike.edgeDet_factor
+#print axioms Helike.edgeFactor_berger
+#print axioms Helike.tA_poly_root
+#print axioms Helike.berger_crosses_edge

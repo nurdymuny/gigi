@@ -59,3 +59,26 @@ lake exe cache get
 lake build
 lake env lean Axioms.lean
 ```
+
+## Edge polynomial (`Helike/Edge.lean`), 2026-11-21
+
+All four theorems compile, with no `sorry`.
+- Every theorem, together with the original twelve, depends only on `propext`, `Classical.choice` and `Quot.sound`.
+- Rebuilt independently on macOS: Lean v4.36.0, Mathlib v4.36.0 prebuilt cache. `lake build`: `Build completed
+  successfully (18256 jobs)`. Helike.Edge took 231 s; `ring` multiplies out the degree-28 factorization.
+- The 473-term determinant is entered in ten parts of at most 48 terms (`edgeDetPart1` … `edgeDetPart10`), because a
+  single expression of that size times out in elaboration. It is the same polynomial; the parts are checked equal to
+  the receipt by sympy before the Lean was written.
+- The file sets `maxHeartbeats 20000000`. That changes no axiom and no proof obligation.
+
+| theorem | statement | axioms |
+| --- | --- | --- |
+| `edgeDet_factor` | edgeDet = −16384 · P₁ · P₂ | standard 3 |
+| `edgeFactor_berger` | P₂((2 − s²)/s, s, s) = −32 (s − 1)(s + 1) Q₁₆(s), for s ≠ 0 | standard 3 |
+| `tA_poly_root` | ∃ s ∈ [1.65261, 1.65262], Q₁₆(s) = 0 | standard 3 |
+| `berger_crosses_edge` | ∃ s there with P₂ = 0 on the Berger path and s² ∈ [2.73111, 2.73116] | standard 3 |
+
+**Scope.** Lean checks that the edge factor, restricted to the Berger path, *is* the t_A polynomial, and that t_A
+lies where the Floor paper says. It does not check that `edgeDet` is the determinant of the Hessian's block (the
+computer-algebra step), that P₂'s root is the edge (an eigenvalue comparison), or that she is the floor.
+

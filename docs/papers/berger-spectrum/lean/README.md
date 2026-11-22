@@ -1,0 +1,38 @@
+# HELIKE in Lean
+
+These are the exact algebraic statements behind *HELIKE*, Chapter 4, Section 4.1, checked by the Lean 4 proof
+assistant against Mathlib v4.36.0 (Lean v4.36.0).
+
+There is no `sorry` anywhere. Every theorem depends only on Lean's three standard axioms: `propext`,
+`Classical.choice` and `Quot.sound`.
+
+## What is checked (`Helike/Price.lean`)
+
+| theorem | statement |
+| --- | --- |
+| `price_anatomy` | her price splits exactly into κ² + (2j + t + y²) + ((4 − 2t) − 2B), for every x, y, j and every t > 0 |
+| `floorLaw_paper_form` | the floor law equals the form printed in the Floor paper |
+| `kappa_berger`, `fieldCurv_berger` | on the Berger field: κ = (2t − 4 − j)/√t and B = 3t − 4 |
+| `price_berger` | her price on the Berger field *is* the floor law |
+| `floorLaw_three`, `_sector0`, `_sector12` | at t = 3: (j(j+2) − 14)/3, −14/3 in sector 0, 154/3 in sector 12 |
+| `floorLaw_vertex_form` | each parabola has its bottom at j = t − 4, with height 4 − 3t |
+| `floorLaw_ge_vertex` | no sector is cheaper than 4 − 3t |
+| `vertex_on_line` | every vertex lies on λ = −3j − 8 |
+| `floorLaw_cutoff` | for t ≥ 4/3 her price crosses zero at j = t − 4 + √(t(3t − 4)) |
+
+Here t = s² with s ≠ 0, so the statements need no square roots, except the cutoff.
+
+## What is *not* checked here
+
+These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check
+that this formula is the eigenvalue of the Yang–Mills Hessian, and they do not check that she is the floor (the
+cheapest mode in every sector). That is the Floor paper's computed certification (doi:10.5281/zenodo.24412603), and
+formalizing it is a separate and much larger project.
+
+## Reproduce
+
+```
+lake exe cache get    # download Mathlib's prebuilt files
+lake build            # check every proof
+lake env lean Axioms.lean   # list the axioms each theorem depends on
+```

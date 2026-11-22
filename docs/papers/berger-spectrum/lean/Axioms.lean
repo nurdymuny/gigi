@@ -3,6 +3,7 @@ import DavisManifold
 import SpectralBranch
 import NonDecoupling
 import Chihiro
+import Lift
 #print axioms Helike.price_anatomy
 #print axioms Helike.floorLaw_paper_form
 #print axioms Helike.kappa_berger
@@ -86,3 +87,12 @@ import Chihiro
 #print axioms DavisManifold.quadratic_second_difference
 #print axioms DavisManifold.per_cell_constant
 #print axioms DavisManifold.sharp_sixteenth
+#print axioms Lift.mammogram
+#print axioms Lift.dice_couplings
+#print axioms Lift.capacity_law
+#print axioms Lift.capacity_one_is_fifty_fifty
+#print axioms Lift.mossel_all_even
+#print axioms Lift.mossel_conditional_sums_to_one
+#print axioms Lift.mossel_expectation
+#print axioms Lift.mossel_lifts
+#print axioms Lift.all_even_given_length

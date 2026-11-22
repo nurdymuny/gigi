@@ -101,6 +101,17 @@ All five use only the standard axioms.
 
 Six theorems, all on the standard axioms.
 
+## A sixth library: the Lift Unification, reread (`Lift/Review.lean`, 2026-11-22)
+
+Nine theorems from `docs/research/lift-unification-review-2026-11-22.md`.
+- The mammogram and dice numbers.
+- **The exact capacity law:** the posterior passes 1/2 exactly when tau > K. C = 1 is the 50/50 point.
+- Mossel's paradox as real infinite sums: P(all even) = 1/4, the conditional law sums to 1, E = 3/2, and the Lifts
+  4, 8/5, 16/25.
+- The corrected step: P(all even | length k) = (2/5)^(k-1).
+
+All nine use only the standard axioms.
+
 ## What is *not* checked here
 
 These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check

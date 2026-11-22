@@ -38,4 +38,12 @@ whenever `q > 0` (log-convexity). -/
 theorem stationary_upward {s p q : ℝ} (hstat : s * p = 1) (hq : 0 < q) : 0 < s ^ 2 * q + s * p := by
   rw [hstat]; positivity
 
+/-- **The condition that actually holds.** Log-convexity (`q > 0`) is not needed: at a stationary point (`s p = 1`)
+the log-curvature `s² q + s p` is positive as soon as `s² q > −1`. On the Exp 12 solver, `α_crit` is log-*concave*
+on s ∈ [0.9, 4.9] in all four classes, yet `s² q ≈ −0.67` to `−0.74` at the peaks, so every stationary point still
+crosses upward and the peak is unique there (receipt `tmp/v3_draft/plateau_check/` in the CHIHIRO repository). -/
+theorem stationary_upward_weak {s p q : ℝ} (hstat : s * p = 1) (hq : -1 < s ^ 2 * q) :
+    0 < s ^ 2 * q + s * p := by
+  rw [hstat]; linarith
+
 end Chihiro

@@ -80,3 +80,4 @@ import Chihiro
 #print axioms Chihiro.deriv_C
 #print axioms Chihiro.tangent_condition
 #print axioms Chihiro.stationary_upward
+#print axioms Chihiro.stationary_upward_weak

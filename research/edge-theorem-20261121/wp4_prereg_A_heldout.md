@@ -160,3 +160,32 @@ None of these has been computed at.
 - Script: `scripts/edge_wp<N>_heldout.py`.
 - Receipt: `research/edge-theorem-20261121/wp<N>_heldout.json`.
 - The points file is not edited after this note.
+
+## Amendment 1 (21 November, after gate A-code-2 fired, before any held-out point was computed)
+
+**What happened.** The first run stopped at A-code-2, as the gate is meant to. The log (`wp4_heldout.json` was not
+written past the gates) shows A-code-3 passing (relative residual 1.0 × 10⁻¹⁸) and A-code-2 failing with a maximum
+deviation of 3.67.
+
+**Diagnosis (on the 18 known-answer rows only; no held-out point was touched).**
+- P₂ **is** recovered: degrees (7, 8, 16), 113 terms. At every one of the 18 rows the known edge `edge_A` is a real
+  root of P₂.
+- But it is **not the largest** real root in [−3, 3]. P₂ has three or four further real roots above the edge, from
+  about 0.55 (t = 2) to 3.5 (t = 12, y = √t). There a **higher** eigenvalue of B₄,₀ meets λ₄, not the lowest one.
+- So the root-selection rule of Pred-A1 was wrong. This is one of the failure modes §7 names ("the root selection"),
+  caught by the known-answer control before any held-out point.
+
+**The amended rule (fixed now, before the rerun).**
+- **x\*_pred** is the largest real root r of P₂(x, y₀, s₀) in [−3, 3] at which the **lowest** eigenvalue of the
+  closed-form block B₄,₀(r, y, t) equals λ₄(r), to 10⁻⁸·max(1, |λ₄|).
+  - If there is no such root, x\*_pred is undefined and A1 fails at that point.
+- A-code-2 now checks this rule at the 18 rows (≤ 10⁻⁹), as before.
+
+**What else is unchanged.**
+- Every other gate, prediction, point and verdict rule.
+- The branch check A-branch uses the same lowest-eigenvalue selection for P₁ (the largest real root of P₁ in [−3, 3]
+  where the lowest eigenvalue of B₄,₀ meets λ₄; if none, it counts as a miss).
+
+**What the amendment costs.** A1 now uses one bit of block information, which eigenvalue meets her, in addition to
+P₂. That is still a prediction from the exact edge equation, and it is still not fitted. But "the edge is the largest
+real root of P₂" is **counted against** as a statement, by the known-answer rows.

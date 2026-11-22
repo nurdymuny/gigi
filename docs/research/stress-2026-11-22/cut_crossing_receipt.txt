@@ -1,0 +1,4 @@
+t=3.0: price before cut -4.667, just after -1.667, turns positive at tau=0.073; end +1.3333 (4/t=1.3333)
+t=3.55: price before cut -6.593, just after -3.043, turns positive at tau=0.1005; end +1.1268 (4/t=1.1268)
+t=5.0: price before cut -11.000, just after -6.000, turns positive at tau=0.11675; end +0.8000 (4/t=0.8000)
+t=10.0: price before cut -26.000, just after -16.000, turns positive at tau=0.09675; end +0.4000 (4/t=0.4000)

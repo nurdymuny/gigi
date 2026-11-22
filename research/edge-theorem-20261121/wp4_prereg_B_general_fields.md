@@ -169,3 +169,31 @@ upper edge x* ≤ 0, the competitor is non-neutral: (1, ±3/2) at y ≥ 2 for t 
 - One process, OMP_NUM_THREADS=1.
 - Script: `scripts/edge_wp<N>_general_fields.py`.
 - Receipt: `research/edge-theorem-20261121/wp<N>_general_fields.json`.
+
+## Amendment B1 (21 November, after gate B-II-code fired, before any B-II point was computed)
+
+**What happened.**
+- B-I passed every gate on all 200 draws. The worst values were: B-sym 1.7 × 10⁻¹⁵, B-exact 3.5 × 10⁻¹⁵, B-red
+  2.2 × 10⁻¹⁴, B-spec 3.9 × 10⁻¹⁵; B-even 3.7 × 10⁻¹⁶.
+- B-II-code then stopped the run. At all 27 known rows the edge reproduced `edge_A` (largest deviation about
+  4 × 10⁻¹⁵). But at two rows (t = 3 and t = 4, height 0.5) the competitor was read as (2, +1) where the receipt says
+  (2, −1), and the reverse.
+
+**Diagnosis (on the 27 known rows only).**
+- At every known row whose competitor has q ≠ 0, the blocks (j, q) and (j, −q) have the **same** lowest eigenvalue to
+  ≤ 6.7 × 10⁻¹⁵ (COMPUTED).
+- The two are an exactly degenerate mirror pair. Which one `argmin` reports is decided by rounding, and the receipt
+  itself flips sign from row to row: (2, +1) at t = 2.5, 4, 5; (2, −1) at t = 3, 6, 8, 10, 12. The prereg's own text
+  already writes this competitor as "(2, ±1)".
+- I expect a charge-conjugation symmetry to explain the tie. I have not proved it, so it is stated here as an
+  observed exact degeneracy.
+
+**Amended gate (fixed now).**
+- **B-II-code:** the edge reproduces `edge_A` to ≤ 10⁻⁹, and the competitor equals the receipt's block **up to
+  (j, q) ↔ (j, −q)** when those two blocks' lowest eigenvalues agree to 10⁻¹² relative at x\* + 10⁻⁴. Otherwise
+  stop.
+
+**Effect on the scored arms: none.**
+- B-N asks whether q = 0, which is invariant under q → −q.
+- B-S uses the competitor's slope, and the mirror block has the same lowest-eigenvalue function.
+- B-half does not use the competitor.

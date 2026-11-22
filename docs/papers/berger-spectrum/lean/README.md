@@ -84,6 +84,17 @@ Five theorems from `docs/research/non-decoupling-review-2026-11-22.md`.
 
 All five use only the standard axioms.
 
+## A fifth library: the notebook (`Notebook/`, 2026-11-22)
+
+- **Tangent:** Bee's tangent sketch, read as Vygodsky's square-root approximation (sqrt(4+2x) under 2 + x/2).
+  - The tangent lies above the curve, and the gap is at most x^2/16, quadratic.
+  - The sketch's bounds 1/2 x^2 and 1/2 x cross exactly at x = 1. Below that the quadratic bound is the smaller.
+  - The sketch's numbers.
+- **Ballooning:** the fourth-order stabilizing term on the Gaussian trial is gamma/2 + 3/4 (s/kappa - alpha)^2, a
+  perfect square of the net turning.
+
+Nine theorems, all on the standard axioms.
+
 ## What is *not* checked here
 
 These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check

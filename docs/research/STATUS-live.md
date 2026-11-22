@@ -36,5 +36,9 @@ The deep-dive covers:
 - **When the deep-dive finishes:** check its verifier report, commit the note, briefs and scripts, update this file,
   and push.
 - **When F finishes:** score it, write its note, update this file, then commit and push.
+  - **Also score Amendment 1:** `research/edge-theorem-20261122-f/wp7_prereg_F_amendment1_peak.md` (H_P-peak: is her
+    margin φ\* = `phi_grid_best` largest at 18.43°?). It was registered before any F result was in the repository. If
+    this session saw F's progress printouts before reading the amendment, the results note must say so, and the
+    amendment is reported as not blind.
 - **Book updates** (H3 and the end of "What the failures taught me"): a v5.2 PDF and zip go to Drive once D is
   scored.

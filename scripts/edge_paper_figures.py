@@ -258,7 +258,7 @@ def fig_helike():
 # ----------------------------------------------------------------------------------------------- figure 2
 def fig_region(reg):
     ts = reg["t"]
-    fig, axes = plt.subplots(2, len(ts), figsize=(TEXTW, 4.6), sharey=True, constrained_layout=True,
+    fig, axes = plt.subplots(2, len(ts), figsize=(TEXTW, 5.6), sharey=True, constrained_layout=True,
                              gridspec_kw={"height_ratios": [1, 1]})
     for c, tv in enumerate(ts):
         rows = sorted([r for r in reg["rows"] if r["t"] == tv], key=lambda r: r["y"])
@@ -317,14 +317,33 @@ def fig_region(reg):
     a = axes[0, 0]
     a.text(-9.6, 2.75, r"$r_{\mathrm{lo}}$", fontsize=6.8, color=INK2, ha="left", va="center")
     a.text(-4.6, 2.75, r"$x_{\mathrm{lo}}$", fontsize=6.8, ha="right", va="center")
-    handles = [Patch(facecolor=FAM_COL[f], alpha=0.55, edgecolor="none", label=FAM_NAME[f])
-               for f in ("D0", "B3h", "B40", "D+")]
-    handles += [Patch(facecolor="none", edgecolor="#b9b8b3", hatch="//////", label="$x>0$: she loses ($H+GG^*$, proved)"),
-                Line2D([], [], color=INK2, lw=0.8, ls=(0, (3, 2)), label=r"$r_{\mathrm{lo}}$, proved lower bound"),
-                Line2D([], [], marker="*", color=INK, ls="none", ms=7, label="Berger field")]
-    fig.legend(handles=handles, loc="outside upper center", ncol=4, handlelength=1.6, columnspacing=1.2,
-               title="block setting the upper edge $x^*_{12}$ (fill: her region in $j\\leq12$, from $x_{\\mathrm{lo}}$ to $x^*_{12}$)",
-               title_fontsize=7)
+    # legend 1: colour = the rival that reaches her first (sets x*_12), with the blocks each colour contains
+    seen = {}
+    for r in reg["rows"]:
+        bk = tuple(r["changes"][-1]["block_right"]); f = family(bk)
+        nm = bname((bk[0], abs(bk[1])))
+        nm = nm.replace("(", r"(").replace(",", r",\pm", 1) if abs(bk[1]) > 0 else nm
+        seen.setdefault(f, [])
+        if nm not in seen[f]:
+            seen[f].append(nm)
+    words = {"B40": "sector 4, charge 0 (edge = root of $P_2$)", "B3h": "sector 3, charge $\\pm\\frac{1}{2}$",
+             "D0": "top orbital weight, charge $\\pm l$", "D+": "near-top, charge $\\pm(l+1)$",
+             "other": "other blocks"}
+    order = [f for f in ("B40", "B3h", "D0", "D+", "other") if f in seen]
+    h1 = []
+    for f in order:
+        blks = sorted(seen[f], key=lambda z: (len(z), z))
+        h1.append(Patch(facecolor=FAM_COL[f], alpha=0.55, edgecolor=FAM_COL[f], lw=0.8,
+                        label=words[f] + ":  " + ", ".join(blks)))
+    l1 = fig.legend(handles=h1, loc="outside lower left", ncol=1, handlelength=1.6, borderaxespad=0.3,
+                    title="Colour: the rival that reaches her first (it sets her upper edge $x^*_{12}$, sectors $j\\leq12$)",
+                    title_fontsize=7, alignment="left")
+    h2 = [Line2D([], [], color=INK, lw=0.7, label="left boundary $x_{\\mathrm{lo}}$, right boundary $x^*_{12}$; fill: her region"),
+          Line2D([], [], color=INK2, lw=0.8, ls=(0, (3, 2)), label=r"$r_{\mathrm{lo}}$: the proved lower bound"),
+          Patch(facecolor="none", edgecolor="#b9b8b3", hatch="//////", label="$x>0$: she loses in some sector ($H+GG^*$, proved)"),
+          Line2D([], [], marker="*", color=INK, mec=SURF, ls="none", ms=8, label="the Berger field $x=(2-t)/\\sqrt{t}$, $y=\\sqrt{t}$")]
+    fig.legend(handles=h2, loc="outside lower right", ncol=1, handlelength=1.6, borderaxespad=0.3,
+               title="Lines and marks", title_fontsize=7, alignment="left")
     save(fig, "fig_region")
 
 

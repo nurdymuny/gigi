@@ -722,7 +722,7 @@ sector $j=16$ (\path{research/edge-theorem-20261121/}). The region is bounded be
 while the gauge-orthogonal state $\hat\theta^0\otimes\tau_0$ of the sector $j=0$ has a Rayleigh quotient affine in
 $x$, so for strongly negative $x$ the twist is not the floor either (\path{scripts/edge_wp4_design_checks.py}).
 Along the Berger path the crossings are exact: the $H+GG^*$ edge is crossed at $t=2.7311222782381144$ (the root
-$t_A$ of Remark~\ref{rem:tstar}, to $9\times10^{-16}$) and the gauge-orthogonal edge at $t=2.698026940521$ ($t^*$,
+$t_A$ of Remark~\ref{rem:tstar}, to \reddel{$9\times10^{-16}$}\redins{$8\times10^{-16}$}) and the gauge-orthogonal edge at $t=2.698026940521$ ($t^*$,
 to $10^{-12}$), both through the block $B_{4,0}$ (\path{scripts/ricci_su2_exact_edge.py}). The thresholds of
 Remark~\ref{rem:tstar} are therefore not special to the Berger field: they are where its path meets the edge. The edge is a crossing, not an avoided one: the
 twist is alone in its charge block and every competitor found has a different charge, and eigenvalues of different
@@ -752,7 +752,7 @@ $G>0$ gives the disc bound with no numerical step (\path{scripts/ricci_su2_gersh
 certificate. On each box the lowest eigenvalue of $B-\lambda I$ at the centre is bounded below by an interval
 $LDL^\top$ certificate with outward rounding and an a posteriori residual, and its variation over the box by
 $\sum_i\sup\norm{\partial_iA}_F$ times the half-widths, the derivatives being enclosed in interval arithmetic. In all,
-$1{,}640{,}935$ boxes over the $80$ sectors, with no failure and smallest certified margin $1.2\times10^{-6}$
+$1{,}640{,}935$ boxes over the $80$ sectors, with no failure and smallest certified \reddel{margin}\redins{per-box slack} $1.2\times10^{-6}$\redins{ (the slack left on the last box the bisection kept, not a spectral margin)}
 (\path{scripts/ricci_su2_family_block_cert.py}, receipt \path{family_block_cert_j80.json})\redins{; the few
 final operations not done in directed rounding carry an error of at most $1.6\times10^{-15}$, far below that margin
 (\path{research/edge-theorem-20261122-proofs/rounding_bound.md})}. The two twist blocks are

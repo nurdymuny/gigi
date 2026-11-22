@@ -77,3 +77,6 @@ import Chihiro
 #print axioms Chihiro.rstab_fourth_order
 #print axioms Chihiro.net_turning_zero
 #print axioms Chihiro.net_turning_nonneg
+#print axioms Chihiro.deriv_C
+#print axioms Chihiro.tangent_condition
+#print axioms Chihiro.stationary_upward

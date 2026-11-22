@@ -90,7 +90,11 @@ All five use only the standard axioms.
   gamma/2 + 3/4 (s/kappa - alpha)^2, a perfect square of the net turning. It vanishes where s = kappa*alpha, and is
   never negative.
 
-Three theorems, all on the standard axioms.
+- **Plateau:** the Plateau Tangent Proposition. At an interior maximum of C = s/alpha(s), alpha' = alpha/s. Its
+  uniqueness remark is also proved: at a stationary point, the second log-derivative is s^2 (log alpha)'' + 1 > 0, so
+  every crossing goes upward and there is at most one.
+
+Six theorems, all on the standard axioms.
 
 ## What is *not* checked here
 

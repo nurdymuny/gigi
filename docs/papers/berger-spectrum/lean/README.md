@@ -74,6 +74,16 @@ Ten theorems from `docs/research/spectral-branch-review-2026-11-22.md`.
 
 All ten use only the standard axioms (`row_change_counting` needs only `propext` and `Quot.sound`).
 
+## A fourth library: the Non-Decoupling Theorem, reread (`NonDecoupling/Review.lean`, 2026-11-22)
+
+Five theorems from `docs/research/non-decoupling-review-2026-11-22.md`.
+- **N1:** a bounded error cannot dominate an unbounded Yang-Mills energy linearly. This is why Part II fails.
+- **N2:** the monopole flux is 2 pi, so the first Chern number is 1.
+- **N3:** the dimension-2 floor, (2 pi k)^2 <= 4 pi I implies I >= pi k^2.
+- **N4:** the high-frequency ratio N^2 is unbounded. This is why Lemma 4 fails.
+
+All five use only the standard axioms.
+
 ## What is *not* checked here
 
 These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check

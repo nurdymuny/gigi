@@ -1,6 +1,7 @@
 import Helike
 import DavisManifold
 import SpectralBranch
+import NonDecoupling
 #print axioms Helike.price_anatomy
 #print axioms Helike.floorLaw_paper_form
 #print axioms Helike.kappa_berger
@@ -67,3 +68,8 @@ import SpectralBranch
 #print axioms SpectralBranch.isoperimetric_capacity_lower
 #print axioms SpectralBranch.n4_counts
 #print axioms SpectralBranch.row_change_counting
+#print axioms NonDecoupling.no_linear_bound
+#print axioms NonDecoupling.integral_sin_zero_pi
+#print axioms NonDecoupling.monopole_flux
+#print axioms NonDecoupling.dim2_floor
+#print axioms NonDecoupling.ratio_unbounded

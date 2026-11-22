@@ -1,6 +1,6 @@
 name = "helike"
 version = "0.1.0"
-defaultTargets = ["Helike", "DavisManifold", "SpectralBranch"]
+defaultTargets = ["Helike", "DavisManifold", "SpectralBranch", "NonDecoupling"]
 
 [[require]]
 name = "mathlib"
@@ -15,3 +15,6 @@ name = "DavisManifold"
 
 [[lean_lib]]
 name = "SpectralBranch"
+
+[[lean_lib]]
+name = "NonDecoupling"

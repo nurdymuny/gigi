@@ -86,6 +86,14 @@ theorem nonvacuity_iff (ε κh κs : ℝ) :
     (1 + ε) * κh < (1 - ε) * κs ↔ ε * (κs + κh) < κs - κh := by
   constructor <;> intro h <;> linarith
 
+/-- **L4, in the existence theorem.** With `κ_hard = Δ/4` and `κ_soft = Δ/2` (`Δ > 0`), the non-vacuity condition
+is exactly `ε < 1/3`, independent of `Δ`. -/
+theorem nonvacuity_quarter_half {Δ ε : ℝ} (hΔ : 0 < Δ) :
+    (1 + ε) * (Δ / 4) < (1 - ε) * (Δ / 2) ↔ ε < 1 / 3 := by
+  constructor
+  · intro h; nlinarith
+  · intro h; nlinarith
+
 /-! ## L5. One reference set, not two reference points -/
 
 /-- **L5 (the repaired Prop. 4).** If the benign point is within `κ_hard` of a reference set `R` and the event point

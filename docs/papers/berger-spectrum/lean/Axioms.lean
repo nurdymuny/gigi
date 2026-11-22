@@ -55,3 +55,4 @@ import DavisManifold
 #print axioms DavisManifold.log_sum_exp_ge
 #print axioms DavisManifold.one_sub_sin_div_lt
 #print axioms DavisManifold.chord_arc_distortion
+#print axioms DavisManifold.nonvacuity_quarter_half

@@ -1,0 +1,84 @@
+|2I| = 120
+surviving sectors j <= 40 (dim V_j^2I): [(0, 1), (12, 1), (20, 1), (24, 1), (30, 1), (32, 1), (36, 1), (40, 1)]
+
+holonomy of A = theta around gamma, against Ad(gamma^{-1}); trace of the adjoint holonomy vs tr(gamma)^2 - 1
+  max |Hol - Ad(gamma^-1)| over 2I elements and t = 3, 3.55: 7.52e-13
+  fundamental traces of 2I classes: [-2.0, -1.618034, -1.0, -0.618034, 0.0, 0.618034, 1.0, 1.618034, 2.0]  -> not all equal to 2: the holonomy is non-trivial (irreducible)
+
+energy check at (x,y,t)=(-0.5000,1.2000,3.0): builder 8.973722  family formula 8.973722
+
+energy check at (x,y,t)=(-0.8227,1.8841,3.55): builder 34.713750  family formula 34.713750
+
+spectrum at the bottom of each basin, surviving sectors only
+  t= 1.00 A=0 (trivial holonomy)
+     j= 0: min(H+GG*)=   4.0000  floor (gauge-orth)=   4.0000  her price=   4.0000  slice states below her=   0  slice zero modes=0
+     j=12: min(H+GG*)= 144.0000  floor (gauge-orth)= 144.0000  her price= 196.0000  slice states below her=  33  slice zero modes=0
+     j=20: min(H+GG*)= 400.0000  floor (gauge-orth)= 400.0000  her price= 484.0000  slice states below her=  57  slice zero modes=0
+     j=24: min(H+GG*)= 576.0000  floor (gauge-orth)= 576.0000  her price= 676.0000  slice states below her=  69  slice zero modes=0
+     j=30: min(H+GG*)= 900.0000  floor (gauge-orth)= 900.0000  her price=1024.0000  slice states below her=  87  slice zero modes=0
+  t= 1.00 A=theta (holonomy = 2I itself)
+     j= 0: min(H+GG*)=   4.0000  floor (gauge-orth)=   4.0000  her price=  16.0000  slice states below her=   1  slice zero modes=0
+     j=12: min(H+GG*)= 100.0000  floor (gauge-orth)= 100.0000  her price= 256.0000  slice states below her=  61  slice zero modes=0
+     j=20: min(H+GG*)= 324.0000  floor (gauge-orth)= 324.0000  her price= 576.0000  slice states below her= 101  slice zero modes=0
+     j=24: min(H+GG*)= 484.0000  floor (gauge-orth)= 484.0000  her price= 784.0000  slice states below her= 121  slice zero modes=0
+     j=30: min(H+GG*)= 784.0000  floor (gauge-orth)= 784.0000  her price=1156.0000  slice states below her= 151  slice zero modes=0
+  t= 2.75 A=0 (trivial holonomy)
+     j= 0: min(H+GG*)=   1.4545  floor (gauge-orth)=   1.4545  her price=   1.4545  slice states below her=   0  slice zero modes=0
+     j=12: min(H+GG*)=  71.2727  floor (gauge-orth)=  71.2727  her price=  71.2727  slice states below her=   0  slice zero modes=0
+     j=20: min(H+GG*)= 176.0000  floor (gauge-orth)= 176.0000  her price= 176.0000  slice states below her=   0  slice zero modes=0
+     j=24: min(H+GG*)= 245.8182  floor (gauge-orth)= 245.8182  her price= 245.8182  slice states below her=   0  slice zero modes=0
+     j=30: min(H+GG*)= 372.3636  floor (gauge-orth)= 372.3636  her price= 372.3636  slice states below her=   0  slice zero modes=0
+  t= 2.75 A=theta (holonomy = 2I itself)
+     j= 0: min(H+GG*)=   2.6257  floor (gauge-orth)=   2.6257  her price=   5.8182  slice states below her=   1  slice zero modes=0
+     j=12: min(H+GG*)=  52.3636  floor (gauge-orth)=  52.3636  her price=  93.0909  slice states below her=  17  slice zero modes=0
+     j=20: min(H+GG*)= 145.4545  floor (gauge-orth)= 145.4545  her price= 209.4545  slice states below her=  12  slice zero modes=0
+     j=24: min(H+GG*)= 209.4545  floor (gauge-orth)= 209.4545  her price= 285.0909  slice states below her=  12  slice zero modes=0
+     j=30: min(H+GG*)= 327.2727  floor (gauge-orth)= 327.2727  her price= 420.3636  slice states below her=  12  slice zero modes=0
+  t= 3.00 A=0 (trivial holonomy)
+     j= 0: min(H+GG*)=   1.3333  floor (gauge-orth)=   1.3333  her price=   1.3333  slice states below her=   0  slice zero modes=0
+     j=12: min(H+GG*)=  65.3333  floor (gauge-orth)=  65.3333  her price=  65.3333  slice states below her=   0  slice zero modes=0
+     j=20: min(H+GG*)= 161.3333  floor (gauge-orth)= 161.3333  her price= 161.3333  slice states below her=   0  slice zero modes=0
+     j=24: min(H+GG*)= 225.3333  floor (gauge-orth)= 225.3333  her price= 225.3333  slice states below her=   0  slice zero modes=0
+     j=30: min(H+GG*)= 341.3333  floor (gauge-orth)= 341.3333  her price= 341.3333  slice states below her=   0  slice zero modes=0
+  t= 3.00 A=theta (holonomy = 2I itself)
+     j= 0: min(H+GG*)=   2.5109  floor (gauge-orth)=   2.5109  her price=   5.3333  slice states below her=   1  slice zero modes=0
+     j=12: min(H+GG*)=  48.0000  floor (gauge-orth)=  48.0000  her price=  85.3333  slice states below her=  12  slice zero modes=0
+     j=20: min(H+GG*)= 133.3333  floor (gauge-orth)= 133.3333  her price= 192.0000  slice states below her=  10  slice zero modes=0
+     j=24: min(H+GG*)= 192.0000  floor (gauge-orth)= 192.0000  her price= 261.3333  slice states below her=  10  slice zero modes=0
+     j=30: min(H+GG*)= 300.0000  floor (gauge-orth)= 300.0000  her price= 385.3333  slice states below her=   8  slice zero modes=0
+  t= 3.55 A=0 (trivial holonomy)
+     j= 0: min(H+GG*)=   1.1268  floor (gauge-orth)=   1.1268  her price=   1.1268  slice states below her=   0  slice zero modes=0
+     j=12: min(H+GG*)=  55.2113  floor (gauge-orth)=  55.2113  her price=  55.2113  slice states below her=   0  slice zero modes=0
+     j=20: min(H+GG*)= 136.3380  floor (gauge-orth)= 136.3380  her price= 136.3380  slice states below her=   0  slice zero modes=0
+     j=24: min(H+GG*)= 190.4225  floor (gauge-orth)= 190.4225  her price= 190.4225  slice states below her=   0  slice zero modes=0
+     j=30: min(H+GG*)= 288.4507  floor (gauge-orth)= 288.4507  her price= 288.4507  slice states below her=   0  slice zero modes=0
+  t= 3.55 A=theta (holonomy = 2I itself)
+     j= 0: min(H+GG*)=   2.2934  floor (gauge-orth)=   2.2934  her price=   4.5070  slice states below her=   1  slice zero modes=0
+     j=12: min(H+GG*)=  40.5634  floor (gauge-orth)=  40.5634  her price=  72.1127  slice states below her=  10  slice zero modes=0
+     j=20: min(H+GG*)= 112.6761  floor (gauge-orth)= 112.6761  her price= 162.2535  slice states below her=   8  slice zero modes=0
+     j=24: min(H+GG*)= 162.2535  floor (gauge-orth)= 162.2535  her price= 220.8451  slice states below her=   8  slice zero modes=0
+     j=30: min(H+GG*)= 253.5211  floor (gauge-orth)= 253.5211  her price= 325.6338  slice states below her=   6  slice zero modes=0
+  t= 5.00 A=0 (trivial holonomy)
+     j= 0: min(H+GG*)=   0.8000  floor (gauge-orth)=   0.8000  her price=   0.8000  slice states below her=   0  slice zero modes=0
+     j=12: min(H+GG*)=  39.2000  floor (gauge-orth)=  39.2000  her price=  39.2000  slice states below her=   0  slice zero modes=0
+     j=20: min(H+GG*)=  96.8000  floor (gauge-orth)=  96.8000  her price=  96.8000  slice states below her=   0  slice zero modes=0
+     j=24: min(H+GG*)= 135.2000  floor (gauge-orth)= 135.2000  her price= 135.2000  slice states below her=   0  slice zero modes=0
+     j=30: min(H+GG*)= 204.8000  floor (gauge-orth)= 204.8000  her price= 204.8000  slice states below her=   0  slice zero modes=0
+  t= 5.00 A=theta (holonomy = 2I itself)
+     j= 0: min(H+GG*)=   1.8755  floor (gauge-orth)=   1.8755  her price=   3.2000  slice states below her=   1  slice zero modes=0
+     j=12: min(H+GG*)=  28.8000  floor (gauge-orth)=  28.8000  her price=  51.2000  slice states below her=   6  slice zero modes=0
+     j=20: min(H+GG*)=  80.0000  floor (gauge-orth)=  80.0000  her price= 115.2000  slice states below her=   6  slice zero modes=0
+     j=24: min(H+GG*)= 115.2000  floor (gauge-orth)= 115.2000  her price= 156.8000  slice states below her=   6  slice zero modes=0
+     j=30: min(H+GG*)= 180.0000  floor (gauge-orth)= 180.0000  her price= 231.2000  slice states below her=   4  slice zero modes=0
+  t=10.00 A=0 (trivial holonomy)
+     j= 0: min(H+GG*)=   0.4000  floor (gauge-orth)=   0.4000  her price=   0.4000  slice states below her=   0  slice zero modes=0
+     j=12: min(H+GG*)=  19.6000  floor (gauge-orth)=  19.6000  her price=  19.6000  slice states below her=   0  slice zero modes=0
+     j=20: min(H+GG*)=  48.4000  floor (gauge-orth)=  48.4000  her price=  48.4000  slice states below her=   0  slice zero modes=0
+     j=24: min(H+GG*)=  67.6000  floor (gauge-orth)=  67.6000  her price=  67.6000  slice states below her=   0  slice zero modes=0
+     j=30: min(H+GG*)= 102.4000  floor (gauge-orth)= 102.4000  her price= 102.4000  slice states below her=   0  slice zero modes=0
+  t=10.00 A=theta (holonomy = 2I itself)
+     j= 0: min(H+GG*)=   1.1672  floor (gauge-orth)=   1.1672  her price=   1.6000  slice states below her=   1  slice zero modes=0
+     j=12: min(H+GG*)=  14.4000  floor (gauge-orth)=  14.4000  her price=  25.6000  slice states below her=   4  slice zero modes=0
+     j=20: min(H+GG*)=  40.0000  floor (gauge-orth)=  40.0000  her price=  57.6000  slice states below her=   4  slice zero modes=0
+     j=24: min(H+GG*)=  57.6000  floor (gauge-orth)=  57.6000  her price=  78.4000  slice states below her=   4  slice zero modes=0
+     j=30: min(H+GG*)=  90.0000  floor (gauge-orth)=  90.0000  her price= 115.6000  slice states below her=   4  slice zero modes=0

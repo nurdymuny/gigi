@@ -125,3 +125,14 @@ independent builders reproduced it; for example, at (x, y, t) = (0.1, √10, 10)
 The Berger crossings t_A and t* and the polynomial P₂ are unaffected.
 
 Receipts: `research/edge-theorem-20261121/` (WP1, WP2, WP4 and their verifiers, `workflow_reports.json`).
+
+## Theorem on the domain D: proved (21 November)
+
+On D = {x ∈ [−3, −1.5], y ∈ [0.5, 3], t ∈ [3, 10]}, the twist is the floor of H + GG* in **every** sector, with
+multiplicity two, and the lowest gauge-orthogonal eigenvalue there.
+- **j ≥ 80:** interval Gershgorin (`family_large_j.json`).
+- **j < 80:** a mean-value interval certificate (`family_block_cert_j80.json`): 1,640,935 boxes, no failure, smallest
+  certified margin 1.2 × 10⁻⁶ (sector 1), about 64 CPU-hours.
+
+This is Theorem 7.3 of the Floor paper's v3 draft. D lies inside her corrected region: x ≤ −1.5 < 0, and above the
+lower edge, which is below −4 on D's grid.

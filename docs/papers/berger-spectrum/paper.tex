@@ -738,13 +738,19 @@ symmetry type may cross where those of one type generically do not~\cite{vonneum
 On $D=\{x\in[-3,-1.5],\ y\in[0.5,3],\ t\in[3,10]\}$ the twist is the lowest eigenvalue of $H+GG^*$ in every sector,
 with multiplicity exactly two, and the lowest gauge-orthogonal eigenvalue there.
 \end{theorem}
-\begin{proof}[Proof (draft)]
+\begin{proof}
 By the charge blocks, as in Theorem~\ref{thm:range}. \emph{Sectors $j\ge80$:} the Gershgorin quantity is
 $G=4\xi(2l-\xi)(1-1/t)+lK_a+E_a-(\text{ladder})$ with $K_a=4-8/t-4(w_a+x)/\sqrt t>0$ for every non-twist type on
 $D$; it is proved positive for $l\ge40$ on $D$ by interval bisection (\path{scripts/ricci_su2_family_large_j.py}).
 \emph{Sectors $j<80$:} every non-twist block is certified above $\lambda$ on $D$ by a mean-value interval
-certificate (\path{scripts/ricci_su2_family_block_cert.py}). \textbf{[Draft: this half is running; the theorem is
-stated only once it completes.]}
+certificate. On each box the lowest eigenvalue of $B-\lambda I$ at the centre is bounded below by an interval
+$LDL^\top$ certificate with outward rounding and an a posteriori residual, and its variation over the box by
+$\sum_i\sup\norm{\partial_iA}_F$ times the half-widths, the derivatives being enclosed in interval arithmetic. In all,
+$1{,}640{,}935$ boxes over the $80$ sectors, with no failure and smallest certified margin $1.2\times10^{-6}$
+(\path{scripts/ricci_su2_family_block_cert.py}, receipt \path{family_block_cert_j80.json}). The two twist blocks are
+$1\times1$ with entry $\lambda$ (Proposition~\ref{prop:twistfamily} and the antiunitary structure, as in
+Lemma~\ref{lem:charge}). The closed-form rows used here are built symbolically by the construction of
+Lemma~\ref{lem:charge}, now with $x$ and $y$ free, and agree with the general sector builder to $1.7\times10^{-13}$.
 \end{proof}
 
 \paragraph{What does not decide it.} Three simpler readings were tested, each written down before its data, and each

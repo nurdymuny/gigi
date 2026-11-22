@@ -1,5 +1,8 @@
 # The Davis Manifold: second edition (draft)
 
+> **Status: active research, not yet adversarially reviewed.** Do not cite or post it until the review in
+> `docs/research/STATUS-live.md` ("Active research") is done and its findings are addressed.
+
 | file | what it is |
 | --- | --- |
 | `the_davis_manifold_2025.tex` | the 2025 first edition, unchanged. Its `references.bib` was never found, so its bibliography builds empty. |

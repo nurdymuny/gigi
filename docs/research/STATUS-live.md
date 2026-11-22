@@ -17,6 +17,40 @@ The deep-dive covers:
 - the Chern–Simons winding of the fall;
 - a principal-circle survey of SU(5), Sp(3) and G₂.
 
+## Active research: needs adversarial review
+
+Each item below is written and pushed, but **nobody has tried to break it yet**. Each needs an adversarial review
+before it is cited, posted or put in the book. The reviewer's job is to refute, not to confirm. Default to
+"refuted" whenever a step cannot be checked.
+
+| item | where | what to attack |
+| --- | --- | --- |
+| **The Davis Manifold, second edition (draft)** | paper: `docs/papers/davis-manifold/the_davis_manifold_v2.tex` (PDF beside it; the 2025 text is unchanged next to it). Argument: [review note](davis-manifold-review-2026-11-22.md). Lean: `DavisManifold/Review.lean` on `feat/helike-lean` (13 theorems) | see the list below |
+
+**What to attack in the Davis Manifold draft:**
+1. **The five repairs.** For each one, check two things: that the first-edition step really fails (re-derive its
+   counterexample independently), and that the repaired statement is actually true.
+   - Lemma 1: the squared-distance gap, and the coupling assumption.
+   - Prop. 1: is Schur's comparison theorem applicable as used, with the hypotheses kd ≤ π, the minimizing geodesic
+     inside Ω_in, and the second fundamental form bounding the ambient curvature of geodesics?
+   - Prop. 4: one reference set.
+   - Theorem 2, assumption (ii).
+   - The vacuity corollary.
+2. **The single non-vacuity condition.** Is it the right one for every place it now replaces the old ones,
+   including the §6 protocols and the VIDAR worked example?
+3. **Section 7, the exact instance.**
+   - Is every number quoted correctly against `exact-edge-2026-11-21.md` and the Floor paper?
+   - Does "the degenerate case of Theorem 2" overclaim?
+   - Does any sentence slide from STRUCTURAL to identity?
+4. **The Lean.** Does each theorem state what the paper says it states? A proved theorem that says something
+   weaker than the paper's claim counts as a finding.
+5. **Anything the review note calls "holds as written" that does not.**
+
+Write the findings as a review note (`davis-manifold-adversarial-review-<date>.md`). **Do not edit the paper's text
+in the same pass.** Repairs come after the findings are read.
+
+More items will join this table as they are finished. The spectral branch is next.
+
 ## Landed today
 
 - **Test D is scored** ([results](edge-prereg-D-results-2026-11-22.md)). **Along her own charge circle, SU(3) gives
@@ -59,6 +93,10 @@ The deep-dive covers:
 - The Helike book v5.1 is on Drive (with the v5.1 handoff note).
 
 ## What happens next, automatically
+
+- **Adversarial review of everything under "Active research"**, whenever the running tests leave room. Start with
+  the Davis Manifold second edition. Commit the review note, update this file and push. The paper's text is not
+  edited in the same pass.
 
 - **When D finishes:** score it as registered, write the results note in your voice, update the edge paper (Test D
   section) and this file, then commit and push.

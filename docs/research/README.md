@@ -26,6 +26,8 @@ papers cite some of these paths, so files are never renamed or moved.
 | [Pre-registration S: results](stress-tests-results-2026-11-22.md) | 7 held, 2 failed. Door, wall or floor at every break; the squashed meron is the pass between the basins. Scripts in [`stress-2026-11-22/`](stress-2026-11-22/) |
 | [Pre-registration S6: the current sweep](current-sweep-preregistration-2026-11-22.md) | How much motion along her circle she needs to stay the floor, family by family. Registered before the run |
 | [Pre-registration S6: results](current-sweep-results-2026-11-22.md) | Both held. She needs some motion, never much: 65% of the Berger current at t = 3, 2% at t = 10, and family 2 is always the first to go |
+| [Pre-registration S7: the tear](tear-test-preregistration-2026-11-22.md) | Quotient the sphere by eight finite groups (Z₂ to the binary icosahedral) and see who is left standing. Registered before the run |
+| [Pre-registration S7: results](tear-test-results-2026-11-22.md) | All five held. No tear removes her; a cyclic tear keeps her shadow on the basin's floor, a non-abelian tear hands it to her rival at rest |
 | [The arc](the-arc-2026-11-22.md) | Where the work stands (end of act one) and, on purpose, where she might go: the principal circle, E₈ basins, the η of the two hands, Morse doors; and the old roots, tagged IMAGINED and RESONANCE |
 
 ## Helike: the twist and the law she obeys

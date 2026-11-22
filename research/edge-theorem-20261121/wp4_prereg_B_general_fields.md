@@ -5,6 +5,17 @@ Written before any floor or edge is computed for this test.
 The only computations behind it are the design checks D1 in `scripts/edge_wp4_design_checks.py`, with the receipt
 `wp4_design_checks.json`. They establish the class of fields. They compute no floor and no edge.
 
+**Revision after review (21 November, before any B-II point is computed).** Changes:
+- B-half now scans from the closed-form lower bound and requires the two sign changes of an interval (the lower edge
+  is real and proved);
+- B-II is described honestly, as a random (ρ, t) scan of the reduced family;
+- a minimum number of scored points is set;
+- H2's neutrality clause (N) is recorded as **already counted against** by existing data (below), so B-N is
+  descriptive only;
+- B-S's threshold is labelled post hoc, and the twist slope it uses is specified;
+- the fitting procedure is named;
+- half-integer weights are covered.
+
 **Labels.**
 - **PROVED:** exact symbolic, or rigorous interval.
 - **COMPUTED:** double precision.
@@ -29,7 +40,9 @@ The only computations behind it are the design checks D1 in `scripts/edge_wp4_de
 | +1 | 3 | m₀ = x e₀, m₁ = y e₁ − z e₂, m₂ = z e₁ + y e₂ |
 | −1 | 3 | m₀ = x e₀, m₁ = −y e₁ + z e₂, m₂ = z e₁ + y e₂ |
 
-For |k| ≥ 3 the weights cannot match, so the same reasoning gives the k = ±2 answer.
+For |k| ≥ 3 the weights cannot match, so the same reasoning gives the k = ±2 answer. Half-integer k arises if the
+circle is taken in SU(2) with period 4π. It also gives only the weight-0 match, so it reduces to the y = 0 ansatz, and
+the conclusion stands.
 
 **D1b, the gauge reductions (PROVED: explicit constant rotations, checked on the fields to ≤ 2.3 × 10⁻¹⁶):**
 - **k = +1:** a rotation by α = arg(y + iz) about Lie axis e₀ maps (x, y, z) to (x, √(y² + z²), 0).
@@ -79,8 +92,9 @@ operator would fail. I have none yet.
 - x ~ U[−10, 10], y ~ U[0, 6], z ~ U[−6, 6], t ~ U[0.5, 15].
 - A random constant gauge frame R from QR of a Gaussian matrix, with det R = +1.
 - The field R·M is fed to `T2.hessian_and_gauge` in sectors j ≤ 8 **without** reduction.
-- The charge operator is **fitted** from the field, with the signs of the frame, gauge and V parts chosen so that it
-  commutes with H and GG\* (as `fit_signs` in `ricci_su3_test2_family.py`). It is not assumed.
+- The charge operator is **fitted** from the field by `T2.fit_signs` (`scripts/ricci_su3_test2_family.py`): the
+  signs of the frame, gauge and V parts are chosen so that it commutes with H and GG\*, with tolerance
+  ‖[Q, ·]‖ ≤ 10⁻¹⁰ relative. Exactly one sign choice must pass, or the run stops. It is not assumed.
 
 **Gates (all stop the run on failure):**
 
@@ -95,7 +109,11 @@ operator would fail. I have none yet.
 **Verdict:** all hold → "the ansatz is the whole left-invariant circle-symmetric class" (PROVED in §1) is confirmed by
 code. Any failure is a code or convention error and stops the run before B-II is read.
 
-## 4. B-II: H2's kill criteria across the class (the part that can fail)
+## 4. B-II: a random (ρ, t) scan of the reduced family (the part that can fail)
+
+**What B-II is.** The x and k of each draw are discarded and the edge is located over x for each (ρ, t). So B-II is a
+200-point random scan of the reduced (x, y, t) family, over a much wider box than any scan so far. It is not separate
+evidence about "general" fields; §1 shows there are none beyond the ansatz in this class.
 
 **Predictions under test** (H2 of `what-she-is-a-law-of-2026-11-21.md`, made precise now):
 - **(N) neutrality:** wherever the upper edge is set by a competitor, that competitor carries total charge q = 0.
@@ -106,8 +124,14 @@ code. Any failure is a code or convention error and stops the run before B-II is
 
 **Known before the test, recorded so it is not presented as a discovery.** At y = 0.5, `exact_edge.json` lists the H +
 GG\* competitor blocks as (3, ½) at t = 2, (2, ±1) at t ≥ 2.5. Their total charge is not zero. **So (N) as stated in H2
-is already false at y = 0.5 (COMPUTED, `exact_edge.json`).** (N) is therefore registered only on the sub-box y ≥ 1.1,
-where the note's §3 found the (4, 0) block. At y < 1.1 the competitor's charge is reported, with no gate.
+is already false at y = 0.5 (COMPUTED, `exact_edge.json`).**
+
+**It is also already false at y ≥ 1.1 (COMPUTED, `wp1_competitor_map.json`).** At 14 grid points with y ≥ 1.1 and
+upper edge x* ≤ 0, the competitor is non-neutral: (1, ±3/2) at y ≥ 2 for t = 2, 3, 4, and (2, ±2) at t = 2, y ≥ 2.75.
+
+- So **H2 (N) is counted against by data in hand.** B-N is kept as a **description**, the fraction of scored points
+  with a neutral competitor, with no gate.
+- Restricting (N) to a sub-box chosen after seeing these failures would be a forking path, so it is not done.
 
 **Draws (B-II).**
 - The 200 B-I members, reduced to (x_red, ρ, t).
@@ -118,7 +142,8 @@ where the note's §3 found the (4, 0) block. At y < 1.1 the competitor's charge 
 - The competitor (j, q) is read at x\* + 10⁻⁴.
 - Slopes:
   - ∂_x λ_comp by Hellmann–Feynman on the competitor block (∂B/∂x from the symbolic rows);
-  - ∂_x λ_twist = 2(x + (j + 2)/√t) + 2√t, exact.
+  - ∂_x λ_twist = 2(x + (j + 2)/√t) + 2√t, exact. Here j is **the competitor's sector**, and the twist being compared
+    is the one in that sector.
 - Edges are found in the reduced coordinates. That is legitimate because B-spec has passed.
 
 **Gates and verdict:**
@@ -126,12 +151,13 @@ where the note's §3 found the (4, 0) block. At y < 1.1 the competitor's charge 
 | gate | rule | if it fails |
 | --- | --- | --- |
 | **B-II-code** | at the 27 rows of `exact_edge.json`, the same routine reproduces `edge_A` to ≤ 10⁻⁹ and the competitor block exactly | stop |
-| **B-N** | every scored point with ρ ≥ 1.1 has q_comp = 0 | **counts against H2 (N)** on the stated sub-box; each counterexample reported with (x\*, ρ, t, j, q) |
-| **B-S** | every scored point has ρ_s < 0.5 | **counts against H2 (S)**, "nearly blind" |
-| **B-half** | wherever an edge is found, there is exactly one sign change of φ_A on [x\* − 3, x\*] | counts against H1's no-hole clause (as in A4) |
+| **B-count** | at least 60 scored points (an upper edge found in range) | below 60: B-S and B-half are reported as **inconclusive** |
+| **B-N** | descriptive only (H2 (N) is already counted against; see above) | — |
+| **B-S** | every scored point has ρ_s < 0.5 | **counts against H2 (S)**, "nearly blind". The threshold 0.5 was chosen after seeing three ratios (0.16, 0.064, 0.165), so it is a loose, post-hoc bar, and a pass is weak evidence |
+| **B-half** | on the 0.01 grid over [r_lo(ρ, t) − 0.5, x\* + 0.5], with r_lo the closed-form lower bound (prereg A §2), φ_A has exactly two sign changes: up at the lower edge, down at the upper edge | counts against H1's no-hole clause (holes narrower than 0.01 cannot be seen) |
 
-- **Supported:** B-N and B-S hold at every scored point. This supports H2 across the class (COMPUTED). It is still not
-  a proof.
+- **Supported:** B-S and B-half hold at every scored point, with B-count met. That supports H2's "nearly blind"
+  clause (weakly; see above) and H1's interval shape across the scan (COMPUTED). It is still not a proof.
 - **Descriptive:**
   - the fraction of draws with an edge in range;
   - the distribution of ρ_s;

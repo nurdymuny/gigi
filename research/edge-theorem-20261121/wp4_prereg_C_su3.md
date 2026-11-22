@@ -9,7 +9,19 @@ This tests hypothesis H3 of `docs/research/what-she-is-a-law-of-2026-11-21.md`, 
 `docs/research/she-is-the-law-2026-11-21.md`, which I quote:
 
 > She is the law that a field gives way first along the twist that spins with it, and does so exactly when the field
-> along her own circle turns against her charge by more than the shape of space allows.
+> along her own circle turns against her charge — by enough, but not too much, as the shape of space sets.
+
+(This is the revised sentence. The earlier "by more than the shape of space allows" was corrected the same day: in
+SU(2) her region is an interval, and x > 0 is proved to lose at large j.)
+
+**Revision after review (21 November, before any SU(3) spectrum of this family is computed).** Changes:
+- F1 and F2 are labelled CONJECTURE until their code gates pass, and the coframe convention is stated;
+- the number of copies of λ_b removed is a measured gate, not an assumption;
+- the x scan covers the closed-form bounding interval, with a gate;
+- C-P2 is scored only where the bounding parabola does not already force it;
+- the strict C-P1 failure is decided now;
+- (N) is descriptive, because it is already counted against in SU(2), and (S) is flagged post hoc;
+- the SU(2) "x* > 0" remark is corrected, since it was a j ≤ 12 artefact.
 
 **Labels.**
 - **PROVED:** exact symbolic, or rigorous interval.
@@ -58,7 +70,10 @@ with components in the orthonormal coframe.
 - She is also charged under λ₃, with weight 1, and so couples to u through M₃. I register x (the stretched fibre),
   following H3. u is a second parameter of the shape, not "her circle".
 
-## 2. Structural facts fixed before the run (PROVED by the argument; checked by code gates)
+## 2. Structural facts fixed before the run (CONJECTURE: hand derivations, until C-quad and C-lin pass)
+
+Convention: the components of M are taken in the **orthonormal coframe**, e₈ = X₈/√t on metric 2b. In another
+normalization the x² coefficient picks up a factor of t.
 
 - **(F1) Minimal coupling: the x² coefficient.**
   - H is a quadratic polynomial in M. x enters H only through ad(M₈) in the pairs (k, 8) and linearly through F.
@@ -85,15 +100,20 @@ with components in the orthonormal coframe.
   nonempty.
   - *Strict:* at every grid (t, u, y) with t ≥ 3.
   - *Weak:* at one or more grid points at all.
-- **C-P2, side.** At every grid point where the floor set I(t, u, y) is nonempty, its midpoint satisfies σ·x_mid < 0.
-  The bulk of her region is on the side where the fibre field turns against her charge.
-  - The SU(2) region extends to x\* > 0 at large stretch (`exact_edge.json`: +0.329 at t = 12, y = √12). So the
-    prediction is about the midpoint, not every point.
+- **C-P2, side.** At every **informative** grid point where the floor set I(t, u, y) is nonempty, its midpoint
+  satisfies σ·x_mid < 0. The bulk of her region is on the side where the fibre field turns against her charge.
+  - A point is informative if the bounding interval's midpoint m_b = (r_lo + r_hi)/2 (§4, from the parabola
+    λ_b − ⟨v, Hv⟩) does **not** already satisfy σ·m_b < 0. Elsewhere the side is forced by structure, so it is not
+    evidence.
+  - If no grid point is informative, C-P2 is reported as **not informative**.
+  - In SU(2), x > 0 is proved to lose at large j. The finite-sector edge can still be positive (an artefact of the
+    cut-off). Here only the nine listed sectors are used, so **every C claim is "in the nine listed sectors"**.
 - **C-P3, one interval.** I is a single interval: no holes on the scan.
 - **C-P4, the competitor (H3(3), H2).** At the edge of I on the side of larger σx (the "upper" edge):
-  - **(S)** the competitor's x-slope ratio |∂_x λ_comp| / |∂_x λ_b| < 0.5, the same threshold as prereg B;
-  - **(N)** at grid points with u ≥ 1 and y ≥ 1 only, the competitor's total charge is 0. That is the regime where (N)
-    held in SU(2); prereg B §4 records that (N) is already false in SU(2) at y = 0.5.
+  - **(S)** the competitor's x-slope ratio |∂_x λ_comp| / |∂_x λ_b| < 0.5. This is the same threshold as prereg B, and
+    it is post hoc there too, so a pass is weak evidence.
+  - **(N)** descriptive only: the competitor's total charge. In SU(2), (N) is already counted against at y = 0.5 and
+    at y ≥ 1.1 (prereg B §4), so it is not registered as a prediction here.
 - **C-P5, threshold scaling (descriptive arm, no gate).** The upper edge x_hi(t) is reported against t at fixed (u, y).
   The sentence says the shape sets the threshold but not how.
 
@@ -101,13 +121,18 @@ with components in the orthonormal coframe.
 
 - **Grid.** t ∈ {2, 3, 4, 6, 8} × (u, y) ∈ {(½, ½), (½, 1), (1, 1), (1, 2)}, which is 20 shape points. Sectors are the
   nine of Test 2: (p, q) ∈ {(0,0), (1,0), (1,1), (2,0), (2,1), (3,0), (2,2), (3,1), (4,0)}.
+- **Bounding interval.** For each shape point, [r_lo, r_hi] is the pair of real roots of λ_b(x) − ⟨v, Hv⟩(x) in
+  sector (0, 0), with v = θ⁸ ⊗ X₈. It is computed in closed form, from the quadratic and affine fits that C-quad and
+  C-lin verify, **before** the scan. If λ_b − ⟨v, Hv⟩ has no real root, her sector-(0, 0) floor is unbounded on
+  neither side, which contradicts F2: stop.
 - **x scan.**
-  - Step 0.25 on [−8, 8]. Wherever the floor set touches −8 or 8, extend at step 1 to [−32, 32]; F2 guarantees a
-    finite end.
-  - Each sign change of φ_S(x) = min over sectors of [the lowest slice eigenvalue other than b, − λ_b] is refined by
-    brentq to 10⁻⁸.
-  - λ_b is removed from the slice spectrum by taking out the eigenvalue within 10⁻⁹ max(1, |λ_b|) of ⟨b, Hb⟩. If none
-    is found, stop.
+  - Step 0.25 on [r_lo − 0.5, r_hi + 0.5].
+  - Each sign change of φ_S(x) = min over sectors of [the lowest slice eigenvalue other than b's copies, − λ_b] is
+    refined by brentq to 10⁻⁸.
+  - A hole narrower than one step, 0.25, cannot be seen; that limit is part of every C claim.
+- **Copies of λ_b removed (measured).** In each sector, the number n_b of slice eigenvalues within
+  10⁻⁹·max(1, |λ_b|) of ⟨b, Hb⟩ is counted at x ∈ {r_lo + 0.3, (r_lo + r_hi)/2, r_hi − 0.3}. In self-conjugate
+  sectors such as (0,0), (1,1) and (2,2), b and its conjugate may share the sector. Exactly n_b copies are removed.
 - **Floor test.** As in Test 2: ⟨b, Hb⟩ ≤ μ_min + 10⁻⁹ max(1, |μ_min|). The H + GG\* version is reported alongside.
 - **Competitor.** The sector and the Q-charge of the lowest non-b slice eigenvector at x_hi + 10⁻⁴ (charge as ⟨w, Qw⟩,
   required to be within 10⁻⁶ of an eigenvalue of Q). Its slope comes from Hellmann–Feynman with ∂H/∂x by central
@@ -124,20 +149,23 @@ with components in the orthonormal coframe.
 | **C-sym** | at every evaluated point and sector: ‖[Q, H]‖ ≤ 10⁻¹⁰‖H‖; the charge-(p + q + 4) eigenspace is one-dimensional; b's residual ≤ 10⁻⁹‖H‖; ‖G\*b‖ ≤ 10⁻⁹‖G‖ |
 | **C-quad** (F1) | the second x-difference of λ_b, at step 1 about x = 0, equals 3/2 (= 2 · 3/4) to 10⁻⁹ in every sector at every shape point. Failure means the charge identification or the coupling is wrong: stop |
 | **C-lin** (F2) | ⟨v, Hv⟩ for v = θ⁸ ⊗ X₈ in sector (0, 0) has second x-difference ≤ 10⁻⁹, and ‖G\*v‖ ≤ 10⁻¹² |
-| **C-sigma** | κ_pq has one sign σ over all eight sectors (p, q) ≠ (0, 0) at every shape point. If not, "against her charge" is not well defined: C-P2 is reported as **untestable** |
+| **C-sigma** | κ_pq has one sign σ over all eight sectors (p, q) ≠ (0, 0) at every shape point. If not, "against her charge" is not well defined: C-P2 is reported as **untestable**. Because the sign is fixed by the λ₈-weights, this is a code check, not evidence |
+| **C-mult** | in each sector, n_b is 1 or 2, the same at the three x values, and 1 in every sector that is not self-conjugate. Otherwise stop |
+| **C-bound** | the floor set I lies inside [r_lo, r_hi] at every shape point. Otherwise stop: the scan or F2 is wrong |
 
 ## 6. Verdict rule (fixed now)
 
 - **C-P1 weak fails** (her floor set is empty at all 20 shape points, x free): **counts against the sentence and H3
   beyond SU(2).** Freeing the field along her circle does not make her the floor in SU(3).
-- **C-P1 strict fails at some t ≥ 3 shape points** while weak holds: a weak negative. The shape can forbid her, which
-  "by more than the shape of space allows" may permit (an unbounded threshold). Reported with the points.
+- **C-P1 strict fails at some t ≥ 3 shape points** while weak holds: **counts against the universal reading** of the
+  sentence, that for every shape some x makes her the floor. It does not count against the direction clause (C-P2).
+  Decided now; reported with the points.
 - **C-P2 fails** at any point with nonempty I: **counts against "turns against her charge"** in SU(3).
 - **C-P3 fails:** counts against the interval form of the law (a hole).
-- **C-P4 (S) fails:** counts against H2/H3(3) "nearly blind". **(N) fails** on u, y ≥ 1: counts against H3(3)
-  neutrality.
-- **All of C-P1 (weak and strict), C-P2, C-P3 and C-P4 hold:** H3 is supported in one SU(3) family (COMPUTED). This
-  does not prove anything about other groups or about sector-mixing fields.
+- **C-P4 (S) fails:** counts against H2/H3(3) "nearly blind". (N) is descriptive and scores nothing.
+- **All of C-P1 (weak and strict), C-P2 (where informative), C-P3 and C-P4 (S) hold:** H3 is supported in one SU(3)
+  family, in its nine listed sectors (COMPUTED). This does not prove anything about other groups, other sectors or
+  sector-mixing fields.
 - **Not evidence either way:** b's exactness and gauge-orthogonality (automatic, §1), F1 (structural), F2 (proved), and
   C-P5.
 

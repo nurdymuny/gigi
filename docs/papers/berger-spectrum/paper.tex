@@ -141,7 +141,10 @@ $[\hat e_i,\hat e_j]=\sum_kc_{ij}^{\,k}\hat e_k$, $c_{ij}^{\,k}=2\varepsilon_{ij
 \paragraph{The Berger field.} The Levi-Civita connection has Christoffel symbols
 $\Gamma_{ijk}=\tfrac12(c_{ij}^{\,k}-c_{jk}^{\,i}+c_{ki}^{\,j})$ in the orthonormal frame. Identifying
 $\mathfrak{so}(3)$ with $\su$, write it as the $\su$-valued $1$-form $A=\sum_iM_i\hat\theta^i$ with
-constant $M_i$, where $\tau_0,\tau_1,\tau_2$ is a basis of $\su$ with the same brackets as the frame,
+constant $M_i$, where $\tau_0,\tau_1,\tau_2$ is a basis of $\su$ \reddel{with the same brackets as the frame,}\redins{with
+$[\tau_a,\tau_b]=\sum_c\varepsilon_{abc}\tau_c$ (the cross product, as for $\mathfrak{so}(3)$ under the identification; the
+frame brackets carry the factor $2$, the Lie brackets do not), so that $\operatorname{ad}M_i$ acts on Lie components as
+$m_i\times\cdot$,}
 $\tau_0$ along the long axis.
 Its curvature $F$ has components $F_{ij}=[M_i,M_j]-\sum_kc_{ij}^{\,k}M_k$. At the round metric $A$ is
 a Yang--Mills field; at $g=(3,1,1)$ it is not.
@@ -730,7 +733,8 @@ symmetry type may cross where those of one type generically do not~\cite{vonneum
   \includegraphics[width=\textwidth]{figures/fig_twist_map.pdf}
   \caption{Where the twist is the floor, over the circle-symmetric family at $t=1,2,3,4,6$ (sectors $j\le8$;
   double precision): number of sectors in which the twist is the floor; black outline, all nine; dashed, $x=0$.
-  Star: the Berger field; diamond: the squashed meron; dashed line: $A=s\theta$.}
+  Star: the Berger field; diamond: the squashed meron; dashed line: $A=s\theta$.\redins{ Cells with $x>0$ counted as
+  all nine are artefacts of stopping at $j=8$: for $x>0$ some higher sector undercuts the twist.}}
   \label{fig:twistmap}
 \end{figure}
 
@@ -750,7 +754,9 @@ $1{,}640{,}935$ boxes over the $80$ sectors, with no failure and smallest certif
 (\path{scripts/ricci_su2_family_block_cert.py}, receipt \path{family_block_cert_j80.json}). The two twist blocks are
 $1\times1$ with entry $\lambda$ (Proposition~\ref{prop:twistfamily} and the antiunitary structure, as in
 Lemma~\ref{lem:charge}). The closed-form rows used here are built symbolically by the construction of
-Lemma~\ref{lem:charge}, now with $x$ and $y$ free, and agree with the general sector builder to $1.7\times10^{-13}$.
+Lemma~\ref{lem:charge}, now with $x$ and $y$ free, and \reddel{agree with the general sector builder to $1.7\times10^{-13}$}\redins{the
+interval blocks agree with the double-precision closed-form blocks to $1.7\times10^{-13}$ (a check of the interval
+evaluation, not of the rows; the rows themselves are compared with the general sector builder in \path{exact_edge.json})}.
 \end{proof}
 
 \paragraph{What does not decide it.} Three simpler readings were tested, each written down before its data, and each

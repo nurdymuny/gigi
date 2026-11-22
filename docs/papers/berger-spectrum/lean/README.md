@@ -59,7 +59,12 @@ They are not about the floor.
 - **L7:** log-sum-exp ≥ log K + mean (Jensen).
 - **L8:** `1 − sin x/x < x²/6`, so chord-against-arc distortion is below `(kL)²/24`.
 
-All twelve depend only on `propext`, `Classical.choice` and `Quot.sound`. `lake build` builds both libraries.
+All twelve depend only on `propext`, `Classical.choice` and `Quot.sound`.
+
+`DavisManifold/Duality.lean` adds five theorems from `docs/research/davis-duality-review-2026-11-22.md`:
+- the pointwise lower bound fails (interpolant of x^2);
+- the per-cell lower bound by second differences, |D|/4, which gives lambda h^2/16;
+- the constant 1/16 is sharp (equioscillation on [0, h]).
 
 ## A third library: the spectral branch (Branch IX), reread (`SpectralBranch/Review.lean`, 2026-11-22)
 

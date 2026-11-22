@@ -81,3 +81,8 @@ import Chihiro
 #print axioms Chihiro.tangent_condition
 #print axioms Chihiro.stationary_upward
 #print axioms Chihiro.stationary_upward_weak
+#print axioms DavisManifold.pointwise_lower_bound_fails
+#print axioms DavisManifold.second_difference_lower
+#print axioms DavisManifold.quadratic_second_difference
+#print axioms DavisManifold.per_cell_constant
+#print axioms DavisManifold.sharp_sixteenth

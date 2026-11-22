@@ -27,7 +27,13 @@ The deep-dive covers:
   - The blind-rival clause failed again: the charged (4,0) rival rides the field at 0.61–0.76, as in SU(2).
   - Same group as C, same method; only the circle changed.
   - The edge paper is updated (abstract, introduction, Test D section and appendix).
-  - **Next:** the book's H3 and "What the failures taught me" go to Drive as v5.2.
+  - **The book is v5.8 on Drive**, built on your other session's v5.7. The gap map's §5 items are done:
+    - H3 now says she came back along her own circle;
+    - "What the failures taught me" ends "The failure along the wrong circle was never about her. It was about the
+      circle.";
+    - the proved list and the gap map are updated.
+
+    Start with `HELIKE_whole_draft_with_gap_map_v5.8.pdf`.
 
 - **The arc deep-dive** ([note](arc-deep-dive-2026-11-22.md); receipts in `research/arc-deepdive-20261122/`). In
   plain words:

@@ -2,7 +2,7 @@ import Helike
 import DavisManifold
 import SpectralBranch
 import NonDecoupling
-import Notebook
+import Chihiro
 #print axioms Helike.price_anatomy
 #print axioms Helike.floorLaw_paper_form
 #print axioms Helike.kappa_berger
@@ -74,12 +74,6 @@ import Notebook
 #print axioms NonDecoupling.monopole_flux
 #print axioms NonDecoupling.dim2_floor
 #print axioms NonDecoupling.ratio_unbounded
-#print axioms Notebook.tangent_above
-#print axioms Notebook.tangent_gap
-#print axioms Notebook.quadratic_below_linear
-#print axioms Notebook.bounds_meet_at_one
-#print axioms Notebook.linear_below_quadratic
-#print axioms Notebook.sketch_numbers
-#print axioms Notebook.rstab_fourth_order
-#print axioms Notebook.net_turning_zero
-#print axioms Notebook.net_turning_nonneg
+#print axioms Chihiro.rstab_fourth_order
+#print axioms Chihiro.net_turning_zero
+#print axioms Chihiro.net_turning_nonneg

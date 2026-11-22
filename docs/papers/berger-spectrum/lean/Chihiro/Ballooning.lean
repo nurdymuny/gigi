@@ -12,7 +12,7 @@ is unbounded below for wide Gaussians. The exact Gaussian quotient (B4–B5, hel
 -/
 import Mathlib
 
-namespace Notebook
+namespace Chihiro
 
 /-- Gaussian moments under the normalized weight `exp(−γθ²)`. -/
 noncomputable def m2 (γ : ℝ) : ℝ := 1 / (2 * γ)
@@ -31,4 +31,4 @@ theorem net_turning_zero {s κ α : ℝ} (hκ : κ ≠ 0) (h : s = κ * α) : (s
 
 theorem net_turning_nonneg (s κ α : ℝ) : 0 ≤ 3 / 4 * (s / κ - α) ^ 2 := by positivity
 
-end Notebook
+end Chihiro

@@ -1,0 +1,17 @@
+WP6 design check (structural; no floor computed): diagonal data of the closed-form charge-block rows,
+scripts/ricci_su2_exact_edge.py symbolic_rows, family m0 = x e0, m1 = y e1, m2 = y e2 on (t,1,1).
+Row diagonal: D(m, a) = (w_a - 2m/sqrt t)^2 + 4(l(l+1) - m^2) + C_aa.
+(c_f, c_l)   w_a                          C_aa
+(-1,-1)      -sqrt(t) + x + 2/sqrt(t)     4 sqrt(t) x - t - y^2 + 4
+(-1, 0)      (2 - t)/sqrt(t)              -t + 2 y^2 + 4
+(-1, 1)      -sqrt(t) - x + 2/sqrt(t)     -4 sqrt(t) x - t + 3 y^2 + 4
+( 0,-1)      x                            4 t + y^2
+( 0, 0)      0                            4 t + 2 y^2
+( 0, 1)      -x                           4 t + y^2
+( 1,-1)      sqrt(t) + x - 2/sqrt(t)      -4 sqrt(t) x - t + 3 y^2 + 4      <- the sister (m = l)
+( 1, 0)      (t - 2)/sqrt(t)              -t + 2 y^2 + 4
+( 1, 1)      sqrt(t) - x - 2/sqrt(t)      4 sqrt(t) x - t - y^2 + 4         <- Helike (m = l)
+Consequences (exact algebra on the diagonal only):
+- at m = l the linear-in-l part of D is -4 w_a l/sqrt t: the largest w_a is cheapest; for x > 0 that is (1,-1), for x < 0 (1,1).
+- D_sister(m=l) - D_her(m=l) = -8 l x/sqrt t - 4 sqrt(t) x - 8 x/sqrt t + 4 y^2, zero at l_d = y^2 sqrt(t)/(2x) - t/2 - 1.
+- the cross field costs the sister +3y^2 and her -y^2 on the diagonal (difference 4y^2).

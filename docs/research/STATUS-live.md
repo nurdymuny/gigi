@@ -27,6 +27,7 @@ before it is cited, posted or put in the book. The reviewer's job is to refute, 
 | --- | --- | --- |
 | **The Davis Manifold, second edition (draft)** | paper: `docs/papers/davis-manifold/the_davis_manifold_v2.tex` (PDF beside it; the 2025 text is unchanged next to it). Argument: [review note](davis-manifold-review-2026-11-22.md). Lean: `DavisManifold/Review.lean` on `feat/helike-lean` (13 theorems) | see the list below |
 | **The spectral branch (Branch IX), review note** | [review note](spectral-branch-review-2026-11-22.md); recomputation `spectral-branch-2026-11-22/checks.py` + `checks_output.json`; Lean `SpectralBranch/Review.lean` on `feat/helike-lean` (10 theorems). The paper itself (`davis_plasma/theory/spectral_branch.tex`) is not yet revised | see the list below |
+| **The Non-Decoupling Theorem, review note** | [review note](non-decoupling-review-2026-11-22.md); Lean `NonDecoupling/Review.lean` on `feat/helike-lean` (5 theorems). The paper (`davis-wilson-lattice/docs/reports/no_paralellel_lines.tex`, not committed anywhere) is not yet revised | see the list below |
 
 **What to attack in the Davis Manifold draft:**
 1. **The five repairs.** For each one, check two things: that the first-edition step really fails (re-derive its
@@ -70,6 +71,18 @@ in the same pass.** Repairs come after the findings are read.
 
 Same rule as above: write the findings as a review note first. The paper is revised only after the findings are
 read.
+
+**What to attack in the Non-Decoupling review:**
+1. **§2.1 and §2.2.**
+   - Is the high-frequency counterexample to Lemma 4 airtight on a simply connected base?
+   - Is 𝓔 really bounded by diam(G) under the reply to Objection 3's definition?
+   - Is the small-loop law d_G(τ, e) ≈ ‖Ω‖·area stated with the right error order?
+2. **The Duality constants quoted in §2.2** (c₁ = 1/16, c₂ = 1/2, operator norm, supremum-over-region lower
+   bound). Check them against the Duality PDF itself, not against memory.
+3. **§2.4.** The dimension-2 floor, the dimension-4 normalization of 8π²|k|, and whether the floor really fails to
+   follow above dimension 4. Either find a source or construct the concentration example.
+4. **§3.** Does the arc note's bridge (§4.2 of *The phone in the house*) survive at INCIDENCE, as the review says?
+5. **The Lean.** Does each theorem state what the note says it states?
 
 More items will join this table as they are finished.
 

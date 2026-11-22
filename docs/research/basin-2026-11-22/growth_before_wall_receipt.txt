@@ -1,0 +1,2 @@
+t=3.0: sector-0 price -4.667 -> +4.181 at tau=1; growth integral 0.0818, factor e^I = 1.085
+t=3.55: sector-0 price -6.593 -> +3.699 at tau=1; growth integral 0.1315, factor e^I = 1.141

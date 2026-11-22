@@ -1,0 +1,244 @@
+{
+ "status": "COMPUTED (double precision, sectors j <= 12)",
+ "rows": [
+  {
+   "t": 0.5,
+   "floor": 2.0000000000000004,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 3,
+   "min(4/t,4t)": 2.0,
+   "helike_A0_sector0": 8.0,
+   "helike_theta_min": 32.0,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.4210854715202004e-13,
+   "n_below_cutoff": 1479,
+   "A0_sector2_min": 4.8768943743823385,
+   "HL_mu_minus_k2_j1": 4.876894374382339,
+   "A0_sector1_min": 8.0,
+   "HL_9a2": 18.0
+  },
+  {
+   "t": 0.8,
+   "floor": 3.1999999999999997,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 3,
+   "min(4/t,4t)": 3.2,
+   "helike_A0_sector0": 5.0,
+   "helike_theta_min": 20.0,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.2789769243681803e-13,
+   "n_below_cutoff": 1737,
+   "A0_sector2_min": 4.293400335431361,
+   "HL_mu_minus_k2_j1": 4.293400335431359,
+   "A0_sector1_min": 8.449999999999994,
+   "HL_9a2": 11.25
+  },
+  {
+   "t": 0.9,
+   "floor": 3.5999999999999996,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 3,
+   "min(4/t,4t)": 3.6,
+   "helike_A0_sector0": 4.444444444444445,
+   "helike_theta_min": 17.77777777777778,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.1368683772161603e-13,
+   "n_below_cutoff": 1791,
+   "A0_sector2_min": 4.139611320766037,
+   "HL_mu_minus_k2_j1": 4.139611320766039,
+   "A0_sector1_min": 8.711111111111109,
+   "HL_9a2": 10.0
+  },
+  {
+   "t": 1.0,
+   "floor": 3.9999999999999987,
+   "sectors_A0": [
+    0,
+    2
+   ],
+   "multiplicity": 12,
+   "min(4/t,4t)": 4.0,
+   "helike_A0_sector0": 4.0,
+   "helike_theta_min": 16.0,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 6.394884621840902e-14,
+   "n_below_cutoff": 1656,
+   "A0_sector2_min": 3.9999999999999987,
+   "HL_mu_minus_k2_j1": 4.0,
+   "A0_sector1_min": 8.999999999999996,
+   "HL_9a2": 9.0
+  },
+  {
+   "t": 1.2,
+   "floor": 3.3333333333333335,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 3.3333333333333335,
+   "helike_A0_sector0": 3.3333333333333335,
+   "helike_theta_min": 13.333333333333334,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 9.237055564881302e-14,
+   "n_below_cutoff": 1710,
+   "A0_sector2_min": 3.754700909665539,
+   "HL_mu_minus_k2_j1": 3.75470090966554,
+   "A0_sector1_min": 7.499999999999995,
+   "HL_9a2": 7.5
+  },
+  {
+   "t": 1.5,
+   "floor": 2.6666666666666674,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 2.6666666666666665,
+   "helike_A0_sector0": 2.6666666666666665,
+   "helike_theta_min": 10.666666666666666,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.7053025658242404e-13,
+   "n_below_cutoff": 1554,
+   "A0_sector2_min": 3.4501655647292537,
+   "HL_mu_minus_k2_j1": 3.45016556472925,
+   "A0_sector1_min": 6.000000000000001,
+   "HL_9a2": 6.0
+  },
+  {
+   "t": 2.0,
+   "floor": 1.9999999999999996,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 2.0,
+   "helike_A0_sector0": 2.0,
+   "helike_theta_min": 8.0,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.2789769243681803e-13,
+   "n_below_cutoff": 1443,
+   "A0_sector2_min": 3.0557280900008363,
+   "HL_mu_minus_k2_j1": 3.055728090000841,
+   "A0_sector1_min": 4.499999999999994,
+   "HL_9a2": 4.5
+  },
+  {
+   "t": 2.75,
+   "floor": 1.4545454545454546,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 1.4545454545454546,
+   "helike_A0_sector0": 1.4545454545454546,
+   "helike_theta_min": 5.818181818181818,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 9.947598300641403e-14,
+   "n_below_cutoff": 1140,
+   "A0_sector2_min": 2.6257184145342243,
+   "HL_mu_minus_k2_j1": 2.6257184145342265,
+   "A0_sector1_min": 3.2727272727272716,
+   "HL_9a2": 3.272727272727273
+  },
+  {
+   "t": 3.0,
+   "floor": 1.3333333333333337,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 1.3333333333333333,
+   "helike_A0_sector0": 1.3333333333333333,
+   "helike_theta_min": 5.333333333333333,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.1013412404281553e-13,
+   "n_below_cutoff": 1083,
+   "A0_sector2_min": 2.510874706923943,
+   "HL_mu_minus_k2_j1": 2.5108747069239428,
+   "A0_sector1_min": 2.9999999999999964,
+   "HL_9a2": 3.0
+  },
+  {
+   "t": 3.55,
+   "floor": 1.1267605633802815,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 1.1267605633802817,
+   "helike_A0_sector0": 1.1267605633802817,
+   "helike_theta_min": 4.507042253521127,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.0658141036401503e-13,
+   "n_below_cutoff": 963,
+   "A0_sector2_min": 2.293361096681142,
+   "HL_mu_minus_k2_j1": 2.293361096681144,
+   "A0_sector1_min": 2.5352112676056318,
+   "HL_9a2": 2.535211267605634
+  },
+  {
+   "t": 4.0,
+   "floor": 1.0,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 1.0,
+   "helike_A0_sector0": 1.0,
+   "helike_theta_min": 4.0,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.3145040611561853e-13,
+   "n_below_cutoff": 801,
+   "A0_sector2_min": 2.1435935394489762,
+   "HL_mu_minus_k2_j1": 2.1435935394489825,
+   "A0_sector1_min": 2.25,
+   "HL_9a2": 2.25
+  },
+  {
+   "t": 6.0,
+   "floor": 0.6666666666666669,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 0.6666666666666666,
+   "helike_A0_sector0": 0.6666666666666666,
+   "helike_theta_min": 2.6666666666666665,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.8474111129762605e-13,
+   "n_below_cutoff": 612,
+   "A0_sector2_min": 1.6696972201766342,
+   "HL_mu_minus_k2_j1": 1.6696972201766407,
+   "A0_sector1_min": 1.49999999999999,
+   "HL_9a2": 1.5
+  },
+  {
+   "t": 8.0,
+   "floor": 0.4999999999999999,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 0.5,
+   "helike_A0_sector0": 0.5,
+   "helike_theta_min": 2.0,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 7.815970093361102e-14,
+   "n_below_cutoff": 570,
+   "A0_sector2_min": 1.372583002030461,
+   "HL_mu_minus_k2_j1": 1.3725830020304777,
+   "A0_sector1_min": 1.124999999999994,
+   "HL_9a2": 1.125
+  },
+  {
+   "t": 10.0,
+   "floor": 0.4,
+   "sectors_A0": [
+    0
+   ],
+   "multiplicity": 6,
+   "min(4/t,4t)": 0.4,
+   "helike_A0_sector0": 0.4,
+   "helike_theta_min": 1.6,
+   "theta_vs_A0_L2_multiset_maxdiff_below_cutoff": 1.0302869668521453e-13,
+   "n_below_cutoff": 522,
+   "A0_sector2_min": 1.167184270002503,
+   "HL_mu_minus_k2_j1": 1.1671842700025223,
+   "A0_sector1_min": 0.8999999999999955,
+   "HL_9a2": 0.9
+  }
+ ]
+}

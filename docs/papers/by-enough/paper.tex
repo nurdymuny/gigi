@@ -47,8 +47,10 @@ certificates prove that the twist is the floor of every sector, with multiplicit
 $\min(x^*_{12},0)$, where $x^*_{12}$ is the edge computed in the sectors $j\le12$; equality is conjectured for
 $t\ge3$ and is refuted near $t=2.01$. Three simpler readings, each written down before its data, failed: that the
 rotation symmetry makes the twist the floor, that a field strength aligned with its spin does, and that alignment
-together with the curvature term singling it out does. Three further tests are pre-registered and described; their
-results are pending.
+together with the curvature term singling it out does. Three further tests were pre-registered. At $48$ points never computed before, the twist's
+region is one interval and no sector $13\le j\le79$ undercuts it, while the edge is the $P_2$ root at $34$ of $38$ points
+and set by other blocks at $4$. In an $SU(3)$ family whose fibre field is free, it is the floor at none of $20$ shapes.
+The third test is running.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Peter--Weyl decomposition; Weitzenb\"ock identity;
@@ -126,8 +128,10 @@ alignment together with the curvature term singling the twist out does (Section~
 edge as $c_1/t+c_2/t^2$ failed both of its pre-registered predictions. The conjecture that the all-sector edge equals
 $\min(x^*_{12},0)$ is refuted near $t=2.01$ and is kept only for $t\ge3$. The statement that the edge is the largest
 real root of $P_2$ is false: $P_2$ has further real roots where a higher eigenvalue of the competitor meets the twist.
-Three further tests (held-out family points, general circle-symmetric fields, and $SU(3)$) are pre-registered;
-Section~\ref{sec:prereg} describes them, and their results are pending.
+Three further tests were pre-registered (Section~\ref{sec:prereg}). At held-out points the edge clause failed at $4$ of
+$38$ points, where other blocks reach the twist first. In an $SU(3)$ family with a free fibre field the twist is the
+floor nowhere, so the reading of Section~\ref{sec:scope} does not carry over to that family. The test on general
+circle-symmetric fields is running.
 
 \paragraph{By enough, but not too much.} The field along the long circle must turn against the twist by enough that
 the discount $2xj/\sqrt t$ carries her below her competitor, but not by so much that the sector-$0$ state
@@ -1080,7 +1084,7 @@ texts could not be read, so this is a statement about the search, not a priority
 \section{Pre-registered tests A, B and C}\label{sec:prereg}
 
 Three further tests were written down, reviewed and fixed before any scored data were computed, as were Tests~2, 4, 5
-and~6 of Section~\ref{sec:decide}. This section reports their designs, gates and amendments only. Each amendment was
+and~6 of Section~\ref{sec:decide}. This section reports their designs, gates, amendments and results. Each amendment was
 made after a code gate fired (for Amendment~C1, after a smoke test showed that a gate would fire) and before any scored
 quantity was computed. Their documents are
 \path{research/edge-theorem-20261121/wp4_prereg_A_heldout.md} (with \path{wp4_prereg_A_points.json}),
@@ -1192,7 +1196,63 @@ floor, edge or competitor had been computed.
 
 \subsection{Results}
 
-\textbf{[RESULTS PENDING: preregistrations A, B, C]}
+\paragraph{Test A (COMPUTED).} Receipt: \path{research/edge-theorem-20261121/wp4_heldout.json}. Every gate passed:
+A-code-1 to $4.1\times10^{-15}$; A-code-2 with $113$ terms and the $18$ known rows to $2.4\times10^{-13}$ under
+Amendment~1; A-code-3 to $1.0\times10^{-18}$; A-mult at every point and sector $j\le12$; A-bound and A-bound-hi, with
+$x_{\mathrm{lo}}-r_{\mathrm{lo}}\ge1.61$ everywhere; A-branch at $100\%$ of the $P_2$-class points.
+\begin{itemize}
+  \item \emph{A1 failed at $4$ of $38$ points.} At the other $34$ the competitor is $B_{4,0}$ and the measured edge
+  equals the predicted root of $P_2$ to $1.35\times10^{-12}$. The failures are listed in Table~\ref{tab:a1fail}. At three
+  of them, at small stretch with a strong cross field, the block $(1,-\tfrac32)$ reaches the twist first; the map of
+  Section~\ref{subsec:competitors} already showed $(1,\pm\tfrac32)$ there for $y\ge2$ and $t\le4$, and the
+  $P_2$-class box of Test~A overlapped that corner. At the fourth, $(t,y)=(11,1.2)$, the block $(12,-7)$ of the cut-off
+  sector sets a positive edge in $j\le12$, which Theorem~\ref{thm:xpos} already makes irrelevant to the all-sector
+  question. The statement ``for $y\gtrsim1$ the edge is the root of $P_2$'' is therefore counted against; what holds is
+  that $P_2$ governs where $B_{4,0}$ is the competitor.
+  \item \emph{A2 held} at all $10$ small-$y$ points: $(2,\pm1)$ eight times and $(3,-\tfrac12)$ twice.
+  \item \emph{A3 held} at all $48$ points: no non-twist block of any sector $13\le j\le79$ lies below the twist at the
+  three values of $x<0$; the smallest margin is $+0.52$.
+  \item \emph{A4 held} at all $48$ points: the region in $j\le12$ is a single interval on the $0.01$ grid.
+\end{itemize}
+Descriptive. The lower edge $x_{\mathrm{lo}}$ ranges over $[-7.81,-3.64]$ and is always set by the sector-$0$ block of
+charge $-1$ (with its mirror). The gauge-orthogonal edge lies above the $H+GG^*$ edge at every point, by $1.5\times10^{-4}$
+to $0.091$. The Test~6 model $c_1/t+c_2/t^2$ misses the measured edge by $0.076$ on average and $0.20$ at worst. Of the
+$48$ upper edges in $j\le12$, $20$ are positive; these are the cut-off artefacts of Theorem~\ref{thm:xpos}.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{rrrrl}\toprule
+$t$ & $y$ & predicted (root of $P_2$) & measured & competitor\\\midrule
+$2.295$ & $2.687$ & $-0.6089$ & $-0.6941$ & $(1,-\tfrac32)$\\
+$2.2$ & $2.5$ & $-0.6378$ & $-0.7148$ & $(1,-\tfrac32)$\\
+$3.5$ & $2.5$ & $-0.2979$ & $-0.3202$ & $(1,-\tfrac32)$\\
+$11.0$ & $1.2$ & $+0.0847$ & $+0.0736$ & $(12,-7)$\\\bottomrule
+\end{tabular}
+\caption{The four points where A1 failed.}\label{tab:a1fail}
+\end{table}
+
+\paragraph{Test C (COMPUTED).} Receipt: \path{research/edge-theorem-20261121/wp4_su3_free_fibre.json}. Every gate passed:
+C-K1 to C-K3; C-K4 (the $SU(2)$ analogue: coefficient of $x^2$ equal to $1$ to $3\times10^{-14}$, three known edges to
+$3\times10^{-10}$); C-K5 to $2.6\times10^{-14}$; C-sym ($\norm{[Q,H]}$ to $1.1\times10^{-14}$ relative, residual of the
+twist $8\times10^{-16}$, $\norm{G^*b}$ $7\times10^{-16}$); C-quad at all $20$ shapes and nine sectors to
+$9\times10^{-15}$, so F1 holds; C-lin exactly, so F2 holds; C-sigma with $\sigma=+1$ everywhere; C-mult under
+Amendment~C2, with the extra tied doublet at the five shapes $(u,y)=(\tfrac12,1)$.
+\begin{itemize}
+  \item \emph{C-P1 failed, weakly and strictly.} At none of the $20$ shapes is the twist the floor of all nine sectors
+  for any $x$ on the scan, for either spectrum. By the rule fixed in advance this counts against the reading of
+  Section~\ref{sec:scope} beyond $SU(2)$, in this family.
+  \item C-P2 is not informative, and C-P3, C-P4 and C-P5 are vacuous, because there is no region.
+\end{itemize}
+A diagnostic run after the verdict, and not part of the protocol (\path{wp4_su3_diagnostic_posthoc.json}), shows how far
+the twist is from the floor. At $t=4$, at the $x$ that maximises its worst margin over the sectors, the margin is negative
+in every sector other than $(0,0)$. It grows more negative with the sector, from $-1.5$ to $-2.6$ in $(1,0)$ to $-6.1$
+to $-8.3$ in $(4,0)$, and $(4,0)$ is the blocking sector at $121$ of the $127$ values of $x$ scanned. In $SU(2)$ the field along the
+circle gives the twist a discount on the lift to higher sectors (Corollary~\ref{cor:lift}). In this $SU(3)$ family the
+higher sectors cost it more at every $x$ allowed. What carries over is structural: the coefficient of $x^2$ is the
+squared charge, and the bounding state is affine.
+
+\paragraph{Test B.} B-I passed every gate at all $200$ draws: B-sym $1.7\times10^{-15}$, B-exact $3.5\times10^{-15}$,
+B-red $2.2\times10^{-14}$, B-spec $3.9\times10^{-15}$, B-even $3.7\times10^{-16}$. B-II-code passed under Amendment~B1.
+The B-II scan is running, and its results will be reported here.
 
 \section{Scope and open problems}\label{sec:scope}
 
@@ -1219,7 +1279,9 @@ $j\le12$ or bounded by Theorems~\ref{thm:xpos} and~\ref{thm:slabs} and Propositi
   one-interval structure, which is computed on grids but not proved.
   \item \emph{Fields that mix sectors.} Circle-invariant fields that are not left-invariant, lifts by non-constant gauge
   transformations, other circles. There the twist is no longer alone in its charge block, so its exactness is itself open.
-  \item \emph{Other groups.} $SU(3)$ (Test~C is designed; Section~\ref{sec:prereg}) and beyond.
+  \item \emph{Other groups.} In the $SU(3)$ family of Test~C, stretched along the hypercharge circle, the twist is
+  the floor nowhere. Whether a family stretched along the circle of the twist's own charge behaves like $SU(2)$ is open,
+  and would need its own pre-registration.
   \item \emph{Competitors in closed form.} The block $(3,1/2)$ has one edge factor of degrees $(11,14,26)$, irreducible
   over $\mathbb{Q}$. The polynomials of the small-$y$ blocks are known, but no two-dimensional region theorem at small $y$ is.
   \item \emph{A reading.} The decomposition of $\lambda$ invites reading the edge as the point where the field along the

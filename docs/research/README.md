@@ -15,6 +15,8 @@ so you can see what I predicted before I looked.
 The notes are grouped below by thread, and dated within each thread. File names keep their dates, and published
 papers cite some of these paths, so files are never renamed or moved.
 
+**Live status of today's runs:** [STATUS-live.md](STATUS-live.md)
+
 ## 22 November 2026: the morning notes
 
 | note | what it is |

@@ -218,7 +218,7 @@ knowledge grant, label hygiene, arithmetic, sweep hygiene) plus an independent
 O(1)-curve verification. The curve check PASSED outright. The fairness audit
 FAILED the artifact as first published — every measured number reproduced
 exactly, but two gigi-favoring defects survived — and the following was fixed
-**before** `BENCHMARKS_VS_STORES.md` §Round 2 was written:
+**before** `docs/reference/BENCHMARKS_VS_STORES.md` §Round 2 was written:
 
 1. **FAIL-1 (schema parity):** `examples/vs_stores_embedded.rs` originally
    omitted the secondary `txn_id` index that round 1's HTTP `create_bundle`

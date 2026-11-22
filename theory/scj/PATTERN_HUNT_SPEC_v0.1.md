@@ -44,8 +44,8 @@ Note what the claim does **not** say: it doesn't say GIGI finds bugs. It says GI
 
 A pattern P over bundle B is a tuple `(name, pred, weight, using)` where:
 
-- `pred ∈ PredExpr(B.fiber)` — a predicate body in the existing `pred_expr` grammar at `GQL_SPECIFICATION.md:1196-1202`, evaluable per row to {true, false} using the FilterCondition machinery at `src/parser.rs:792-812`.
-- `weight : Row(B) → ℝ` — an arithmetic expression in the existing `expr` grammar at `GQL_SPECIFICATION.md:1226-1229`, evaluable per row to a real number. Boolean fields coerce to {0, 1}.
+- `pred ∈ PredExpr(B.fiber)` — a predicate body in the existing `pred_expr` grammar at `docs/reference/GQL_SPECIFICATION.md:1196-1202`, evaluable per row to {true, false} using the FilterCondition machinery at `src/parser.rs:792-812`.
+- `weight : Row(B) → ℝ` — an arithmetic expression in the existing `expr` grammar at `docs/reference/GQL_SPECIFICATION.md:1226-1229`, evaluable per row to a real number. Boolean fields coerce to {0, 1}.
 - `using ⊆ B.fiber.fields` — the declared field-touch set, used by the planner for index selection and decryption-scope minimization (same defensive shape as `ProjectInvariant` at `src/parser.rs:611-630`).
 
 A `HUNT P IN B EXCLUDING IN E_1, …, E_k TOP n` evaluates to the ordered candidate set:
@@ -62,7 +62,7 @@ The `EXCLUDING IN E_i` clause is **left-anti-join by base PK** in v0.1. When ALT
 
 ### §2.2 Weight as a real-valued scoring functional
 
-`weight` is a closed expression over `B.fiber.fields ∪ ℝ` under `{+, -, *, /, parens, bool→{0,1}}`. This is exactly the `expr` chain at `GQL_SPECIFICATION.md:1226-1229`. No new arithmetic. No conditionals in v0.1 — `CLASSIFY ... WHEN ... THEN ... ELSE` already exists in PROJECT and can be lifted into WEIGHT in v0.2 if SCJ's risk_score.py shows the need (OQ-2).
+`weight` is a closed expression over `B.fiber.fields ∪ ℝ` under `{+, -, *, /, parens, bool→{0,1}}`. This is exactly the `expr` chain at `docs/reference/GQL_SPECIFICATION.md:1226-1229`. No new arithmetic. No conditionals in v0.1 — `CLASSIFY ... WHEN ... THEN ... ELSE` already exists in PROJECT and can be lifted into WEIGHT in v0.2 if SCJ's risk_score.py shows the need (OQ-2).
 
 The ranking induced by `weight` is total and stable on its score image. Tie-breaking (OQ-5) falls back to base PK ascending. This matches how `RANK BY ... FIRST k` already breaks ties in COVER.
 
@@ -80,7 +80,7 @@ Three new top-level statements + one new clause type, all behind a `patterns` Ca
 
 ### §3.2 EBNF extension
 
-Slot into `statement` at `GQL_SPECIFICATION.md:1118`:
+Slot into `statement` at `docs/reference/GQL_SPECIFICATION.md:1118`:
 
 ```
 statement = ... existing ... | define_pattern_stmt | drop_pattern_stmt
@@ -107,8 +107,8 @@ field_list = name ("," name)*
 ```
 
 Every non-terminal on the right is verbatim from the existing grammar:
-- `pred_expr`, `pred_atom`: `GQL_SPECIFICATION.md:1196-1202`
-- `expr`: `GQL_SPECIFICATION.md:1226-1229`
+- `pred_expr`, `pred_atom`: `docs/reference/GQL_SPECIFICATION.md:1196-1202`
+- `expr`: `docs/reference/GQL_SPECIFICATION.md:1226-1229`
 - `sort_specs`, `proj_list`, `emit`, `confidence_filter`: existing COVER clause parsers
 - `name`, `number`: existing lexer terminals
 
@@ -254,7 +254,7 @@ Patterns live on the `Engine` struct alongside `query_cache` and `trigger_manage
 
 ### §5.3 NULL handling in WEIGHT (resolves OQ-4)
 
-A NULL fiber field referenced in WEIGHT coerces to 0.0 for arithmetic and to `false` (i.e., 0) for boolean. This matches the existing `RESOLVE(f, default)` semantics at PROJECT (`GQL_SPECIFICATION.md:1217`). Patterns that want strict NULL handling should opt in via `RESOLVE(f, 0)` inside the WEIGHT expression itself, making the default explicit.
+A NULL fiber field referenced in WEIGHT coerces to 0.0 for arithmetic and to `false` (i.e., 0) for boolean. This matches the existing `RESOLVE(f, default)` semantics at PROJECT (`docs/reference/GQL_SPECIFICATION.md:1217`). Patterns that want strict NULL handling should opt in via `RESOLVE(f, 0)` inside the WEIGHT expression itself, making the default explicit.
 
 ### §5.4 Phase 3 TDD gates
 
@@ -411,7 +411,7 @@ pub enum WeightExpr {
 
 ### §9.4 Backwards compatibility
 
-With the `patterns` feature off (Phases 1-5), the engine compiles and runs exactly as before. No reserved-word collisions in existing user GQL — verified by checking the §XIII table at `GQL_SPECIFICATION.md:1246-1273` against the seven new keywords. With the feature on, no existing verb's behavior changes; the only addition is the new dispatcher arms.
+With the `patterns` feature off (Phases 1-5), the engine compiles and runs exactly as before. No reserved-word collisions in existing user GQL — verified by checking the §XIII table at `docs/reference/GQL_SPECIFICATION.md:1246-1273` against the seven new keywords. With the feature on, no existing verb's behavior changes; the only addition is the new dispatcher arms.
 
 ---
 
@@ -501,7 +501,7 @@ Phase 1 is unblocked **now**:
 
 1. The EBNF reuses existing non-terminals (`pred_expr`, `expr`, `proj_list`, `sort_specs`, `pred_atom`) verbatim.
 2. The dispatcher edit is two lines.
-3. The seven new reserved words do not collide with the existing reserved-word table at `GQL_SPECIFICATION.md:1246-1273`.
+3. The seven new reserved words do not collide with the existing reserved-word table at `docs/reference/GQL_SPECIFICATION.md:1246-1273`.
 4. The `patterns` feature flag landing zone is approved (Cargo.toml:47-57 model).
 5. SCJ has working Python (`risk_score.py`, `exclusions.py`, `scj_hunt_hyperv.py`) that defines the ground truth for PH11 and the appendix.
 

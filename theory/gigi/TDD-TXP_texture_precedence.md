@@ -165,7 +165,7 @@ Numbered TXP-*. All blocking.
 | **TXP-12** | zero-variance field → **422**, never a fabricated exponent |
 | **TXP-13** | non-finite values are **skipped and counted into `notes`**, never coerced to 0.0 |
 
-TXP-13 exists because `TYPE_SEAM_AUDIT.md:473` files exactly that defect against
+TXP-13 exists because `docs/operations/TYPE_SEAM_AUDIT.md:473` files exactly that defect against
 `circulation.rs:96-101`, where `unwrap_or(1.0)` turns a missing weight into a
 confident 1.0. Not inherited here.
 

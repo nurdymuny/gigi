@@ -21,7 +21,7 @@ computes — in one markdown document. Read that first.
 ## Docs
 
 - [llms-full.txt](https://www.davisgeometric.com/gigi/gigi-builds/llms-full.txt): the complete LLM-readable guide to GIGI, the book, the exercises, the demos, and the live API
-- [GIGI engine repository](https://github.com/nurdymuny/gigi): Rust source, GQL reference (GQL_REFERENCE.md), tetmesh spec (GIGI_TETMESH_SPEC_v0.6.md), example harnesses
+- [GIGI engine repository](https://github.com/nurdymuny/gigi): Rust source, GQL reference (GQL_REFERENCE.md), tetmesh spec (docs/specs/GIGI_TETMESH_SPEC_v0.6.md), example harnesses
 - [Site front page](https://www.davisgeometric.com/gigi/gigi-builds/): the full chapter catalog and all web extras
 
 ## Engine surface shipped 2026-07-01 → 2026-07-03

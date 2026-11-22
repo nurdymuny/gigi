@@ -14,15 +14,15 @@ totaling ~17,000 lines. Categorized:
 
 ### Engine / API surface
 - [`GIGI_SPEC_v0.1.md`](GIGI_SPEC_v0.1.md) · 1018 lines — the database engine spec
-- [`GIGI_API.md`](GIGI_API.md) · 2452 lines — REST API reference
+- [`GIGI_API.md`](../../GIGI_API.md) · 2452 lines — REST API reference
 - [`GIGI_V2_FEATURE_SPEC.md`](GIGI_V2_FEATURE_SPEC.md) · 2592 lines — v2 feature spec
 - [`GIGI_CRUD_ROADMAP.md`](GIGI_CRUD_ROADMAP.md) · 371 lines — CRUD roadmap
 - [`GIGI_PERSISTENCE_UPGRADE_SPEC.md`](GIGI_PERSISTENCE_UPGRADE_SPEC.md) · 153 lines
 
 ### GQL (the query language)
-- [`GQL_REFERENCE.md`](GQL_REFERENCE.md) · 2346 lines — the canonical reference
-- [`GQL_SPECIFICATION.md`](GQL_SPECIFICATION.md) · 1304 lines — the spec
-- [`GQL_ADDENDUM_v2.1.md`](GQL_ADDENDUM_v2.1.md) · 1018 lines — PostgreSQL parity
+- [`GQL_REFERENCE.md`](../../GQL_REFERENCE.md) · 2346 lines — the canonical reference
+- [`GQL_SPECIFICATION.md`](../reference/GQL_SPECIFICATION.md) · 1304 lines — the spec
+- [`GQL_ADDENDUM_v2.1.md`](../reference/GQL_ADDENDUM_v2.1.md) · 1018 lines — PostgreSQL parity
 
 ### Geometric primitives + analytics
 - [`GIGI_AUTOMATIC_ANALYTICS_API.md`](GIGI_AUTOMATIC_ANALYTICS_API.md) · 541 lines
@@ -36,16 +36,16 @@ totaling ~17,000 lines. Categorized:
 
 ### Observability + perf
 - [`GIGI_OBSERVABILITY_SPEC.md`](GIGI_OBSERVABILITY_SPEC.md) · 870 lines
-- [`GIGI_PERF_ANALYSIS.md`](GIGI_PERF_ANALYSIS.md) · 165 lines
-- [`GIGI_TPCH_SPEC.md`](GIGI_TPCH_SPEC.md) · 414 lines
+- [`GIGI_PERF_ANALYSIS.md`](../reference/GIGI_PERF_ANALYSIS.md) · 165 lines
+- [`GIGI_TPCH_SPEC.md`](../../GIGI_TPCH_SPEC.md) · 414 lines
 
 ### Product specs
 - [`GIGI_PRODUCT_SPECS.md`](GIGI_PRODUCT_SPECS.md) · 625 lines — product suite
 - [`GIGI_SHEETS_SPRINT_SPEC.md`](GIGI_SHEETS_SPRINT_SPEC.md) · 459 lines
 - [`GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md`](GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md) · 303 lines
 - [`GIGI_SUDOKU_SPRINT_SPEC.md`](GIGI_SUDOKU_SPRINT_SPEC.md) · 523 lines
-- [`sheets/FEATURE_PARITY.md`](sheets/FEATURE_PARITY.md) — the parity tracker
-- [`sheets/AIRTABLE_WORKFLOWS.md`](sheets/AIRTABLE_WORKFLOWS.md) — workflow spec
+- [`sheets/FEATURE_PARITY.md`](../../sheets/FEATURE_PARITY.md) — the parity tracker
+- [`sheets/AIRTABLE_WORKFLOWS.md`](../../sheets/AIRTABLE_WORKFLOWS.md) — workflow spec
 
 ### Source-of-truth code (for generated reference)
 - `sdk/js/src/` — TypeScript client SDK

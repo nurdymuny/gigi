@@ -206,7 +206,7 @@ determinism; and hard record caps that error rather than return `null`.
 Suite **1001 passing**, 985 pre-existing untouched.
 
 **Two refusal decisions worth stating.** TXP-13 exists because
-`TYPE_SEAM_AUDIT.md:473` files a defect against `circulation.rs:96-101`, where
+`docs/operations/TYPE_SEAM_AUDIT.md:473` files a defect against `circulation.rs:96-101`, where
 `unwrap_or(1.0)` turns a missing weight into a confident 1.0 — that behaviour is
 deliberately *not* inherited here. TXP-15 exists because a `MAX_N` overrun on
 `/circulation` returned `null` for every field instead of erroring.

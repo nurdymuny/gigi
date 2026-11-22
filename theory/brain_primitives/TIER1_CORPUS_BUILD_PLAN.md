@@ -177,7 +177,7 @@ texts known to cover the probe questions. Listed in priority order
   - kahler_upgrade/ replies + drafts
 - **P1**: GIGI source-of-truth docs:
   - GIGI_API.md, GQL_REFERENCE.md, IMPLEMENTATION_PLAN.md
-  - BRAIN_PRIMITIVES_CONSUMER_GUIDE.md
+  - docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md
   - SUDOKU_SPEC.md
   - theory/brain_primitives/catalog.md
 - **P2**: Reply letters in `theory/kahler_upgrade/` (these are the

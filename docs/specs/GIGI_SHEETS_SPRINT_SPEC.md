@@ -5,7 +5,7 @@
 > keeping every geometric property (κ, λ₁, holonomy, Betti, encrypted fields)
 > first-class in the UI.
 
-The mockup at [`mockups/sheets.html`](mockups/sheets.html) is the **visual + interaction
+The mockup at [`mockups/sheets.html`](../../mockups/sheets.html) is the **visual + interaction
 contract** this spec operationalizes. Every interaction in the mockup that
 involves computation is wired to a verb that already exists in the engine
 (`SECTION`, `INTEGRATE`, `CURVATURE`, `SPECTRAL`, `HOLONOMY`, `TRANSPORT`,
@@ -454,6 +454,6 @@ sprint, mirroring the existing TDD rhythm in this repo.
 - The footer GQL preview, when copied into the GQL tab and run, returns
   the exact rows shown above.
 
-The mockup at [`mockups/sheets.html`](mockups/sheets.html) is the visual contract.
+The mockup at [`mockups/sheets.html`](../../mockups/sheets.html) is the visual contract.
 Anything that ships must pass a side-by-side diff against the relevant
 mockup view at the end of each sprint.

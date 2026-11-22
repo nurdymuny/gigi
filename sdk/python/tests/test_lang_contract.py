@@ -1,7 +1,7 @@
 """
 Contract tests for gigi.lang skeleton.
 
-These tests pin the SHAPE that GIGI_LANG_SPEC.md (v0.1.1) promises —
+These tests pin the SHAPE that docs/specs/GIGI_LANG_SPEC.md (v0.1.1) promises —
 error hierarchy, dataclass defaults, enum values, deferred top-level
 export. They fire if silent drift happens during implementation
 (a default value changed, an error class renamed, the top-level
@@ -98,5 +98,5 @@ def test_gigilang_not_exported_at_top_level():
     assert not hasattr(gigi, "GigiLang"), (
         "GigiLang must not be exported from top-level gigi package "
         "while the skeleton is unimplemented. See lang.py 'Status' section "
-        "and GIGI_LANG_SPEC.md §11 for when the export becomes appropriate."
+        "and docs/specs/GIGI_LANG_SPEC.md §11 for when the export becomes appropriate."
     )

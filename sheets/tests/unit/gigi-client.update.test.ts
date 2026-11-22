@@ -8,7 +8,7 @@ import {
 /**
  * S1 acceptance tests for SheetsClient.update.
  *
- * Wire contract per the audit (GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md §Q2):
+ * Wire contract per the audit (docs/specs/GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md §Q2):
  *   POST /v1/bundles/{name}/update
  *   body:     { key, fields, returning, expected_version? }
  *   response: { status, data?, total, curvature, confidence, version? }

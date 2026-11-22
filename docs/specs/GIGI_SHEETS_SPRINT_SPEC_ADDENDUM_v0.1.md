@@ -1,7 +1,7 @@
 # GIGI Sheets — Sprint Spec Addendum v0.1 (audit answers)
 
 **Date:** 2026-05-14
-**Audits:** [`src/bin/gigi_stream.rs`](src/bin/gigi_stream.rs), [`sdk/js/`](sdk/js), [`playground/`](playground), [`site/`](site), [`GIGI_CRUD_ROADMAP.md`](GIGI_CRUD_ROADMAP.md)
+**Audits:** [`src/bin/gigi_stream.rs`](../../src/bin/gigi_stream.rs), [`sdk/js/`](../../sdk/js), [`playground/`](../../playground), [`site/`](../../site), [`GIGI_CRUD_ROADMAP.md`](GIGI_CRUD_ROADMAP.md)
 **Companion to:** [`GIGI_SHEETS_SPRINT_SPEC.md`](GIGI_SHEETS_SPRINT_SPEC.md) §8 (Open questions)
 
 This addendum resolves the four open questions from the parent spec, plus the

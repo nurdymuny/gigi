@@ -387,7 +387,7 @@ never been observed in 2M random samples). A per-level class-flow strip
 shows classes moving BOTH ways under bisection (flood then recovery),
 which is the open research question the page poses. The live panel loads
 the real 5,760-section bundle and shows every GQL statement it runs.
-Spec: GIGI_TETMESH_SPEC_v0.6.md in the repo; harnesses:
+Spec: docs/specs/GIGI_TETMESH_SPEC_v0.6.md in the repo; harnesses:
 examples/tetmesh_fiber_harness.py, examples/tetmesh_class_descent.py.
 
 ### The Weather on a Sphere That Notices

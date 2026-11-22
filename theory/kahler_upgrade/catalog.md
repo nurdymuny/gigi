@@ -464,7 +464,7 @@ Start with items 1–6 in §3. These are the practical v3 upgrade:
 
 *Added 2026-05-24 after reading `src/curvature.rs`, `src/bundle.rs`,
 `src/sheaf/`, `src/dhoom.rs`, `theory/cosmological_nondecoupling_v2.tex`,
-and `GIGI_SPEC_v0.1.md`. Each item is forced by 𝒢 once you take
+and `docs/specs/GIGI_SPEC_v0.1.md`. Each item is forced by 𝒢 once you take
 GIGI's existing implementation seriously, not just the published
 Adachi program.*
 

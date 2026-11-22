@@ -383,7 +383,7 @@ In `gigi/`:
 - `src/sheaf/` — Čech 1-cocycle / H¹ pipeline (within-bundle, not across-morphism)
 - `src/types.rs` — `Value`, `FieldType`, `EncryptionMode`
 - `Cargo.toml` — feature-flag pattern (`kahler`, `sharded`, `imagine`, `transactions`)
-- `GQL_REFERENCE.md`, `GQL_SPECIFICATION.md` — `EMIT` grammar incl. `JSONL` precedent
+- `GQL_REFERENCE.md`, `docs/reference/GQL_SPECIFICATION.md` — `EMIT` grammar incl. `JSONL` precedent
 - `theory/post_kahler_directions/catalog.md` — §1–§9 template, line 545/559–568 validation discipline
 - `theory/kahler_upgrade/REPLY_TO_MARCELLA_*.md` — voice and format reference
 

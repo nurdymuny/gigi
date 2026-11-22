@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tetrahedral-mesh fiber-bundle harness for GIGI.
 
-Companion to GIGI_TETMESH_SPEC_v0.6.md. Does two things:
+Companion to docs/specs/GIGI_TETMESH_SPEC_v0.6.md. Does two things:
 
 1. Offline math validation (no server needed):
    - builds the Kuhn/Freudenthal triangulation of the unit cube

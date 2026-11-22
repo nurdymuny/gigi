@@ -12,7 +12,7 @@ Record construction is `load_and_query`'s record() closure verbatim
 field-for-field identical to `examples/tetmesh_fiber_harness.py
 --server ...` output. Receipt: 5,760 records, classifier state
 {C0: 3456, C1: 768, C2: 1536} — the spec's Maubach three-class cycle
-(GIGI_TETMESH_SPEC_v0.6.md, validation appendix).
+(docs/specs/GIGI_TETMESH_SPEC_v0.6.md, validation appendix).
 
 Only differences from the harness's own live run: the bundle name, and
 an X-API-Key header (the harness's plain http() has no auth support).

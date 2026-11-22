@@ -212,6 +212,21 @@ Every response also carries a `reads` array of plain-English sentences and a
 `GET /v1/ml` is the fastest way to discover what exists and what parameters it
 takes. Prefer it over guessing from source.
 
+**Where to put new files.** The map of everything is
+[`docs/README.md`](docs/README.md). Keep the repository root for the build files
+and the top-level README; do not add new documents there.
+
+| you are writing | put it in | and also |
+|---|---|---|
+| a research note, pre-registration or results note | `docs/research/` (dated file name) | add a row to [`docs/research/README.md`](docs/research/README.md) under its thread |
+| a script's raw outputs (JSON, logs, certificates) | `research/<topic>-<yyyymmdd>/` | cite the folder from the note |
+| an engine or product spec | `docs/specs/` | |
+| a deploy plan, incident, audit or migration | `docs/operations/` | |
+| a letter, reply, handoff or briefing | `docs/correspondence/` | |
+
+Never rename or move a file under `research/`, `docs/research/`, `docs/papers/`
+or a `docs/RICCI_*` file: published papers cite those paths.
+
 ---
 
 ## 9 · If you are changing code here

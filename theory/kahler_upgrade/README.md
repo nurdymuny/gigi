@@ -65,7 +65,7 @@ that line in the catalog is a forced consequence.
 
 ## What this is NOT
 
-- Not a replacement for `GIGI_SPEC_v0.1.md` — that remains the
+- Not a replacement for `docs/specs/GIGI_SPEC_v0.1.md` — that remains the
   primary spec for the Riemannian core.
 - Not a Marcella spec — Marcella consumes the same Kähler substrate
   but has its own architecture.

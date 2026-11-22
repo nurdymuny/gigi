@@ -11,7 +11,7 @@ import {
  * These tests pin the contract this app expects from
  *   POST /v1/bundles/{name}/query
  * on gigi-stream. The shape was confirmed in the engine audit
- * (GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md §Q1/Q2). When the engine
+ * (docs/specs/GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md §Q1/Q2). When the engine
  * response shape changes, these tests should be updated in lockstep with
  * the SDK fixtures.
  */

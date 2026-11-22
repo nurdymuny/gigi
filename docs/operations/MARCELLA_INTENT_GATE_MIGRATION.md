@@ -11,7 +11,7 @@
 A new endpoint shipped — `POST /v1/bundles/{name}/brain/intent_gate` —
 that composes the three primitives Marcella already uses (Čech pre-flight,
 SUDOKU walk, kernel-density confidence) into one atomic call. Spec:
-[`theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md`](theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md) §11.
+[`theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md`](../../theory/kahler_upgrade/SUDOKU_PRIMITIVE_SPEC.md) §11.
 
 **Why this exists for you specifically:**
 

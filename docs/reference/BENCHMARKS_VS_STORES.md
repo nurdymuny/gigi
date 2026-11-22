@@ -3,7 +3,7 @@
 One machine, one dataset, three stores, four tasks, locked protocol. Every cell
 below is exactly as measured — losses are reported at full volume, per rule 4 of
 the protocol ("disclose, do not soften"). The harness, dataset generator, and
-raw per-rep results are committed in [`benchmarks/vs_stores/`](benchmarks/vs_stores/);
+raw per-rep results are committed in [`benchmarks/vs_stores/`](../../benchmarks/vs_stores);
 the run passed an independent adversarial fairness audit and an independent
 reproduction spot-check before this report was written (both summarized in §3).
 
@@ -22,7 +22,7 @@ you won isn't a benchmark.
 
 100,000-row synthetic transaction dataset (txn_id, merchant, customer, hour,
 amount), seed 20260731, byte-reproducible from
-[`gen_dataset.py`](benchmarks/vs_stores/gen_dataset.py). Every cell = 1 untimed
+[`gen_dataset.py`](../../benchmarks/vs_stores/gen_dataset.py). Every cell = 1 untimed
 warmup + 3 timed repetitions, **median** reported; all per-rep raws are in the
 results JSONs. GIGI is measured **over HTTP** at `127.0.0.1:3143` (its real
 deployment shape, persistent keep-alive client); SQLite and DuckDB run
@@ -108,7 +108,7 @@ results file (`timing_shape`), in each system's disclosure list, and in the
 anti-GIGI in every cell, and GIGI still won one of them (point query vs
 DuckDB).
 
-### Protocol (locked before the run — full text in [`run_all.md`](benchmarks/vs_stores/run_all.md))
+### Protocol (locked before the run — full text in [`run_all.md`](../../benchmarks/vs_stores/run_all.md))
 
 - **Warmup + reps:** every cell = 1 discarded warmup + 3 timed reps, median
   reported; all raw reps published in the results JSONs
@@ -131,7 +131,7 @@ DuckDB).
   `{budget, limit}` only.
 - The 22-row fairness self-review (every place a reviewer could cry foul, and
   where each is enforced in code) is at the bottom of
-  [`run_all.md`](benchmarks/vs_stores/run_all.md).
+  [`run_all.md`](../../benchmarks/vs_stores/run_all.md).
 
 ### Independent verification (both passed before this report was written)
 
@@ -414,7 +414,7 @@ python run_scale_sqlite.py   # self-enforces port-3143-dead in code
 
 All raw reps, id-file SHA-256s, the superseded pre-parity ingest reps, both
 verifier verdicts, and the amendment record are in
-[`results_round2.json`](benchmarks/vs_stores/results_round2.json); the
+[`results_round2.json`](../../benchmarks/vs_stores/results_round2.json); the
 per-leg raws are in `results_scale_gigi_http.json`,
 `results_scale_sqlite.json`, and `results_gigi_expert.json`.
 
@@ -460,7 +460,7 @@ no-regression audit** (§R3.3 — the anti-overfit receipt for the scan gain).
 | GQL stddev "a documented lie" — 2,167 ms fallback pulling ~100k rows over HTTP | `feat(gql)`: `INTEGRATE`/`SELECT` learn `stddev` + `variance` (population, single-pass); docs and parser finally agree | **2,167.3 → 167.5 ms (−1,999.8 ms, ~12.9x)** — probe accepted stddev, server-side path taken |
 
 Cell-by-cell, round 2 → round 3, all medians of 3 reps (raws in
-[`results_round3.json`](benchmarks/vs_stores/results_round3.json)):
+[`results_round3.json`](../../benchmarks/vs_stores/results_round3.json)):
 
 | Cell | Metric | Round 2 | Round 3 | Delta |
 |---|---|---:|---:|---|
@@ -478,7 +478,7 @@ Cell-by-cell, round 2 → round 3, all medians of 3 reps (raws in
   live at 2,568.56 ms and its per-merchant numbers **numerically match** the
   server-side stddev (max rel diff: mean 7.6e-15, stddev 1.4e-13; population
   convention both sides) — the ~12.9x is the same answer, computed where it
-  should be ([`aggcheck_round3.json`](benchmarks/vs_stores/aggcheck_round3.json)).
+  should be ([`aggcheck_round3.json`](../../benchmarks/vs_stores/aggcheck_round3.json)).
 - **Zero-config `/scan` moved from ~17x above the random-AP floor to ~92x** —
   still 0.26 below the expert statistic, but round 1's "sharpest number in
   this file" (0.0848 vs 0.7189) is now 0.4579 vs 0.7189 with no knowledge
@@ -691,8 +691,8 @@ re-running all five cells.
 ## R4.2 Both lanes, side by side
 
 Rows/sec, median of 3 timed reps (1 untimed warmup), raws in
-[`results_round4.json`](benchmarks/vs_stores/results_round4.json) and
-[`results_round4_ingest_contracts.json`](benchmarks/vs_stores/results_round4_ingest_contracts.json):
+[`results_round4.json`](../../benchmarks/vs_stores/results_round4.json) and
+[`results_round4_ingest_contracts.json`](../../benchmarks/vs_stores/results_round4_ingest_contracts.json):
 
 | Contract | GIGI embedded | SQLite (in-proc) | DuckDB (in-proc) | Verdict |
 |---|---:|---:|---:|---|

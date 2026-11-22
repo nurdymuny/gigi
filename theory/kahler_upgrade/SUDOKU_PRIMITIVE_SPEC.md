@@ -174,7 +174,7 @@ log-probability the Langevin sampler sees becomes
 
 The `expr` field is a small expression language (arithmetic + comparison
 + logical). Parser borrows from the GQL `WHERE` clause already in
-GIGI_LANG_SPEC.md. Allowed: `+ - * /`, `< <= > >= == !=`, `&& || !`,
+docs/specs/GIGI_LANG_SPEC.md. Allowed: `+ - * /`, `< <= > >= == !=`, `&& || !`,
 field references, named vars, numeric and ISO-8601 datetime literals.
 
 ---
@@ -691,7 +691,7 @@ of the prior used by `condition_prior` when the bundle is large.
 | S3.5 | **Puzzle expansion** — constraint_relaxation + bundle_hop (per §6.5). Uses near-misses (free) + SEMANTIC bundle-graph traversal. | 1.5 days | S3 |
 | S4 | Soft-constraint penalty calibration on real bundles + cross-field relation parser | 1 day | S3 |
 | S5 | `examples/sudoku_school_commute_demo.rs` + literal 9×9 puzzle as a bundle (`examples/sudoku_puzzle_demo.rs`) + 10×10 expansion demo | 1.5 days | S3.5 |
-| S6 | Add SUDOKU to `BRAIN_PRIMITIVES_CONSUMER_GUIDE.md`, `brain_tour_demo`, `kahler_tour` summary | 0.5 day | S5 |
+| S6 | Add SUDOKU to `docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md`, `brain_tour_demo`, `kahler_tour` summary | 0.5 day | S5 |
 | S7 | Marcella migration — refuse-gate / intent / R7-R11-R16 routing rewritten as SUDOKU calls, side-by-side latency + accuracy | 1-2 days | S6 |
 
 **Total: ~9-11 days of focused work** (was 7-9 before S3.5 expansion layer added).
@@ -985,7 +985,7 @@ cases each one is. **Push is blocked until this demo runs end-to-end.**
 ### Sequencing
 
 S7 closes the SUDOKU sprint. After S7:
-- Marcella migration recipe doc (`MARCELLA_INTENT_GATE_MIGRATION.md`)
+- Marcella migration recipe doc (`docs/operations/MARCELLA_INTENT_GATE_MIGRATION.md`)
   ships alongside; not in this spec.
 - Marcella's own refuse-gate adoption is on her clock, not ours.
 - W6.3 (Γ trichotomy) and W6.4 (energy descent) remain open as

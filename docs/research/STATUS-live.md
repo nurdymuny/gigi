@@ -29,6 +29,7 @@ before it is cited, posted or put in the book. The reviewer's job is to refute, 
 | **The spectral branch (Branch IX), review note** | [review note](spectral-branch-review-2026-11-22.md); recomputation `spectral-branch-2026-11-22/checks.py` + `checks_output.json`; Lean `SpectralBranch/Review.lean` on `feat/helike-lean` (10 theorems). The paper itself (`davis_plasma/theory/spectral_branch.tex`) is not yet revised | see the list below |
 | **The Non-Decoupling Theorem, review note** | [review note](non-decoupling-review-2026-11-22.md); Lean `NonDecoupling/Review.lean` on `feat/helike-lean` (5 theorems). The paper (`davis-wilson-lattice/docs/reports/no_paralellel_lines.tex`, not committed anywhere) is not yet revised | see the list below |
 | **The Davis Duality, review note** | [review note](davis-duality-review-2026-11-22.md); Lean `DavisManifold/Duality.lean` on `feat/helike-lean` (5 theorems). The Non-Decoupling review §2.2 was amended in the same commit | see the list below |
+| **The Lift Unification, review note** | [review note](lift-unification-review-2026-11-22.md); Lean `Lift/Review.lean` on `feat/helike-lean` (9 theorems) | see the list below |
 
 **What to attack in the Davis Manifold draft:**
 1. **The five repairs.** For each one, check two things: that the first-edition step really fails (re-derive its
@@ -94,6 +95,14 @@ read.
 4. **Re-run the Zenodo `validation_suite.py`** in a clean environment, and report which of the 11 tests reproduce.
 5. **§3:** check the amended Non-Decoupling paragraph and the Davis Manifold second edition's "per cell" wording
    against this review.
+
+**What to attack in the Lift Unification review:**
+1. **The corrected Mossel step:** check P(all even | length k) = (2/5)^(k−1) by simulation as well as by algebra.
+2. **§2.2:** is "C ≈ 1 is the edge, not the benign case" right for Proposition 5's intent, or did the paper mean
+   something else by "near 1"?
+3. **§2.4:** can any item of §10.3 be made a theorem, for example with Fisher information or a statistical-manifold
+   connection in which conditioning is transport? Try to construct one before accepting RESONANCE.
+4. **The Lean:** does each theorem state what the note says?
 
 More items will join this table as they are finished.
 

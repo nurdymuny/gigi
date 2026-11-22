@@ -45,7 +45,7 @@ class Group:
             self.sectors = list(range(13)); self.reps = {j: S.spin_rep(j) for j in self.sectors}
             self.vidx = 0                              # theta^0 (x) tau_0 in sector 0
             self.base = 0
-        self.Q, self.top = {}, {}
+        self.Q, self.top, self.U = {}, {}, {}
 
     def metric(self, t):
         return T2.su3_metric("2b", t) if self.name == "su3" else np.array([t, 1.0, 1.0])
@@ -88,24 +88,52 @@ SYM = {"comm": 0.0, "res": 0.0, "gstar": 0.0}
 
 
 def evaluate(grp, x, shape, t, s, want_vec=False):
-    """lambda_b, slice spectrum (and eigenvectors), full H+GG* spectrum, with C-sym checks."""
+    """lambda_b, slice spectrum (and eigenvectors), full H+GG* spectrum, with C-sym checks.
+    Computed in the eigenbasis U of Q (field-independent, fixed once per sector): H, GG* and ker G* commute with Q, so
+    every quantity splits into charge blocks. This is a unitary change of basis; the C-sym commutator is evaluated
+    exactly as ||[Q, H]||_F^2 = sum |H'_ij|^2 (q_i - q_j)^2 with H' = U^H H U."""
     H, G = grp.HG(x, shape, t, s)
     if s not in grp.Q:
         grp.fit(s, H, G)
-    Q, b = grp.Q[s], grp.top[s]
-    nH = np.linalg.norm(H)
-    SYM["comm"] = max(SYM["comm"], float(np.linalg.norm(Q @ H - H @ Q) / nH))
-    lam = float((b.conj() @ H @ b).real)
-    SYM["res"] = max(SYM["res"], float(np.linalg.norm(H @ b - lam * b) / np.linalg.norm(H, 2)))
-    SYM["gstar"] = max(SYM["gstar"], float(np.linalg.norm(G.conj().T @ b) / max(np.linalg.norm(G, 2), 1.0)))
-    U, sv, _ = T2.robust_svd(G)
-    rank = int((sv > 1e-10 * sv.max()).sum()) if sv.size and sv.max() > 0 else 0
-    K = U[:, rank:]
-    mu, W = np.linalg.eigh(K.conj().T @ H @ K)
-    full = np.linalg.eigvalsh(H + G @ G.conj().T)
-    out = {"lam": lam, "mu": mu, "full": full}
+    if s not in grp.U:
+        q, U = np.linalg.eigh(grp.Q[s]); q = np.round(q, 8)
+        grp.U[s] = (q, U, {c: np.where(q == c)[0] for c in np.unique(q)}, int(np.argmax(q)))
+    q, U, blocks, ib = grp.U[s]
+    Hp = U.conj().T @ H @ U
+    Gs = G.conj().T @ U                                   # G^* in the Q-eigenbasis (columns = basis states)
+    nHF = np.linalg.norm(Hp)
+    SYM["comm"] = max(SYM["comm"], float(np.sqrt(np.sum(np.abs(Hp) ** 2 * (q[:, None] - q[None, :]) ** 2)) / nHF))
+    lam = float(Hp[ib, ib].real)
+    col = Hp[:, ib].copy(); col[ib] -= lam
+    svs, hev, mu, full, vecs = {}, [], [], [], []
+    for c, idx in blocks.items():
+        svs[c] = np.linalg.svd(Gs[:, idx], compute_uv=False) if Gs.shape[0] else np.zeros(0)
+    gmax = max((v.max() for v in svs.values() if v.size), default=0.0)
+    for c, idx in blocks.items():
+        Hc = Hp[np.ix_(idx, idx)]; Hc = 0.5 * (Hc + Hc.conj().T)
+        hev.append(np.linalg.eigvalsh(Hc))
+        Gc = Gs[:, idx]
+        if Gc.shape[0] and gmax > 0:
+            _, sv, Vh = np.linalg.svd(Gc, full_matrices=True)
+            rank = int((sv > 1e-10 * gmax).sum()); V = Vh.conj().T[:, rank:]
+        else:
+            V = np.eye(len(idx), dtype=complex)
+        if V.shape[1]:
+            A = V.conj().T @ Hc @ V; A = 0.5 * (A + A.conj().T)
+            if want_vec:
+                w, Wc = np.linalg.eigh(A); mu.extend(w); vecs.append(U[:, idx] @ V @ Wc)
+            else:
+                mu.extend(np.linalg.eigvalsh(A))
+        F = Hc + Gc.conj().T @ Gc
+        full.extend(np.linalg.eigvalsh(0.5 * (F + F.conj().T)))
+    nH2 = max(np.abs(np.concatenate(hev)).max(), 1e-300)
+    SYM["res"] = max(SYM["res"], float(np.linalg.norm(col) / nH2))
+    SYM["gstar"] = max(SYM["gstar"], float(np.linalg.norm(Gs[:, ib]) / max(gmax, 1.0)))
+    mu = np.array(mu); out = {"lam": lam, "full": np.sort(full)}
     if want_vec:
-        out.update(W=K @ W, H=H)
+        W = np.hstack(vecs); o = np.argsort(mu); out.update(mu=mu[o], W=W[:, o])
+    else:
+        out["mu"] = np.sort(mu)
     return out
 
 
@@ -222,7 +250,7 @@ def competitor(grp, x, shape, t, nb):
 
 
 def main():
-    out_path = Path(sys.argv[1]); res = {"protocol": "wp4_prereg_C_su3.md @ 232ab8d + Amendment C1 @ 4287efc"}
+    out_path = Path(sys.argv[1]); res = {"protocol": "wp4_prereg_C_su3.md @ 232ab8d + Amendment C1 @ 4287efc + Amendment C2"}
 
     def save():
         out_path.write_text(json.dumps(res, indent=1, default=str) + "\n")
@@ -274,7 +302,10 @@ def main():
         st, nb = structure(g3, (u, y), tv)
         quad = max(abs(v - 1.5) for v in st["quad_second_diff"].values())
         selfconj = {s for s in SECTORS if s[0] == s[1]}
-        mult_ok = all(c[0] == c[1] == c[2] == (s[0] + 3) * (2 if s in selfconj else 1) for s, c in nb.items())   # Amendment C1
+        nmul = {s_: (s_[0] + 3) * (2 if s_ in selfconj else 1) for s_ in SECTORS}
+        mult_ok = all(c[0] == c[1] == c[2] and c[0] >= nmul[s] for s, c in nb.items())   # Amendment C2
+        st["extra_ties"] = {str(s): c[0] - nmul[s] for s, c in nb.items() if c[0] > nmul[s]}
+        nb = {s: [nmul[s]] * 3 for s in nb}                                            # remove exactly her multiplet
         st.update(quad_dev=quad, mult_ok=mult_ok)
         st_all[(tv, u, y)] = (st, nb)
         print("shape", (tv, u, y), "quad", quad, "lin", st["lin_second_diff"], st["lin_Gstar_v"], "sigma", st["sigma"],

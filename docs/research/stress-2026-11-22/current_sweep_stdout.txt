@@ -1,0 +1,18 @@
+t=3.0: x_B=-0.5774  floor of all at Berger: True  single threshold each: True  lost at x=0: [1, 2, 3, 4, 5]
+    family  1: threshold x* = [-0.2397962912098989]  (fraction of the Berger current left: [np.float64(0.4153)])
+    family  2: threshold x* = [-0.3774295168555451]  (fraction of the Berger current left: [np.float64(0.6537)])
+    family  3: threshold x* = [-0.28072204067276335]  (fraction of the Berger current left: [np.float64(0.4862)])
+    family  4: threshold x* = [-0.1905696422631005]  (fraction of the Berger current left: [np.float64(0.3301)])
+    family  5: threshold x* = [-0.09714278673629403]  (fraction of the Berger current left: [np.float64(0.1683)])
+t=3.55: x_B=-0.8227  floor of all at Berger: True  single threshold each: True  lost at x=0: [1, 2, 3, 4]
+    family  1: threshold x* = [-0.09830078925147952]  (fraction of the Berger current left: [np.float64(0.1195)])
+    family  2: threshold x* = [-0.2969309197798797]  (fraction of the Berger current left: [np.float64(0.3609)])
+    family  3: threshold x* = [-0.18157792833718855]  (fraction of the Berger current left: [np.float64(0.2207)])
+    family  4: threshold x* = [-0.06839299804616991]  (fraction of the Berger current left: [np.float64(0.0831)])
+t=5.0: x_B=-1.3416  floor of all at Berger: True  single threshold each: True  lost at x=0: [2, 3]
+    family  2: threshold x* = [-0.17441372519925408]  (fraction of the Berger current left: [np.float64(0.13)])
+    family  3: threshold x* = [-0.04478869891979657]  (fraction of the Berger current left: [np.float64(0.0334)])
+t=7.0: x_B=-1.8898  floor of all at Berger: True  single threshold each: True  lost at x=0: [2]
+    family  2: threshold x* = [-0.09792038481689956]  (fraction of the Berger current left: [np.float64(0.0518)])
+t=10.0: x_B=-2.5298  floor of all at Berger: True  single threshold each: True  lost at x=0: [2]
+    family  2: threshold x* = [-0.05034102236505162]  (fraction of the Berger current left: [np.float64(0.0199)])

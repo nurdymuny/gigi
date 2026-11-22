@@ -24,6 +24,8 @@ papers cite some of these paths, so files are never renamed or moved.
 | [The basin](the-basin-2026-11-22.md) | What happens to her when the field falls in: the door becomes a wall. Includes the fall on the Poincaré sphere. Scripts in [`basin-2026-11-22/`](basin-2026-11-22/) |
 | [Pre-registration S: stress tests](stress-tests-preregistration-2026-11-22.md) | Cut, flip, overload, crush and stretch, and the map of the two basins. Registered before the run |
 | [Pre-registration S: results](stress-tests-results-2026-11-22.md) | 7 held, 2 failed. Door, wall or floor at every break; the squashed meron is the pass between the basins. Scripts in [`stress-2026-11-22/`](stress-2026-11-22/) |
+| [Pre-registration S6: the current sweep](current-sweep-preregistration-2026-11-22.md) | How much motion along her circle she needs to stay the floor, family by family. Registered before the run |
+| [Pre-registration S6: results](current-sweep-results-2026-11-22.md) | Both held. She needs some motion, never much: 65% of the Berger current at t = 3, 2% at t = 10, and family 2 is always the first to go |
 
 ## Helike: the twist and the law she obeys
 

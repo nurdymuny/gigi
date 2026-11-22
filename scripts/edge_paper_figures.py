@@ -231,7 +231,7 @@ def fig_helike():
         else:
             lvl = {2: 0.72, 4: 0.52, 8: 0.32, 16: 0.12}[jv]
             k = int(np.argmin(np.abs(f2 - lvl)))
-            a1.annotate(f"$j={jv}$", (deg[k], f2[k]), xytext=(4, 1), textcoords="offset points", fontsize=7)
+            a1.annotate(f"$j={jv}$", (deg[k], f2[k]), xytext=(7, 3), textcoords="offset points", fontsize=7, bbox=dict(boxstyle="square,pad=0.1", fc=SURF, ec="none", alpha=0.9), zorder=5)
     a1.set_xlim(0, 180); a1.set_ylim(0, 1.08); a1.set_xticks(range(0, 181, 30))
     a1.set_xlabel(r"angle $\eta$ from the pole of the long circle (degrees)")
     a1.set_ylabel(r"$|f|^2=\cos^{2j}(\eta/2)$")
@@ -245,8 +245,8 @@ def fig_helike():
         a2.plot(xv, 2 * xv * 4 / np.sqrt(tv), color=col)
         a2.annotate(f"$t={tv:g}$", (-3, -24 / np.sqrt(tv)), xytext=(-3, 0), textcoords="offset points",
                     ha="right", va="center", fontsize=7)
-    a2.text(-1.5, 8.5, "discount: $x<0$,\nthe field along the long\ncircle turns against her", ha="center",
-            va="top", fontsize=7, color=INK)
+    a2.text(-2.05, 15.5, "discount: $x<0$,\nthe field along\nthe long circle\nturns against her", ha="center",
+            va="top", fontsize=6.5, color=INK, bbox=dict(boxstyle="square,pad=0.1", fc=SURF, ec="none", alpha=0.9), zorder=5)
     a2.set_xlim(-3.9, 3); a2.set_ylim(-18, 18)
     a2.set_xlabel(r"$x$ (field along the long circle)")
     a2.set_ylabel(r"lift term $2xj/\sqrt{t}$  ($j=4$)")
@@ -336,7 +336,7 @@ def fig_region(reg):
         h1.append(Patch(facecolor=FAM_COL[f], alpha=0.55, edgecolor=FAM_COL[f], lw=0.8,
                         label=words[f] + ":  " + ", ".join(blks)))
     l1 = fig.legend(handles=h1, loc="outside lower left", ncol=1, handlelength=1.6, borderaxespad=0.3,
-                    title="Colour: the rival that reaches her first (it sets her upper edge $x^*_{12}$, sectors $j\\leq12$)",
+                    title="Colour: the rival that reaches her first\n(it sets her upper edge $x^*_{12}$; sectors $j\\leq12$)",
                     title_fontsize=7, alignment="left")
     h2 = [Line2D([], [], color=INK, lw=0.7, label="left boundary $x_{\\mathrm{lo}}$, right boundary $x^*_{12}$; fill: her region"),
           Line2D([], [], color=INK2, lw=0.8, ls=(0, (3, 2)), label=r"$r_{\mathrm{lo}}$: the proved lower bound"),
@@ -362,9 +362,8 @@ def fig_berger(bp, ee):
     a1.plot(t, lam, color=HELIKE, label=r"Helike, $\lambda_t(4)$")
     a1.plot(t, cA, color=FAM_COL["B40"], label=r"lowest competitor, $H+GG^*$ ($B_{4,0}$)")
     a1.plot(t, cS, color=FAM_COL["B40"], ls=(0, (4, 1.6)), label="lowest competitor, gauge slice")
-    a1.text(2.555, lam[1] - 0.05, r"Helike $\lambda_t(4)$", fontsize=7, va="top")
-    a1.text(2.848, cA[-1] - 0.06, "$H+GG^*$", fontsize=7, ha="right", va="top")
-    a1.text(2.848, cS[-1] + 0.06, "gauge slice", fontsize=7, ha="right", va="bottom")
+    a1.legend(loc="lower left", fontsize=6.3, handlelength=1.8, borderaxespad=0.3, frameon=True, framealpha=0.95,
+              edgecolor="none", facecolor=SURF)
     a1.set_xlabel("stretch $t$ (Berger path)"); a1.set_ylabel("eigenvalue in sector $j=4$")
     a1.set_title("Her eigenvalue meets the lowest competitor", loc="left")
     yl = a1.get_ylim()
@@ -374,8 +373,8 @@ def fig_berger(bp, ee):
     a2.axhline(0, color=INK2, lw=0.6)
     a2.plot(t, pA, color=FAM_COL["B40"], label=r"$\phi_A$ ($H+GG^*$)")
     a2.plot(t, pS, color=FAM_COL["B40"], ls=(0, (4, 1.6)), label=r"$\phi_S$ (gauge slice)")
-    a2.text(2.847, pA[-1] - 0.06, r"$\phi_A$, $H+GG^*$", fontsize=7, va="top", ha="right")
-    a2.text(2.847, pS[-1] + 0.06, r"$\phi_S$, gauge slice", fontsize=7, va="bottom", ha="right")
+    a2.legend(loc="upper left", fontsize=6.5, handlelength=1.8, borderaxespad=0.3, frameon=True, framealpha=0.95,
+              edgecolor="none", facecolor=SURF)
     a2.plot([ts, tA], [0, 0], ls="none", marker="o", ms=4, color=INK, mec=SURF, mew=0.8)
     a2.set_ylim(top=1.2); yl = a2.get_ylim()
     a2.text(ts, yl[1], r"$t^*$ ", ha="right", va="top", fontsize=7)
@@ -411,8 +410,8 @@ def fig_prereg(A, B):
         ts_ = ", ".join(f"{p['t']:.3g}" for p in sorted(g, key=lambda p: p["t"]))
         hi = g[-1]["x_pred"] > 0
         a1.annotate(bname(g[0]["competitor"], signed=True) + f", $t={ts_}$", (g[-1]["x_pred"], g[-1]["x_meas"]),
-                    xytext=(3, -7) if hi else (7, -2), textcoords="offset points", fontsize=6,
-                    va="top" if hi else "center")
+                    xytext=(4, -7) if hi else (9, 0), textcoords="offset points", fontsize=6,
+                    va="top" if hi else "center", bbox=dict(boxstyle="square,pad=0.1", fc=SURF, ec="none", alpha=0.9), zorder=5)
     a1.plot([], [], "D", ms=4.5, color=FAM_COL["D+"], label=f"another block first ({len(bad)})")
     a1.set_xlim(lim); a1.set_ylim(lim); a1.set_aspect("equal")
     a1.set_xlabel(r"predicted edge (root of $P_2$)"); a1.set_ylabel(r"measured edge $x^*_{12}$")

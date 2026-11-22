@@ -82,3 +82,54 @@ All four theorems compile, with no `sorry`.
 lies where the Floor paper says. It does not check that `edgeDet` is the determinant of the Hessian's block (the
 computer-algebra step), that P₂'s root is the edge (an eigenvalue comparison), or that she is the floor.
 
+
+## The fall, the cut, the overload, the hands, the shadow (2026-11-22)
+
+Five new files, 27 theorems. All compile, with no `sorry`. Together with the earlier sixteen, all **43 theorems**
+depend only on `propext`, `Classical.choice` and `Quot.sound`.
+- Windows 11, Lean v4.36.0, Mathlib v4.36.0 prebuilt cache.
+- `lake build`: `Build completed successfully (18266 jobs)`.
+- Four files compiled on the first attempt. `Cut.lean` needed one fix: `simp` had normalised the derivative's form.
+
+They formalise the exact algebra behind Chapter 4 §4.3 (the fall and the stress tests) and Chapter 5 (the two hands)
+of the book. The research notes are `docs/research/the-basin-2026-11-22.md`,
+`docs/research/stress-tests-results-2026-11-22.md` and `docs/research/the-two-hands-2026-11-22.md` on
+feat/reading-the-curve-update.
+
+The family is `M₀ = xτ₀, M₁ = yτ₁, M₂ = yτ₂`, with `B = y² − 2√t·x`, `c = y(x − 2/√t)` and energy `E = ½(B² + 2c²)`.
+
+| file | theorem | statement |
+| --- | --- | --- |
+| `Fall` | `crossCurv_berger` | on the Berger field `c = −t` |
+| `Fall` | `energy_berger` | the Berger field's energy is `½((3t − 4)² + 2t²)` (34.71 at t = 3.55) |
+| `Fall` | `flat_zero`, `flat_theta` | `A = 0` and `A = θ` (x = 2/√t, y = 2) have `B = c = 0` |
+| `Fall` | `energy_zero`, `energy_theta` | both flat fields have energy 0 |
+| `Fall` | `price_zero`, `price_theta` | her price is `(j + 2)²/t` at `A = 0` and `(j + 4)²/t` at `A = θ` |
+| `Fall` | `price_zero_pos`, `price_theta_pos` | both are positive for every family `j ≥ 0`: at the bottom she is a wall |
+| `Shadow` | `price_theta_eq_shift` | her price at `A = θ` in family `j` equals her price at `A = 0` in family `j + 2` |
+| `Shadow` | `shadow_price` | her price at `A = 0` in family `j − 2` is `j²/t` |
+| `Cut` | `hasDerivAt_energy_y` | `∂E/∂y = 2y(B + (x − 2/√t)²)` |
+| `Cut` | `cut_line_invariant` | that slope is zero on `y = 0`: a cut field never leaves the cut line |
+| `Cut` | `energy_cut`, `hasDerivAt_energy_cut` | on the cut line `E = 2t·x²` and `∂E/∂x = 4t·x` |
+| `Cut` | `cut_fall_solves` | `x(τ) = x₀·e^{−4tτ}` solves the flow `dx/dτ = −∂E/∂x` |
+| `Cut` | `cut_fall_tendsto_zero` | and tends to 0: the cut field falls to `A = 0` |
+| `Cut` | `price_cut_mono` | on `y = 0`, from the Berger value of `x` upward, her price in every family `j ≥ 0` only rises (stress test S1c) |
+| `Overload` | `overload_excess` | under the field scaled by `k`, price − (2√t·k·x − k²y²) = (k·x + (j + 2)/√t)² |
+| `Overload` | `overload_lower` | so in every family her price is at least `2√t·k·x − k²y²` |
+| `Overload` | `overload_attained` | with equality in the family `j + 2 = −k·x·√t`, where her stride cancels the belt |
+| `Overload` | `overload_near` | within half a family of that, her price is within `1/(4t)` of the bound (so price/k² → −y²) |
+| `Hands` | `rowEntry_cross` | in a row `(f − c_l·x − 2l/√t)²` the part bilinear in `x` and `l` is `4c_l·x·l/√t` |
+| `Hands` | `her_minus_sister` | hers (`c_l = 1`) minus her sister's (`c_l = −1`) is `8xl/√t` |
+| `Hands` | `price_cross` | in her price the part bilinear in `x` and `j` is `2xj/√t` |
+| `Hands` | `price_cross_matches_row` | at `j = 2l` the two agree |
+
+**Scope.**
+- **Checked by Lean:** the algebra and calculus above.
+- **Not checked by Lean:**
+  - that the fall stays inside the circle-symmetric family (a symmetry argument);
+  - that `x₀·e^{−4tτ}` is the *only* solution (uniqueness for the ODE);
+  - which basin a general field lands in;
+  - whether she is the floor anywhere, including in the current sweep and the stress tests;
+  - that the `j²/t` state at `A = θ` is the lowest wall;
+  - that the rows are the operator's rows (the edge paper's symbolic Weitzenböck identity);
+  - the Poincaré-sphere holonomy.

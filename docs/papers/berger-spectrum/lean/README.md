@@ -34,6 +34,17 @@ Here t = s² with s ≠ 0, so the statements need no square roots, except the cu
 The polynomials are entered verbatim from the computer-algebra receipt (`research/su2-floor-family-20261119/edge_polynomial.srepr`).
 That they are det(B₄,₀ − λ₄ I), and that P₂'s root is the edge, are not checked in Lean.
 
+## What is checked: the fall, the cut, the overload, the hands, the shadow (2026-11-22)
+
+Five more files (`Helike/Fall.lean`, `Shadow.lean`, `Cut.lean`, `Overload.lean`, `Hands.lean`), 27 theorems:
+- the flat fields and her prices at the bottom of the fall, `(j + 2)²/t` and `(j + 4)²/t`;
+- the wrap that moves her two families;
+- the cut: the cut line is invariant, the fall is `x₀·e^{−4tτ}` to `A = 0`, and her price only rises;
+- the overload bound, reached where her stride cancels the belt;
+- the cross terms of the two hands.
+
+Full table and scope in `RESULTS.md`. In total, 43 theorems, all on the standard three axioms.
+
 ## What is *not* checked here
 
 These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check

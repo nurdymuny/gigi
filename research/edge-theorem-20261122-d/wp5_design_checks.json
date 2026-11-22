@@ -1,0 +1,163 @@
+{
+ "D5a": {
+  "|X_H| in the orthonormal basis": 2.0000000000000004,
+  "e_H (X coords)": [
+   -0.0,
+   -0.0,
+   0.4999999999999999,
+   -0.0,
+   -0.0,
+   -0.0,
+   -0.0,
+   0.8660254037844386
+  ],
+  "e_K (X coords)": [
+   0.0,
+   0.0,
+   0.8660254037844386,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   -0.4999999999999999
+  ]
+ },
+ "D5b_commutant_dim": 10,
+ "D5c_reduced_in_commutant_residual": 0.0,
+ "D5c_H_weights_of_root_planes": {
+  "12": [
+   -1.0,
+   1.0
+  ],
+  "13": [
+   -2.0,
+   2.0
+  ],
+  "23": [
+   -1.0,
+   1.0
+  ]
+ },
+ "D5d": {
+  "member": [
+   -0.9763930125978142,
+   1.0865041311011407,
+   1.4845522474605053,
+   0.5617868824954076,
+   1.4860011536435853,
+   3.7
+  ],
+  "(0, 0)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 1.999999999999997
+  },
+  "(1, 0)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 1.9999999999999984
+  },
+  "(1, 1)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 2.0000000000000004
+  },
+  "(2, 0)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 1.9999999999999996
+  },
+  "(2, 1)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 2.000000000000001
+  },
+  "(3, 0)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 1.9999999999999951
+  },
+  "(2, 2)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 2.0000000000000027
+  },
+  "(3, 1)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 2.000000000000005
+  },
+  "(4, 0)": {
+   "signs": [
+    1,
+    1,
+    1
+   ],
+   "top_unique_and_exact": true,
+   "row_error": null,
+   "n_b": 2,
+   "is_floor_here (not scored)": null,
+   "second_x_difference": 1.9999999999999991
+  }
+ },
+ "D5e_MC_energy_rotated_vs_test2": [
+  0.375,
+  0.375
+ ]
+}

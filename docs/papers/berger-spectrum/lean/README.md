@@ -45,6 +45,22 @@ Five more files (`Helike/Fall.lean`, `Shadow.lean`, `Cut.lean`, `Overload.lean`,
 
 Full table and scope in `RESULTS.md`. In total, 43 theorems, all on the standard three axioms.
 
+## A second library: the Davis Manifold (2025), reread (`DavisManifold/Review.lean`, 2026-11-22)
+
+Twelve theorems on the 2025 paper's own lemmas, from `docs/research/davis-manifold-review-2026-11-22.md`.
+They are not about the floor.
+- **L1:** the Cantelli posterior bound is monotone in its tails.
+- **L3:** `∏(1 − Eᵢ) ≥ 1 − ∑Eᵢ`, plus the counterexample to the vacuity corollary: four errors of 7/40 still leave
+  a factor above 0.46.
+- **L4:** the single non-vacuity condition `(1 − ε)κ_soft > (1 + ε)κ_hard` separates in ambient distance.
+- **L5:** the repaired Prop. 4, one reference set giving `d ≥ κ_soft − κ_hard`, plus a counterexample to the
+  two-reference version.
+- **L6:** the InfoNCE margin is a gap in mean squared distance, plus the counterexample to Lemma 1.
+- **L7:** log-sum-exp ≥ log K + mean (Jensen).
+- **L8:** `1 − sin x/x < x²/6`, so chord-against-arc distortion is below `(kL)²/24`.
+
+All twelve depend only on `propext`, `Classical.choice` and `Quot.sound`. `lake build` builds both libraries.
+
 ## What is *not* checked here
 
 These files check the **algebra**: the formula for her price, and what follows from that formula. They do not check

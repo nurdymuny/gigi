@@ -1,4 +1,5 @@
 import Helike
+import DavisManifold
 #print axioms Helike.price_anatomy
 #print axioms Helike.floorLaw_paper_form
 #print axioms Helike.kappa_berger
@@ -42,3 +43,15 @@ import Helike
 #print axioms Helike.her_minus_sister
 #print axioms Helike.price_cross
 #print axioms Helike.price_cross_matches_row
+#print axioms DavisManifold.cantelli_posterior_bound
+#print axioms DavisManifold.prod_one_sub_ge
+#print axioms DavisManifold.vacuity_counterexample
+#print axioms DavisManifold.ambient_separation
+#print axioms DavisManifold.nonvacuity_iff
+#print axioms DavisManifold.margin_gap_single_reference
+#print axioms DavisManifold.margin_gap_two_references_fails
+#print axioms DavisManifold.score_sub
+#print axioms DavisManifold.lemma1_counterexample
+#print axioms DavisManifold.log_sum_exp_ge
+#print axioms DavisManifold.one_sub_sin_div_lt
+#print axioms DavisManifold.chord_arc_distortion

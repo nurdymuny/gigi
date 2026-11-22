@@ -213,3 +213,35 @@ and not competitors.
 
 **Implementation change, not a protocol change.** The H + GG\* floor set (reported alongside, no gate) is read from
 the same evaluations as the slice scan, on the scan grid only.
+
+## Amendment C2 (21 November, after amended C-mult fired at the second shape point, before any floor or edge)
+
+**What happened.**
+- The rerun (on the block-diagonal implementation below) passed C-K1 to C-K5 again (C-K5: 2.6 × 10⁻¹⁴).
+- Shape (2, ½, ½) passed every structure gate.
+- At (2, ½, 1), C-mult (Amendment C1) stopped the run. The counts were 6 in (1, 0) where the formula gives 4, and 12
+  in (1, 1) where it gives 8. They were the same at all three x values.
+
+**Diagnosis (structure only; no floor, edge or competitor computed).**
+- The extra states form a **second** SU(2)₁₂₃ doublet, with charges 3 and 4. Her multiplet has spin 3/2 and top charge
+  5, so they are not part of it. Their eigenvalue equals λ_b **identically** in x at (u, y) = (½, 1).
+- This holds at t = 2, 2.0001 and 3. It does **not** hold at (0.6, 1), (1, 1), (½, ½), (1, 2) or (0.7, 1.4).
+- At (0.7, 1.5) a single extra coincidence appears at one x, in (2, 0). That is an ordinary crossing.
+- So other states can share her value: identically, on special shapes, or at isolated points. They are **tied
+  competitors, not copies of her.**
+
+**Amended rule (fixed now).**
+- **C-mult:** n_b ≥ (p + 3)·(2 if p = q else 1) in every sector, with n_b the same at the three x values (as before).
+  **Exactly the multiplet count (p + 3)·(2 if p = q else 1) is removed.** Any further states at her value stay in the
+  spectrum as competitors that tie with her.
+- Under the registered floor rule (λ_b ≤ μ_min + 10⁻⁹·max(1, |μ_min|), the non-strict rule of Test 2), a tie leaves
+  her the floor. The **extra counts are reported** per shape point (descriptive): where they are identical in x, she is
+  never the unique floor in that sector.
+- Otherwise unchanged.
+
+**Implementation note (not a protocol change).**
+- All spectra are now computed in the eigenbasis of the field-independent Q, block by block. This is a unitary change
+  of basis.
+- The C-sym commutator is evaluated exactly as Σ|H′ᵢⱼ|²(qᵢ − qⱼ)², and ‖H‖₂ comes from the block spectra.
+- It agrees with the dense computation to 2 × 10⁻¹³ on the largest sector, and C-K5 confirms it against Test 2b.
+- It reduced the cost per x point from 51 s to about 11 s.

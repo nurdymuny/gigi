@@ -101,6 +101,13 @@ systems are drawn on two actual hands: thumb, index and middle finger as X, Y, Z
 the two trihedral angles **cannot be superposed** so that matching axes coincide. Remark 2 says the names "right" and
 "left" come from the hands.
 
+The same page defines handedness by **where you stand to watch**. The system is *right* when the 90° turn that carries
+the positive ray OX onto OY looks counterclockwise **seen from the side of the ray OZ**. In the *left* system the same
+turn looks clockwise (drawing 143). The turn alone has no hand. A hand appears only when you fix where the watcher
+stands. That is the same move as her lift, in item 3 below: "against her charge" means x < 0 or x > 0 depending on
+which way you hold the circle (k = ±1, x → −x). (The page fact is checked against my own copy, p. 129. The link to the
+lift is STRUCTURAL: the same convention-dependence, not yet a theorem.)
+
 My thought was physical. **You reach the left side of your body more easily with your right hand, and the right side
 with your left.** The symmetry of the body is not decoration. It serves a purpose: whichever side something is on, one
 hand reaches it across the body. So I wondered out loud: *in geometry we notice the symmetry, but do we understand

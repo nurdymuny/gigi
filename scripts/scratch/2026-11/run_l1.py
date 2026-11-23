@@ -1,9 +1,9 @@
 import json, time, sys, numpy as np
-sys.path.insert(0, '/Users/bdavis/.claude/jobs/c8f0f39d/tmp/ricci/e2e/probes')
+sys.path.insert(0, '$SCRATCH/ricci/e2e/probes')
 import ricci_rf2h as g
 from scipy.sparse import load_npz
 from scipy.sparse.linalg import splu
-R='/Users/bdavis/.claude/jobs/c8f0f39d/tmp/ricci/output/'
+R='$SCRATCH/ricci/output/'
 VAR=R+'ricci-variational-20261117/abelian/'
 for L in [int(x) for x in sys.argv[1].split(',')]:
     p = json.load(open(R+f'ricci-shape-regular-20261117/berger/level{L}_berger_q6.input.json'))

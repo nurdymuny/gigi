@@ -1,6 +1,6 @@
 import sympy as sp, re, time
 from sympy import *
-R='/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/su2-floor-family-20261119/'
+R='./research/su2-floor-family-20261119/'
 P=eval(open(R+'edge_polynomial.srepr').read())
 x=Symbol('x',real=True); y=Symbol('y',real=True); s=Symbol('s',positive=True)
 txt=open(R+'edge_polynomial.txt').read().splitlines()

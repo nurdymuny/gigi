@@ -1,5 +1,5 @@
 import json, numpy as np
-R='/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/su2-floor-family-20261119/'
+R='./research/su2-floor-family-20261119/'
 for f in ('alignment_test_4b.json','alignment_test_4a.json'):
     d=json.load(open(R+f)); pts=d['points']
     print(f, len(pts), pts[0]['s'], pts[-1]['s'], d['summary']['per_sector_runs'])

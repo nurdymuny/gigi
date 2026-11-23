@@ -1,5 +1,5 @@
 import json, glob, os
-J = os.environ['CLAUDE_JOB_DIR'] + '/tmp'
+J = os.environ['SCRATCH']
 print("== S2d")
 for f in sorted(glob.glob(J + '/paper/research/su2-spectrum-n3-20261119/*.json')):
     d = json.load(open(f)); print(os.path.basename(f), {k: d[k] for k in ('rough_real_below_minus10','min_real','W_left','max_abs_imag','C_col')})

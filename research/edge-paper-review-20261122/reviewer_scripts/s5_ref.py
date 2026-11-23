@@ -1,5 +1,5 @@
 import sys, numpy as np
-sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+sys.path.insert(0,'./scripts')
 _a=sys.argv; sys.argv=[_a[0]]
 import ricci_su2_exact_edge as EE
 import ricci_su3_test2_family as T2

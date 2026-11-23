@@ -13,7 +13,7 @@ factored LDL^T. With rho = min(Frobenius, max row sum) of the radii and the back
 and eps < eta give lambda_min(B(t)) >= lambda_t(j) + eta - eps > lambda_t(j) for every t in the slice. Together:
 lambda_t(j) is the lowest eigenvalue of H + G G^* in sector j, multiplicity exactly two (the two twist blocks).
 
-Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of Astra's review, 20 November 2026, finding 1).
+Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of the external review, 20 November 2026, finding 1).
 usage: python scripts/ricci_su2_block_interval_cert.py OUT.json TMIN TMAX JMAX [NPROC] [JMIN]
 """
 import json
@@ -167,7 +167,7 @@ def certify_block(j, q, a, b, eta, fd):
             A[2 * x][2 * y] = re; A[2 * x][2 * y + 1] = -im; A[2 * x + 1][2 * y] = im; A[2 * x + 1][2 * y + 1] = re
     for x in range(N):
         A[x][x] = A[x][x] - mu
-    # stored midpoints and OUTWARD radii about them (ricci_su2_outward; Astra's review, finding 1)
+    # stored midpoints and OUTWARD radii about them (ricci_su2_outward; the external review, finding 1)
     mid = [[None] * N for _ in range(N)]; bud = O.Budget()
     for r in range(N):
         for c_ in range(r + 1):

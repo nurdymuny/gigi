@@ -1,6 +1,6 @@
 import json, ast, time, sympy as sp
 x,y,s=sp.symbols('x y s')
-d=json.load(open('/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_block_polynomials.json'))['blocks']
+d=json.load(open('./research/edge-theorem-20261121/wp1_block_polynomials.json'))['blocks']
 paper="2*s**8*x-5*s**7*x**2-s**7*y**2-s**6*x**3+7*s**6*x*y**2+s**5*x**4+2*s**5*x**2*y**2-23*s**5*x**2-s**5*y**4+7*s**5*y**2-3*s**4*x**3*y**2+9*s**4*x**3+3*s**4*x*y**4-7*s**4*x*y**2-30*s**4*x+2*s**3*x**4-10*s**3*x**2*y**2+4*s**3*x**2+6*s**3*y**4+2*s**3*y**2+20*s**2*x**3-28*s**2*x*y**2-20*s**2*x+56*s*x**2-40*s*y**2+48*x"
 pp=sp.sympify(paper)
 for k in ['j=1,q=1.5','j=2,q=2','j=12,q=7','j=2,q=1','j=12,q=6','j=1,q=0.5','j=3,q=0.5']:

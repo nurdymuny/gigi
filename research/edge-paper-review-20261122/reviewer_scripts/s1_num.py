@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+import sys; sys.path.insert(0,'./scripts')
 import numpy as np
 _a,sys.argv=sys.argv,[sys.argv[0]]
 import ricci_su3_test2_family as T2

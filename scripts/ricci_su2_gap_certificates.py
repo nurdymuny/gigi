@@ -29,7 +29,7 @@ CERTIFICATE 2 (j = 0, 12, 20, 24: the sectors below 30 that survive on the Poinc
     eigenvalue is exactly lambda(j), with multiplicity two, and nothing else lies below lambda(j) + 1/3 - eps.
 
 usage: python scripts/ricci_su2_gap_certificates.py [OUT.json]
-Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of Astra's review, 20 November 2026, finding 1).
+Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of the external review, 20 November 2026, finding 1).
 """
 import json
 import sys
@@ -293,7 +293,7 @@ def certificate_counts(j, mu_offsets=(-sp.Rational(1, 3), sp.Rational(1, 3))):
             band = max(band, abs(r_ - c_))
             if r_ < c_:
                 continue
-            # stored midpoint and OUTWARD radius about it (ricci_su2_outward; Astra's review, finding 1)
+            # stored midpoint and OUTWARD radius about it (ricci_su2_outward; the external review, finding 1)
             m_, r1 = O.mid_rad(v if not isinstance(v, int) else iv.mpf(v))
             mid[(r_, c_)] = m_
             bud.add(r_, c_, r1)

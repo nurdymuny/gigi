@@ -205,4 +205,4 @@ Only STRUCTURAL and the stronger RESONANCE rows are kept; WORD-ONLY rows are lis
 - Nothing here is to be cited in the mathematics papers as support for those documents, or the reverse.
   - The one exception is §2.1: it is ordinary mathematics and can go into my Crouzeix paper.
 - Conflicts C1, C3, C4 and C5 concern my statements as written. In several I meant something narrower; those are the sentences to fix.
-- The reading agents' extracts are in `$CLAUDE_JOB_DIR/tmp/grid1`–`grid4` (job-local, not committed).
+- The reading agents' extracts are in `grid1`–`grid4` in my scratch folder (local, not committed).

@@ -1,5 +1,5 @@
 import sys, numpy as np
-sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+sys.path.insert(0,'./scripts')
 import ricci_su2_exact_edge as E
 bl=E.Blocks(); ch=bl.ch
 for (xv,yv,tv,j) in [(0.33,1.0,4.4,400),(0.33,3.0,4.4,400),(0.33,1.0,4.4,40),(1.3,2.0,2.0,400)]:

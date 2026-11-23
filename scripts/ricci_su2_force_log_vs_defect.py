@@ -1,4 +1,4 @@
-"""Astra review R6: the SU(2) two-ring force with the face read by its arc (log U_f) instead of the defect
+"""External review R6: the SU(2) two-ring force with the face read by its arc (log U_f) instead of the defect
 (vector part of U_f, what the committed force uses). Same norm as the paper's error (relative full-mass error
 against the continuum target), plus the relative difference of the two gradients.
 usage: python scripts/ricci_su2_force_log_vs_defect.py OUT.json [LEVELS]

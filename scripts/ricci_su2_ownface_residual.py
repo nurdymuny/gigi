@@ -1,4 +1,4 @@
-"""Astra review R1: how far the SU(2) two-ring recovery is from holding a cell's own face readings exactly.
+"""External review R1: how far the SU(2) two-ring recovery is from holding a cell's own face readings exactly.
 
 A closed linear 2-form has four own-face fluxes summing to zero (rank-3 flux map); registered non-Abelian face
 readings do not (the Bianchi identity is multiplicative). The recovery applies the Abelian equality-constrained fit

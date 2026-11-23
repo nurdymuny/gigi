@@ -1,5 +1,5 @@
 import json, numpy as np
-R='/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/su2-floor-family-20261119/'
+R='./research/su2-floor-family-20261119/'
 d=json.load(open(R+'twist_family_map.json'))
 c=[r for r in d['cells'] if r['floor_all']]
 print('floor_all',len(c),'x<=0',sum(r['x']<=0 for r in c),'x<0',sum(r['x']<0 for r in c), 'x>0 cells',[(r['x'],r['y'],r['t']) for r in c if r['x']>=0][:10])

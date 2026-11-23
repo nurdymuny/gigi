@@ -1,5 +1,5 @@
 import sys, numpy as np
-sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+sys.path.insert(0,'./scripts')
 import ricci_su3_test2_family as T2
 S,C,eps = T2.su2_data()
 def lam(x,y,t,j): return (x+(j+2)/np.sqrt(t))**2+2*np.sqrt(t)*x-y**2

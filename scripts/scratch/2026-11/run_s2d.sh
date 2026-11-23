@@ -1,6 +1,6 @@
 #!/bin/bash
-cd /Users/bdavis/.claude/jobs/c8f0f39d/tmp/paper
-export GIGI_RICCI_DATA_ROOT=/Users/bdavis/.claude/jobs/c8f0f39d/tmp/su2 OMP_NUM_THREADS=8
+cd $SCRATCH/paper
+export GIGI_RICCI_DATA_ROOT=$SCRATCH/su2 OMP_NUM_THREADS=8
 P=/Users/bdavis/Projects/tessera/venv/bin/python
 D=research/su2-spectrum-n3-20261119
 mkdir -p $D

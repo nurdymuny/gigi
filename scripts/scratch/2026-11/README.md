@@ -23,4 +23,4 @@ They fall into three kinds:
 
     These are the development runs disclosed in §0 of the Test G registration.
 
-Paths inside them point at the scratch folder they ran from. To rerun one, change its paths.
+Paths inside them are written relative to the scratch folder they ran from, shown as `$SCRATCH` (the repository itself is `./`). To rerun one, set those paths.

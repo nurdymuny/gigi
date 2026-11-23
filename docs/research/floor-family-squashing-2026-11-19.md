@@ -299,7 +299,7 @@ The proof has four parts.
 - Nothing outside [2.75, 10]. t* ≈ 2.698 remains numerical.
 
 
-**Reissue (20 November, after Astra's adversarial review).** Every interval certificate has been reissued under the
+**Reissue (20 November, after the external adversarial review).** Every interval certificate has been reissued under the
 outward error budget of `scripts/ricci_su2_outward.py`:
 - Table 1 at t = 3;
 - t = 4;

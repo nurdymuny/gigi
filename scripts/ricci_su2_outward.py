@@ -1,4 +1,4 @@
-"""Outward-rounded error budget for the interval inertia certificates (repair of Astra's review, 20 November 2026,
+"""Outward-rounded error budget for the interval inertia certificates (repair of the external review, 20 November 2026,
 finding 1).
 
 The certificates replace an interval matrix by a point matrix M (the stored midpoints of its lower triangle), factor M

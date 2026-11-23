@@ -1,5 +1,5 @@
 import json, numpy as np, sympy as sp
-R='/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/'
+R='./research/'
 x,y,s=sp.symbols('x y s')
 txt=open(R+'su2-floor-family-20261119/edge_polynomial.txt').read().splitlines()
 L=[l.strip() for l in txt if l.strip().startswith(('2*s**12','-8*s**16'))]

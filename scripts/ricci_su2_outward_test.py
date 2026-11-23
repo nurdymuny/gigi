@@ -1,4 +1,4 @@
-"""Adversarial tests of scripts/ricci_su2_outward.py (Astra's review, finding 1), checked at a precision four times
+"""Adversarial tests of scripts/ricci_su2_outward.py (the external review, finding 1), checked at a precision four times
 the working one: adjacent endpoints, narrow intervals around large entries, singletons, negative and straddling
 intervals, cancellation in shifted diagonals, and every scalar entry of the actual j = 4, q = 0, t = 3 charge block at
 the block certificate's 64-bit precision (where the old conversion missed 12 of 90 endpoints).
@@ -48,7 +48,7 @@ def main():
             m, r = O.mid_rad(v)
             mo, ro = old_rad(v, prec)
             lines.append(f"prec {prec:3d} {name:42s}: new covers {covers(v, m, r, prec)}; old covers {covers(v, mo, ro, prec)}")
-    # the actual block (Astra's reproduction)
+    # the actual block (the reviewer's reproduction)
     import ricci_su2_block_interval_cert as BC
     iv.prec = BC.PREC; mpmath.mp.prec = BC.PREC
     Tv = iv.mpf(3)

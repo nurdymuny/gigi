@@ -1,7 +1,7 @@
 import re, sympy as sp
 from sympy import symbols,sympify,Poly,expand,Rational,Symbol,Add,Mul,Integer,Pow
-L=open('/Users/bdavis/.claude/jobs/c8f0f39d/tmp/lean/docs/papers/berger-spectrum/lean/Helike/Edge.lean').read()
-R='/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/su2-floor-family-20261119/'
+L=open('$SCRATCH/lean/docs/papers/berger-spectrum/lean/Helike/Edge.lean').read()
+R='./research/su2-floor-family-20261119/'
 x,y,s=symbols('x y s')
 defs={}
 for m in re.finditer(r'def (\w+) \(([^)]*)\) : ℝ :=\n(.*?)(?=\n\n|\n/--|\ntheorem)',L,re.S):

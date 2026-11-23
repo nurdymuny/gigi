@@ -1,5 +1,5 @@
 import sys, numpy as np
-sys.path.insert(0, "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts")
+sys.path.insert(0, "./scripts")
 import ricci_su3_test2_family as T2
 X, C = T2.su3_data()
 XH = -1j*np.diag([1.0,0,-1.0])

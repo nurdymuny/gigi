@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+sys.path.insert(0,'./scripts')
 import sympy as sp
 import ricci_su2_exact_edge as E
 x,y,t=E.x,E.y,E.t

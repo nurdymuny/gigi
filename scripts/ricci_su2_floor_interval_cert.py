@@ -9,7 +9,7 @@ eigenvalues below lambda_t(j) + delta - eps; lambda_t(j) is an exact eigenvalue 
 every other is at least lambda_t(j) + delta - eps > lambda_t(j). Its eigenvector lies in the gauge slice, so it is the
 floor there. The assembly and count code are taken verbatim from scripts/ricci_su2_gap_certificates_t.py.
 
-Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of Astra's review, 20 November 2026, finding 1).
+Error budget: outward-rounded (scripts/ricci_su2_outward.py; repair of the external review, 20 November 2026, finding 1).
 usage: python scripts/ricci_su2_floor_interval_cert.py OUT.json TMIN TMAX SECTORS [NPROC]
 """
 import json
@@ -135,7 +135,7 @@ def count_interval(j, Tv, mu_iv):
         band = max(band, abs(r_ - c_))
         if r_ < c_:
             continue
-        # stored midpoint and OUTWARD radius about it (ricci_su2_outward; Astra's review, finding 1)
+        # stored midpoint and OUTWARD radius about it (ricci_su2_outward; the external review, finding 1)
         m_, r1 = O.mid_rad(v if not isinstance(v, int) else iv.mpf(v))
         mid[(r_, c_)] = m_
         bud.add(r_, c_, r1)

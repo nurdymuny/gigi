@@ -1,5 +1,5 @@
 import sys, inspect
-sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+sys.path.insert(0,'./scripts')
 import sympy as sp, mpmath
 import edge_wp2_symbolic as WS
 ch,w,C,Op,Omn = WS.exact_rows()

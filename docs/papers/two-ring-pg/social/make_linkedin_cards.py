@@ -1,4 +1,4 @@
-"""LinkedIn cards in the paper's plate style (Astra's make_polished_plates.py, reused, not copied).
+"""LinkedIn cards in the paper's plate style (make_polished_plates.py, reused, not copied).
 
 Every number is from a committed receipt; see social/README.md for the source of each.
 usage: python docs/papers/two-ring-pg/social/make_linkedin_cards.py
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-import make_polished_plates as M          # noqa: E402  (Astra's plate helpers, palette and renderer)
+import make_polished_plates as M          # noqa: E402  (the plate helpers, palette and renderer)
 
 OUT = HERE / "cards"
 GEO = json.loads((HERE.parent / "data" / "rings_3d.json").read_text())

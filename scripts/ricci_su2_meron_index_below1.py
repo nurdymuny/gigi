@@ -1,7 +1,7 @@
 """Morse index by sector of the squashed meron for t = 0.05..0.95 (step 0.05), sectors j <= 12: the number of negative
 eigenvalues of H + G G^* (gauge directions lifted), as in scripts/ricci_su2_meron_family_soft.py, which covers
 t = 1..10. The meron is continued down from t = 1 as in scripts/ricci_su2_test2_family.py. Double precision; sampled
-stretches and sectors only (Astra's review, finding 2: report the coverage, not a theorem).
+stretches and sectors only (the external review, finding 2: report the coverage, not a theorem).
 usage: python scripts/ricci_su2_meron_index_below1.py OUT.json
 """
 import json

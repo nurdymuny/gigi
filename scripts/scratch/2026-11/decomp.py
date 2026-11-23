@@ -1,10 +1,10 @@
 import json, sys, numpy as np
-sys.path.insert(0, '/Users/bdavis/.claude/jobs/c8f0f39d/tmp/ricci/e2e/probes')
+sys.path.insert(0, '$SCRATCH/ricci/e2e/probes')
 import ricci_rf2h as g
 from scipy.sparse import load_npz, kron, eye
 from scipy.sparse.linalg import splu
 from ricci_lattice_mesh import plus
-R='/Users/bdavis/.claude/jobs/c8f0f39d/tmp/ricci/output/'; VAR=R+'ricci-variational-20261117/abelian/'
+R='$SCRATCH/ricci/output/'; VAR=R+'ricci-variational-20261117/abelian/'
 def true_moments(P, order=9):
     u,v,w=g.tri_rule(order); d1=P[:,1]-P[:,0]; d2=P[:,2]-P[:,0]
     y=P[:,None,0]+u[None,:,None]*d1[:,None]+v[None,:,None]*d2[:,None]; r=np.linalg.norm(y,axis=-1); x=y/r[...,None]

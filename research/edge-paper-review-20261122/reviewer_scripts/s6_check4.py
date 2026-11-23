@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+sys.path.insert(0,'./scripts')
 sys.argv=[sys.argv[0]]
 import numpy as np
 import ricci_su2_exact_edge as EE

@@ -1,4 +1,4 @@
-"""LinkedIn cards for the Floor paper, in the plate style of Reading the Curve's cards (Astra's plate helpers, reused).
+"""LinkedIn cards for the Floor paper, in the plate style of Reading the Curve's cards (the plate helpers, reused).
 
 Every number is either an exact formula from the published paper (doi:10.5281/zenodo.24412603, v2) or labelled as a
 v3-draft result. See README.md beside this file for the source of each number.
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent.parent / "two-ring-pg"))
-import make_polished_plates as M          # noqa: E402  (Astra's plate helpers and palette)
+import make_polished_plates as M          # noqa: E402  (the plate helpers and palette)
 
 OUT = HERE / "cards"
 INK, MUTED, BLUE, COPPER, TEAL, GREY = M.INK, M.MUTED, M.BLUE, M.COPPER, M.TEAL, M.GREY

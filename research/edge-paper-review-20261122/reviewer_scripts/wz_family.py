@@ -9,7 +9,7 @@ from pathlib import Path
 
 import sympy as sp
 
-sys.path.insert(0, "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts")
+sys.path.insert(0, "./scripts")
 _argv, sys.argv = sys.argv, [sys.argv[0]]
 import ricci_su2_gap_certificates_t as GC      # noqa: E402
 sys.argv = _argv

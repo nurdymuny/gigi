@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+import sys; sys.path.insert(0,'./scripts')
 import numpy as np
 import ricci_su2_exact_edge as E
 from scipy.optimize import brentq

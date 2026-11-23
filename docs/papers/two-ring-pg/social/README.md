@@ -1,6 +1,6 @@
 # Social cards
 
-Six cards in the paper's plate style, made with Astra's plate helpers and her
+Six cards in the paper's plate style, made with the plate helpers and the
 depth-sorted transparency renderer (`../make_polished_plates.py`,
 `../transparent_tetra_renderer.py`). The 3-D scenes use the paper's saved geometry
 (`../data/rings_3d.json`); the flow card reads `../data/su2_flow.json`, which

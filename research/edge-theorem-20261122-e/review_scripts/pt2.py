@@ -1,6 +1,6 @@
 import sys, numpy as np, math
 from scipy.optimize import brentq
-sys.path.insert(0,'/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts')
+sys.path.insert(0,'./scripts')
 import ricci_su2_exact_edge as E
 bl=E.Blocks(); ch=bl.ch
 def g(l,xv,yv,tv,d):

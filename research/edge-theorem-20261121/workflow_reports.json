@@ -6,10 +6,10 @@
    "result": {
     "summary": "The edge result is proved on both slices (t = 3 with y = \u221a3, and t = 3 with y = 3/2), but only for sectors j \u2264 12. It uses exact algebra plus rigorous interval arithmetic. Let x* be the unique real root of P2(x, y, \u221a3) in [-3, 1]. Then on [-3, r_next) the twist is the floor of every sector j \u2264 12 iff x \u2264 x*. Here r_next is the next real zero of det(B_{4,0} - lambda_4 I), and it is a root of P1. The whole script runs in about 25 s.\n\nHow it is proved:\n- **Blocks.** The slice blocks are built exactly in sympy. The exact determinant matches the srepr polynomial exactly (3^9 D = P), and factor_list gives P = -16384\u00b7P1\u00b7P2.\n- **Roots.** The real roots of P1 and P2 are isolated with rational endpoints, using the norm over Q(\u221a3) and exact sign tests. Both norms are squarefree, so every root is simple.\n- **Transversality.** Interval enclosures show dP2/dx \u2260 0 and P1 \u2260 0 on x* \u00b1 1e-6.\n- **Sign of m.** Interval Cholesky shows B_{4,0} - lambda_4 is positive definite at x = -3. Then the eigen-branch argument (Rellich) gives m > 0 on [-3, x*), m(x*) = 0, and m < 0 on (x*, r_next).\n- **Other blocks.** Interval Cholesky on covers of [-3, x* + 0.02] certifies all 116 other non-twist blocks per slice, using the Alefeld-Mayer theorem.\n\nNot proved:\n- Sectors j > 12 near the edge. The large-j proof covers only x in [-3, -1.5].\n- The gauge-orthogonal edge.\n- That the closed-form blocks are the charge blocks of H + GG*. This WP relies on earlier numerical checks for that and does not re-derive it.\n\nThe .md file also lists what a 2-D (t, y) region would need. That part is a plan, not proved: no root collisions in x (discriminant and resultant nonzero, leading x-coefficient nonzero), one positive-definite base point per connected region, a 3-D interval cover near the edge surface, and certificates for the middle sectors 12 < j < 80.",
     "files_written": [
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp3_slice_iff.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp3_slice_iff.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp3_slice_iff_log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp3_slice_iff.md"
+     "./scripts/edge_wp3_slice_iff.py",
+     "./research/edge-theorem-20261121/wp3_slice_iff.json",
+     "./research/edge-theorem-20261121/wp3_slice_iff_log.txt",
+     "./research/edge-theorem-20261121/wp3_slice_iff.md"
     ],
     "results": [
      {
@@ -388,13 +388,13 @@
    "result": {
     "summary": "I drafted the three WP4 pre-registrations. No test was run, and no edge, floor or spectrum was computed at any held-out point. The only things computed were structural design checks and the draw of the held-out points.\n\nTwo of those checks change what the hypotheses can claim:\n\n1. **Her region in x is bounded on both sides, so it is not a half-line.** Her value \u03bb\u2080 grows like x\u00b2. The state \u03b8\u2070\u2297\u03c4\u2080 in sector 0 is gauge-orthogonal for every (x, y, t), and its Rayleigh quotient is affine in x. So for every (y, t) she stops being the floor at large |x|, under both the H+GG* and the gauge-orthogonal definitions. The same argument works in the SU(3) family through \u03b8\u2078\u2297X\u2088. This means H1's \"half-line\", the sentence's \"by more than\", and H3(3)'s \"half-space\" must all become \"interval\". Every earlier scan stopped at x = \u22123, which is why the region looked like a half-line.\n\n2. **The (x, y) ansatz is general up to constant gauge.** It covers every left-invariant, circle-symmetric SU(2) field on (t, 1, 1), for any circle weight k. So \"random fields beyond the ansatz\" do not exist inside that class. Prereg B is therefore split: B-I checks that the class behaves as its reduction (a code control that can only fail on a code error), and B-II tests H2's kill criteria at random points over a much wider box than before.\n\n**What each pre-registration contains:**\n- **A (held-out points):** 48 fixed points never computed before. The prediction is that the edge is the largest real root of P\u2082 in [\u22123, 3], with competitor (4, 0), to 1e-9. It is measured by an independent full-spectrum code path. Further arms: the competitor class at small y; no undercut from sectors 13\u201360; one interval with no holes. Controls: three code gates, a negative control using P\u2081, and the proved lower bound.\n- **B:** described in point 2 above.\n- **C (SU(3)):** metric 2b with the fibre field x freed. D3 found the U(2)-invariant fields are exactly 4-dimensional (u, x, y, z), with z removable by gauge. Fixed before the run: her x\u00b2 coefficient is exactly 3/4 (her fibre charge \u221a3/2), and her region is bounded. Predictions from the sentence: she is the floor somewhere (weak and strict versions), her region lies mainly on the side where the field turns against her charge, it is one interval, and the competitor is nearly blind to x (and neutral where u, y \u2265 1). Controls K1\u2013K5 include an SU(2) known-answer check and the Test 2b Maurer\u2013Cartan point.\n\nPre-registration should be committed before any of these tests runs; I did not commit (hard rule).",
     "files_written": [
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp4_design_checks.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp4_points.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_design_checks.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_A_points.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_A_heldout.md",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_B_general_fields.md",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp4_prereg_C_su3.md"
+     "./scripts/edge_wp4_design_checks.py",
+     "./scripts/edge_wp4_points.py",
+     "./research/edge-theorem-20261121/wp4_design_checks.json",
+     "./research/edge-theorem-20261121/wp4_prereg_A_points.json",
+     "./research/edge-theorem-20261121/wp4_prereg_A_heldout.md",
+     "./research/edge-theorem-20261121/wp4_prereg_B_general_fields.md",
+     "./research/edge-theorem-20261121/wp4_prereg_C_su3.md"
     ],
     "results": [
      {
@@ -663,35 +663,35 @@
    "result": {
     "summary": "WP1 is done, and it found a problem with the earlier edge results. With sectors j \u2264 12, the H+GG* edge over t\u2208[2,12], y\u2208[0.25,3] (an 11\u00d712 grid) is set by eight blocks, counted up to the q\u2194\u2212q mirror: (4,0), (3,\u00bd), (2,1), (1,\u00bd), (1,3/2), (2,2), (12,6) and (12,7). Each block's det(B\u2212\u03bb_j) numerator was derived exactly (DomainMatrix over the field its entries need) and factored over Q. All 132 grid edges are roots of the right factor, with |root\u2212edge| \u2264 2.4e-13. The (4,0) edge factor is exactly P2 from the earlier edge_polynomial.txt. Six of the eight blocks belong to two near-top families, q=l+1 and q=l; I derived both determinants with j as a symbol. Each family's leading coefficient in l has x=0 as its only root in the edge range, and both coefficients vanish identically at t=2. Numerically, these families undercut the twist in sectors beyond j=12, with their per-sector edges falling toward 0 roughly like 1/j. So every positive j\u226412 edge (t\u22737, which includes the positive values in exact_edge.json and the exact-edge doc) comes from cutting off at j=12. I confirmed this with the independent non-block builder for both H+GG* and the gauge-orthogonal (slice) spectrum. Conjecture: for 2<t\u226412 the all-sector edge is min(x*_12, 0). At t=2, small y, the edge sits lower still, at a negative large-j limit (j=2000 gives \u22120.6847 at y=0.25). The write-up is research/edge-theorem-20261121/wp1_competitor_map.md.",
     "files_written": [
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_competitor_map.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_block_polynomials.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_poly_check_final.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_top_family.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_family_members.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_jmax_check.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_tail_check.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_tail_negx.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp1_fullsector_check.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map.md",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map_grid_only.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_competitor_map_log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_block_polynomials.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_block_polynomials.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_block_polynomials_log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_poly_check_final.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_top_family.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_top_family.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_top_family_log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_family_members.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_jmax_check.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_jmax_check_log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_check.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_check_log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_negx.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_tail_negx_log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_fullsector_check.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp1_fullsector_check_log.txt"
+     "./scripts/edge_wp1_competitor_map.py",
+     "./scripts/edge_wp1_block_polynomials.py",
+     "./scripts/edge_wp1_poly_check_final.py",
+     "./scripts/edge_wp1_top_family.py",
+     "./scripts/edge_wp1_family_members.py",
+     "./scripts/edge_wp1_jmax_check.py",
+     "./scripts/edge_wp1_tail_check.py",
+     "./scripts/edge_wp1_tail_negx.py",
+     "./scripts/edge_wp1_fullsector_check.py",
+     "./research/edge-theorem-20261121/wp1_competitor_map.md",
+     "./research/edge-theorem-20261121/wp1_competitor_map.json",
+     "./research/edge-theorem-20261121/wp1_competitor_map_grid_only.json",
+     "./research/edge-theorem-20261121/wp1_competitor_map_log.txt",
+     "./research/edge-theorem-20261121/wp1_block_polynomials.json",
+     "./research/edge-theorem-20261121/wp1_block_polynomials.txt",
+     "./research/edge-theorem-20261121/wp1_block_polynomials_log.txt",
+     "./research/edge-theorem-20261121/wp1_poly_check_final.json",
+     "./research/edge-theorem-20261121/wp1_top_family.json",
+     "./research/edge-theorem-20261121/wp1_top_family.txt",
+     "./research/edge-theorem-20261121/wp1_top_family_log.txt",
+     "./research/edge-theorem-20261121/wp1_family_members.json",
+     "./research/edge-theorem-20261121/wp1_jmax_check.json",
+     "./research/edge-theorem-20261121/wp1_jmax_check_log.txt",
+     "./research/edge-theorem-20261121/wp1_tail_check.json",
+     "./research/edge-theorem-20261121/wp1_tail_check_log.txt",
+     "./research/edge-theorem-20261121/wp1_tail_negx.json",
+     "./research/edge-theorem-20261121/wp1_tail_negx_log.txt",
+     "./research/edge-theorem-20261121/wp1_fullsector_check.json",
+     "./research/edge-theorem-20261121/wp1_fullsector_check_log.txt"
     ],
     "results": [
      {
@@ -776,7 +776,7 @@
      "The conjecture is stated on 2<t<=12 even though WP1 had not examined t in (2,3). It is refuted near t=2.01 at y=0.25 (above). The label CONJECTURE is correct, but the domain should be restricted (for example t >= 3, or t bounded away from 2) or the near-t=2 family contribution added."
     ],
     "verdict": "sound_with_fixes",
-    "notes": "I wrote no files in the repo. All checks ran inline through stdin; one scratch file is /tmp/wp1v_facs.json, outside the repo. I used at most 2 processes with OMP_NUM_THREADS=1. Scripts used: /Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/ricci_su2_exact_edge.py (Blocks, phi_A, edge, lam_tw) and scripts/ricci_su3_test2_family.py (hessian_and_gauge, slice_spectrum). Receipts read: research/edge-theorem-20261121/wp1_block_polynomials.json, wp1_tail_check.json and wp1_competitor_map.md, plus research/su2-floor-family-20261119/edge_polynomial.txt.\n\nBottom line: the core WP1 results hold up under independent recomputation. That covers the competitor identification on j<=12, the exact factorizations and their degrees, the edges as roots of the right factor, P2 identity with the earlier polynomial, the family leading coefficients, and the main finding that positive j<=12 edges are cutoff artifacts, confirmed with the general builder and a full q scan. Required fixes:\n(1) Restrict or amend the all-sector conjecture near t=2+. At (2.01,0.25) and (2.001,0.25), q=l family sectors j=16 and j=58 undercut below x*_12, confirmed by the general builder in both H+GG* and the slice.\n(2) Correct the statement about the roots of c0. x=(t-2)/sqrt t lies in [0,1] for t<=4.\n(3) Downgrade the srepr-ratio sub-claim to COMPUTED, and phrase the 'every positive edge' claim as computed at 53/57 points by WP1 (now 57/57 with my checks).\n\nImplication for the edge theorem: a theorem domain at x <= -delta with t >= 3 looks unaffected by everything I tested. Near t=2 at small y, the large-j families must be handled explicitly; they do not stay near x=0 there."
+    "notes": "I wrote no files in the repo. All checks ran inline through stdin; one scratch file is /tmp/wp1v_facs.json, outside the repo. I used at most 2 processes with OMP_NUM_THREADS=1. Scripts used: ./scripts/ricci_su2_exact_edge.py (Blocks, phi_A, edge, lam_tw) and scripts/ricci_su3_test2_family.py (hessian_and_gauge, slice_spectrum). Receipts read: research/edge-theorem-20261121/wp1_block_polynomials.json, wp1_tail_check.json and wp1_competitor_map.md, plus research/su2-floor-family-20261119/edge_polynomial.txt.\n\nBottom line: the core WP1 results hold up under independent recomputation. That covers the competitor identification on j<=12, the exact factorizations and their degrees, the edges as roots of the right factor, P2 identity with the earlier polynomial, the family leading coefficients, and the main finding that positive j<=12 edges are cutoff artifacts, confirmed with the general builder and a full q scan. Required fixes:\n(1) Restrict or amend the all-sector conjecture near t=2+. At (2.01,0.25) and (2.001,0.25), q=l family sectors j=16 and j=58 undercut below x*_12, confirmed by the general builder in both H+GG* and the slice.\n(2) Correct the statement about the roots of c0. x=(t-2)/sqrt t lies in [0,1] for t<=4.\n(3) Downgrade the srepr-ratio sub-claim to COMPUTED, and phrase the 'every positive edge' claim as computed at 53/57 points by WP1 (now 57/57 with my checks).\n\nImplication for the edge theorem: a theorem domain at x <= -delta with t >= 3 looks unaffected by everything I tested. Near t=2 at small y, the large-j families must be handled explicitly; they do not stay near x=0 there."
    }
   },
   {
@@ -784,27 +784,27 @@
    "result": {
     "summary": "WP2 is done, and it turned up a correction to the edge first. Where the j <= 12 edge x*(t,y) is positive (t >~ 7, y >= 1 on the grid), she is NOT the floor of every sector for 0 < x < x*. This is PROVED: one diagonal entry is a Rayleigh-quotient upper bound, and its slope in l is -8x/sqrt t. An independent full builder confirms it numerically: at (0.1, sqrt10, 10) the margin is -0.583 at j=120. So the all-sector edge is min(x*, 0). The 'x <= x* - delta' domains therefore have no finite L0 wherever x* - delta >= 0 (3 of 48 grid points at delta=0.1).\n\nBounds designed:\n(GW) Weighted Gershgorin with an l-dependent diagonal similarity, ratio kappa/sqrt(l) on small xi. It moves the O(sqrt l) couplings into O(1) terms.\n(LDL) The near-end blocks (n0 <= N1, at most 9 states each) are scaled to M=(B-lambda)/l in U=1/l: pivots O(1), ladder entries O(sqrt U). M is proved positive definite exactly by interval LDL^T. Every other row is in the bulk (xi >= N1-1), where plain Gershgorin wins already at small l.\n\nCOMPUTED sampled cutoffs (max over the (t,y) grid), plain G0 / GW / exact:\n- delta=0.5: 763.5 / 103 / 1\n- delta=0.25: 11138.5 / 388 / 1\n- delta=0.1 with the edge corrected to min(x*,0): 8978 / 353.5 / 1\n\nPROVED by interval proof:\n- j >= 40 on x in [-3,-0.6] x y in [0.5,3] x t in [3,10], and also j >= 20 on the same box. The earlier proof had j >= 80 on x <= -1.5.\n- j >= 40 on t-slabs that follow the edge, at about 0.1 and about 0.02 below the grid edge. This includes x <= -0.02 on t in [7,10], y in [1,3]. How far each box sits below the edge was measured only at grid points (COMPUTED, not proved).",
     "files_written": [
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp2_symbolic.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp2_bounds.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/scripts/edge_wp2_interval_proof.py",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_symbolic.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_bounds.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_bounds.log.txt",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_large_sector_bound.md",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_x-0.6_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_x-0.6_L10.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t3-4_x-0.575_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t4-5_x-0.355_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t5-6_x-0.229_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t6-7_x-0.183_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_x-0.154_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t3-4_y0.5-3_x-0.495_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t4-5_y0.5-3_x-0.274_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t5-6_y0.5-3_x-0.149_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t6-7_y0.5-3_x-0.103_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_y0.5-3_x-0.074_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_y1-3_x-0.02_L20.json",
-     "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/ (matching .log.txt for each interval proof)"
+     "./scripts/edge_wp2_symbolic.py",
+     "./scripts/edge_wp2_bounds.py",
+     "./scripts/edge_wp2_interval_proof.py",
+     "./research/edge-theorem-20261121/wp2_symbolic.txt",
+     "./research/edge-theorem-20261121/wp2_bounds.json",
+     "./research/edge-theorem-20261121/wp2_bounds.log.txt",
+     "./research/edge-theorem-20261121/wp2_large_sector_bound.md",
+     "./research/edge-theorem-20261121/wp2_interval_proof_x-0.6_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_x-0.6_L10.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t3-4_x-0.575_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t4-5_x-0.355_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t5-6_x-0.229_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t6-7_x-0.183_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_x-0.154_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t3-4_y0.5-3_x-0.495_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t4-5_y0.5-3_x-0.274_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t5-6_y0.5-3_x-0.149_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t6-7_y0.5-3_x-0.103_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_y0.5-3_x-0.074_L20.json",
+     "./research/edge-theorem-20261121/wp2_interval_proof_slab_t7-10_y1-3_x-0.02_L20.json",
+     "./research/edge-theorem-20261121/ (matching .log.txt for each interval proof)"
     ],
     "results": [
      {
@@ -891,7 +891,7 @@
      "GW was never turned into an interval proof, and its cutoffs use the best (theta, X1) per point. 'GW: 103/388/353.5' are COMPUTED heuristics, not certified cutoffs. The report says this in open issues."
     ],
     "verdict": "sound_with_fixes",
-    "notes": "I could not refute the WP2 results. The main claims hold:\n- The Rayleigh-quotient argument PROVES that for x > 0 the twist fails at large j. I reproduced the counterexample with two independent builders.\n- The G0 and GW lower bounds never exceeded the exact block minima in 460 random tests, including small l, points near the edge and points with x > 0.\n- The interval LDL^T plus Gershgorin proofs are rigorous as written: outward-rounded mpmath.iv, every variable enclosed, complete block coverage, no sampling. One run reproduced (ALL PROVED), and the LDL check correctly flags the known failing blocks.\n\nFixes needed:\n- Demote 'the all-sector edge is min(x*, 0)' in the summary to CONJECTURE.\n- Describe the cutoffs as grid-quantized upper estimates (about 3% resolution above l = 100). The true GW cutoff at the worst point is 345, not 353.5.\n- Say that EX = 1 was sampled on even j only.\n- Fix 'x* > 0 for t >~ 7, y >= 1'; it fails at (7, 1.5).\n- Describe the slab deltas as distances from the worst grid point of each slab.\n- Optionally, add symbolic proofs of the bottom-end matrix identity and of the G bound, which are currently checked numerically.\n\nFile written this session: /Users/bdavis/.claude/jobs/c8f0f39d/tmp/rtc/research/edge-theorem-20261121/wp2_verify_rerun_x-0.6_L20.json (the rerun output). All other checks ran inline, one process at a time, with OMP_NUM_THREADS=1; no existing files were modified."
+    "notes": "I could not refute the WP2 results. The main claims hold:\n- The Rayleigh-quotient argument PROVES that for x > 0 the twist fails at large j. I reproduced the counterexample with two independent builders.\n- The G0 and GW lower bounds never exceeded the exact block minima in 460 random tests, including small l, points near the edge and points with x > 0.\n- The interval LDL^T plus Gershgorin proofs are rigorous as written: outward-rounded mpmath.iv, every variable enclosed, complete block coverage, no sampling. One run reproduced (ALL PROVED), and the LDL check correctly flags the known failing blocks.\n\nFixes needed:\n- Demote 'the all-sector edge is min(x*, 0)' in the summary to CONJECTURE.\n- Describe the cutoffs as grid-quantized upper estimates (about 3% resolution above l = 100). The true GW cutoff at the worst point is 345, not 353.5.\n- Say that EX = 1 was sampled on even j only.\n- Fix 'x* > 0 for t >~ 7, y >= 1'; it fails at (7, 1.5).\n- Describe the slab deltas as distances from the worst grid point of each slab.\n- Optionally, add symbolic proofs of the bottom-end matrix identity and of the G bound, which are currently checked numerically.\n\nFile written this session: ./research/edge-theorem-20261121/wp2_verify_rerun_x-0.6_L20.json (the rerun output). All other checks ran inline, one process at a time, with OMP_NUM_THREADS=1; no existing files were modified."
    }
   }
  ]

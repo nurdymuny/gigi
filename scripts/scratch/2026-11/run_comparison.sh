@@ -3,8 +3,8 @@
 # Usage: run_comparison.sh <encoder>   (kmer | hybrid)
 set -euo pipefail
 ENC="$1"
-T=/Users/bdavis/.claude/jobs/c8f0f39d/tmp
-REPO=/Users/bdavis/Projects/tessera/.claude/worktrees/gigi-eval
+T=$SCRATCH
+REPO=${REPO:?set REPO to a gigi checkout}
 PY=/Users/bdavis/Projects/tessera/venv/bin/python
 OUT=$T/cohort_$ENC
 cd "$REPO"

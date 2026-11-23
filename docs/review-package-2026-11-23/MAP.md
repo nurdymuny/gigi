@@ -14,7 +14,8 @@ my laptop.
 | **Drive:** the HELIKE book folder (the one with "READ ME FIRST — HELIKE handoff (2026-11-22, v5.9)") | the book (not in git): v5.9 PDFs, source zip, handoff notes |
 | **Git:** `github.com/nurdymuny/chihiro-plasma`, branch **`feat/helike-direction`** | the plasma direction notes and their diagnostics (separate project) |
 
-To get the git side: `git clone https://github.com/nurdymuny/gigi.git && cd gigi && git checkout feat/reading-the-curve-update`.
+To get the git side: `git clone https://github.com/nurdymuny/gigi.git && cd gigi && git checkout feat/reading-the-curve-update`
+(or `git checkout edge-paper-v1` for the exact tree the papers cite).
 The commit the zips and PDFs were built from is in §6.
 
 ## 1. The three documents of this package
@@ -72,9 +73,10 @@ The commit the zips and PDFs were built from is in §6.
 
 ## 6. How to check that Drive and git agree
 
-- Each source zip in the Drive package was made with `git archive` from commit **8b7371c** on
-  `feat/reading-the-curve-update`, so its paths are the repository's paths.
-- To compare, unzip and run `git diff 8b7371c -- <path>` against a checkout.
+- Each source zip in the Drive package was made with `git archive` from commit **8c50e81** on
+  `feat/reading-the-curve-update` (tagged `edge-paper-v1` and `floor-theorem-v3`; the Lean is tagged
+  `edge-paper-v1-lean` on `feat/helike-lean`), so its paths are the repository's paths.
+- To compare, unzip and run `git diff 8c50e81 -- <path>` against a checkout.
 - PDFs were built from the same commit:
   - the edge paper: `pdflatex` twice in `docs/papers/by-enough/`;
   - the Floor v3: the clean build with `\redlinefalse`;

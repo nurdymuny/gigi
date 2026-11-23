@@ -21,7 +21,7 @@
 
 \title{Three Ways Across a Turn:\\ Chord, Arc and Tangent}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}}
-\date{November 2026}
+\date{November 2026 (version 2.1)}
 
 \begin{document}
 \maketitle
@@ -49,9 +49,9 @@ which of these quantities is taken to be uniform: the arc, $\sqrt S$, or $S$.
 A ticket game puts all of it in one room: the arc, the chord and the energy each buy one ticket at a different angle ($57.30^\circ$, $60^\circ$, $90^\circ$), and two whole tickets can only turn at the centre or at its twin.
 Every identity is checked symbolically or numerically by a script that ships with the paper.
 In a gauge field every small loop carries a turn, its holonomy, and the picture reads
-directly: the turn creates the energy, a lattice pays for it along the chord, and the
-smallest unit of turn is curved simply because it exists. A companion paper computes with
-these turns on the Poincar\'e homology sphere.
+directly: the turn creates the energy, and a lattice pays for it along the chord. A last section
+offers, as an explicitly speculative motivation and not a result, a reading of the ticket game toward
+Yang--Mills. A companion paper computes with these turns on the Poincar\'e homology sphere.
 \end{abstract}
 
 \section{A picture}\label{sec:picture}
@@ -198,8 +198,10 @@ number $U-1$, and
 U-1=2i\sin(\theta/2)\,e^{i\theta/2}.
 \]
 Its length is $C$, and its direction is the starting direction turned by $\theta/2$ (plus
-a quarter turn). \emph{The chord turns at half the speed of the line.} Turning the line
-once around, $\theta=2\pi$, turns the chord's direction only half way.
+a quarter turn). \emph{The chord turns at half the speed of the line.} For $0<\theta<2\pi$ the chord is nonzero and
+its direction is $\theta/2+\pi/2$; as the line turns once around, $\theta\to2\pi$, that direction moves only half way.
+At $\theta=2\pi$ itself the chord $U-1$ is zero and has no direction, so this is a statement about the open interval,
+followed continuously, not by itself a double-cover construction.
 
 \paragraph{The chord and sameness.} Write
 \[
@@ -788,56 +790,51 @@ the two-to-one blend live only in the checking script for now. Putting the detou
 the engine's clock is one of the open items below.
 \end{plain}
 
-\section{What a turn costs: toward Yang--Mills}\label{sec:ym}
+\section{What a turn costs: toward Yang--Mills (speculative)}\label{sec:ym}
 
-\paragraph{Zero is not a small unit; it is no system.} One unit of anything real, with
-nothing to make it prefer a direction, extends equally in every direction and can take no
-negative space along any axis. So it is a sphere, and a sphere is curved. The curvature is
-not added to the smallest thing; it comes with existing at all. In one dimension that unit
-sphere is the two points $-1$ and $+1$. In four dimensions it is the three-sphere of unit
-quaternions, which is the gauge group $SU(2)$ itself, the group the Yang--Mills field is made
-of. Its curvature is exactly how much its turns fail to commute: with the bi-invariant
-metric, the sectional curvature of the plane of $X$ and $Y$ is $\tfrac14|[X,Y]|^2$
-\cite{milnor}, which is $1$ on the unit quaternions. The photon's circle of turns,
+This section separates what is exact from what is a picture. The first two paragraphs are exact. The rest is a
+motivation: it rests on an assumption that the geometry does not supply, and it proves nothing about Yang--Mills
+theory.
+
+\paragraph{The group of turns is curved (exact).} The unit sphere in one dimension is the two points $-1$ and $+1$;
+in four dimensions it is the three-sphere of unit quaternions, which is the gauge group $SU(2)$ itself. Its curvature
+is how much its turns fail to commute: with the bi-invariant metric, the sectional curvature of the plane of $X$ and
+$Y$ is $\tfrac14|[X,Y]|^2$ \cite{milnor}, which is $1$ on the unit quaternions. For $SU(3)$ the same formula gives
+positive curvature on non-commuting planes and zero curvature on the planes spanned by two commuting directions, which
+$SU(3)$ has: it is curved, but it is not a round sphere. The photon's circle of turns,
 $U(1)$, commutes, and it is flat. The centre of $SU(2)$, the turns that commute with every
 other, is again exactly $\{-1,+1\}$, and $-1$ is the half turn of Section~\ref{sec:number},
 where the outside path breaks.
 
-\paragraph{The angle creates the energy.} A loop of the field that has not turned carries
-no energy. One that has turned through $\theta$ carries the energy of its chord,
-$1-\cos\theta$ in Wilson's units (Section~\ref{sec:energy}). The two ends cannot meet along
-the arc for free, because the arc belongs to the turning itself. Every other way across
-costs something: the chord less, the detour more.
+\paragraph{The angle creates the energy (exact).} A loop of the field that has not turned carries no energy. One that
+has turned through $\theta$ carries the energy of its chord, $1-\cos\theta$ in Wilson's units
+(Section~\ref{sec:energy}). This energy is continuous in $\theta$: $1-\cos\theta\sim\theta^2/2$ takes arbitrarily small
+positive values. The curvature of the group does not, by itself, give a least nonzero energy.
 
-\paragraph{Energy comes in whole tickets.} In the ticket game of Section~\ref{sec:tickets},
-there is nothing to spend between no turn and one ticket. Any crossing that does not fit in
-one ticket takes two whole trips, turning at the centre or at its twin.
+\paragraph{A motivating picture (speculative).} In the ticket game of Section~\ref{sec:tickets}, a rule of the game
+makes the ticket indivisible: there is nothing to spend between no turn and one ticket. That indivisibility is an
+\emph{added assumption}. It is not a consequence of the geometry above, which, as just noted, allows arbitrarily small
+energies. If some mechanism did make the smallest exchange indivisible, the result would have the shape of a floor
+under the energy, which is the shape a mass gap has; and the picture suggests that such a floor would be looked for in
+the gauge group rather than in the curvature of space, which flattens away as space grows. (For the same reason the
+eigenvalue $4$ measured in the companion paper is not a mass gap: it comes from the curvature of the Poincar\'e
+homology sphere, not from the field.)
 
-\paragraph{Together.} The smallest thing that exists is already curved, and the smallest
-exchange is a whole ticket. Between nothing and one unit there is nothing. That shape, a
-floor under the energy of anything that exists, is what a mass gap is. Our picture says
-where such a floor would come from: from the curvature the gauge group has simply by being a
-group of turns, not from the curvature of space, which flattens away as space grows. That is
-also why the eigenvalue $4$ measured in the companion paper is not a mass gap: it comes from
-the curvature of the space, the Poincar\'e homology sphere, and not from the field.
-
-\paragraph{Status.} The geometry above is exact and checked. That this floor \emph{is} the
-Yang--Mills mass gap in flat, infinite space is the open Clay problem \cite{jaffewitten}, and
-this paper does not claim it. Related ideas, that curvature in the space of fields keeps its
+\paragraph{Status.} The first two paragraphs are exact and checked. The picture is not: it assumes indivisibility,
+and it does not construct a quantum field theory. The Yang--Mills mass gap in flat, infinite space is the open Clay
+problem \cite{jaffewitten}, which concerns the existence of a quantum Yang--Mills theory and a positive gap in its
+spectrum; this paper does not claim it, and the ticket game does not supply it. Related ideas, that curvature in the space of fields keeps its
 energy above zero, go back to Feynman \cite{feynman} and Singer \cite{singer}. A companion
 note in the \textsc{gigi} repository (\path{docs/research/unit-curvature-2026-11-18.md})
 works through the exact parts in more detail, with the related literature.
 
 \begin{plain}
-Zero is not a tiny something; it is nothing at all. The smallest real thing has no reason
-to favour one direction, so it spreads the same amount every way, and that makes it round,
-and round means curved. It is curved simply because it exists. For the weak and strong nuclear forces, the turns
-themselves form that kind of round, curved space ($SU(2)$ and $SU(3)$), and its curvature is
-how much the turns refuse to commute; for light, the turns commute and the space is flat. A turn is what costs energy, and the lattice pays for it along the straight
-shortcut. In the ticket game, energy comes whole: there is nothing between no ticket and
-one. Put together, that suggests a floor under the energy of anything that exists, which is
-what physicists call a mass gap. Whether that floor is really there for these forces is one of
-the great open problems, and this paper does not claim to have solved it.
+For the weak and strong nuclear forces, the turns themselves form a curved space ($SU(2)$ is a round sphere;
+$SU(3)$ is curved but has flat directions), and its curvature is how much the turns refuse to commute; for light,
+the turns commute and the space is flat. A turn is what costs energy, and the lattice pays for it along the straight
+shortcut, but a small turn costs only a little: the geometry alone puts no floor under the energy. The ticket game
+does have a floor, because its rules make a ticket whole. Whether nature has a rule like that for these forces is
+one of the great open problems (the mass gap), and this paper does not claim to have solved it.
 \end{plain}
 
 \section{What is claimed, and what is open}\label{sec:claims}

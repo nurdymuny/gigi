@@ -36,7 +36,7 @@
 \large A Floor Law Across the Berger Spheres}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
-\date{November 2026 (version \reddel{2}\redins{3\ifredline, draft\fi})}
+\date{November 2026 (version \reddel{2}\redins{3.1\ifredline, draft\fi})}
 
 \begin{document}
 \maketitle
@@ -55,7 +55,7 @@ that every other surviving sector lies above $142$. There, the
 gauge-orthogonal spectrum below $142$ consists of the left-invariant values $-14/3$ (twice),
 $16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$ values from $154/3$ upward. The
 first sector above the left-invariant one begins $168/3$ above the field's growth mode (its lowest, negative eigenvalue), one third of
-the sphere's first scalar eigenvalue. The construction reproduces the published fluctuation spectrum
+\reddel{the sphere's first scalar eigenvalue}\redins{the first nonzero scalar eigenvalue of the round unit Poincar\'e sphere}. The construction reproduces the published fluctuation spectrum
 of the meron on the round sphere and Laquer's index. The formula is one member of a family: on every
 Berger sphere $(t,1,1)$ the same field is an exact gauge-orthogonal eigenvector with eigenvalue
 $[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$. It is the floor of every sector
@@ -63,9 +63,9 @@ for every $t\in[2.75,10]$, in particular at $t=3$: a conserved charge splits eac
 nine, interval certificates of the blocks cover $j<100$, and a closed-form Gershgorin bound covers $j\ge100$.
 \redins{ Across all circle-symmetric fields on these spheres, the same
 field is an exact eigenvector with eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$, where $x$ and $y$ are the
-field's strengths along and across the long circle. It is the floor only where the field along the long circle turns
-against it ($x<0$), and there only within an interval of $x$ whose upper end is an algebraic edge; the thresholds of the
-Berger field are where its path crosses that edge.} At $t=4$ the low spectrum on the
+field's strengths along and across the long circle. It is the floor of every sector on the box $x\in[-3,-1.5]$,
+$y\in[0.5,3]$, $t\in[3,10]$. For $H+GG^*$ an explicit Rayleigh-quotient bound rules out an all-sector floor at $x>0$;
+numerical scans indicate a bounded interval of floor values in $x$, whose upper end is set by changing competitors.} At $t=4$ the low spectrum on the
 Poincar\'e sphere is classified below $136$. To our knowledge, these are the first exact eigenvalues of a
 Yang--Mills Hessian at a non-flat connection on a squashed three-sphere.
 \end{abstract}
@@ -122,9 +122,10 @@ at rest, so gauge directions are not zero modes, and the compression $PHP$ is th
     (Proposition~\ref{prop:landau}),
     with the stretches at which each twist (the circular field of Proposition~\ref{prop:bottom}; terms in Section~\ref{sec:setting}) goes free in closed form (Corollary~\ref{cor:family}).
 \redins{  \item \emph{Where the twist is the floor} (Section~\ref{sec:edge}): across every circle-symmetric field on
-    $(t,1,1)$ the twist's eigenvalue is in closed form (Proposition~\ref{prop:twistfamily}); it is the floor
-    only where the field along the long circle turns against it, up to an edge given by the root of an explicit
-    polynomial (Proposition~\ref{prop:edge}), and the Berger thresholds are the crossings of that edge.
+    $(t,1,1)$ the twist's eigenvalue is in closed form (Proposition~\ref{prop:twistfamily}); it is the floor of
+    every sector on a box of fields (Theorem~\ref{thm:domain}); for $H+GG^*$ it is not the floor of every sector at any
+    $x>0$; and where the block $B_{4,0}$ is the competitor, the edge is a root of an explicit polynomial
+    (Proposition~\ref{prop:edge}), which contains the Berger threshold $t_A$.
 }\end{itemize}
 Section~\ref{sec:family} follows the floor across the Berger family\redins{, and Section~\ref{sec:edge} across every
 circle-symmetric field}.
@@ -190,7 +191,7 @@ published one (Section~\ref{sec:checks}).}
 the frame, the metric and $A$ descend to $S^3/2I$. The sector of spin $j/2$ survives with
 multiplicity $\dim V_j^{2I}$, given by the Molien series $(1+t^{30})/((1-t^{12})(1-t^{20}))$ of
 the binary icosahedral group, whose invariants go back to Klein~\cite{klein1884}: the surviving sectors are $j=0,12,20,24,30,32,\dots$. The first
-nonzero eigenvalue of the scalar Laplacian on the unit Poincar\'e sphere is $j(j+2)=168$ at
+nonzero eigenvalue of the scalar Laplacian on the \redins{round }unit Poincar\'e sphere is $j(j+2)=168$ at
 $j=12$~\cite{lachiezerey2004}.
 
 \section{The left-invariant sector}\label{sec:spin0}
@@ -375,8 +376,10 @@ $\lambda_1(\Delta_{S^3/2I})/3=168/3$.
 
 \begin{corollary}[The floor gap]\label{cor:56}
 On the Poincar\'e sphere, the first sector above the left-invariant one begins
-$\lambda(12)-\lambda(0)=168/3=56$ above the growth mode: one third of the sphere's first scalar
-eigenvalue. The spectral gap between the two sectors runs from $16+2\sqrt{73}=33.09$ to $154/3=51.33$.
+$\lambda(12)-\lambda(0)=168/3=56$ above the growth mode: one third of the \redins{round }sphere's first scalar
+eigenvalue. The spectral gap between the two sectors runs from $16+2\sqrt{73}=33.09$ to $154/3=51.33$.\redins{ The first
+number is a difference between sector floors and the second an empty interval of width $18.25$; neither is a quantum
+mass gap.}
 \end{corollary}
 
 \begin{figure}[t]
@@ -661,8 +664,10 @@ the floor law is and is not (scripts and receipts in the repository; see the ava
     ($36$ shapes, axis ratios up to $20$) finds three clusters of Yang--Mills
     fields up to constant gauge rotation: the flat field $A=0$; the flat pure-gauge field $A=g^{-1}dg$, which is
     gauge-equivalent to $0$ under a non-constant gauge transformation but not under a constant one; and one non-flat
-    relative of the meron. A multistart search is evidence, not a classification. In every sector and at every
-    stretch checked, the relative has exactly one negative eigenvalue of $H+GG^*$, in the left-invariant sector: for
+    relative of the meron. A multistart search is evidence, not a classification. \reddel{In every sector and at every
+    stretch checked, the relative has exactly one negative eigenvalue of $H+GG^*$, in the left-invariant sector:}\redins{At
+    every stretch checked, the relative has exactly one negative eigenvalue of $H+GG^*$ among the sectors tested, and it
+    lies in the left-invariant sector:} for
     $j\le12$ at $t=0.05,0.10,\dots,10$ along $(t,1,1)$, and for $j\le8$ on the $36$ uneven shapes. No eigenvalue of
     the sectors $1\le j\le12$ is negative at these points; crossings between the sampled stretches are not
     excluded.
@@ -721,19 +726,25 @@ Exact symbolic determinant and factorization, and exact polynomial division on t
 \end{proof}
 
 \paragraph{The edge, numerically.} In the sectors $j\le12$, at every $(t,y)$ computed, the twist is the floor of
-$H+GG^*$ for $x$ below an edge $x^*(t,y)$ and not above it, and the same holds for the gauge-orthogonal spectrum
-with a slightly higher edge. For $y\gtrsim1$ the competitor that sets the edge is the block $B_{4,0}$, and $x^*$ is a
-root of $P_2$ (to $10^{-8}$); at small $y$ it is a block of the sector $j=2$ or $3$. Within $j\le12$ the edge rises with the stretch
+$H+GG^*$ for $x$ below an edge $x^*(t,y)$ and not above it\redins{, within the sampled window (the region is also
+bounded below; see the end of this paragraph)}, and the same holds for the gauge-orthogonal spectrum
+with a slightly higher edge. \reddel{For $y\gtrsim1$ the competitor that sets the edge is the block $B_{4,0}$, and $x^*$ is a
+root of $P_2$ (to $10^{-8}$); at small $y$ it is a block of the sector $j=2$ or $3$.}\redins{Where the block $B_{4,0}$ is
+the active competitor, the computed edge $x^*$ is a root of $P_2$ (to $10^{-8}$). Other parameter ranges are controlled
+by other charge blocks: at small $y$ a block of the sector $j=2$ or $3$, and at $4$ of $38$ held-out points with
+$y\gtrsim1$ a block that reaches the twist before $B_{4,0}$ does; the companion edge study maps them.} Within $j\le12$ the edge rises with the stretch
 (\redins{for $y=\sqrt t$, the $H+GG^*$ edge $x^*$ is $-0.68$, $-0.38$, $-0.22$ at $t=2,3,4$, and the gauge-orthogonal edge }$-0.66$, $-0.36$, $-0.19$\reddel{ at $t=2,3,4$ for $y=\sqrt t$}) and turns positive for strongly stretched spheres with a strong
-cross field. That is an artefact of the cut-off. \emph{For $x>0$ the twist is the floor of no field in every sector:}
+cross field. That is an artefact of the cut-off. \emph{For $x>0$ the twist is \reddel{the floor of no field in every sector}\redins{not the floor of $H+GG^*$ in every sector}:}
 in the block of charge $q=l$ the state of weight $m=l$ and type $(1,-1)$ has Rayleigh quotient minus $\lambda$ equal to
 $-8lx/\sqrt t+O(1)$, negative for large $l$ (\path{scripts/edge_wp2_symbolic.py}; at $(x,y,t)=(0.1,\sqrt{10},10)$ the
-sector $j=120$ already falls $0.58$ below the twist). So the all-sector edge is at most $\min(x^*_{12},0)$. That it equals
+sector $j=120$ already falls $0.58$ below the twist).\redins{ The test vector is not gauge-orthogonal, so this is a
+statement about $H+GG^*$; for the gauge-orthogonal spectrum the same behaviour is seen numerically but not proved by
+this argument, and the argument does not settle $x=0$.} So the all-sector edge \redins{of $H+GG^*$} is at most $\min(x^*_{12},0)$. That it equals
 this is a conjecture for $t\ge3$; it fails near $t=2$, where a block of charge $q=l$ undercuts the twist first in the
 sector $j=16$ (\path{research/edge-theorem-20261121/}). The region is bounded below as well: $\lambda$ grows like $x^2$,
 while the gauge-orthogonal state $\hat\theta^0\otimes\tau_0$ of the sector $j=0$ has a Rayleigh quotient affine in
 $x$, so for strongly negative $x$ the twist is not the floor either (\path{scripts/edge_wp4_design_checks.py}).
-Along the Berger path the crossings are exact: the $H+GG^*$ edge is crossed at $t=2.7311222782381144$ (the root
+Along the Berger path \reddel{the crossings are exact}\redins{the computed crossings agree with algebraic roots}: the $H+GG^*$ edge is crossed at $t=2.7311222782381144$ (the root
 $t_A$ of Remark~\ref{rem:tstar}, to \reddel{$9\times10^{-16}$}\redins{$8\times10^{-16}$}) and the gauge-orthogonal edge at $t=2.698026940521$ ($t^*$,
 to $10^{-12}$), both through the block $B_{4,0}$ (\path{scripts/ricci_su2_exact_edge.py}). The thresholds of
 Remark~\ref{rem:tstar} are therefore not special to the Berger field: they are where its path meets the edge. The edge is a crossing, not an avoided one: the
@@ -791,7 +802,8 @@ $S^3$~\cite{avramidicollopy2012,klc2021}) did not contain such an edge; the clos
 
 \paragraph{The round sphere.} At $g=(1,1,1)$ the Levi-Civita connection is a Yang--Mills field (the
 meron), and the same construction gives $-2$, $1$, $6$, $7$ and $10$ as the lowest gauge-orthogonal eigenvalues of the sectors $j=0,\dots,4$, in spins $0$ to $2$. That is the
-published fluctuation spectrum~\cite{klc2021}. It has exactly one negative eigenvalue, so index one,
+published fluctuation spectrum~\cite{klc2021}\redins{ (\path{scripts/ricci_su2_round_sphere_check.py}, receipt
+\path{research/su2-left-invariant-sector-20261119/round_sphere_check.json})}. It has exactly one negative eigenvalue, so index one,
 as Laquer's theorem requires for a group manifold~\cite{laquer1984}. Without the commutator it gives
 the coexact $1$-form spectrum of the unit $S^3$: $j^2$ and $(j+2)^2$ with their multiplicities, and
 gauge zeros.
@@ -840,14 +852,14 @@ rationally, and it is a lowest Landau level at every squashing (Proposition~\ref
 it is the \emph{floor} depends on $t$, and on the background: symmetry alone does not make it the floor
 (Section~\ref{sec:family}, ``Further observations''). It is the floor throughout $[2.75,10]$ in every sector, and (numerically) not the floor of every sector below
 $t^*\approx2.698$, where the sector $j=4$ is the first to have a lower eigenvalue. At the round metric
-and at $(2,1,1)$ other modes are lower. The relation to the Poincar\'e sphere's first scalar eigenvalue, $168/3$,
+and at $(2,1,1)$ other modes are lower. The relation to the \redins{round }Poincar\'e sphere's first scalar eigenvalue, $168/3$,
 is special to $t=3$, the unique stretch at which the lift of the twist depends only on the Casimir
 (Remark~\ref{rem:casimir}); in general the floor gap is $(240-24t)/t$.
 
 \paragraph{The landscape and the flow.} The Berger field is not at rest, and under the Yang--Mills flow it
 slides towards a flat field faster than any twist grows (Section~\ref{sec:family}). So the floor law is a
 statement about the second variation at the Berger field, the shape of the landscape there. Its non-flat
-resting relative, the squashed meron, has a single unstable direction in every sector and at every stretch sampled ($j\le12$), and no
+resting relative, the squashed meron, \reddel{has a single unstable direction in every sector and at every stretch sampled ($j\le12$)}\redins{has, at every stretch sampled, one unstable direction in the left-invariant sector and none in the higher sectors examined ($1\le j\le12$)}, and no
 twist goes soft on it there.
 
 \paragraph{Open questions.} \redins{The edge $x^*(t,y)$ as a theorem in every sector, and its other competitors in closed form; }The floor outside $[2.75,10]$; the gauge-orthogonal threshold $t^*$ in closed form (that of
@@ -860,7 +872,7 @@ This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}
 All programs and certificates are in the \textsc{GIGI} repository,
-\url{https://github.com/nurdymuny/gigi} (tag \texttt{\reddel{floor-theorem-v2}\redins{floor-theorem-v3}}; the scripts are on that tag, not yet on the main branch), with their outputs in
+\url{https://github.com/nurdymuny/gigi} (tag \texttt{\reddel{floor-theorem-v2}\redins{floor-theorem-v3.1}}; the scripts are on that tag, not yet on the main branch), with their outputs in
 \path{research/su2-left-invariant-sector-20261119/}:
 \begin{itemize}
   \item the left-invariant sector: \path{scripts/ricci_su2_left_invariant_sector.py};

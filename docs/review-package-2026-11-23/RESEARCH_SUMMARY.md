@@ -50,8 +50,9 @@ be an exact eigenvector, with a closed-form eigenvalue, and it was the cheapest 
 
 Then I asked why she is the floor. I wrote down four simple explanations before testing each one, and all four
 failed. So I stopped guessing and looked: I let the field around her vary in a two-parameter family (a strength x
-along the long circle and y across it) and mapped where she is the floor. She is the floor only where the field along
-her own circle turns against her charge, **by enough, but not too much**. The edge of that region is an algebraic
+along the long circle and y across it) and mapped where she is the floor. For H+GG\* she is not the floor of every sector at any x > 0 (proved); where she is the floor she sits where the
+field along her own circle turns against her charge, **by enough, but not too much** (computed: one interval on every
+grid; x = 0 is not settled; for the gauge-orthogonal spectrum the x > 0 exclusion is numerical). The edge of that region is an algebraic
 wall, and the thresholds of my first Floor paper turned out to be exactly where the Berger field's path crosses that
 wall. Then I tested the picture in other groups. In SU(3) stretched along the wrong circle she vanishes; along her own
 charge circle she comes back. In SU(4) and Sp(2) she lives on the circle of her own SU(2) (the coroot of her highest
@@ -274,7 +275,7 @@ meets the lowest eigenvalue of the first competitor block.
   edge at t = 2.7311222782381144 against t_A = 2.7311222782381135 (difference 9 × 10⁻¹⁶) and the gauge-orthogonal edge
   at 2.6980269405211 against t* = 2.6980269405200 (1.1 × 10⁻¹²); Test 6's 21 bisection edges are reproduced to
   ≤ 3 × 10⁻⁵.
-- **The edge polynomial (PROVED):** det(B₄,₀ − λ₄) factors over ℚ(√2, √3) into P₁ (degrees 5, 6, 12) and P₂ (7, 8, 16)
+- **The edge polynomial (PROVED):** the numerator of det(B₄,₀ − λ₄) (normalized as det(s²(B₄,₀ − λ₄))) factors over ℚ(√2, √3) into P₁ (degrees 5, 6, 12) and P₂ (7, 8, 16)
   in (x, y, √t); on the Berger path P₂ contains the degree-16 polynomial of t_A exactly, by polynomial division with zero
   remainder (`scripts/ricci_su2_edge_polynomial.py`, `edge_polynomial.txt`).
 - So the Floor paper's thresholds are not special to the Berger field: they are its path's crossings of one wall.
@@ -600,7 +601,7 @@ This is every place where the notes disclose that a rule changed or that I had s
 | Anatomy λ = κ² + (2j + t + y²) + (Ric⊥ − 2B), minimal coupling of x | PROVED | `docs/research/what-she-is-a-law-of-2026-11-21.md` §2; edge paper `prop:anatomy` |
 | Edge model x* = c₁/t + c₂/t² (Test 6, E1 and E2) | FAILED | `docs/research/edge-test-results-2026-11-21.md` |
 | Berger path crosses the edge at t_A (9 × 10⁻¹⁶) and t* (1.1 × 10⁻¹²) | COMPUTED | `docs/research/exact-edge-2026-11-21.md`; `exact_edge.json` |
-| det(B₄,₀ − λ₄) = −16384·P₁P₂; P₂ on the Berger path contains Q₁₆ (t_A) | PROVED; Lean 4 | exact-edge addendum; `edge_polynomial.txt`; edge paper §4 |
+| det(s²(B₄,₀ − λ₄)) = −16384·P₁P₂ (the normalized determinant; it differs from the unscaled one by s¹⁸); P₂ on the Berger path contains Q₁₆ (t_A) | PROVED; Lean 4 | exact-edge addendum; `edge_polynomial.txt`; edge paper §4 |
 | "The edge is the largest real root of P₂" | REFUTED | Test A note; edge paper §1 |
 | Family (x, y) is general up to constant gauge | PROVED | edge paper `prop:general`; `docs/research/edge-verification-findings-2026-11-21.md` |
 | Weitzenböck identity and charge blocks, whole family | PROVED (symbolic) | `research/edge-theorem-20261122-proofs/weitzenbock_family.json`; edge paper `lem:weitz`, `lem:blocks` |

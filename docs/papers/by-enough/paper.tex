@@ -32,7 +32,7 @@
 \title{By Enough, But Not Too Much\\[4pt] \large Where the Twist Is the Floor of the Yang--Mills Hessian on Berger Spheres}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
-\date{November 2026}
+\date{November 2026 (version 1.1)}
 
 \begin{document}
 \maketitle
@@ -947,7 +947,7 @@ block keeps a gap of at least $5.50$ (double precision).
 \subsection{Large sectors close to the edge}
 
 \begin{theorem}[Large sectors on slabs; \PROVEDT]\label{thm:slabs}
-On each box of Table~\ref{tab:slabs} (Appendix~\ref{app:slabs}), for every $(x,y,t)$ in the box and every sector
+On each box of Table~\ref{tab:slabs} (Appendix~\ref{app:slabs}), with the exact endpoints stated there, for every $(x,y,t)$ in the box and every sector
 $j\ge40$, every charge block of the sector other than the twist and its mirror has lowest eigenvalue greater than
 $\lambda_j$. On $[-3,-0.6]\times[0.5,3]\times[3,10]$ the same holds for every $j\ge20$.
 \end{theorem}
@@ -1142,7 +1142,8 @@ through the fibre momentum $\kappa$, and by spin, through the field strength $B=
 slope is $\partial_x\lambda=-2\kappa+4\sqrt t$ (Section~\ref{sec:twist}). The twist's slope near the edge is about $10$.
 The competitor's depends on which block it is: $B_{4,0}$ is nearly flat at the three points of
 Section~\ref{subsec:competitor}, but the charged competitors of Test~B have slope ratios mostly above $0.5$ (median
-$0.74$, against $0.35$ for the neutral ones). So the edge is where the twist's value, bent by the field along her circle,
+$0.74$, against $0.35$ for the neutral ones; the neutral ones are below the threshold $0.5$ in most sampled cases, but
+not all: $5$ of $61$ exceed it). So the edge is where the twist's value, bent by the field along her circle,
 meets whichever block reaches her first. An exploratory map, not pre-registered, agrees on the side: over
 $t=1,2,3,4,6$, $x\in[-3,3]$ ($49$ values), $y\in[0,3]$ ($37$ values) and $j\le8$, all $3{,}294$ cells where the twist is
 the floor of all nine sectors have $x\le0$, and $3{,}286$ have $x<0$ (\path{scripts/ricci_su2_twist_family_map.py},
@@ -1163,8 +1164,13 @@ texts could not be read, so this is a statement about the search, not a priority
 \section{Pre-registered tests A to F}\label{sec:prereg}
 
 Six further tests were written down, reviewed and fixed before any scored data were computed, as were Tests~2, 4, 5
-and~6 of Section~\ref{sec:decide}. Each amendment was made after a code gate fired (for Amendment~C1, after a smoke test
-showed that a gate would fire) and before any scored quantity was computed. This section gives each design in brief and
+and~6 of Section~\ref{sec:decide}. Amendments fall into four kinds, each disclosed where it occurs. Most were made
+after a code gate fired (for Amendment~C1, after a smoke test showed that a gate would fire) and before any scored
+quantity was computed. Test~F's Amendment~1 (a peak test) was written after three of its $36$ points had been
+printed, and is reported as not blind on those three. Test~F's Amendment~2 (how to read the twist at a degenerate
+wall) was written after a gate stopped the run, before any further data. Its implementation correction was made after
+all $36$ points and the scores had been seen; it is mechanical (it restores the registered rule), it recomputed nine
+wall points, and it changed no verdict. Both versions of those points are in the results note. This section gives each design in brief and
 its result. The full points, predictions, gates and amendments are in Appendix~\ref{app:prereg}. Every result here is
 \COMPUTED.
 
@@ -1302,7 +1308,8 @@ review, before any floor, edge or competitor of the family was computed
 the Test~C controls, the rotated-basis and wrong-axis controls ($7.7\times10^{-15}$ and $3.0\times10^{-14}$), D-quad
 ($5.3\times10^{-15}$), D-kappa, D-sym ($\norm{[Q,H]}$ to $6.4\times10^{-15}$), D-lin, D-mult and D-bound. Along her own
 charge circle the twist is the floor of all nine listed sectors at $19$ of the $20$ shapes, and at all $16$ with $t\ge3$:
-D-P1 held, weakly and strictly. The pass is not truncation-sensitive: at one shape with $t=2$ the sectors $(5,0)$ and
+D-P1 held, weakly and strictly. The pass survives the two additional sectors tested, $(5,0)$ and $(6,0)$, which does not
+rule out an obstruction from a still higher sector. At one shape with $t=2$ the sectors $(5,0)$ and
 $(6,0)$ remove every grid point of her region, and at every other non-empty shape between $2$ and $8$ grid points
 survive them. D-P2 held at all $15$ scorable shapes (her region lies at $x<0$ at all $19$). D-P3 held: one interval at
 every non-empty shape. D-P4 failed: the competitor at the upper edge is the neutral block $(3,0)$, with slope ratio
@@ -1467,7 +1474,7 @@ This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}\label{sec:availability}
 All programs, certificates and receipts are in the \textsc{GIGI} repository, \url{https://github.com/nurdymuny/gigi}
-(tag \texttt{edge-paper-v1}); Section~\ref{sec:data} lists them claim by claim. The sixteen Lean theorems are in
+(tag \texttt{edge-paper-v1.1}); Section~\ref{sec:data} lists them claim by claim. The sixteen Lean theorems are in
 \path{docs/papers/berger-spectrum/lean/Helike/Price.lean} and \path{Edge.lean}, with \path{README.md} and \path{RESULTS.md}.
 They depend only on the axioms \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound}, build with
 \texttt{lake exe cache get} and \texttt{lake build}, and \texttt{lake env lean Axioms.lean} lists the axioms. They are on the branch \texttt{feat/helike-lean},
@@ -1625,8 +1632,21 @@ checked symbolically. The excluded block of charge $-(l+2)$ equals $\lambda_j$ b
 Lemma~\ref{lem:blocks}, and its single entry is exactly $\lambda_j$ on the rows (Lemma~\ref{lem:gersh}). The near-end
 matrices agree with the blocks to $4.5\times10^{-16}$ (double precision). A rerun of the box $x\le-0.6$, $L_0=20$
 reproduced the proof in $125.7$\,s (receipt \path{wp2_verify_rerun_x-0.6_L20.json}; design in
-\path{wp2_large_sector_bound.md}). The decimal box endpoints are entered as doubles; for instance the top $-0.02$ is the
-double just below $-0.02$, a negligible difference.
+\path{wp2_large_sector_bound.md}). \paragraph{Exact endpoints.} The proof script reads each endpoint as a binary64 double and encloses it exactly
+(\texttt{mpmath.mpf} of the double), so the boxes actually certified are the closed boxes whose endpoints are those
+doubles, which are dyadic rationals. The endpoints in $y$ and $t$ ($0.5$, $1$, $3$, $4$, \dots, $10$) and the lower
+endpoint $x=-3$ are exact. For the upper endpoints in $x$, nine of the twelve doubles lie above the decimal, so the
+certified box contains the box as written: $-0.575$, $-0.495$, $-0.355$, $-0.149$, $-0.183$, $-0.103$, $-0.154$,
+$-0.074$ and $-0.6$ (by between $2\times10^{-18}$ and $4.5\times10^{-17}$). Three lie below the decimal, so for them
+the theorem holds on the box with the exact dyadic endpoint, and the sliver between it and the decimal is not certified:
+\begin{itemize}
+  \item $-0.274$ is certified as $-0.2740000000000000213162820728030055761337\ldots$ (a sliver of $2.1\times10^{-17}$);
+  \item $-0.229$ is certified as $-0.2290000000000000091038288019262836314738\ldots$ (a sliver of $9.1\times10^{-18}$);
+  \item $-0.02$ is certified as $-0.02000000000000000041633363423443370265886\ldots$ (a sliver of $4.2\times10^{-19}$).
+\end{itemize}
+Each listed value is the exact decimal expansion of the double (a dyadic rational), truncated after $40$ digits. The
+domain $D$ of Theorem~\ref{thm:domain} and the range $[2.75,10]$ of the Floor paper have dyadic endpoints and are
+covered exactly.
 
 \paragraph{Why plain Gershgorin is not enough near the edge.} At the near end of a sector the true margin is
 $lK_a+O(1)$, but plain Gershgorin needs $l$ of order $1/K_a^2$. Sampled cutoffs (double precision; not certified): at

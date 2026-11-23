@@ -25,14 +25,15 @@ The commit the zips and PDFs were built from is in §6.
 | **This map** | `docs/review-package-2026-11-23/MAP.md` | package folder, "MAP — where everything is" |
 | **How the results were derived** (per paper: claim → method → script → receipt → command) | `docs/review-package-2026-11-23/DERIVATIONS_README.md` | package folder, "DERIVATIONS — how each result was derived" |
 | **The research summary** (how it was found, day by day, with every failure and amendment) | `docs/review-package-2026-11-23/RESEARCH_SUMMARY.md` | package folder, "RESEARCH SUMMARY — how we found and derived it" |
+| **Response to the two reviews** (every point and what changed) | `docs/review-package-2026-11-23/REVIEW_RESPONSE.md` | package folder, "REVIEW RESPONSE — what changed after the reviews" |
 
 ## 2. Papers: what to post, what not yet
 
 | paper | status | PDF (Drive, package folder) | source (Drive zip; git path) | already on Zenodo |
 | --- | --- | --- | --- | --- |
-| **By Enough, But Not Too Much** (the edge paper) | **new: post v1** | `By_Enough_But_Not_Too_Much_v1.pdf` | `by-enough_v1_source.zip`; git `docs/papers/by-enough/` (figures from `scripts/edge_paper_figures.py`) | not yet |
-| **The Floor Theorem for the Yang–Mills Hessian at the Berger Field** | **repost as v3** | `Floor_Theorem_v3.pdf` (clean), `Floor_Theorem_v3_redline_vs_v2.pdf` (changes marked) | `floor-theorem_v3_source.zip`; git `docs/papers/berger-spectrum/paper.tex` (clean build: set `\redlinefalse`; committed build `paper_v3.pdf`; the published v2 stays as `paper.pdf`) | v1 and v2: concept DOI 10.5281/zenodo.24386613 (v2 = 24412603, 21 Nov) |
-| **Three Ways Across a Turn: Chord, Arc and Tangent** | **repost as v2** (corrections made after the 19 Nov posting; English only, the Russian edition is unchanged) | `Three_Ways_Across_a_Turn_v2.pdf` | `three-ways_v2_source.zip`; git `docs/papers/chord-arc-tangent/` | v1: 10.5281/zenodo.24375338 (concept 24375337), 19 Nov |
+| **By Enough, But Not Too Much** (the edge paper) | **new: post version 1.1** (corrected after two reviews) | `By_Enough_But_Not_Too_Much_v1.1.pdf` | `by-enough_v1.1_source.zip`; git `docs/papers/by-enough/` (figures from `scripts/edge_paper_figures.py`) | not yet |
+| **The Floor Theorem for the Yang–Mills Hessian at the Berger Field** | **repost as version 3.1** (corrected after two reviews) | `Floor_Theorem_v3.1.pdf` (clean), `Floor_Theorem_v3.1_redline_vs_v2.pdf` (changes marked) | `floor-theorem_v3.1_source.zip`; git `docs/papers/berger-spectrum/paper.tex` (clean build: set `\redlinefalse`; committed build `paper_v3.pdf`; the published v2 stays as `paper.pdf`) | v1 and v2: concept DOI 10.5281/zenodo.24386613 (v2 = 24412603, 21 Nov) |
+| **Three Ways Across a Turn: Chord, Arc and Tangent** | **repost as version 2.1** (corrections after the 19 Nov posting and after two reviews; English only, the Russian edition is unchanged) | `Three_Ways_Across_a_Turn_v2.1.pdf` | `three-ways_v2.1_source.zip`; git `docs/papers/chord-arc-tangent/` | v1: 10.5281/zenodo.24375338 (concept 24375337), 19 Nov |
 | Reading the Curve, Not Counting the Points | **no change**: v3 on Zenodo (24386756, 20 Nov) matches git | — | git `docs/papers/two-ring-pg/` | concept 10.5281/zenodo.24328085 |
 | The Davis Manifold, second edition | **not ready**: draft waiting for its adversarial review | — | git `docs/papers/davis-manifold/the_davis_manifold_v2.tex` | first edition: 10.5281/zenodo.19428406 lineage |
 | The Lift Unification, second edition | **not ready**: draft waiting for its adversarial review. | — | git `docs/papers/lift-unification/lift_unification_v2.tex` | first edition on Zenodo |
@@ -73,11 +74,9 @@ The commit the zips and PDFs were built from is in §6.
 
 ## 6. How to check that Drive and git agree
 
-- Each source zip in the Drive package was made with `git archive` from commit **8c50e81** on
-  `feat/reading-the-curve-update` (tagged `edge-paper-v1` and `floor-theorem-v3`; the Lean is tagged
-  `edge-paper-v1-lean` on `feat/helike-lean`), so its paths are the repository's paths.
-- To compare, unzip and run `git diff 8c50e81 -- <path>` against a checkout.
-- PDFs were built from the same commit:
-  - the edge paper: `pdflatex` twice in `docs/papers/by-enough/`;
-  - the Floor v3: the clean build with `\redlinefalse`;
-  - Three Ways: the committed `paper.pdf`.
+- The versions to post are tagged on `feat/reading-the-curve-update`: **`floor-theorem-v3.1`** and **`edge-paper-v1.1`**
+  (the same commit; Three Ways 2.1 is in it too). The Lean is tagged `edge-paper-v1-lean` on `feat/helike-lean`.
+- The reviewed snapshot is tagged `floor-theorem-v3` and `edge-paper-v1`.
+- Each source zip was made with `git archive` from that commit, plus the shared style `docs/papers/dgstyle.tex` and a
+  `BUILD.md`, so its paths are the repository's paths. To compare, unzip and run `git diff floor-theorem-v3.1 -- <path>`.
+- The PDFs were built from the same commit, following each zip's `BUILD.md`.

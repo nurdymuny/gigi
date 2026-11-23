@@ -1,5 +1,12 @@
 # How the results were derived: three papers, claim by claim
 
+> **Status of this file (23 November, after the two reviews).** This is the authoritative build-and-derivation
+> manifest for the versions to post: *By Enough* **1.1** (tag `edge-paper-v1.1`), *The Floor Theorem* **3.1** (tag
+> `floor-theorem-v3.1`), *Three Ways* **2.1**. Lines marked **[FIXED …]** and the commit and page references to the
+> reviewed snapshot (tags `edge-paper-v1`, `floor-theorem-v3`) are historical. What changed after the reviews is
+> listed in `docs/review-package-2026-11-23/REVIEW_RESPONSE.md`.
+
+
 > **Fixed on 23 November, before posting** (commit after `db52326`): the edge paper's placeholders (tag now `edge-paper-v1`, Lean tag `edge-paper-v1-lean`, DOI line removed, date no longer "draft"), its receipts sentence, Tests E and F in its receipts table; Floor v3's duplicate reference, its slice count wording, its tag (`floor-theorem-v3`) and its code-README numbering and runtimes; the Three Ways Zenodo description. Items so fixed are marked below. The Russian edition of Three Ways (`ru/part5.tex`) still says 2.5–36% and is not being reposted.
 
 
@@ -62,7 +69,7 @@ nothing records a time I write "not recorded".
 
 ```bash
 cd docs/papers/by-enough
-pdflatex paper.tex && pdflatex paper.tex     # 43 pages; inline thebibliography, no BibTeX
+pdflatex paper.tex && pdflatex paper.tex     # 45 pages (v1.1); inline thebibliography, no BibTeX
 ```
 
 - House style: `\input{../dgstyle}` (`docs/papers/dgstyle.tex`), which loads `newpxtext`, `newpxmath`, `microtype`,
@@ -300,7 +307,7 @@ edge, or that `price` is an eigenvalue (§4.6, "What Lean does not check").
 
   ```bash
   cd docs/papers/berger-spectrum
-  pdflatex paper.tex && pdflatex paper.tex      # 20 pages, date line "November 2026 (version 3)"
+  pdflatex paper.tex && pdflatex paper.tex      # 20 pages, date line "November 2026 (version 3.1)"
   ```
 
   The committed `paper_v3.pdf` was added in commit `6d50499` (23 Nov 2026); the build step itself is not scripted in the

@@ -62,7 +62,7 @@ RU = {
     'step $s$': 'шаг $s$', 'error per step': 'ошибка за шаг',
     r'face holonomy angle $a$ (radians)': r'угол голономии грани $a$ (радианы)',
     'fraction of faces with angle $\\leq a$': 'доля граней с углом $\\leq a$',
-    'measured force errors, 2.5%–36%': 'измеренные ошибки силы, 2.5%–36%',
+    'measured force errors, 4.7%–36%': 'измеренные ошибки силы, 2.5%–36%',
     r'chord–arc energy gap $a^2/12$': r'разрыв энергий хорды и дуги $a^2/12$',
     'explicit: out': 'явный: наружу', 'Crank–Nicolson: on': 'Кранк — Николсон:\nна окружности',
     'implicit: in': 'неявный: внутрь',
@@ -351,12 +351,17 @@ def face_angles():
     sys.path.insert(0, str(HERE.parents[2] / 'scripts'))
     import ricci_su2_pg_force as F
     data = {}
-    for level, n in zip(range(4), (1, 2, 3, 5)):
-        payload = json.loads((F.BERGER / f"level{level}_berger_q6.input.json").read_text())
-        raw = json.loads((F.BERGER / f"level{level}_berger_q6.output.json").read_text())
-        links = np.asarray(raw["links"], float)
-        D = np.array([F.defects(F.local_links(c, links)) + F.ONE for c in payload["cells"]]).reshape(-1, 4)
-        data[n] = np.arctan2(np.linalg.norm(D[:, 1:], axis=1), D[:, 0])
+    per_face = HERE / 'face_angles_per_face.json'      # committed receipt: every face angle, from the meshes below
+    if (F.BERGER / "level0_berger_q6.input.json").exists():
+        for level, n in zip(range(4), (1, 2, 3, 5)):
+            payload = json.loads((F.BERGER / f"level{level}_berger_q6.input.json").read_text())
+            raw = json.loads((F.BERGER / f"level{level}_berger_q6.output.json").read_text())
+            links = np.asarray(raw["links"], float)
+            D = np.array([F.defects(F.local_links(c, links)) + F.ONE for c in payload["cells"]]).reshape(-1, 4)
+            data[n] = np.arctan2(np.linalg.norm(D[:, 1:], axis=1), D[:, 0])
+        per_face.write_text(json.dumps({str(n): [float(v) for v in a] for n, a in data.items()}))
+    else:                                               # meshes not in this checkout: use the receipt
+        data = {int(n): np.asarray(a) for n, a in json.loads(per_face.read_text()).items()}
     ref = {r['n']: r for r in json.loads((HERE / 'face_angles.json').read_text())}
     for n, a in data.items():           # the figure and Table 2 come from the same numbers
         assert len(a) == ref[n]['faces'] and abs(np.median(a) - ref[n]['median_a']) < 1e-12
@@ -379,7 +384,7 @@ def face_angles():
         ax.plot([p, p], [g.min(), g.max()], color=cols[n], lw=6, solid_capstyle='butt')
         ax.plot([p - 0.17, p + 0.17], [np.median(g)]*2, color=INK, lw=1)
     ax.axhspan(0.025, 0.36, color='#fbe5d9', lw=0)
-    ax.text(1.5, 0.095, 'measured force errors, 2.5%–36%', ha='center', va='center', fontsize=7.2, color=INK)
+    ax.text(1.5, 0.095, 'measured force errors, 4.7%–36%', ha='center', va='center', fontsize=7.2, color=INK)
     ax.set_yscale('log'); ax.set_ylim(3e-8, 1); ax.set_xlim(-0.6, 3.6)
     ax.set_xticks(range(4)); ax.set_xticklabels([f'$n={n}$' for n in data])
     ax.set_ylabel(r'chord–arc energy gap $a^2/12$'); ax.set_title('(b)', loc='left')

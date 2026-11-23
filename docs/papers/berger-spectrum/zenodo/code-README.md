@@ -36,6 +36,7 @@ Every script takes an output path; write to a fresh name and compare it with the
 | Remark 6.8 (t* and the scan, double precision) | `python scripts/ricci_su2_floor_family_scan.py out/scan.json 40` | `…/scan.json` | a few minutes |
 | Remark 6.8 (t_A, the threshold of H + GG*, exact) | `python scripts/ricci_su2_tstar_exact.py out/tstar_exact.txt` | `…/tstar_exact.txt` | hours (symbolic determinants) |
 | Remark 6.8 (between t_A and 2.75, double precision) | `python scripts/ricci_su2_tA_scan.py out/tA_scan.txt` | `…/tA_scan.txt` | about 10 min |
+| §8 (the round sphere: −2, 1, 6, 7, 10 and index one) | `python scripts/ricci_su2_round_sphere_check.py out/round_sphere_check.json` | `…/round_sphere_check.json` | seconds |
 | Section 6 observation "symmetry does not make the floor": the twist on the Berger field and the squashed meron (Test 2) | `python scripts/ricci_su2_test2_family.py berger out/b.json` and `… meron out/m.json` | `…/test2_berger_control.json`, `…/test2_meron.json` | minutes each |
 | … the curvature split R0 = Ric − 2[F, ·] and the twist's shares | `python scripts/ricci_su2_gyromagnetic_split.py out/split.txt` | `…/gyromagnetic_split.txt` | about a minute |
 | … the meron's twist is the top of every sector j ≤ 12 for t ≤ 1 | `python scripts/ricci_su2_meron_ceiling_check.py out/ceiling.txt` | `…/meron_ceiling_check.txt` | a few minutes |

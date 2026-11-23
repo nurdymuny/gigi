@@ -77,7 +77,7 @@ GIGI_RICCI_DATA_ROOT=<gigi checkout with output/> python docs/papers/chord-arc-t
 cd docs/papers/chord-arc-tangent && pdflatex paper.tex && pdflatex paper.tex
 ```
 
-Only `fig_face_angles` needs the frozen meshes; it asserts that its numbers match Table 2.
+Only `fig_face_angles` uses the frozen meshes. They are not in the repository (about 105 MB, under `output/ricci-shape-regular-20261117/berger/`). When they are present, `make_figures.py` recomputes every face angle and writes the receipt `face_angles_per_face.json`; when they are not, it draws the figure from that committed receipt. Either way it asserts that the numbers match Table 2 (`face_angles.json`). So the figure rebuilds from this repository alone, while recomputing the angles themselves needs the meshes. The build also needs the shared style file `docs/papers/dgstyle.tex`, one level up.
 Typesetting uses the shared house style [`../dgstyle.tex`](../dgstyle.tex) (Palatino via
 `newpx`, `titlesec`, `caption`, `fancyhdr`, `enumitem`). On a minimal TeX Live install:
 `tlmgr --usermode install titlesec newpx newtx enumitem fontaxes xstring kastrup`.

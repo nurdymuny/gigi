@@ -239,3 +239,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    import _receipt_status                     # exit 1 if the receipt records a failed check
+    _receipt_status.exit_on_failure(sys.argv[1])

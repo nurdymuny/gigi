@@ -93,3 +93,6 @@ out["all_exact"] = all(not v for k, v in out.items())
 out["status"] = "PROVED (exact sympy equality of the code's symbolic rows with the operator-derived rows)" if out["all_exact"] else "MISMATCH"
 Path(sys.argv[1]).write_text(json.dumps(out, indent=1) + "\n")
 print(out)
+
+import _receipt_status  # noqa: E402
+_receipt_status.exit_on_failure(sys.argv[1])

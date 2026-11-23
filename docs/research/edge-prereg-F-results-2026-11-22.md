@@ -96,10 +96,20 @@ tolerance, 10⁻⁹, at SU(4) 0° and Sp(2) 45°: ties with her own tied partner
    - **In D, "her own circle" was right. Now I know which own: her own SU(2), not the group's principal one.**
 3. **One thing I did not predict (post hoc, labelled as such).** She comes back at the far wall in Sp(2), at 45°.
    - That wall is itself the coroot of a top root: the short highest root θ_s.
-   - At that wall, the cheapest state of top charge is the twist of *that* root's SU(2).
    - In SU(4) the far wall is not a single coroot, and there she is only marginal.
    - The pattern this suggests is: **she lives where the stretched circle is a top root's own SU(2).** It is a
      hypothesis for a new pre-registration, not a finding.
+   - **Correction (same evening).** The first version of this note also said that at Sp(2)'s far wall "the cheapest
+     state of top charge is the twist of *that* root's SU(2)". I had not checked that, and it is not true as stated.
+     A post-hoc diagnostic (`scripts/edge_wp8_farwall_diagnostic.py`, receipt
+     `research/edge-theorem-20261122-g/farwall_diagnostic.json`) splits her state across root planes in the trivial
+     sector at x = −1:
+     - at Sp(2)'s far wall, 32–46% of it is the short root's twist (short plane on both sides); the rest is a cross
+       state between the two long top roots (one long plane on the form side, the other on the algebra side);
+     - at SU(4)'s far wall it has **no** twist part at all, only cross states;
+     - at 0° in both groups it is purely her own twist (100% on her root's plane).
+
+     So at the far wall "she" is a mixture, and the far-wall pattern is murkier than I first wrote.
 4. **The side clause held again.** Wherever it could be scored, her region sat where the field along her circle turns
    against her charge.
 

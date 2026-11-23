@@ -18,6 +18,15 @@ To get the git side: `git clone https://github.com/nurdymuny/gigi.git && cd gigi
 (or `git checkout edge-paper-v1` for the exact tree the papers cite).
 The commit the zips and PDFs were built from is in §6.
 
+## 0. The versions to post live in the library
+
+The final PDFs, sources and posting packages are in **Bee Davis — Mathematics Library** (My Drive), next to the other
+papers: the Floor Theorem 3.3 and *By Enough* 1.1 in *03 — Physics and Mathematical Applications*; *Three Ways* 2.1
+(English and Russian) in *02 — Geometry and Computation*. *00 - START HERE - Addendum 2026-11-23.txt* lists them with
+links, tags and source hashes. They are built by `python scripts/make_paper_packages.py OUT` (tag
+`floor-theorem-v3.3` for Floor and Three Ways, `edge-paper-v1.1` for By Enough). This review folder keeps the reviewed
+snapshots.
+
 ## 1. The three documents of this package
 
 | document | git path | Drive |
@@ -32,7 +41,7 @@ The commit the zips and PDFs were built from is in §6.
 | paper | status | PDF (Drive, package folder) | source (Drive zip; git path) | already on Zenodo |
 | --- | --- | --- | --- | --- |
 | **By Enough, But Not Too Much** (the edge paper) | **new: post version 1.1** (corrected after two reviews) | `By_Enough_But_Not_Too_Much_v1.1.pdf` | `by-enough_v1.1_source.zip`; git `docs/papers/by-enough/` (figures from `scripts/edge_paper_figures.py`) | not yet |
-| **The Floor Theorem for the Yang–Mills Hessian at the Berger Field** | **repost as version 3.2** (corrected after two reviews and the follow-up) | `Floor_Theorem_v3.2.pdf` (clean), `Floor_Theorem_v3.2_redline_vs_v2.pdf` (changes marked) | `floor-theorem_v3.2_source.zip`; git `docs/papers/berger-spectrum/paper.tex` (clean build: set `\redlinefalse`; committed build `paper_v3.pdf`; the published v2 stays as `paper.pdf`) | v1 and v2: concept DOI 10.5281/zenodo.24386613 (v2 = 24412603, 21 Nov) |
+| **The Floor Theorem for the Yang–Mills Hessian at the Berger Field** | **repost as version 3.3** (corrected after two reviews and the follow-up; shorter abstract, Theorem A up front) | library: `The Floor Theorem for the Yang-Mills Hessian at the Berger Field v3.3.pdf` | `floor-theorem-v3.3-latex.zip`, `floor-theorem-v3.3-code-and-data.zip`; git `docs/papers/berger-spectrum/paper.tex` (clean build: set `\redlinefalse`; committed build `paper_v3.pdf`; the published v2 stays as `paper.pdf`) | v1 and v2: concept DOI 10.5281/zenodo.24386613 (v2 = 24412603, 21 Nov) |
 | **Three Ways Across a Turn: Chord, Arc and Tangent** | **repost as version 2.1** (corrections after the 19 Nov posting and after two reviews; English only, the Russian edition is unchanged) | `Three_Ways_Across_a_Turn_v2.1.pdf` | `three-ways_v2.1_source.zip`; git `docs/papers/chord-arc-tangent/` | v1: 10.5281/zenodo.24375338 (concept 24375337), 19 Nov |
 | Reading the Curve, Not Counting the Points | **no change**: v3 on Zenodo (24386756, 20 Nov) matches git | — | git `docs/papers/two-ring-pg/` | concept 10.5281/zenodo.24328085 |
 | The Davis Manifold, second edition | **not ready**: draft waiting for its adversarial review | — | git `docs/papers/davis-manifold/the_davis_manifold_v2.tex` | first edition: 10.5281/zenodo.19428406 lineage |

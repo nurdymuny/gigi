@@ -124,6 +124,8 @@ class GroupK:
         Hb = Hp[np.ix_(bot, bot)]; Hb = 0.5 * (Hb + Hb.conj().T); wb = np.linalg.eigvalsh(Hb)
         lam = float(wt[0]); top_spread = float(np.ptp(wt))
         mirror_tied = bool(abs(wb[0] - lam) <= 1e-9 * max(1.0, abs(lam)))
+        tol_ = 1e-9 * max(1.0, abs(lam))
+        n_top_tied = int((np.abs(wt - lam) <= tol_).sum()); n_bot_tied = int((np.abs(wb - wb[0]) <= tol_).sum())
         others = np.setdiff1d(np.arange(Hp.shape[0]), top)
         resid = float(np.linalg.norm(Hp[np.ix_(others, top)]))
         gstar = float(np.linalg.norm(Gs[:, top] @ vt[:, 0]))
@@ -144,7 +146,7 @@ class GroupK:
                 else:
                     mu.extend(np.linalg.eigvalsh(A))
         mu = np.array(mu); o = np.argsort(mu)
-        ncopies = 1 + (1 if mirror_tied else 0)
+        ncopies = n_top_tied + (n_bot_tied if mirror_tied else 0)       # C1 where tied, Amendment 2 where not
         out = {"lam": lam, "lam_top_spread": 0.0, "top_block_spread": top_spread, "top_dim": int(len(top)),
                "mirror_tied": mirror_tied, "resid": resid,
                "gstar": gstar, "mu": mu[o], "ncopies": ncopies}

@@ -48,3 +48,26 @@ The results note will say:
 - that 45° was scored under this amendment;
 - that the amendment was written after the stop and before any further data;
 - exactly what had been seen (above).
+
+## Correction to the implementation (22 November, after F's first complete receipt; disclosed)
+
+**What went wrong.** When I implemented this amendment, I applied "her state is the cheapest exact state of top
+charge, and her copies are that state plus its mirror" to **every** degenerate top-charge space. This amendment covers
+only the **untied** ones. Where the top space is degenerate but its states are exactly tied (forced by a wall's
+reflection symmetry, as in SU(4) at 0° in sector 6), the registered C1 rule still applies: her copies are the whole
+tied space.
+
+**How it showed.** In the first complete receipt, several wall points have her margin at exactly the floor tolerance
+(10⁻⁹). There she "ties" a state that is really her own tied partner, left in the spectrum by the bug.
+
+**What this session had seen when writing this:** F's complete first receipt, all 36 points and the scores. This
+correction is therefore **not blind**. It is a mechanical fix of the code to the rule already written, with no new
+choice. The combined rule, consistent with both the registration (C1) and this amendment:
+- her copies are the top-space states tied with the cheapest one, to 10⁻⁹ relative: the whole space when all are
+  tied (C1), just the cheapest when none are (this amendment);
+- plus the mirror states tied with them.
+
+**What is recomputed.** Every point computed under the faulty rule where her top space is degenerate: SU(4) at 0°,
+SU(4) at 45°, and Sp(2) at 45°, which is 9 points. Sp(2) at 0° was computed before the resume, under the registered C1
+code, and is unaffected. Interior angles have a one-dimensional top space and are unaffected. The results note will
+report both versions of these 9 points.

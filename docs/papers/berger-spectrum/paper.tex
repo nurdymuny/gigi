@@ -17,6 +17,7 @@
 \newtheorem{definition}[theorem]{Definition}
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
+\newtheorem*{mainthm}{Theorem A}
 
 
 
@@ -36,38 +37,27 @@
 \large A Floor Law Across the Berger Spheres}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
-\date{November 2026 (version \reddel{2}\redins{3.2\ifredline, draft\fi})}
+\date{November 2026 (version \reddel{2}\redins{3.3\ifredline, draft\fi})}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Let $A$ be the Levi-Civita connection of the Berger metric $g=(3,1,1)$ on $S^3=SU(2)$, viewed as an
-$SU(2)$ connection. It is not a Yang--Mills critical point. We compute the low spectrum of the Hessian
-of the Yang--Mills energy at $A$, compressed to the gauge-orthogonal slice. The operator splits into
-finite sectors by the Peter--Weyl decomposition. In the sector of spin $j/2$, the field
-$f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$, with $f$ the top weight along the long axis,
-is an exact eigenvector with eigenvalue $(j(j+2)-14)/3$, orthogonal to every gauge direction. A
-Weitzenb\"ock identity, proved in the universal enveloping algebra, bounds every sector from below.
-Together with certified inertia counts in interval arithmetic, it shows that this value is the bottom of
-its sector for the sectors $j=0,12,20,24$ that survive on the Poincar\'e homology sphere $S^3/2I$, and
-that every other surviving sector lies above $142$. There, the
-gauge-orthogonal spectrum below $142$ consists of the left-invariant values $-14/3$ (twice),
-$16-2\sqrt{73}$, $22/3$ (twice) and $16+2\sqrt{73}$, and the spin-$6$ values from $154/3$ upward. The
-first sector above the left-invariant one begins $168/3$ above the field's growth mode (its lowest, negative eigenvalue), one third of
-\reddel{the sphere's first scalar eigenvalue}\redins{the first nonzero scalar eigenvalue of the round unit Poincar\'e sphere}. The construction reproduces the published fluctuation spectrum
-of the meron on the round sphere and Laquer's index. The formula is one member of a family: on every
-Berger sphere $(t,1,1)$ the same field is an exact gauge-orthogonal eigenvector with eigenvalue
-$[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$. It is the floor of every sector
-for every $t\in[2.75,10]$, in particular at $t=3$: a conserved charge splits each sector into blocks of size at most
-nine, interval certificates of the blocks cover $j<100$, and a closed-form Gershgorin bound covers $j\ge100$.
-\redins{ Across all circle-symmetric fields on these spheres, the same
-field is an exact eigenvector with eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$, where $x$ and $y$ are the
-field's strengths along and across the long circle. It is the floor of every sector on the box $x\in[-3,-1.5]$,
-$y\in[0.5,3]$, $t\in[3,10]$. For $H+GG^*$ an explicit Rayleigh-quotient bound rules out an all-sector floor at $x>0$;
-numerical scans indicate a bounded interval of floor values in $x$, whose upper end is set by changing competitors.} At $t=4$ the low spectrum on the
-Poincar\'e sphere is classified below $136$. To our knowledge, these are the first exact eigenvalues of a
-Yang--Mills Hessian at a non-flat connection on a squashed three-sphere.
+\redins{Let $A$ be the Levi-Civita connection of a Berger metric $g=(t,1,1)$ on $S^3=SU(2)$, viewed as an $SU(2)$
+connection; it is not a Yang--Mills critical point. We study the Hessian of the Yang--Mills energy at $A$, compressed
+to the gauge-orthogonal slice, sector by sector in the Peter--Weyl decomposition. In the sector of spin $j/2$ an
+explicit field, the twist $f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$, is an exact gauge-orthogonal
+eigenvector with eigenvalue
+$\lambda_t(j)=[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$. We prove that $\lambda_t(j)$ is the lowest eigenvalue of every sector
+for every $t\in[2.75,10]$. A conserved charge splits each sector into blocks of size at most nine; interval inertia
+certificates cover the blocks of the sectors $j<100$, and a closed-form Gershgorin bound covers $j\ge100$. At $t=3$, on
+the Poincar\'e homology sphere, this gives the gauge-orthogonal spectrum below $142$ exactly; the first sector above
+the left-invariant one begins $168/3$ above the lowest mode, one third of the first nonzero scalar eigenvalue of the
+round unit Poincar\'e sphere. Across all circle-symmetric fields the twist remains an exact eigenvector, with
+eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$, and it is the floor of every sector on the box $x\in[-3,-1.5]$,
+$y\in[0.5,3]$, $t\in[3,10]$. The construction reproduces the published round-sphere spectrum and Laquer's index. To
+our knowledge, these are the first exact eigenvalues of a Yang--Mills Hessian at a non-flat connection on a squashed
+three-sphere.}
 \end{abstract}
 
 \noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Poincar\'e homology sphere; spectral
@@ -97,6 +87,24 @@ connection of a Berger metric, viewed as an $SU(2)$ connection (the \emph{Berger
 the instantaneous state of a homogeneous gauge field transported along the Ricci flow of the
 metric~\cite{davisrtc}, and it is the background on which lattice Yang--Mills forces on the
 Poincar\'e homology sphere were tested there. Its exact spectrum gives those computations a target.
+
+\redins{\paragraph{The main theorem.} The central result is the following (Theorem~\ref{thm:range} in
+Section~\ref{sec:family}).
+
+\begin{mainthm}
+For every $t\in[2.75,10]$ and every $j\ge0$, the twist's eigenvalue
+$\lambda_t(j)=[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$ is the lowest eigenvalue of $H+GG^*$ in the sector of spin $j/2$, with
+multiplicity exactly two, and the lowest gauge-orthogonal eigenvalue there.
+\end{mainthm}
+
+\noindent\emph{How the proof goes.} (i)~\emph{Exactness:} the twist is alone in its block of a conserved charge, so
+$\lambda_t(j)$ is an exact eigenvalue (Proposition~\ref{prop:family}, Remark~\ref{rem:counting}). (ii)~\emph{Reduction:}
+the same charge splits every sector into blocks of size at most nine, whose rows are known in closed form
+(Lemma~\ref{lem:charge}). (iii)~\emph{Finitely many sectors:} for $j\le99$ every block is enclosed in interval
+arithmetic over slices of $t$ and certified to lie above $\lambda_t(j)$ by exact counts of negative pivots.
+(iv)~\emph{All remaining sectors:} for $j\ge100$ a closed-form Gershgorin quantity is proved positive by interval
+bisection. Each step has a script and a receipt (Section~\ref{sec:checks} and the code availability statement). The
+results are labelled throughout as exact identities, interval-certified inequalities, or numerical observations.}
 
 \paragraph{Main results.} Section~\ref{sec:setting} fixes the operator: the Hessian $H$ of the energy
 at the Berger field, against the $L^2$ mass, compressed to the gauge-orthogonal slice. The field is not
@@ -875,7 +883,7 @@ This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}
 All programs and certificates are in the \textsc{GIGI} repository,
-\url{https://github.com/nurdymuny/gigi} (tag \texttt{\reddel{floor-theorem-v2}\redins{floor-theorem-v3.2}}; the scripts are on that tag, not yet on the main branch), with their outputs in
+\url{https://github.com/nurdymuny/gigi} (tag \texttt{\reddel{floor-theorem-v2}\redins{floor-theorem-v3.3}}; the scripts are on that tag, not yet on the main branch), with their outputs in
 \path{research/su2-left-invariant-sector-20261119/}:
 \begin{itemize}
   \item the left-invariant sector: \path{scripts/ricci_su2_left_invariant_sector.py};

@@ -62,7 +62,7 @@ RU = {
     'step $s$': 'шаг $s$', 'error per step': 'ошибка за шаг',
     r'face holonomy angle $a$ (radians)': r'угол голономии грани $a$ (радианы)',
     'fraction of faces with angle $\\leq a$': 'доля граней с углом $\\leq a$',
-    'measured force errors, 4.7%–36%': 'измеренные ошибки силы, 2.5%–36%',
+    'measured force errors, 4.7%–36%': 'измеренные ошибки силы, 4.7%–36%',
     r'chord–arc energy gap $a^2/12$': r'разрыв энергий хорды и дуги $a^2/12$',
     'explicit: out': 'явный: наружу', 'Crank–Nicolson: on': 'Кранк — Николсон:\nна окружности',
     'implicit: in': 'неявный: внутрь',

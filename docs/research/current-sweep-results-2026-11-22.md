@@ -53,7 +53,7 @@ flowing when she loses that family. A smaller fraction means she needs less moti
 
 ## What it says
 
-This is the measurement behind Bee's reading of S1b. The flat field is the perfect resting state, with nothing in
+This is the measurement behind my reading of S1b. The flat field is the perfect resting state, with nothing in
 motion along her circle, and it is the one place where she stops being singled out. Here is the same thing as a
 number. With the cross field already off, she is the floor of every family while the field along her circle still
 turns. She loses families only as that motion drains away, one threshold each, never more than five families, and
@@ -66,4 +66,4 @@ The perfect resting state is where the race stops: there she is undercut or tied
 | the families lost at x = 0 are S1b's | COMPUTED |
 | family 2 needs the most current; the need shrinks with stretch (65% at t = 3, 2% at t = 10) | COMPUTED |
 | at x = 0 she is exactly tied in every family she keeps, and separated by any motion (2% of the current suffices) | COMPUTED (ties to 10⁻¹³) |
-| "her being chosen is carried by motion" | STRUCTURAL: Bee's reading, now measured on this family |
+| "her being chosen is carried by motion" | STRUCTURAL: my reading, now measured on this family |

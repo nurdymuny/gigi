@@ -32,7 +32,7 @@
 \title{By Enough, But Not Too Much\\[4pt] \large Where the Twist Is the Floor of the Yang--Mills Hessian on Berger Spheres}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
-\date{November 2026 (draft)}
+\date{November 2026}
 
 \begin{document}
 \maketitle
@@ -1325,7 +1325,7 @@ $60$). The registered onset-scaling arm could not be scored (four eligible pairs
 $4.41$ to $4.61$, against a predicted $4$). At $t=2$ a different across-reaching block, $\pm(l-2)$, holds the floor at
 $15$ of $20$ points. So the statement ``a state that turns against the field holds the floor'' survives at $t=2$, but
 the identification with $e_-$ does not. The code gates (block against full builder, her block against $\lambda_j$, the
-exact state at $y=0$, the mirror blocks) pass at $6	imes10^{-15}$ or better. Script \path{edge_wp6_two_hands.py},
+exact state at $y=0$, the mirror blocks) pass at $6\times10^{-15}$ or better. Script \path{edge_wp6_two_hands.py},
 receipt \path{research/edge-theorem-20261122-e/wp6_two_hands.json}.
 
 \paragraph{Test F: which circle.} Test~F sweeps the stretched circle across the Weyl chamber of $Sp(2)$ and a line
@@ -1399,7 +1399,7 @@ and~\ref{prop:lowblock}.
 Every claim of this paper has a script that produces it and a receipt that records its output. Scripts are in
 \path{scripts/}. Receipt directories are abbreviated: \texttt{F} is \path{research/su2-floor-family-20261119/},
 \texttt{E} is \path{research/edge-theorem-20261121/}, \texttt{P} is \path{research/edge-theorem-20261122-proofs/},
-\texttt{G} is \path{research/edge-paper-figures-20261122/} and \texttt{D} is \path{research/edge-theorem-20261122-d/}. The
+\texttt{G} is \path{research/edge-paper-figures-20261122/} \texttt{D} is \path{research/edge-theorem-20261122-d/}, \texttt{H} is \path{research/edge-theorem-20261122-e/} and \texttt{W} is \path{research/edge-theorem-20261122-f/}. The
 status column uses the labels of Section~\ref{sec:intro}: \PROVED, \COMPUTED, \PROVEDT. The scripts run with Python,
 NumPy, \textsc{SymPy}~\cite{sympy2017} and \textsc{mpmath}~\cite{mpmath}, one thread
 (\texttt{OMP\_NUM\_THREADS=1}).
@@ -1449,15 +1449,17 @@ Test B & \path{edge_wp4_general_fields.py} & \texttt{E}/\path{wp4_general_fields
 Test C & \path{edge_wp4_su3_free_fibre.py} & \texttt{E}/\path{wp4_su3_free_fibre.json}, \path{wp4_su3_free_fibre_log.txt}; prereg \path{wp4_prereg_C_su3.md} & \COMPUTED\\
 Test C diagnostic (post hoc) & \path{edge_wp4_su3_diagnostic.py} & \texttt{E}/\path{wp4_su3_diagnostic_posthoc.json}, \path{wp4_su3_diagnostic_posthoc_log.txt} & \COMPUTED\\
 Test D & \path{edge_wp5_design_checks.py}, \path{edge_wp5_su3_own_circle.py} & \texttt{D}/\path{wp5_prereg_D_su3_own_circle.md}, \path{wp5_design_checks.json}, \path{wp5_su3_own_circle.json} & \COMPUTED\\
+Test E & \path{edge_wp6_two_hands.py} & \texttt{H}/\path{wp6_prereg_E_two_hands.md}, \path{wp6_two_hands.json} & \COMPUTED\\
+Test F & \path{edge_wp7_principal_circle.py}, \path{edge_wp7_groups.py} & \texttt{W}/\path{wp7_prereg_F_principal_circle.md} and its two amendments, \path{wp7_principal_circle.json} & \COMPUTED\\
 Figures \ref{fig:helike}--\ref{fig:su3} & \path{edge_paper_figures.py} & \texttt{G}/\path{region_j12.json}, \path{berger_path.json}, \path{su2_margins_t4.json} & \COMPUTED{} (Fig.~\ref{fig:helike}: closed forms)\\
 Lean theorems (16) & \path{docs/papers/berger-spectrum/lean/Helike/} & \path{README.md}, \path{RESULTS.md}, \path{Axioms.lean} & \PROVED{} (polynomial identities)\\
 \end{longtable}
 }
 
-\paragraph{Reproducing.} Each script writes its receipt by default at the path above. The symbolic proofs run in under a
+\paragraph{Reproducing.} Each script writes its receipt to the path above, given as its argument (two have it as a default). The symbolic proofs run in under a
 minute each ($21.7$\,s for Lemma~\ref{lem:weitz}, $34.9$\,s for Lemma~\ref{lem:gersh}). The domain certificate for $j<80$
 takes about $63.6$ CPU-hours; the slab proofs take from $19$\,s to about $4{,}446$\,s per box. The results notes of the
-pre-registered tests are \path{docs/research/edge-prereg-A-results-2026-11-22.md}, \path{edge-prereg-B-results-2026-11-22.md} and \path{edge-prereg-C-results-2026-11-22.md};
+pre-registered tests are \path{docs/research/edge-prereg-A-results-2026-11-22.md} and its siblings for B, C, D, E and F;
 the notes of the earlier tests are in \path{docs/research/}.
 
 \section*{Funding and competing interests}
@@ -1465,12 +1467,12 @@ This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}\label{sec:availability}
 All programs, certificates and receipts are in the \textsc{GIGI} repository, \url{https://github.com/nurdymuny/gigi}
-(tag \textbf{[TAG TO BE SUPPLIED]}); Section~\ref{sec:data} lists them claim by claim. The sixteen Lean theorems are in
+(tag \texttt{edge-paper-v1}); Section~\ref{sec:data} lists them claim by claim. The sixteen Lean theorems are in
 \path{docs/papers/berger-spectrum/lean/Helike/Price.lean} and \path{Edge.lean}, with \path{README.md} and \path{RESULTS.md}.
 They depend only on the axioms \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound}, build with
-\texttt{lake exe cache get} and \texttt{lake build}, and \texttt{lake env lean Axioms.lean} lists the axioms. At the time
-of writing these Lean files are on the branch \texttt{feat/helike-lean}; the tagged tree must contain them. This paper,
-its source, and the code and data above are archived on Zenodo (DOI \textbf{[TO BE ASSIGNED]}).
+\texttt{lake exe cache get} and \texttt{lake build}, and \texttt{lake env lean Axioms.lean} lists the axioms. They are on the branch \texttt{feat/helike-lean},
+tagged \texttt{edge-paper-v1-lean}. This paper,
+its source, and the code and data above are archived on Zenodo.
 
 % ===================================================================================================
 \appendix

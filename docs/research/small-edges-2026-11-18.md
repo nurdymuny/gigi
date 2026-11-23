@@ -29,7 +29,7 @@ Idea 1 addresses roughness over time, idea 2 the smallest rim, and idea 3 both.
 
 | Source | What it is | Where it lives |
 | --- | --- | --- |
-| My message, 2026-11-18 | The prompt: "my Crouzeix conjecture work … the holomorphic harmonics and the Good Will Hunting station fold … might help us understand the smaller edges" | this session |
+| My message, 2026-11-18 | The prompt: "my Crouzeix conjecture work … the holomorphic harmonics and the Good Will Hunting station fold … might help us understand the smaller edges" | quoted in this note |
 | Crouzeix status ledger | My C3 ledger (2026-10-29): the factors F1 = ‖B‖/w(B) and F2, and the non-normality index η(B) = ‖BB*−B*B‖/‖B‖² with Lemmas 1–3 | `davis-wilson-lattice/validation/crouzeix/C3_STATUS.md` (untracked folder in that repo) |
 | GIGI Crouzeix protocol | How Crouzeix data is loaded into GIGI; GIGI's job is "a certified upper bound on max \|p\| over a disk, with a disclosed error budget" | `davis-wilson-lattice/validation/crouzeix/GIGI_CROUZEIX_PROTOCOL.md` |
 | HHE/Crouzeix diagnostic on the Ricci control | Mass whitening and the harmonic-conjugate polynomial bound on the 142-dimensional Abelian operator. Modes above eigenvalue 8 carry 0.00237851% of the field's squared mass norm and 99.97958017% of the squared strong-flow residual | `docs/RICCI_OPERATOR_CONSISTENCY_SPEC.md` (HHE/Crouzeix extension) and `docs/RICCI_OPERATOR_CONSISTENCY_RESULTS.md` ("What the HHE/Crouzeix work contributed"), both on this branch |
@@ -42,7 +42,7 @@ Idea 1 addresses roughness over time, idea 2 the smallest rim, and idea 3 both.
 
 **Who contributed what.** The sources above are my work, apart from the
 outside literature and S2b's measurements. The *translations* into the curvature-recovery
-problem below were worked out in this session, not in those sources. Each one carries an
+problem below were worked out here, not in those sources. Each one carries an
 altitude tag:
 
 - **STRUCTURAL:** a theorem applies directly, once its stated hypotheses are checked.

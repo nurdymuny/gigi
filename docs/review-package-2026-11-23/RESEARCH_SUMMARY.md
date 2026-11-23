@@ -288,7 +288,7 @@ competitor picture rests on three computed points. (Its "half-line" and "nearly 
 or counted against; the note itself was not edited. See §2.9.)
 
 **Where I overreached, and the adversarial round that corrected me** (`docs/research/she-is-the-law-2026-11-21.md`,
-"Correction"; `docs/research/edge-workflow-findings-2026-11-21.md`; reports and verdicts in
+"Correction"; `docs/research/edge-verification-findings-2026-11-21.md`; reports and verdicts in
 `research/edge-theorem-20261121/workflow_reports.json`). I had written a one-sentence law, including the clause that on
 strongly stretched spheres she wins "even when the field turns slightly with her". To turn the edge into a theorem I
 organised an adversarial round: four work packages, each followed by a verifier instructed to refute it, and a
@@ -602,7 +602,7 @@ This is every place where the notes disclose that a rule changed or that I had s
 | Berger path crosses the edge at t_A (9 × 10⁻¹⁶) and t* (1.1 × 10⁻¹²) | COMPUTED | `docs/research/exact-edge-2026-11-21.md`; `exact_edge.json` |
 | det(B₄,₀ − λ₄) = −16384·P₁P₂; P₂ on the Berger path contains Q₁₆ (t_A) | PROVED; Lean 4 | exact-edge addendum; `edge_polynomial.txt`; edge paper §4 |
 | "The edge is the largest real root of P₂" | REFUTED | Test A note; edge paper §1 |
-| Family (x, y) is general up to constant gauge | PROVED | edge paper `prop:general`; `docs/research/edge-workflow-findings-2026-11-21.md` |
+| Family (x, y) is general up to constant gauge | PROVED | edge paper `prop:general`; `docs/research/edge-verification-findings-2026-11-21.md` |
 | Weitzenböck identity and charge blocks, whole family | PROVED (symbolic) | `research/edge-theorem-20261122-proofs/weitzenbock_family.json`; edge paper `lem:weitz`, `lem:blocks` |
 | For x > 0 she is never the floor of every sector | PROVED for H + GG*; COMPUTED for the gauge-orthogonal spectrum | exact-edge Correction; edge paper `thm:xpos` |
 | Region bounded below (sector-0 state; cubic bound) | PROVED | edge paper `prop:lower`, `prop:lowblock` |

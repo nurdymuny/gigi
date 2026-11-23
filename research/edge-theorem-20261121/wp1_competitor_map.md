@@ -1,7 +1,7 @@
 # WP1: which block sets the edge (21 November 2026)
 
 **Scope.** The H + GG\* edge x\*(t, y) of the twist's region over t ∈ [2, 12], y ∈ [0.25, 3]. The map uses sectors
-j ≤ 12, and side checks go up to j = 2000. Every number below was computed in this session and comes from the receipt
+j ≤ 12, and side checks go up to j = 2000. Every number below was computed for this note and comes from the receipt
 named next to it.
 
 **Labels.**

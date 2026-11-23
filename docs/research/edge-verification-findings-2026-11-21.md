@@ -1,8 +1,8 @@
-# What the edge workflow found, and what it corrected (21 November 2026)
+# What the edge verification found, and what it corrected (21 November 2026)
 
 I asked for the edge to become a theorem. That needs a project of its own: its own tests and its own paper. I also
-asked that nothing about the literature be made up. So the first step was a ten-agent workflow:
-- a literature agent allowed to report only sources it actually fetched, with a verbatim quote, and a second agent
+asked that nothing about the literature be made up. So the first step was a ten-part adversarial verification round:
+- a literature search allowed to report only sources it actually fetched, with a verbatim quote, and a second pass
   that re-fetched every citation;
 - four work packages, each followed by a verifier told to **refute** it.
 
@@ -25,7 +25,7 @@ Every report and verdict is in `research/edge-theorem-20261121/workflow_reports.
   edge (0.02 in one slab), using interval LDLᵀ of the near-end blocks plus Gershgorin for the rest.
 - **The family is general (WP4).** Every left-invariant, circle-symmetric SU(2) field on (t, 1, 1) is
   constant-gauge-equivalent to the (x, y) form. Proved.
-- **The literature (research agent, every citation re-checked).** All 22 sources exist; a few metadata fixes.
+- **The literature (literature search, every citation re-checked).** All 22 sources exist; a few metadata fixes.
   - The mechanism behind her is the textbook one: a lowest Landau level plus a gyromagnetic-ratio-2 Zeeman term
     (Nielsen–Olesen 1978; stated explicitly in Bolognesi et al., JHEP 2014).
   - The closest prior art is Avramidi–Collopy (2012): negative modes of covariantly constant backgrounds on the

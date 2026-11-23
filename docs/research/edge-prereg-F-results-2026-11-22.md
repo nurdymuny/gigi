@@ -3,7 +3,7 @@
 **What this is.**
 - **The registration:** `research/edge-theorem-20261122-f/wp7_prereg_F_principal_circle.md`, revised after an
   adversarial review that found two fatal flaws and seven major ones, all before any data, and registered at 6ad473c.
-- **Amendment 1** (`wp7_prereg_F_amendment1_peak.md`, from my other session) adds the peak test H_P-peak.
+- **Amendment 1** (`wp7_prereg_F_amendment1_peak.md`, written on my Windows machine) adds the peak test H_P-peak.
 - **Amendment 2** (`wp7_prereg_F_amendment2_wall.md`) says how to read her at a degenerate wall. It carries a disclosed
   implementation correction.
 - Script: `scripts/edge_wp7_principal_circle.py`, with `scripts/edge_wp7_groups.py`.
@@ -20,8 +20,8 @@
 ## What I knew, and what I saw, before scoring
 
 - **When F was registered,** I had seen 14 of Test D's 20 shapes. F's predictions were not blind to D.
-- **Amendment 1** was written by my other session, which had seen no F output.
-  - The session running F had already seen F's first three printouts: Sp(2) at 0°, shapes (½, ½, ¼) and (½, ½, ¾)
+- **Amendment 1** was written on my Windows machine, with no F output in view there.
+  - On the machine running F, I had already seen F's first three printouts: Sp(2) at 0°, shapes (½, ½, ¼) and (½, ½, ¾)
     with floor regions, and (½, 1, 1) empty, with a best margin of −0.36.
   - So **Amendment 1 is not blind on those three points.** That is disclosed in STATUS-live, before F finished.
 - **Amendment 2** was written after the run stopped at Sp(2) 45° (the F-mult gate) and before any further data.

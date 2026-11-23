@@ -32,7 +32,7 @@ bottom of everything, is related to why some forces have a mass gap.
 
 | Source | What it contributes | Where |
 | --- | --- | --- |
-| My messages, 2026-11-18 | The idea above. Also: residuals come in twins, and the "root" (where the construction is based) decides whether numbers are real or unreal. I related both to Bertrand's paradox, to my graph theory and to my grouping theory. | this session |
+| My messages, 2026-11-18 | The idea above. Also: residuals come in twins, and the "root" (where the construction is based) decides whether numbers are real or unreal. I related both to Bertrand's paradox, to my graph theory and to my grouping theory. | summarized in this note |
 | The chord–arc–tangent paper | The turn U, the chord U − 1, the half-turn U = −1 where the tangent construction breaks, twins and Bertrand (§§ 2–6) | `docs/papers/chord-arc-tangent/paper.tex` |
 | My Good Will Hunting graph-fold article | Folding with matching menus: AP = PB, hence AⁿP = PBⁿ. Connectedness and equitability are different properties. | math-website `notebook/content/good-will-hunting-graph-fold.html`, commit `8eb87c00` |
 | *Zero Does Not Exist* (mine) | A count of n is the path P_{n+1}. Zero crossings is still one position (P₁), never empty. | cited in the article above |

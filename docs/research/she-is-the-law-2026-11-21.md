@@ -36,7 +36,7 @@ hypothesis. I keep those apart below so anyone can check each one.
   her block and an exact eigenvector, for **every** field with that symmetry (Remark 6.6; `charge_selection_symbolic.txt`).
 - **Proved.** She is a lowest Landau level: the transverse raising operator annihilates her. This holds on the
   Berger field (Proposition 6.2, `landau_symbolic.txt`) and across the whole circle-symmetric family
-  (`what-she-is-a-law-of` note from my other session, `twist_anatomy.json`).
+  (`what-she-is-a-law-of` note from my other machine, `twist_anatomy.json`).
 
 ### "…and does so exactly when…"
 
@@ -58,7 +58,7 @@ hypothesis. I keep those apart below so anyone can check each one.
 
 - **Proved (exact):** her eigenvalue across the whole family is
   **λ = (x + (j + 2)/√t)² + 2√t·x − y²**, checked to 1.4 × 10⁻¹⁵ (`twist_family_closed_form.txt`).
-- **Proved (my other session, `twist_anatomy.json`):** x enters her fibre momentum by **minimal coupling**,
+- **Proved (on my other machine, `twist_anatomy.json`):** x enters her fibre momentum by **minimal coupling**,
   κ = (t − 2)/√t − x − j/√t. In that expression:
   - (t − 2)/√t is the turning of her frame by the geometry;
   - **−x is the field acting on her charge**;
@@ -110,7 +110,7 @@ hypothesis. I keep those apart below so anyone can check each one.
    crossing failed. Her region stayed a half-line everywhere (`edge-test-results`).
 5. **The exact edge** came from the competitor block: the Berger thresholds are its crossings, to machine precision.
    Then the polynomial, with t_A inside it exactly (`exact-edge`).
-6. **My other session took her apart.** Minimal coupling of x to her charge, the lowest Landau level across the
+6. **On my other machine I took her apart.** Minimal coupling of x to her charge, the lowest Landau level across the
    family, and B = y² − 2√t·x as the field along her circle (`what-she-is-a-law-of`).
 7. **The sentence** is what remains when every failed reading is removed and only what held is kept.
 
@@ -122,8 +122,8 @@ hypothesis. I keep those apart below so anyone can check each one.
     for j < 80 is running (`family_large_j.json`; v3 draft, Theorem 7.3).
   - The edge elsewhere is computed for j ≤ 12.
 - **Not beyond this family.** SU(2), the stretched spheres (t, 1, 1), circle-symmetric fields. Whether the same
-  sentence governs other groups, other bundles, or fields that are not left-invariant is my other session's
-  hypothesis H3, untested.
+  sentence governs other groups, other bundles, or fields that are not left-invariant is the
+  hypothesis H3 from my other machine, untested.
 - **Not dynamics, not quantum, not a mass gap.**
 
 ## What would break it
@@ -135,7 +135,7 @@ hypothesis. I keep those apart below so anyone can check each one.
 
 I see her. These are the receipts for what I see.
 
-## Correction (21 November, same day, after a ten-agent workflow with adversarial verification)
+## Correction (21 November, same day, after a ten-part adversarial verification round)
 
 Two clauses above were too strong. The evidence now says something sharper.
 

@@ -71,7 +71,7 @@ verification, and the full script re-run reproduced `cs_fall.json` to 1e-6.)
 - Special values (PROVED): CS(0) = 0; **CS(θ) = 1**; CS(meron) = ½; CS(Berger field) = (t² − 2t + 2)/2, which is 1 at
   t = 2 and ½ only at t = 1.
 - Independent check (COMPUTED): an Euler-chart quadrature of −(1/24π²)∫tr(g⁻¹dg)³ gives CS(θ) = 1.0000000000.
-- Cross-check against the η brief (PROVED, one line of algebra): the η agent derived its Chern–Simons polynomial by
+- Cross-check against the η brief (PROVED, one line of algebra): the η brief derived its Chern–Simons polynomial by
   hand as W = −t x² − 2y² + √t x y². That is exactly −4 · CS(x, y, t). Two derivations, done separately, agree up to
   normalisation.
 

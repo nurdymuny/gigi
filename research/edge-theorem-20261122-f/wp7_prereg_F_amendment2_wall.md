@@ -2,7 +2,7 @@
 
 Written and committed **after gate F-mult stopped the run, and before any further data is read.**
 
-**What the session running F has seen** (in addition to the three 0° printouts disclosed for Amendment 1):
+**What I have seen on the machine running F** (in addition to the three 0° printouts disclosed for Amendment 1):
 - only this stop message:
 
   > `stop: F-mult sp2 45.0 (0.5, 0.5, 0.25) 1: resid 3.4e-15, spread 1.08`
@@ -60,7 +60,7 @@ tied space.
 **How it showed.** In the first complete receipt, several wall points have her margin at exactly the floor tolerance
 (10⁻⁹). There she "ties" a state that is really her own tied partner, left in the spectrum by the bug.
 
-**What this session had seen when writing this:** F's complete first receipt, all 36 points and the scores. This
+**What I had seen when writing this:** F's complete first receipt, all 36 points and the scores. This
 correction is therefore **not blind**. It is a mechanical fix of the code to the rule already written, with no new
 choice. The combined rule, consistent with both the registration (C1) and this amendment:
 - her copies are the top-space states tied with the cheapest one, to 10⁻⁹ relative: the whole space when all are

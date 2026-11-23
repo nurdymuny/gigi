@@ -244,7 +244,7 @@ testable is the scoped reading below.
   Levi-Civita field at each grid point, must give T_all = {2.70, 2.75, …, 10.00} exactly. That is the known
   class P: the floor for t ≥ t* ≈ 2.698 numerically, with j = 4 the first to fail below. Any other T_all stops the
   run.</ins>
-2. **SU(3).** The design is open, and the choice of background is Bee's to make before any build. The Levi-Civita
+2. **SU(3).** The design is open, and the choice of background is mine to make before any build. The Levi-Civita
    connection of a squashed SU(3) takes values in so(8), not in su(3), so the Berger-field construction does not
    carry over. A background (for example, a multiple of the Maurer–Cartan form on a squashed metric) and its circle
    or torus symmetry must be chosen first.

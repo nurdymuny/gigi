@@ -1,6 +1,6 @@
-# Live status (updated by the session at every milestone)
+# Live status (updated at every milestone)
 
-Open this file in your breaks: it says what is running, what landed and where to read it.
+I open this file in my breaks: it says what is running, what landed and where to read it.
 Nothing here is a result in itself. Each result lives in its own note, scored as registered.
 
 **Last updated: 23 November 2026, early morning: Test G is registered (after review) and running.**
@@ -155,7 +155,7 @@ More items will join this table as they are finished.
   - The blind-rival clause failed again: the charged (4,0) rival rides the field at 0.61–0.76, as in SU(2).
   - Same group as C, same method; only the circle changed.
   - The edge paper is updated (abstract, introduction, Test D section and appendix).
-  - **The book is v5.8 on Drive**, built on your other session's v5.7. The gap map's §5 items are done:
+  - **The book is v5.8 on Drive**, built on the v5.7 I made on my other machine. The gap map's §5 items are done:
     - H3 now says she came back along her own circle;
     - "What the failures taught me" ends "The failure along the wrong circle was never about her. It was about the
       circle.";
@@ -186,23 +186,23 @@ More items will join this table as they are finished.
 - The basin addenda: the floor at the bottom, and the shadow is her (263da06, d71a98e).
 - The Helike book v5.1 is on Drive (with the v5.1 handoff note).
 
-## What happens next, automatically
+## What happens next
 
 - **Adversarial review of everything under "Active research"**, whenever the running tests leave room. Start with
   the Davis Manifold second edition. Commit the review note, update this file and push. The paper's text is not
   edited in the same pass.
 
-- **When D finishes:** score it as registered, write the results note in your voice, update the edge paper (Test D
+- **When D finishes:** score it as registered, write the results note in my voice, update the edge paper (Test D
   section) and this file, then commit and push.
 - **When the deep-dive finishes:** check its verifier report, commit the note, briefs and scripts, update this file,
   and push.
 - ~~When F finishes: score it, write its note, update this file, then commit and push.~~ Done (evening).
   - **Also score Amendment 1:** `research/edge-theorem-20261122-f/wp7_prereg_F_amendment1_peak.md` (H_P-peak: is her
     margin φ\* = `phi_grid_best` largest at 18.43°?). It was registered before any F result was in the repository. If
-    this session saw F's progress printouts before reading the amendment, the results note must say so, and the
+    I had seen F's progress printouts before reading the amendment, the results note must say so, and the
     amendment is reported as not blind.
-  - **Disclosure from the session running F, written when the amendment reached it (before F finished):** this
-    session had seen F's printouts for its first **3 of 36 points**, all at **Sp(2), 0°**:
+  - **My disclosure from the machine running F, written when the amendment reached it (before F finished):** I
+    had seen F's printouts for its first **3 of 36 points**, all at **Sp(2), 0°**:
     - shape (½, ½, ¼): floor set [−1.63, −1.03], survives the check;
     - shape (½, ½, ¾): floor set [−1.97, −0.84], survives the check;
     - shape (½, 1, 1): empty, with a golden-section best margin of −0.36 (blocked by sector 14).

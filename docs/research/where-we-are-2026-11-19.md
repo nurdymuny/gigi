@@ -1,6 +1,6 @@
 # Where we are (19 November 2026, evening)
 
-One page, to find the plot again. Details live in `docs/research/session-status-2026-11-19.md` and on
+One page, to find the plot again. Details live in `docs/research/status-2026-11-19.md` and on
 each branch; this note is the map.
 
 ## The goal
@@ -10,7 +10,7 @@ alone, that is
 
 1. **consistent**: it converges to the continuum force;
 2. **stable**: no runaway modes;
-3. **variational**: it is the gradient of an energy (Bee's decision of 19 November);
+3. **variational**: it is the gradient of an energy (my decision of 19 November);
 4. **faithful in time**: its flow follows the continuum flow.
 
 ## Where the force stands
@@ -52,10 +52,10 @@ The two-ring force is published and settles 1, 2 and 4. **Item 3 is the whole op
 experiments. Put the effort into the variational design (the quadratic-exact constrained recovery)
 before running anything else on it.
 
-## Decisions waiting for Bee
+## Decisions I still have to make
 
-1. Agree to pause new side experiments and focus on item 3?
-2. Agree that the next variational step is a design note (quadratic-exact rows plus the column
+1. Do I pause new side experiments and focus on item 3?
+2. Is the next variational step a design note (quadratic-exact rows plus the column
    condition), reviewed before code?
 3. When the running jobs land: fold S2d (n = 3 stability) and S3c into *Reading the Curve*'s next
    version?

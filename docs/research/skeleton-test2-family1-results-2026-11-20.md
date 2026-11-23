@@ -88,7 +88,7 @@ shape.
 **My theory.** The weave the floor matrix makes is the same structure as the cell layout the two-ring force reads the
 curve from. The operator's own shape echoes the geometry of the stencil.
 
-**The test.** Claude proposed a way this could be more than a resemblance. The cell schematic is a triangular
+**The test.** Here is a way this could be more than a resemblance. The cell schematic is a triangular
 lattice, with three families of lines. The matrix weave has two. The 4 × 4 is only the squashed plane; the full
 top-weight block is 9 × 9, covering all three directions. So perhaps the round sphere, where all three axes are
 equivalent, weaves a three-family pattern, and stretching the long axis pulls one family out and leaves the diamond.

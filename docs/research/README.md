@@ -55,7 +55,7 @@ papers cite some of these paths, so files are never renamed or moved.
 | --- | --- |
 | 21 Nov | [Pre-registration: the edge test (Test 6)](edge-test-preregistration-2026-11-21.md) |
 | 21 Nov | [The edge test (Test 6): results](edge-test-results-2026-11-21.md) |
-| 21 Nov | [What the edge workflow found, and what it corrected](edge-workflow-findings-2026-11-21.md) |
+| 21 Nov | [What the edge verification found, and what it corrected](edge-verification-findings-2026-11-21.md) |
 | 21 Nov | [The exact edge of her region](exact-edge-2026-11-21.md) |
 | 22 Nov | [Pre-registration A: the edge at 48 held-out points: results](edge-prereg-A-results-2026-11-22.md) |
 | 22 Nov | [Pre-registration B: random circle-symmetric fields: results](edge-prereg-B-results-2026-11-22.md) |
@@ -102,7 +102,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | date | note |
 | --- | --- |
 | 19 Nov | [Yang–Mills inside GIGI: the strategy](yang-mills-strategy-2026-11-19.md) |
-| 19 Nov | [Status: what is done, what is running, what is open](session-status-2026-11-19.md) |
+| 19 Nov | [Status: what is done, what is running, what is open](status-2026-11-19.md) |
 | 19 Nov | [Where we are (evening)](where-we-are-2026-11-19.md) |
 | 19 Nov | [The field equations against today's proven results](field-equations-grid-2026-11-19.md) |
 | 19 Nov | [A grid of adjacent ideas: my papers and books against the results of 19 November](adjacent-ideas-grid-2026-11-19.md) |

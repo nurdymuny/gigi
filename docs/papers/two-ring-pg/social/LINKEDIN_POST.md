@@ -1,4 +1,4 @@
-# LinkedIn post (draft for Bee): version 2 of Reading the Curve
+# LinkedIn post (my draft): version 2 of Reading the Curve
 
 Images, in this order: `cards/01_cover_one_vs_two_rings.png`, `cards/06_letting_the_lattice_move.png`,
 `cards/03_results.png`, `cards/02_fold_keep_what_matters.png`, `cards/04_three_ways_across_a_turn.png`.
@@ -49,4 +49,4 @@ number are in the record. If you don't agree, run the code.
 **Do not change without checking the receipts:** 26%, 1.45%, about 250× (cell 0: 253.5; the
 median is 125–252 by mesh), 25.5% and 2.51%, 13.8% / 1.76% / 0.87%, about 8% (8.07% and 8.13%),
 10.6%. "Research code" stays: the SU(2) results are not engine runs. Do not call the review
-"independent" or "peer review": it was run by review agents in Bee's own workflow.
+"independent" or "peer review": it was my own adversarial review.

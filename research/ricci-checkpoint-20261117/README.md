@@ -81,7 +81,7 @@ exact mixed-worktree source hashes, and the PRE-CHECKPOINT base HEAD. After this
 commit, naive replay can reject the changed HEAD, curated shared source files,
 or relocated paths even when the numerical evidence itself is intact. This
 is a provenance mismatch, not a new mathematical failure. The original local
-arrays and source files remain available on Bee's machine.
+arrays and source files remain available on my machine.
 
 Do not rewrite old receipts or disable their integrity checks to manufacture a
 PASS. Use the archived source versions and declared original revision/context
@@ -91,7 +91,7 @@ the old absolute paths and checks the committed retained bytes directly.
 
 ## Next work
 
-Claude should assess the fixed-exterior obstruction first. A new proposal
+I should assess the fixed-exterior obstruction first. A new proposal
 must address compatible neighboring reconstructions, the new outer boundary,
 and the complete energy derivative in the ORIGINAL Whitney test norm. A larger
 polynomial inside the same patch cannot reconcile conflicting fixed traces.

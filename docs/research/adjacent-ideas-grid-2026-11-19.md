@@ -1,6 +1,6 @@
 # A grid of adjacent ideas: my papers and books against the results of 19 November 2026
 
-**Research note.** I made four read-only passes over my Drive (agents reading, then I verified), placing 24 of my documents
+**Research note.** I made four read-only passes over my Drive (a first reading, then I verified), placing 24 of my documents
 next to the seven results I proved or measured on 19 November. It extends
 [`field-equations-grid-2026-11-19.md`](field-equations-grid-2026-11-19.md), which covered *The Field Equations
 of Semantic Coherence* alone. **One new computation** (§2.1, my Crouzeix flow); everything else is reading.
@@ -72,7 +72,7 @@ Ordered by how firm the contradiction is.
   (Lorist–Schwenninger, arXiv:2608.03841, and the "complete similarity theorem" of 23 September). **Not
   verified here.** If it holds, R7's 1 + √2 is valid but not sharp.
 
-**Retracted from the agents' reports.**
+**Retracted from the first-pass reports.**
 
 - *"R1's per-sector inertia counts must be divisible by (j + 1)."* Wrong for our construction. Each sector is
   built as one 9(j+1)-dimensional matrix in which the (j+1) left-copies have already been factored out.
@@ -205,4 +205,4 @@ Only STRUCTURAL and the stronger RESONANCE rows are kept; WORD-ONLY rows are lis
 - Nothing here is to be cited in the mathematics papers as support for those documents, or the reverse.
   - The one exception is §2.1: it is ordinary mathematics and can go into my Crouzeix paper.
 - Conflicts C1, C3, C4 and C5 concern my statements as written. In several I meant something narrower; those are the sentences to fix.
-- The reading agents' extracts are in `grid1`–`grid4` in my scratch folder (local, not committed).
+- The first-pass extracts are in `grid1`–`grid4` in my scratch folder (local, not committed).

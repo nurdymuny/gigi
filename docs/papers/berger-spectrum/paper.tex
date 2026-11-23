@@ -572,7 +572,7 @@ the relaxed box $(x/l,1/l,1/x,t)\in[0,1]\times[0,1/50]\times[0,1/20]\times[2.75,
 (receipt \path{floor_large_j.json}).
 
 Receipts are in \path{research/su2-floor-family-20261119/}. Independently, a first certificate on the full
-sector matrices of the fifteen sectors $j\le12$, $20$, $24$ agrees: $1{,}091$ slices tile $[2.75,10]$ exactly in each of the fifteen sectors, the finest $0.002$ wide near
+sector matrices of the fifteen sectors $j\le12$, $20$, $24$ agrees: \reddel{$1{,}091$ slices tile $[2.75,10]$ exactly in each of the fifteen sectors}\redins{in each of the fifteen sectors the slices tile $[2.75,10]$ exactly ($1{,}091$ slices in all)}, the finest $0.002$ wide near
 $t=2.75$, where the gap above the floor is smallest ($0.16$ for $j=4$, $0.18$ for $j=1$). Every slice has
 exactly four negative pivots and $\varepsilon<\delta$, the smallest margin $\delta-\varepsilon$ being $0.0018$.
 A degenerate slice at $t=3$ reproduces Table~\ref{tab:cert}
@@ -860,7 +860,7 @@ This work received no funding. The author declares no competing interests.
 
 \section*{Code and data availability}
 All programs and certificates are in the \textsc{GIGI} repository,
-\url{https://github.com/nurdymuny/gigi} (tag \texttt{floor-theorem-v2}; the scripts are on that tag, not yet on the main branch), with their outputs in
+\url{https://github.com/nurdymuny/gigi} (tag \texttt{\reddel{floor-theorem-v2}\redins{floor-theorem-v3}}; the scripts are on that tag, not yet on the main branch), with their outputs in
 \path{research/su2-left-invariant-sector-20261119/}:
 \begin{itemize}
   \item the left-invariant sector: \path{scripts/ricci_su2_left_invariant_sector.py};
@@ -906,7 +906,6 @@ This paper, its source, and the code and data above are archived on Zenodo under
 \bibitem{davisrtc} B.~R.~Davis, Reading the curve, not counting the points: a two-ring Petrov--Galerkin curvature force for discrete Yang--Mills dynamics on the Poincar\'e homology sphere, 2026, \url{https://doi.org/10.5281/zenodo.24328085}.
 \bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
 \redins{\bibitem{avramidicollopy2012} I.~G.~Avramidi, S.~Collopy, Thermal Yang--Mills theory in the Einstein universe, \emph{J.\ Phys.\ A} 45 (2012) 374009, \href{https://arxiv.org/abs/1201.5163}{arXiv:1201.5163}.}
-\redins{\bibitem{nielsenolesen1978} N.~K.~Nielsen, P.~Olesen, An unstable Yang--Mills field mode, \emph{Nucl.\ Phys.\ B} 144 (1978) 376--396.}
 \redins{\bibitem{savvidy1977} G.~K.~Savvidy, Infrared instability of the vacuum state of gauge theories and asymptotic freedom, \emph{Phys.\ Lett.\ B} 71 (1977) 133--134.}
 \bibitem{hitchin1974} N.~Hitchin, Harmonic spinors, \emph{Adv.\ Math.} 14 (1974) 1--55.
 \bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.

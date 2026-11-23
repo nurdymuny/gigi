@@ -76,5 +76,5 @@ Receipt: `cs_fall.json` (beside this note). Run: `OMP_NUM_THREADS=1 python scrip
 - STRUCTURAL / not shown here:
   - that the flow stays in the family (basin note);
   - that ending on the θ side means "same side of the pass" in the full infinite-dimensional sense. Within the 2-dimensional family it is a fact of the ODE.
-- Standard but not fetched this session, so it is UNVERIFIED as a literature quote: CS shifts by the integer degree under a large gauge transformation, so only CS mod 1 is gauge-invariant on the full space. Inside the family only constant gauge acts, so the real-valued CS above is well defined there.
+- Standard but not fetched for this note, so it is UNVERIFIED as a literature quote: CS shifts by the integer degree under a large gauge transformation, so only CS mod 1 is gauge-invariant on the full space. Inside the family only constant gauge acts, so the real-valued CS above is well defined there.
 - Also UNVERIFIED as literature: calling the deformed meron a "sphaleron". Here it is an index-1 critical point at CS ≈ ½, and that is all I claim.

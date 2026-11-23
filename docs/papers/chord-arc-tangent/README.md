@@ -33,7 +33,7 @@ and the same chord has a twin turn the long way round. Crossing the circle's rim
 the turn imaginary while S + d² = 1 survives. Bertrand's paradox is the question of
 which quantity is uniform: the arc (1/3), √S (1/2) or S (1/4).
 
-**The ticket game** (Bee's, 2026-11-18) puts it all in one room. A ticket buys one straight
+**The ticket game** (mine, 2026-11-18) puts it all in one room. A ticket buys one straight
 walk of at most one step. Two friends each walk one ticket out from the middle. Getting
 back costs one ticket along the curve up to one radian (57.3°), straight across up to 60°,
 and, counted as energy the way the lattice counts it, exactly one ticket at 90°
@@ -51,7 +51,7 @@ into SU(2), its curvature and the mass gap. It keeps the open link tagged as ope
 
 ## Where it came from
 
-The picture is Bee's (2026-11-18). It came up while working on the SU(2) force of the
+The picture is mine (2026-11-18). It came up while I was working on the SU(2) force of the
 two-ring curvature recovery (`docs/papers/two-ring-pg/`), at the point where that work
 turns to time integration.
 

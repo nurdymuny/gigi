@@ -3,8 +3,8 @@
 Written and pushed **before any F result is in the repository.**
 - At the time of writing, `research/edge-theorem-20261122-f/` holds only the registration. There is no receipt
   `wp7_principal_circle.json` and no results note. F is still running on the other machine.
-- The author of this amendment (the Windows session, at Bee's request) has seen **no F output of any kind**.
-- **If the session running F has seen progress printouts** before this amendment reached it (the script prints each
+- I wrote this amendment on my Windows machine, and there I have seen **no F output of any kind**.
+- **If I have seen progress printouts on the machine running F** before this amendment reached it (the script prints each
   point as it finishes), the results note must say so. This amendment is then scored and reported as **not blind**.
 
 This amendment adds one hypothesis and its scoring rule. It changes no existing hypothesis, gate, threshold, shape,

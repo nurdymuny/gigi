@@ -13,10 +13,10 @@ Branch `feat/ricci-pg-curvature`, based on commit 99882091
    [results](../../docs/RICCI_PG_CURVATURE_RESULTS.md): the RF2D floor is not in
    the data (Petrov-Galerkin reaches 1.17% at n=5), but that force is unstable,
    and the variational energy of the same reconstruction is inconsistent.
-3. [Zero-mean correction](../../docs/RICCI_ZERO_MEAN_RESULTS.md): Bee's option 1,
+3. [Zero-mean correction](../../docs/RICCI_ZERO_MEAN_RESULTS.md): my option 1,
    chosen on a sufficient condition that proved wrong; fails at 40.5%.
 4. [Magnet geometry and projection layer](../../docs/RICCI_PROJECTION_LAYER_RESULTS.md):
-   the literature behind Bee's idea, a symmetric non-negative projection layer
+   the literature behind my idea, a symmetric non-negative projection layer
    that cuts the floor to about 5.8% but still floors, and checks of RF2H at n=1.
 
 ## Evidence

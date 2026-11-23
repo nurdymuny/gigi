@@ -64,7 +64,7 @@ receipt.)
 
 - What decides whether she is the floor is **a single comparison**: her own value against the lowest value of one
   competitor, usually the charge-0 block of sector 4. The comparison is governed by the field along her circle (x),
-  the stretch (t) and the cross field (y) **together**. That is direction as a rich vector, as Bee put it, made
+  the stretch (t) and the cross field (y) **together**. That is direction as a rich vector, as I put it, made
   exact.
 - The Floor paper's thresholds t_A and t* are this law evaluated on the Berger path, reproduced to 10⁻¹⁵ and 10⁻¹².
 
@@ -108,7 +108,7 @@ receipt.)
 - The small-j half (j < 80 on D) is in progress, with a mean-value interval certificate.
 
 
-## Correction (21 November, after the edge-theorem workflow; verified independently)
+## Correction (21 November, after the edge-theorem verification round; verified independently)
 
 The positive edges in the table above (t ≳ 6 at y ≥ 1.5) are **artefacts of the cut-off j ≤ 12**. For x > 0 the
 twist is the floor of no field in every sector. This is **proved**: in the block of charge q = l, the state of weight

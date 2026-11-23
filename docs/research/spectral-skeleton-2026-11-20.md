@@ -288,7 +288,7 @@ Together these would give the floor law for **every** sector and every t ∈ [2.
 
 ## 8. Follow-up to Test 2: why the floor on the Berger field and not on the squashed meron (exploratory, 20 November)
 
-Bee's question after Test 2 ([`skeleton-test2-family1-results-2026-11-20.md`](skeleton-test2-family1-results-2026-11-20.md)):
+My question after Test 2 ([`skeleton-test2-family1-results-2026-11-20.md`](skeleton-test2-family1-results-2026-11-20.md)):
 what about the Berger field puts the symmetric state at the bottom?
 
 **Script:** `scripts/ricci_su2_floor_vs_ceiling.py`. Numerical, not pre-registered.

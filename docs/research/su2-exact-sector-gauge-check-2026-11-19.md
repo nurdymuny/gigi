@@ -68,7 +68,7 @@ In the j = 0 sector, the Hessian on the 3 gauge directions has Rayleigh values *
 - **In Table 9, "8" is a gauge direction,** and the −2.558 and 21.891 pairs are mixtures. The table can stay, as a
   comparison of the full operator with the lattice, if those rows are marked.
 
-## Proposed wording for the paper (not applied; the paragraph is Bee's)
+## Proposed wording for the paper (not applied; the paragraph is mine to write)
 
 First bullet, replace with:
 
@@ -205,7 +205,7 @@ states this, with the citation.
   catalogue record cover Yang–Mills fields over the round sphere and other locally homogeneous spaces, at
   critical points (stability and isolation). The Berger field is not a critical point.
   - We did not use an unverified third-party copy.
-  - Before deposit, Bee should read §8 through Brown's access to be certain.
+  - Before deposit, I should read §8 through Brown's access to be certain.
 - **Ohnita–Pan 1989:** pinched manifolds and symmetric spaces only.
 
 **Verdict.** No source found or read contains the Yang–Mills Hessian on a squashed S³, or at a non-critical

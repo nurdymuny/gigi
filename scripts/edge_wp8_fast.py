@@ -82,14 +82,17 @@ def curv_sparse(ops):
 class MatFreeH:
     """H v without forming H (for the probe gates)."""
 
-    def __init__(self, ops):
-        self.D = D_sparse(ops); self.Cv = curv_sparse(ops); self.G = sp.vstack(ops["B"], format="csr")
+    def __init__(self, ops=None, D=None, Cv=None, G=None):
+        if ops is not None:
+            D, Cv, G = D_sparse(ops), curv_sparse(ops), sp.vstack(ops["B"], format="csr")
+        self.D, self.Cv, self.G = D.tocsr(), Cv.tocsr(), G.tocsr()
+        self.DH = self.D.conj().T.tocsr(); self.GH = self.G.conj().T.tocsr()
 
     def __call__(self, v):
-        return self.D.conj().T @ (self.D @ v) + self.Cv @ v
+        return self.DH @ (self.D @ v) + self.Cv @ v
 
     def GG(self, v):
-        return self.G @ (self.G.conj().T @ v)
+        return self.G @ (self.GH @ v)
 
 
 class FastGroupK(F.GroupK):
@@ -283,12 +286,16 @@ def sector_specs(g, gname):
     assert all(abs(fv[i] - fv[i + 1]) > 1e-9 for i in range(3)), "highest defining weights not separated"
     v = [V[:, i] for i in range(V.shape[1])]
     if gname == "g2":
+        a2 = antisym(v[:2])
         main = {"1": (0, 0, None, 1), "7": (1, 0, v[0], 7), "14": "adj", "27": (2, 0, F.tens(v[0], v[0]), 27)}
-        extra = {"77s": (3, 0, F.tens(v[0], v[0], v[0]), 77)}
+        extra = {"77s": (3, 0, F.tens(v[0], v[0], v[0]), 77), "64": (3, 0, F.tens(v[0], a2), 64),
+                 "77p": (4, 0, np.kron(a2, a2), 77)}
     elif gname == "sp3":
         main = {"1": (0, 0, None, 1), "6": (1, 0, v[0], 6), "14": (2, 0, antisym(v[:2]), 14), "21": "adj",
                 "14p": (3, 0, antisym(v[:3]), 14)}
-        extra = {"56s": (3, 0, F.tens(v[0], v[0], v[0]), 56)}
+        a2 = antisym(v[:2])
+        extra = {"56s": (3, 0, F.tens(v[0], v[0], v[0]), 56), "64": (3, 0, F.tens(v[0], a2), 64),
+                 "90": (4, 0, np.kron(a2, a2), 90), "126s": (4, 0, F.tens(v[0], v[0], v[0], v[0]), 126)}
     else:
         raise ValueError(gname)
     return main, extra
@@ -316,3 +323,78 @@ def rep_check(g, key_):
             lhs = sum(g.Cy[a, b, c] * RY[c] for c in range(g.d)); rhs = RY[a] @ RY[b] - RY[b] @ RY[a]
             worst = max(worst, float(np.abs(lhs - rhs).max()))
     return worst
+
+
+# ------------------------------------------------------------------------------------- matrix-free check sectors
+import scipy.sparse.linalg as spla   # noqa: E402
+
+
+def check_pieces(g, shape, s):
+    """D, G linear in x and the curvature quadratic in x (gated by G-S5c): pieces built once per (shape, sector)."""
+    key = ("chk", tuple(shape), s)
+    if key in g.cache:
+        return g.cache[key]
+    P = {}
+    for xv in (0.0, 1.0, -1.0):
+        ops = g.ops(xv, shape, s); P[xv] = (D_sparse(ops), curv_sparse(ops), sp.vstack(ops["B"], format="csr"))
+    D0, C0, G0 = P[0.0]
+    out = {"D": (D0, (P[1.0][0] - P[-1.0][0]) * 0.5), "G": (G0, (P[1.0][2] - P[-1.0][2]) * 0.5),
+           "C": (C0, (P[1.0][1] - P[-1.0][1]) * 0.5, (P[1.0][1] + P[-1.0][1]) * 0.5 - C0)}
+    ok = g.sign_fit(shape, s)
+    if len(ok) != 1:
+        raise SystemExit(f"stop: G-sym sign fit (check sector) {g.gname} {g.angle} {s}: {ok}")
+    out["sg"] = ok[0]; out["bi"] = g.basis_info(s, ok[0])
+    g.cache[key] = out
+    return out
+
+
+def check_margin(g, x, shape, s, k=3, tol=1e-11, beta_pad=100.0):
+    """Her margin in sector s by a matrix-free Lanczos solve on the exact gauge-orthogonal slice (no N x N matrix, no
+    charge blocks): A = Pc H Pc + beta (1 - Pc), Pc = projector onto ker G^* minus her copies. Returns the same dict
+    shape F.phi reads: lam (her top-state price in this sector), mu (lowest eigenvalues of A), ncopies = 0."""
+    cp = check_pieces(g, shape, s)
+    Hm = MatFreeH(D=cp["D"][0] + x * cp["D"][1], Cv=cp["C"][0] + x * cp["C"][1] + x * x * cp["C"][2], G=cp["G"][0] + x * cp["G"][1])
+    Gm = Hm.G
+    GtG = (Gm.conj().T @ Gm).toarray(); GtG = 0.5 * (GtG + GtG.conj().T)
+    w, Z = np.linalg.eigh(GtG); keep = w > 1e-12 * w.max(); Zk = Z[:, keep] / w[keep]
+    N = Gm.shape[0]
+
+    ZkH = Z[:, keep].conj().T
+
+    def Pslice(v):
+        return v - Gm @ (Zk @ (ZkH @ (Hm.GH @ v)))
+    bi = cp["bi"]; q = bi["q"]
+    top = np.where(np.abs(q - q.max()) < 1e-7)[0]; bot = np.where(np.abs(q - q.min()) < 1e-7)[0]
+    Ut = g.U_columns(bi, top); Ub = g.U_columns(bi, bot)
+    HUt = np.column_stack([Hm(Ut[:, i]) for i in range(Ut.shape[1])]); Ht = Ut.conj().T @ HUt; Ht = 0.5 * (Ht + Ht.conj().T)
+    HUb = np.column_stack([Hm(Ub[:, i]) for i in range(Ub.shape[1])]); Hb = Ub.conj().T @ HUb; Hb = 0.5 * (Hb + Hb.conj().T)
+    wt, vt = np.linalg.eigh(Ht); wb, vb = np.linalg.eigh(Hb); lam = float(wt[0]); tol_ = 1e-9 * max(1.0, abs(lam))
+    resid = float(np.linalg.norm(HUt - Ut @ Ht))
+    cop = [Ut @ vt[:, i] for i in range(len(wt)) if abs(wt[i] - lam) <= tol_]
+    mirror_tied = bool(abs(wb[0] - lam) <= tol_)
+    if mirror_tied:
+        cop += [Ub @ vb[:, i] for i in range(len(wb)) if abs(wb[i] - wb[0]) <= tol_]
+    C = np.column_stack(cop); C, _ = np.linalg.qr(C)
+    gstar = float(np.linalg.norm(Hm.GH @ C))
+    beta = lam + beta_pad
+
+    def Pc(v):
+        u = Pslice(v); return u - C @ (C.conj().T @ u)
+
+    def mv(v):
+        v = np.asarray(v).reshape(-1); u = Pc(v)
+        return Pc(Hm(u)) + beta * (v - u)
+    A = spla.LinearOperator((N, N), matvec=mv, dtype=complex)
+    vals = spla.eigsh(A, k=k, which="SA", tol=tol, return_eigenvectors=False, maxiter=20000)
+    return {"lam": lam, "mu": np.sort(vals.real), "ncopies": 0, "resid": resid, "gstar": gstar, "mirror_tied": mirror_tied,
+            "ncopies_removed": int(C.shape[1]), "top_dim": int(len(top)), "beta": beta}
+
+
+class CheckGroupK(FastGroupK):
+    """FastGroupK whose truncation-check sectors (self.check) are evaluated matrix-free."""
+    check = ()
+
+    def evaluate(self, x, shape, s, want_vec=False):
+        if s in self.check:
+            return check_margin(self, x, shape, s)
+        return super().evaluate(x, shape, s, want_vec=want_vec)

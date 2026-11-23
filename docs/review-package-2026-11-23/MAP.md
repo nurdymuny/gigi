@@ -35,7 +35,7 @@ The commit the zips and PDFs were built from is in §6.
 | **Three Ways Across a Turn: Chord, Arc and Tangent** | **repost as v2** (corrections made after the 19 Nov posting; English only, the Russian edition is unchanged) | `Three_Ways_Across_a_Turn_v2.pdf` | `three-ways_v2_source.zip`; git `docs/papers/chord-arc-tangent/` | v1: 10.5281/zenodo.24375338 (concept 24375337), 19 Nov |
 | Reading the Curve, Not Counting the Points | **no change**: v3 on Zenodo (24386756, 20 Nov) matches git | — | git `docs/papers/two-ring-pg/` | concept 10.5281/zenodo.24328085 |
 | The Davis Manifold, second edition | **not ready**: draft waiting for its adversarial review | — | git `docs/papers/davis-manifold/the_davis_manifold_v2.tex` | first edition: 10.5281/zenodo.19428406 lineage |
-| The Lift Unification, second edition | **not ready**: draft waiting for its adversarial review. Also: its acknowledgment section needs my decision before any repost | — | git `docs/papers/lift-unification/lift_unification_v2.tex` | first edition on Zenodo |
+| The Lift Unification, second edition | **not ready**: draft waiting for its adversarial review. | — | git `docs/papers/lift-unification/lift_unification_v2.tex` | first edition on Zenodo |
 
 ## 3. Results, notes and receipts (git, branch `feat/reading-the-curve-update`)
 

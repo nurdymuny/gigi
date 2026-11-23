@@ -1,3 +1,11 @@
+# Version 2.1 (first posting)
+
+Files are in the Drive library, *Bee Davis — Mathematics Library / 02 — Geometry and Computation*, rebuilt by
+`python scripts/make_paper_packages.py OUT threeways-ru`. The Russian edition now matches English 2.1 (21 pages).
+Upload the PDF as `paper_ru.pdf`, plus `three-ways-ru-v2.1-latex.zip` and `MANIFEST.txt`; version **2.1**.
+
+---
+
 # Zenodo record: the Russian edition
 
 A separate record (not a new version of the English one), linked to it by related

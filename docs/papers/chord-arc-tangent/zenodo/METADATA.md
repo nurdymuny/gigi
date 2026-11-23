@@ -1,3 +1,20 @@
+# Version 2.1 (new version of the published record)
+
+Files are in the Drive library, *Bee Davis — Mathematics Library / 02 — Geometry and Computation*, rebuilt by
+`python scripts/make_paper_packages.py OUT threeways` from tag `floor-theorem-v3.3` (which holds Three Ways 2.1).
+
+1. Open the published record (doi:10.5281/zenodo.24375338) and click **New version**.
+2. Replace `paper.pdf` with the 2.1 PDF (19 pages), and add `three-ways-v2.1-latex.zip` (source, figures,
+   `verify.py`, the per-face angle receipt) and `MANIFEST.txt`.
+3. Paste `description.html` through **Source code**. Set the version to **2.1**.
+4. What changed, for the version note: corrections after the 19 November posting (energies "to leading order", the
+   two-circle and half-angle cases, the force measured directly: 0.090%, 0.0084%, 0.0021% and errors of 4.7%–36%), and
+   Section 11 separated into exact statements and a labelled speculative picture (indivisibility is an added
+   assumption; 1 − cos θ can be arbitrarily small; SU(3) is curved but not round).
+5. Publish.
+
+---
+
 # Zenodo record: Three Ways Across a Turn
 
 **Published: https://doi.org/10.5281/zenodo.24375338** (DOI 10.5281/zenodo.24375338).

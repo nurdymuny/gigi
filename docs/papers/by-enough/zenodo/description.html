@@ -1,0 +1,38 @@
+<p><strong>By Enough, But Not Too Much: Where the Twist Is the Floor of the Yang&ndash;Mills Hessian on Berger Spheres</strong><br>
+Bee Rosa Davis, Davis Geometric. November 2026, version 1.1.</p>
+
+<h3>The question</h3>
+<p>The companion paper, <em>The Floor Theorem for the Yang&ndash;Mills Hessian at the Berger Field</em>, finds one field, the twist, that is an exact eigenvector of the Yang&ndash;Mills Hessian on every stretched three-sphere, and proves it is the lowest of every sector at the Berger field. This paper asks where else that is true. On a Berger sphere (t, 1, 1), every left-invariant SU(2) field with the sphere's circle symmetry is described by two numbers: a strength x along the long circle and a strength y across it. At every such field the twist is still an exact eigenvector, with eigenvalue (x + (j+2)/&radic;t)<sup>2</sup> + 2&radic;t&middot;x &minus; y<sup>2</sup>. Where is it the floor, and why there?</p>
+
+<h3>What is proved</h3>
+<ul>
+<li><strong>The closed forms.</strong> An exact symbolic Weitzenb&ouml;ck identity, proved for the whole family, gives every charge block of H + GG* in closed form, with blocks of at most nine states.</li>
+<li><strong>The floor on a domain.</strong> On x &isin; [&minus;3, &minus;1.5], y &isin; [0.5, 3], t &isin; [3, 10] the twist is the lowest eigenvalue of every sector, with multiplicity two, by interval certificates whose rows are proved equal to the operator's.</li>
+<li><strong>No floor at x &gt; 0</strong> for H + GG*: an explicit state that turns against the field undercuts the twist in high enough sectors.</li>
+<li><strong>A bounded region.</strong> The set of x where the twist is the floor is bounded on both sides by states of the sector j = 0.</li>
+<li><strong>The edge polynomial.</strong> Where the charge-0 block of the sector j = 4 is the competitor, the edge is a root of an explicit factor P<sub>2</sub>; on the Berger path it contains the threshold t<sub>A</sub> of the Floor paper. These identities are also checked in Lean 4.</li>
+</ul>
+<p>Two further results (on two slices, and on large sectors in slabs) are proved under a stated transcription condition and labelled so.</p>
+
+<h3>What is computed, and what failed</h3>
+<p>Beyond what is proved, the edge was mapped and its readings were put to tests written down before their data. Three simple readings of why the twist is the floor failed. Six pre-registered tests followed, and the paper reports each as scored, failures included: at held-out points the edge clause failed at 4 of 38; at random circle-symmetric fields the "competitor is blind" reading failed at 129 of 193; in SU(3) along hypercharge the twist is the floor nowhere, but along its own charge circle at 19 of 20 shapes; for x &gt; 0 the floor is held by a state that turns against the field at 60 of 60 points; and across the Weyl chambers of SU(4) and Sp(2) the twist lives on the circle of its own SU(2), not on the principal circle. Every amendment and what had been seen when it was made is disclosed.</p>
+<p>The title is the edge in words: the field along the long circle must turn against the twist <em>by enough</em> that it carries her below her competitors, <em>but not too much</em>, or a state of the sector j = 0 undercuts her.</p>
+
+<h3>What is claimed, and what is not</h3>
+<p>This is a statement about the classical linearised operator, not about the quantum theory, and not a mass gap. Labels throughout separate exact identities, interval-certified inequalities and numerical observations. The boxes certified by the slab theorem are stated with their exact binary endpoints.</p>
+
+<h3>The files in this record</h3>
+<ul>
+<li><code>paper.pdf</code>: the paper, 45 pages.</li>
+<li><code>by-enough-v1.1-latex.zip</code>: the LaTeX source, the style file and the figures. It compiles as is with <code>pdflatex</code>.</li>
+<li><code>by-enough-v1.1-code-and-data.zip</code>: every script the paper cites and every script they import, at their repository paths, with every receipt directory the paper cites and the claim-by-claim derivation guide. Proof scripts exit with an error if their receipt records a failure.</li>
+<li><code>MANIFEST.txt</code>: the SHA-256 of every file and the commit the record was built from.</li>
+</ul>
+<p>The scripts live in GIGI, my open-source geometric engine: <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>, tag <code>edge-paper-v1.1</code>; the Lean files are at tag <code>edge-paper-v1-lean</code>.</p>
+
+<h3>Companion papers</h3>
+<ul>
+<li><em>The Floor Theorem for the Yang&ndash;Mills Hessian at the Berger Field</em>: <a href="https://doi.org/10.5281/zenodo.24386613">doi:10.5281/zenodo.24386613</a>.</li>
+<li><em>Reading the Curve, Not Counting the Points</em>: <a href="https://doi.org/10.5281/zenodo.24328085">doi:10.5281/zenodo.24328085</a>.</li>
+<li><em>Three Ways Across a Turn: Chord, Arc and Tangent</em>: <a href="https://doi.org/10.5281/zenodo.24375337">doi:10.5281/zenodo.24375337</a>.</li>
+</ul>

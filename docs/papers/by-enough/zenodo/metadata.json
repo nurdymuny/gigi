@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "upload_type": "publication",
+    "publication_type": "preprint",
+    "title": "By Enough, But Not Too Much: Where the Twist Is the Floor of the Yang–Mills Hessian on Berger Spheres",
+    "creators": [
+      {"name": "Davis, Bee Rosa", "affiliation": "Davis Geometric", "orcid": "0009-0009-8034-4308"}
+    ],
+    "description": "@description.html",
+    "access_right": "open",
+    "license": "cc-by-4.0",
+    "version": "1.1",
+    "language": "eng",
+    "keywords": [
+      "Yang–Mills Hessian", "Berger sphere", "Peter–Weyl decomposition", "Weitzenböck identity",
+      "spectral gap", "level crossing", "computer-assisted proof", "formal verification",
+      "interval arithmetic", "pre-registration"
+    ],
+    "notes": "MSC 2020: 58J50, 81T13, 58E15, 53C30, 65G30, 03B35. This work received no funding. The author declares no competing interests.",
+    "related_identifiers": [
+      {"identifier": "10.5281/zenodo.24386613", "relation": "isSupplementTo", "resource_type": "publication-preprint", "scheme": "doi"},
+      {"identifier": "10.5281/zenodo.24328085", "relation": "references", "resource_type": "publication-preprint", "scheme": "doi"},
+      {"identifier": "10.5281/zenodo.24375337", "relation": "references", "resource_type": "publication-preprint", "scheme": "doi"},
+      {"identifier": "https://github.com/nurdymuny/gigi/tree/edge-paper-v1.1", "relation": "isSupplementedBy", "resource_type": "software", "scheme": "url"}
+    ],
+    "custom": {
+      "code:codeRepository": "https://github.com/nurdymuny/gigi/tree/edge-paper-v1.1",
+      "code:programmingLanguage": [{"id": "python", "title": {"en": "Python"}}]
+    }
+  }
+}

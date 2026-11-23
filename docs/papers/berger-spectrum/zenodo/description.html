@@ -8,7 +8,7 @@
 <li><strong>The floor formula.</strong> By Peter&ndash;Weyl the Hessian splits into finite sectors, one for each spin j/2. In every sector the field f (&theta;<sup>1</sup> + i&theta;<sup>2</sup>) &otimes; (&tau;<sub>1</sub> + i&tau;<sub>2</sub>), with f the top weight along the long axis, is an exact eigenvector with eigenvalue <strong>(j(j+2) &minus; 14)/3</strong>, orthogonal to every gauge direction. Since j(j+2) is the j-th eigenvalue of the Laplacian on the unit three-sphere, the floor is the scalar tone, shifted down by 14 and divided by the stretch.</li>
 <li><strong>The left-invariant sector, exactly.</strong> Its gauge-orthogonal spectrum is &minus;14/3 (twice), 16 &minus; 2&radic;73, 22/3 (twice) and 16 + 2&radic;73. So this sector has exactly three growth directions (on the Poincar&eacute; sphere these are all of them; on the full sphere, other sectors add more), and all three come from the field acting on itself. With the commutator dropped, the same sector is 4/3 (six times) and 12 (three times), all positive.</li>
 <li><strong>On the Poincar&eacute; sphere.</strong> Glue the opposite faces of a dodecahedron with a tenth of a turn and you get Poincar&eacute;'s homology sphere, S<sup>3</sup>/2I. On it only the sectors carrying Klein's icosahedral invariants survive: j = 0, 12, 20, 24, 30, &hellip; Below 142 the gauge-orthogonal spectrum consists of the six left-invariant values above and the spin-6 values from 154/3 upward.</li>
-<li><strong>The floor gap.</strong> The first sector above the left-invariant one begins <strong>168/3</strong> above the growth mode. That is one third of 168, the first eigenvalue of the scalar Laplacian on the Poincar&eacute; sphere.</li>
+<li><strong>The floor gap.</strong> The first sector above the left-invariant one begins <strong>168/3</strong> above the growth mode. That is one third of 168, the first nonzero eigenvalue of the scalar Laplacian on the round unit Poincar&eacute; sphere. (This is a difference between sector floors, not a quantum mass gap.)</li>
 </ul>
 <h3>The same law on every stretched sphere</h3>
 <p>The number 3 was never special. Stretch the sphere by any amount t, so its geometry is (t, 1, 1), and the same circular twist is still an exact vibration of its field, with energy</p>
@@ -24,7 +24,7 @@
 <p>Two numerical experiments, labelled as such in the paper, say what this law is and is not:</p>
 <ul>
 <li><strong>It describes the landscape, not yet a flow in time.</strong> The Berger field slides toward a flat field faster than any twist can grow.</li>
-<li><strong>Its resting relative is stiff.</strong> The squashed meron is the one non-flat resting left-invariant field found. It keeps a single unstable direction across all the shapes searched, and nothing on it goes soft.</li>
+<li><strong>Its resting relative is stiff.</strong> The squashed meron is the one non-flat resting left-invariant field found. At every stretch sampled it has one unstable direction, in the left-invariant sector, and none in the higher sectors examined (1 &le; j &le; 12); nothing on it goes soft.</li>
 </ul>
 <h3>How it is proved</h3>
 <ul>
@@ -44,7 +44,14 @@
 <li>At a field that is not at rest, separating gauge directions from physical ones is a choice. The theorem is stated on the L<sup>2</sup> (Coulomb) slice, and the full Hessian is given alongside it.</li>
 <li>The value (j(j+2) &minus; 14)/3 is tied to t = 3; on other Berger spheres the floor is &lambda;<sub>t</sub>(j). The floor is proved for every stretch from 2.75 to 10. Below t &asymp; 2.698 it is not the floor (numerically), and outside [2.75, 10] nothing is certified.</li>
 </ul>
-<h3>What is new in version 2</h3>
+<h3>What is new in version 3</h3>
+<ul>
+<li><strong>The main theorem up front.</strong> The introduction now states the floor law on [2.75, 10] as Theorem A, with a short roadmap of the proof: exactness from the conserved charge, blocks of at most nine, interval certificates for j &lt; 100, a closed-form Gershgorin bound for j &ge; 100. The abstract is shorter and leads with the same result.</li>
+<li><strong>Section 7, the twist across every circle-symmetric field.</strong> Its eigenvalue is exact for the whole family, (x + (j+2)/&radic;t)<sup>2</sup> + 2&radic;t&middot;x &minus; y<sup>2</sup>, and it is <strong>proved</strong> to be the floor of every sector on the box x &isin; [&minus;3, &minus;1.5], y &isin; [0.5, 3], t &isin; [3, 10]. For H + GG* an explicit Rayleigh quotient rules out an all-sector floor at x &gt; 0. Beyond the box, the bounded interval of floor values in x and its changing competitors are numerical, and the text says so. Where the block B<sub>4,0</sub> is the competitor, the edge is a root of an explicit polynomial, which contains the Berger threshold t<sub>A</sub>. A companion paper, <em>By Enough, But Not Too Much</em>, studies this edge in full.</li>
+<li><strong>Corrections after two adversarial reviews.</strong> The scope of every general-family statement is stated with its operator; the meron's unstable direction is placed in the left-invariant sector; 168 is named as an eigenvalue of the round Poincar&eacute; sphere; the H + GG* threshold t<sub>A</sub> (algebraic) and the gauge-orthogonal threshold t* (numerical) are kept apart; a bracket convention and the proof of the range theorem are completed. The round-sphere check now has its own script and receipt.</li>
+<li>Two new figures: the three pieces of the floor, and where the twist is the floor across the family.</li>
+</ul>
+<h3>What was new in version 2</h3>
 <ul>
 <li><strong>Section 6, the floor across the Berger family:</strong>
 <ul>
@@ -61,13 +68,13 @@
 </ul>
 <h3>The files in this record</h3>
 <ul>
-<li><code>paper.pdf</code>: the paper, 14 pages.</li>
-<li><code>floor-theorem-v2-latex.zip</code>: the LaTeX source, the style file and the figure, with the figure's script. It compiles as is with <code>pdflatex</code> and reproduces the paper.</li>
-<li><code>floor-theorem-v2-code-and-data.zip</code>: every script the theorem runs through, at its repository path, with the receipts it produced and the lattice spectra behind the table and the figure. The proof scripts need only Python with NumPy, SymPy and mpmath. Unzipped into an empty folder they rerun, and the receipts they write match the committed ones. See its <code>README.md</code>.</li>
+<li><code>paper.pdf</code>: the paper, 20 pages.</li>
+<li><code>floor-theorem-v3.3-latex.zip</code>: the LaTeX source, the style file and the figures, with the figures' scripts. It compiles as is with <code>pdflatex</code> and reproduces the paper.</li>
+<li><code>floor-theorem-v3.3-code-and-data.zip</code>: every script the paper cites and every script they import, at its repository path, with the receipts it produced and the lattice spectra behind the table and the figure. The proof scripts need only Python with NumPy, SymPy and mpmath. Unzipped into an empty folder they rerun, and the receipts they write match the committed ones. See its <code>README.md</code>.</li>
 <li><code>MANIFEST.txt</code>: the SHA-256 of every file and the commit the record was built from.</li>
 </ul>
 <h3>The code</h3>
-<p>The scripts live in GIGI, my open-source geometric engine (PolyForm Noncommercial 1.0.0): <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>, tag <code>floor-theorem-v2</code>. The lattice spectra used in the checks come from the code and data of <em>Reading the Curve</em>, which carry the meshes and the forces.</p>
+<p>The scripts live in GIGI, my open-source geometric engine (PolyForm Noncommercial 1.0.0): <a href="https://github.com/nurdymuny/gigi">github.com/nurdymuny/gigi</a>, tag <code>floor-theorem-v3.3</code>. The lattice spectra used in the checks come from the code and data of <em>Reading the Curve</em>, which carry the meshes and the forces.</p>
 <h3>Companion papers</h3>
 <ul>
 <li><em>Reading the Curve, Not Counting the Points</em>, where the Berger field first appears and where the lattice forces checked here are built: <a href="https://doi.org/10.5281/zenodo.24328085">doi:10.5281/zenodo.24328085</a>.</li>

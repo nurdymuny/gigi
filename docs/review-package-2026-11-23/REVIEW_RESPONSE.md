@@ -8,7 +8,7 @@ Two adversarial reviews of this package came back on 23 November:
 Neither found a counterexample to the Floor Theorem (Theorem 6.7) or to the domain theorem (Theorem 7.3 of the Floor
 paper, Theorem 6.1 of *By Enough*). Both asked for corrections of scope and wording, and a few of reproducibility. This
 file lists every point and what I did. The versions to post are:
-- *The Floor Theorem* **3.1** (tag `floor-theorem-v3.1`);
+- *The Floor Theorem* **3.2** (tag `floor-theorem-v3.2`; 3.1 was the version the follow-up review read);
 - *By Enough, But Not Too Much* **1.1** (tag `edge-paper-v1.1`; its Lean stays at `edge-paper-v1-lean`);
 - *Three Ways Across a Turn* **2.1**.
 
@@ -64,3 +64,17 @@ All changes are tracked in the redline (`paper_v3_draft_redline.pdf` shows v2 �
 | "her" and "price" in theorem statements and application-facing summaries | first | Theorem statements already use "the twist" and "eigenvalue". The narrative voice in the body is kept on purpose. |
 | Leaf certificates and a standalone verifier for the 64 CPU-hour run | second | **Not done.** Disclosed as a limit: the receipt keeps counts and minimum margins, not every leaf. |
 | An external specialist read of the main proof | second | **Agreed, and not something I can do from here.** |
+
+## Follow-up review (second reviewer, on 3.1 / 1.1 / 2.1)
+
+The second reviewer checked the corrected versions. All seven original findings are closed: fixed or, for the
+endpoints, resolved by stating the exact domain. The reviewer independently recomputed the three inward slivers in exact
+rationals and confirmed them. Two items followed:
+
+| point | what I did |
+| --- | --- |
+| Floor 3.1 §7: "the computed crossings agree with algebraic roots" groups t_A (algebraic) with t\* (numerical, closed form open) | **Floor 3.2**: the sentence now separates them, in the reviewer's suggested wording. The H+GG\* crossing agrees with the algebraic root t_A to 8×10⁻¹⁶. The gauge-orthogonal crossing is located numerically at t\* to 10⁻¹², and its closed form is open. Both are in the sector j = 4, and the H+GG\* crossing is through B₄,₀. Tracked in the redline. |
+| Fault-inject the exit-status helper | `scripts/test_receipt_status.py`, 12 checks, all pass. Passing receipts exit 0. A flag false at any depth, a FAIL or MISMATCH status, a missing receipt, an unreadable receipt, and a stale PASS (older than the run) each exit 1. A real proof script's good run exits 0, and its receipt with one flag flipped is rejected. Writing the test showed the helper had failed open on missing or unreadable receipts and could not see a stale PASS; both are fixed. Each script now calls `begin()` before `main()`. |
+
+Still open, as before: the force-comparison receipt for Three Ways, leaf certificates for the 64 CPU-hour run, and an
+external specialist read.

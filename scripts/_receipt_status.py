@@ -3,7 +3,16 @@ pass-type flag in the receipt is false, or any status string reports a failure; 
 itself is unchanged; this only makes a failed check visible to the shell."""
 import json
 import sys
+import time
 from pathlib import Path
+
+_START = None
+
+
+def begin():
+    """Call before the script's main(): a receipt older than this moment counts as stale."""
+    global _START
+    _START = time.time()
 
 FLAGS = {"all_proved", "all_exact", "all_ok", "all_pass", "all_certified", "proved", "certified", "pass", "passed", "ok"}
 BAD_WORDS = ("FAIL", "MISMATCH", "NOT PROVED", "NOT CERTIFIED")
@@ -27,10 +36,16 @@ def failures(obj, path=""):
 
 
 def exit_on_failure(path):
+    """Fail closed: a missing, unreadable, stale or failing receipt exits 1."""
+    p = Path(path)
     try:
-        obj = json.loads(Path(path).read_text())
-    except (ValueError, OSError):
-        return
+        obj = json.loads(p.read_text())
+    except (ValueError, OSError) as e:
+        print(f"receipt missing or unreadable ({p}): {e}", file=sys.stderr)
+        sys.exit(1)
+    if _START is not None and p.stat().st_mtime < _START - 1.0:
+        print(f"receipt is stale: {p} was not written by this run", file=sys.stderr)
+        sys.exit(1)
     bad = failures(obj)
     if bad:
         print("receipt reports failure:", ", ".join(bad[:10]), file=sys.stderr)

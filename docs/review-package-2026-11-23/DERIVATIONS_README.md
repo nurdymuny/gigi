@@ -1,8 +1,8 @@
 # How the results were derived: three papers, claim by claim
 
 > **Status of this file (23 November, after the two reviews).** This is the authoritative build-and-derivation
-> manifest for the versions to post: *By Enough* **1.1** (tag `edge-paper-v1.1`), *The Floor Theorem* **3.1** (tag
-> `floor-theorem-v3.1`), *Three Ways* **2.1**. Lines marked **[FIXED …]** and the commit and page references to the
+> manifest for the versions to post: *By Enough* **1.1** (tag `edge-paper-v1.1`), *The Floor Theorem* **3.2** (tag
+> `floor-theorem-v3.2`), *Three Ways* **2.1**. Lines marked **[FIXED …]** and the commit and page references to the
 > reviewed snapshot (tags `edge-paper-v1`, `floor-theorem-v3`) are historical. What changed after the reviews is
 > listed in `docs/review-package-2026-11-23/REVIEW_RESPONSE.md`.
 
@@ -307,7 +307,7 @@ edge, or that `price` is an eigenvalue (§4.6, "What Lean does not check").
 
   ```bash
   cd docs/papers/berger-spectrum
-  pdflatex paper.tex && pdflatex paper.tex      # 20 pages, date line "November 2026 (version 3.1)"
+  pdflatex paper.tex && pdflatex paper.tex      # 20 pages, date line "November 2026 (version 3.2)"
   ```
 
   The committed `paper_v3.pdf` was added in commit `6d50499` (23 Nov 2026); the build step itself is not scripted in the

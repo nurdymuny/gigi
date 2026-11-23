@@ -15,6 +15,8 @@ from pathlib import Path
 import sympy as sp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _receipt_status as _RS  # noqa: E402  (receipts older than this run count as stale)
+_RS.begin()
 import ricci_su2_exact_edge as EE          # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -94,5 +96,4 @@ out["status"] = "PROVED (exact sympy equality of the code's symbolic rows with t
 Path(sys.argv[1]).write_text(json.dumps(out, indent=1) + "\n")
 print(out)
 
-import _receipt_status  # noqa: E402
-_receipt_status.exit_on_failure(sys.argv[1])
+_RS.exit_on_failure(sys.argv[1])

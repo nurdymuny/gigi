@@ -5,8 +5,8 @@ are rebuilt by `python scripts/make_paper_packages.py OUT floor` from tag `floor
 
 1. Open the published record (doi:10.5281/zenodo.24412603) and click **New version**. It stays under the concept DOI
    10.5281/zenodo.24386613, which the paper cites, so no DOI needs reserving.
-2. Delete version 2's files. Upload the PDF (rename it `paper.pdf`), `floor-theorem-v3.3-latex.zip`,
-   `floor-theorem-v3.3-code-and-data.zip` and `MANIFEST.txt`.
+2. Delete version 2's files. Upload the four files of the `zenodo-upload` folder: `paper.pdf`,
+   `floor-theorem-v3.3-latex.zip`, `floor-theorem-v3.3-code-and-data.zip` and `MANIFEST.txt`.
 3. Paste `description.html` through the editor's **Source code** button. Set the version field to **3**.
 4. Keywords: add the two new ones from `metadata.json`. Related works: replace the code link with
    `https://github.com/nurdymuny/gigi/tree/floor-theorem-v3.3`; *is new version of* 10.5281/zenodo.24412603.

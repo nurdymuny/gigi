@@ -4,8 +4,8 @@ Files are in the Drive library, *Bee Davis — Mathematics Library / 03 — Phys
 are rebuilt by `python scripts/make_paper_packages.py OUT edge` from tag `edge-paper-v1.1`.
 
 1. zenodo.org, **New upload**. Resource type: Publication / Preprint.
-2. Upload the PDF (rename it `paper.pdf`), `by-enough-v1.1-latex.zip`, `by-enough-v1.1-code-and-data.zip` and
-   `MANIFEST.txt`.
+2. Upload the four files of the `zenodo-upload` folder: `paper.pdf`, `by-enough-v1.1-latex.zip`,
+   `by-enough-v1.1-code-and-data.zip` and `MANIFEST.txt`.
 3. Title, author, keywords, notes, licence and related identifiers: from `metadata.json`. Affiliation **Davis
    Geometric**, ORCID 0009-0009-8034-4308. Version **1.1**.
 4. Paste `description.html` through the editor's **Source code** button.

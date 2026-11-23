@@ -2,7 +2,8 @@
 
 Files are in the Drive library, *Bee Davis — Mathematics Library / 02 — Geometry and Computation*, rebuilt by
 `python scripts/make_paper_packages.py OUT threeways-ru`. The Russian edition now matches English 2.1 (21 pages).
-Upload the PDF as `paper_ru.pdf`, plus `three-ways-ru-v2.1-latex.zip` and `MANIFEST.txt`; version **2.1**.
+Upload the four files of the `zenodo-upload` folder: `paper_ru.pdf`, `perelman_ru.pdf`,
+`three-ways-ru-v2.1-latex.zip` and `MANIFEST.txt`; version **2.1**.
 
 ---
 
@@ -24,7 +25,7 @@ identifiers. Paste `description.html` into Zenodo's HTML source view.
 **Resource type** Publication / Preprint
 
 **Files**
-1. `paper_ru.pdf` — the paper (20 pages)
+1. `paper_ru.pdf` — the paper (21 pages)
 2. `perelman_ru.pdf` — «Спасибо, господин Перельман», the book chapter (24 pages; updated 2026-11-19 with the lattice results)
 
 **Keywords**

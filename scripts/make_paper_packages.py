@@ -2,14 +2,18 @@
 
 usage: python scripts/make_paper_packages.py OUT_DIR [floor] [edge] [threeways] [threeways-ru]
 
-For each paper it writes OUT_DIR/<name>/ with:
+For each paper it writes OUT_DIR/<name>/ with, for the Drive library:
   <Title>.pdf                    the clean PDF, built from the committed source
   <Title> - LaTeX source.txt     the LaTeX as one readable text file (the library's convention)
+  description.html, metadata.json / METADATA.md, UPLOAD.md where the paper has them
+and OUT_DIR/<name>/zenodo-upload/ with exactly the files the record's description names:
+  paper.pdf (paper_ru.pdf for the Russian edition)   the same PDF under its record name
+  paper_ru.pdf, perelman_ru.pdf  (Three Ways) the Russian edition and the chapter, which lives outside the repository
   <slug>-latex.zip               a standalone LaTeX package: the paper directory, the shared style, README.txt
   <slug>-code-and-data.zip       (floor, edge) every script the paper cites, the repository scripts they import,
                                  every receipt directory or file the paper cites, the code README, requirements.txt
-  description.html, metadata.json / METADATA.md, UPLOAD.md where the paper has them
-  MANIFEST.txt                   SHA-256 and size of every uploaded file, the commit, and the code archive's listing
+  MANIFEST.txt                   SHA-256 and size of every other file in the folder, the commit, and the code
+                                 archive's listing
 Then it checks the package: the LaTeX compiles from its zip into an empty folder, and for floor and edge the fast
 proof scripts rerun from the code zip in an empty folder and exit 0.
 """
@@ -27,9 +31,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 PY = sys.executable
 
+# the Perelman chapter is not in the repository; it is posted with both Three Ways records
+PERELMAN = str(Path.home() / "Documents/three-ways-ru-zenodo/perelman_ru.pdf")
+
 PAPERS = {
     "floor": dict(dir="docs/papers/berger-spectrum", tex="paper.tex", engine="pdflatex", clean_redline=True,
-                  title="The Floor Theorem for the Yang-Mills Hessian at the Berger Field v3.3", slug="floor-theorem-v3.3",
+                  title="The Floor Theorem for the Yang-Mills Hessian at the Berger Field v3.3", slug="floor-theorem-v3.3", upload_pdf="paper.pdf",
                   style=["docs/papers/dgstyle.tex"], zenodo="docs/papers/berger-spectrum/zenodo",
                   exclude=["paper.pdf", "paper_redline.pdf", "paper_v3.pdf", "paper_v3_draft_redline.pdf", "social/", "zenodo/"],
                   code=True, code_readme="docs/papers/berger-spectrum/zenodo/code-README.md",
@@ -42,7 +49,7 @@ PAPERS = {
                           ["scripts/ricci_su2_charge_selection_symbolic.py", "out/charge_selection_symbolic.txt"],
                           ["scripts/test_receipt_status.py"]]),
     "edge": dict(dir="docs/papers/by-enough", tex="paper.tex", engine="pdflatex", clean_redline=False,
-                 title="By Enough, But Not Too Much v1.1", slug="by-enough-v1.1",
+                 title="By Enough, But Not Too Much v1.1", slug="by-enough-v1.1", upload_pdf="paper.pdf",
                  style=["docs/papers/dgstyle.tex"], zenodo="docs/papers/by-enough/zenodo",
                  exclude=["paper.pdf", "zenodo/"], code=True, code_readme=None,
                  extra_code=["scripts/edge_paper_figures.py", "scripts/_receipt_status.py", "scripts/test_receipt_status.py", "scripts/ricci_su2_floor_large_j.py",
@@ -55,11 +62,13 @@ PAPERS = {
                          ["scripts/ricci_su2_rows_transcription_check.py", "out/rows_transcription.json"],
                          ["scripts/test_receipt_status.py"]]),
     "threeways": dict(dir="docs/papers/chord-arc-tangent", tex="paper.tex", engine="pdflatex", clean_redline=False,
-                      title="Three Ways Across a Turn v2.1", slug="three-ways-v2.1",
+                      title="Three Ways Across a Turn v2.1", slug="three-ways-v2.1", upload_pdf="paper.pdf",
+                      upload_extra=[("@threeways-ru/paper_ru.pdf", "paper_ru.pdf"), (PERELMAN, "perelman_ru.pdf")],
                       style=["docs/papers/dgstyle.tex"], zenodo="docs/papers/chord-arc-tangent/zenodo",
                       exclude=["paper.pdf", "ru/", "zenodo/"], code=False),
     "threeways-ru": dict(dir="docs/papers/chord-arc-tangent/ru", tex="paper_ru.tex", engine="xelatex", clean_redline=False,
-                         title="Three Ways Across a Turn v2.1 (Russian edition)", slug="three-ways-ru-v2.1",
+                         title="Three Ways Across a Turn v2.1 (Russian edition)", slug="three-ways-ru-v2.1", upload_pdf="paper_ru.pdf",
+                         upload_extra=[(PERELMAN, "perelman_ru.pdf")],
                          style=["docs/papers/dgstyle-ru.tex"], zenodo="docs/papers/chord-arc-tangent/ru/zenodo",
                          exclude=["paper_ru.pdf", "zenodo/"], code=False),
 }
@@ -155,6 +164,10 @@ def assemble_tex(d, tex):
 
 def package(key, OUT, commit):
     cfg = PAPERS[key]; d = cfg["dir"]; out = OUT / key; out.mkdir(parents=True, exist_ok=True)
+    up = out / "zenodo-upload"
+    if up.exists():
+        shutil.rmtree(up)
+    up.mkdir()
     stage = Path(tempfile.mkdtemp())
     # LaTeX package: tracked files of the paper directory (minus built PDFs and upload folders) + shared style
     L = stage / "latex"
@@ -169,7 +182,7 @@ def package(key, OUT, commit):
         f"Build:  cd {d} && {cfg['engine']} {cfg['tex']} && {cfg['engine']} {cfg['tex']}\n"
         + ("This copy builds the clean version (\\redlinefalse). Set \\redlinetrue to see the changes against version 2.\n"
            if cfg["clean_redline"] else ""))
-    zl = out / f"{cfg['slug']}-latex.zip"
+    zl = up / f"{cfg['slug']}-latex.zip"
     with zipfile.ZipFile(zl, "w", zipfile.ZIP_DEFLATED) as z:
         for p in sorted(L.rglob("*")):
             if p.is_file():
@@ -180,7 +193,15 @@ def package(key, OUT, commit):
     # readable source text (expands \input of the paper's own parts)
     (out / f"{cfg['title']} - LaTeX source.txt").write_text(assemble_tex(d, cfg["tex"]) if not cfg["clean_redline"]
                                                              else re.sub(r"^\\redlinetrue", r"\\redlinefalse", assemble_tex(d, cfg["tex"]), flags=re.M))
-    uploaded = [out / f"{cfg['title']}.pdf", zl]
+    shutil.copy2(pdf, up / cfg["upload_pdf"])
+    for src, name in cfg.get("upload_extra", []):
+        src = OUT / src[1:].replace("/", "/zenodo-upload/", 1) if src.startswith("@") else Path(src)
+        if not src.exists():
+            raise SystemExit(f"[{key}] missing upload file {src} (build threeways-ru first)")
+        shutil.copy2(src, up / name)
+    for old in ("MANIFEST.txt", *(p.name for p in out.glob("*.zip"))):
+        if (out / old).exists():
+            (out / old).unlink()
     code_list = []
     if cfg.get("code"):
         tex = (REPO / d / cfg["tex"]).read_text()
@@ -212,12 +233,11 @@ def package(key, OUT, commit):
                 f"Proof scripts exit 1 if their receipt records a failure (`scripts/_receipt_status.py`; its test is "
                 f"`scripts/test_receipt_status.py`).\n")
         (C / "requirements.txt").write_text("numpy\nscipy\nsympy\nmpmath\n")
-        zc = out / f"{cfg['slug']}-code-and-data.zip"
+        zc = up / f"{cfg['slug']}-code-and-data.zip"
         with zipfile.ZipFile(zc, "w", zipfile.ZIP_DEFLATED) as z:
             for p in sorted(C.rglob("*")):
                 if p.is_file():
                     z.write(p, p.relative_to(C)); code_list.append(str(p.relative_to(C)))
-        uploaded.append(zc)
         # rerun check from an empty folder
         T = Path(tempfile.mkdtemp()); zipfile.ZipFile(zc).extractall(T); (T / "out").mkdir()
         for cmd in cfg["reruns"]:
@@ -232,8 +252,9 @@ def package(key, OUT, commit):
         p = REPO / cfg["zenodo"] / f
         if p.exists():
             shutil.copy2(p, out / f)
-    with open(out / "MANIFEST.txt", "w") as m:
-        m.write(f"# {cfg['title']}: files to post\n# built from commit {commit} of github.com/nurdymuny/gigi\n\n")
+    uploaded = sorted(p for p in up.iterdir() if p.name != "MANIFEST.txt")
+    with open(up / "MANIFEST.txt", "w") as m:
+        m.write(f"# {cfg['title']}: the files of this record\n# built from commit {commit} of github.com/nurdymuny/gigi\n\n")
         for f in uploaded:
             m.write(f"{sha(f)}  {f.stat().st_size:>12,}  {f.name}\n")
         if code_list:
@@ -241,10 +262,13 @@ def package(key, OUT, commit):
             m.writelines(f"  {c}\n" for c in code_list)
     shutil.rmtree(stage)
     print(f"[{key}] {out}: {', '.join(p.name for p in sorted(out.iterdir()))}")
+    print(f"[{key}] zenodo-upload: {', '.join(p.name for p in sorted(up.iterdir()))}")
 
 
 def main():
     OUT = Path(sys.argv[1]).resolve(); keys = sys.argv[2:] or list(PAPERS)
+    if "threeways" in keys and "threeways-ru" in keys:  # the English record carries the Russian PDF
+        keys.remove("threeways-ru"); keys.insert(keys.index("threeways"), "threeways-ru")
     commit = git("rev-parse", "--short", "HEAD").strip()
     for k in keys:
         package(k, OUT, commit)

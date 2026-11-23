@@ -6,3 +6,4 @@ import YMGeometry.SublevelRadius
 import YMGeometry.GroundState
 import YMGeometry.Countermodel
 import YMGeometry.Reflection
+import YMGeometry.FluxEllipsoid

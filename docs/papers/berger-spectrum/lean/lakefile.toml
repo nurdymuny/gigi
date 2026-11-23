@@ -1,6 +1,6 @@
 name = "helike"
 version = "0.1.0"
-defaultTargets = ["Helike", "DavisManifold", "SpectralBranch", "NonDecoupling", "Chihiro", "Lift"]
+defaultTargets = ["Helike", "DavisManifold", "SpectralBranch", "NonDecoupling", "Chihiro", "Lift", "YMGeometry"]
 
 [[require]]
 name = "mathlib"
@@ -24,3 +24,6 @@ name = "Chihiro"
 
 [[lean_lib]]
 name = "Lift"
+
+[[lean_lib]]
+name = "YMGeometry"

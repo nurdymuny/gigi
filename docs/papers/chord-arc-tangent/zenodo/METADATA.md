@@ -4,8 +4,9 @@ Files are in the Drive library, *Bee Davis — Mathematics Library / 02 — Geom
 `python scripts/make_paper_packages.py OUT threeways` from tag `floor-theorem-v3.3` (which holds Three Ways 2.1).
 
 1. Open the published record (doi:10.5281/zenodo.24375338) and click **New version**.
-2. Replace `paper.pdf` with the 2.1 PDF (19 pages), and add `three-ways-v2.1-latex.zip` (source, figures,
-   `verify.py`, the per-face angle receipt) and `MANIFEST.txt`.
+2. Replace `paper.pdf` with the 2.1 PDF (19 pages) and `paper_ru.pdf` with the Russian 2.1 PDF (21 pages); keep
+   `perelman_ru.pdf` as it is (it lives outside the repository, in `~/Documents/three-ways-ru-zenodo/`). Add
+   `three-ways-v2.1-latex.zip` (source, figures, `verify.py`, the per-face angle receipt) and `MANIFEST.txt`.
 3. Paste `description.html` through **Source code**. Set the version to **2.1**.
 4. What changed, for the version note: corrections after the 19 November posting (energies "to leading order", the
    two-circle and half-angle cases, the force measured directly: 0.090%, 0.0084%, 0.0021% and errors of 4.7%–36%), and

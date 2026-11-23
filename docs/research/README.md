@@ -62,6 +62,7 @@ papers cite some of these paths, so files are never renamed or moved.
 | 22 Nov | [Pre-registration C: SU(3) with a free fibre field: results](edge-prereg-C-results-2026-11-22.md) |
 | 22 Nov | [Pre-registration E: the two hands: results](edge-prereg-E-results-2026-11-22.md) |
 | 22 Nov | [Pre-registration F: which circle? Results](edge-prereg-F-results-2026-11-22.md) |
+| 23 Nov | [Pre-registration G, interim: G₂ complete, Sp(3) running](edge-prereg-G-interim-2026-11-23.md) |
 | 22 Nov | [Pre-registration D: SU(3) along her own charge circle: interim (not scored)](edge-prereg-D-interim-2026-11-22.md) |
 | 22 Nov | [Pre-registration D: SU(3) along her own charge circle: results](edge-prereg-D-results-2026-11-22.md) |
 

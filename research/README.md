@@ -17,6 +17,7 @@ Published papers cite these folders by path, so **folders here are never renamed
 | [`edge-theorem-20261122-d/`](edge-theorem-20261122-d/) | 5 | [edge-prereg-D-interim-2026-11-22.md](../docs/research/edge-prereg-D-interim-2026-11-22.md), [edge-prereg-D-results-2026-11-22.md](../docs/research/edge-prereg-D-results-2026-11-22.md), by-enough (paper) |
 | [`edge-theorem-20261122-e/`](edge-theorem-20261122-e/) | 9 | [edge-prereg-E-results-2026-11-22.md](../docs/research/edge-prereg-E-results-2026-11-22.md) |
 | [`edge-theorem-20261122-f/`](edge-theorem-20261122-f/) | 7 | [edge-prereg-F-results-2026-11-22.md](../docs/research/edge-prereg-F-results-2026-11-22.md) |
+| [`edge-theorem-20261122-g/`](edge-theorem-20261122-g/) | — | [edge-prereg-G-interim-2026-11-23.md](../docs/research/edge-prereg-G-interim-2026-11-23.md) (results note to come) |
 | [`edge-theorem-20261122-proofs/`](edge-theorem-20261122-proofs/) | 7 | berger-spectrum (paper), by-enough (paper) |
 | [`henrici-t1-20261119/`](henrici-t1-20261119/) | 2 | [henrici-t1-results-2026-11-19.md](../docs/research/henrici-t1-results-2026-11-19.md) |
 | [`recover-curvature-parity-20261117/`](recover-curvature-parity-20261117/) | 2 | [RECOVER_CURVATURE_SPEC.md](../docs/RECOVER_CURVATURE_SPEC.md), two-ring-pg (paper) |

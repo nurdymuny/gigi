@@ -3,13 +3,13 @@
 Open this file in your breaks: it says what is running, what landed and where to read it.
 Nothing here is a result in itself. Each result lives in its own note, scored as registered.
 
-**Last updated: 22 November 2026, late afternoon: F's first complete receipt is in; 9 wall points are being recomputed.**
+**Last updated: 22 November 2026, evening: Test F is scored. She follows her own SU(2)'s circle, not the principal one.**
 
 ## Running
 
 | what | started | expected | where it lands |
 | --- | --- | --- | --- |
-| **Test F**: which circle? A sweep across the chamber of Sp(2) and SU(4) | 22 Nov, late morning | 6–10 h | results note `edge-prereg-F-results-2026-11-22.md`; receipt `research/edge-theorem-20261122-f/` |
+| nothing running right now | | | |
 
 The deep-dive covers:
 - five fetched-and-quoted literature briefs: the principal circle, McKay/E₈, the η-invariant, Morse theory, and the
@@ -108,21 +108,20 @@ More items will join this table as they are finished.
 
 ## Landed today
 
-- **Test F: preliminary, NOT the verdict** (the full results note comes after the recompute).
-  - The first complete receipt is in. I then found an implementation error: Amendment 2's rule had been applied at
-    walls where the top states are *tied*, where the registered C1 rule should apply. It is disclosed in the amendment
-    file (d26e48c), and 9 wall points are being recomputed (about 3 h).
-  - **Robust to the fix** (the fix can only raise her margin at those 9 points, and the interior points are
-    unaffected). In plain words:
-    - **She lives on her own SU(2)'s circle (θ^∨) and just inside from it (9.22°), in both groups.**
-    - **She does NOT live on the principal circle.** Sp(2) is marginal (1 of 3), SU(4) none.
-    - Her margin peaks at 9.22°, not 18.43°, so Amendment 1's peak test refutes the principal-circle reading too.
-    - She dies at 27.65° and 36.87°, so "any regular circle" is refuted.
-    - At the far wall (45°) she lives in Sp(2), where that wall is itself a coroot, the short highest root's (this is
-      a post-hoc observation). That refutes "she dies at the C-type wall".
-  - **What it means for the arc.** The principal-circle idea is refuted by its own test. The other reading of D
-    survives: what carries the law is **her own SU(2)**, the circle her own root spans. In SU(3) those were the same
-    circle; here they come apart, and she follows her own.
+- **Test F is scored** ([results](edge-prereg-F-results-2026-11-22.md)). **She lives on her own SU(2)'s circle, not
+  the principal circle.**
+  - She lives at θ^∨ (0°) and at 9.22° in both Sp(2) and SU(4): H_θ is supported.
+  - The principal circle (18.43°) is marginal in Sp(2) (1 of 3) and dead in SU(4): H_P is refuted.
+  - Amendment 1's peak test is refuted too. Her margin peaks at 9.22° in Sp(2) (3 of 3) and at 0° in SU(4) (3 of 3).
+  - She is dead at 27.65° and 36.87°, so "any regular circle" is refuted.
+  - She lives at Sp(2)'s far wall (the short highest root's coroot; post hoc): H_C is refuted in Sp(2).
+  - The side clause held, 13 of 13.
+  - **Disclosures:** Amendment 1 is not blind (3 of 36 points seen). The Amendment 2 implementation correction is not
+    blind (the whole first receipt had been seen). It recomputed 9 wall points and changed no verdict; both versions
+    are in the note.
+  - Updated to match: the edge paper (Test F paragraph, abstract, intro, scope) and *the arc* (the bet lost; tag
+    REFUTED).
+  - **Next idea, to register (not run):** "she lives wherever the stretched circle is a top root's own SU(2)".
 
 - **Test F, Amendment 2** (892d538):
   - **What happened.** F stopped at its F-mult gate at Sp(2) 45°, the C-type wall. There her top-charge space is
@@ -183,7 +182,7 @@ More items will join this table as they are finished.
   section) and this file, then commit and push.
 - **When the deep-dive finishes:** check its verifier report, commit the note, briefs and scripts, update this file,
   and push.
-- **When F finishes:** score it, write its note, update this file, then commit and push.
+- ~~When F finishes: score it, write its note, update this file, then commit and push.~~ Done (evening).
   - **Also score Amendment 1:** `research/edge-theorem-20261122-f/wp7_prereg_F_amendment1_peak.md` (H_P-peak: is her
     margin φ\* = `phi_grid_best` largest at 18.43°?). It was registered before any F result was in the repository. If
     this session saw F's progress printouts before reading the amendment, the results note must say so, and the

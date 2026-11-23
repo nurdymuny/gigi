@@ -1,3 +1,8 @@
+**Version 3 posted 2026-11-23:** record 24471504 (https://doi.org/10.5281/zenodo.24471504), under the concept DOI
+10.5281/zenodo.24386613. All four posted files match the `zenodo-upload` folder (MD5 checked against the record). The
+description in this folder now links *By Enough* (concept DOI 10.5281/zenodo.24472820); paste it with Zenodo's
+**Edit** (no new version needed).
+
 # Version 3 (new version of the published record)
 
 Files are in the Drive library, *Bee Davis — Mathematics Library / 03 — Physics and Mathematical Applications*, and

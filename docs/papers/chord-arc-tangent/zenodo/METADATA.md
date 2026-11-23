@@ -1,3 +1,6 @@
+**Version 2.1 posted 2026-11-23:** record 24472196 (https://doi.org/10.5281/zenodo.24472196), under the concept DOI
+10.5281/zenodo.24375337. All five posted files match the `zenodo-upload` folder (MD5 checked against the record).
+
 # Version 2.1 (new version of the published record)
 
 Files are in the Drive library, *Bee Davis — Mathematics Library / 02 — Geometry and Computation*, rebuilt by

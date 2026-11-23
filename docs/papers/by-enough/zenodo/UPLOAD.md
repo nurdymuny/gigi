@@ -1,3 +1,7 @@
+**Posted 2026-11-23.** Version 1.1: https://doi.org/10.5281/zenodo.24472821 (record 24472821). Concept DOI, always the
+latest version: **10.5281/zenodo.24472820**; cite that one. All four posted files match the `zenodo-upload` folder
+built from commit 1183487 (MD5 checked against the record).
+
 # Posting *By Enough, But Not Too Much* to Zenodo (new record)
 
 Files are in the Drive library, *Bee Davis — Mathematics Library / 03 — Physics and Mathematical Applications*, and

@@ -1,0 +1,212 @@
+{
+ "note": "docs/research/yang-mills-geometric-identities-2026-11-23.md",
+ "model": "Kogut-Susskind SU(2), one plaquette, lattice units",
+ "T7a": [
+  {
+   "g2": 0.25,
+   "N": 160,
+   "E0": 2.8353654577641474,
+   "Delta": 3.838313950841052,
+   "radius_pred": 0.5104224323246505,
+   "radius_max_sampled": 0.49791019930220975,
+   "radius_attained": 0.5104224323246503,
+   "Delta_semigroup": 3.8383139508410236,
+   "pass": true,
+   "gate_vacuum_kept": {
+    "q_vacuum": -2.752976440787711e-16,
+    "caught": true
+   },
+   "gate_normalized_only": {
+    "radius_gapless_model": 12.609520212918492,
+    "radius_this_model": 0.5104224323246505,
+    "unit_sphere_max_norm_both": 1.0,
+    "caught": true
+   }
+  },
+  {
+   "g2": 1.0,
+   "N": 160,
+   "E0": 2.333236282090448,
+   "Delta": 3.2690991855209113,
+   "radius_pred": 0.5530774493113727,
+   "radius_max_sampled": 0.5065411179997306,
+   "radius_attained": 0.5530774493113727,
+   "Delta_semigroup": 3.2690991855204397,
+   "pass": true,
+   "gate_vacuum_kept": {
+    "q_vacuum": -1.6156394138065833e-17,
+    "caught": true
+   },
+   "gate_normalized_only": {
+    "radius_gapless_model": 12.609520212918492,
+    "radius_this_model": 0.5530774493113727,
+    "unit_sphere_max_norm_both": 1.0,
+    "caught": true
+   }
+  },
+  {
+   "g2": 4.0,
+   "N": 160,
+   "E0": 0.9585123864992355,
+   "Delta": 6.057972654203663,
+   "radius_pred": 0.4062901988172581,
+   "radius_max_sampled": 0.33928596362677454,
+   "radius_attained": 0.40629019881725814,
+   "Delta_semigroup": 6.057972654204263,
+   "pass": true,
+   "gate_vacuum_kept": {
+    "q_vacuum": 6.223024694895897e-17,
+    "caught": true
+   },
+   "gate_normalized_only": {
+    "radius_gapless_model": 12.609520212918492,
+    "radius_this_model": 0.4062901988172581,
+    "unit_sphere_max_norm_both": 1.0,
+    "caught": true
+   }
+  }
+ ],
+ "T7b": {
+  "gapless_family": [
+   {
+    "N": 10,
+    "gap_of_truncation": 0.1,
+    "sublevel_radius": 3.1622776601683795
+   },
+   {
+    "N": 100,
+    "gap_of_truncation": 0.01,
+    "sublevel_radius": 10.0
+   },
+   {
+    "N": 1000,
+    "gap_of_truncation": 0.001,
+    "sublevel_radius": 31.622776601683793
+   },
+   {
+    "N": 10000,
+    "gap_of_truncation": 0.0001,
+    "sublevel_radius": 100.0
+   }
+  ],
+  "flagged_no_uniform_bound": true,
+  "plaquette_gap_vs_basis_size": {
+   "40": 3.269099185521046,
+   "80": 3.2690991855211533,
+   "160": 3.269099185520625,
+   "320": 3.269099185521115
+  },
+  "plaquette_gap_stable": true,
+  "pass": true
+ },
+ "T7c": {
+  "true_gap": 3.2690991855209113,
+  "probe_decay_rate": 6.0811590419357175,
+  "probe_overlap_with_lowest_excitation": 1.560003254953661e-32,
+  "fit_would_mislead": true,
+  "gate": {
+   "caught": true
+  },
+  "pass": true
+ },
+ "T8": [
+  {
+   "g2": 1.0,
+   "grid": 800,
+   "ground_state_positive": true,
+   "identity_max_rel_err": 7.844184730437749e-16,
+   "poincare_max_ratio_sampled": 5.801551594253256e-05,
+   "poincare_ratio_at_psi1_over_psi0": 0.9999999999999986,
+   "Delta_fd": 3.269078340016548,
+   "Delta_character_basis": 3.269099185520625,
+   "pass": true,
+   "gate_sign_changing_state": {
+    "negative_edge_weights": 1,
+    "caught": true
+   },
+   "gate_shifted_E0": {
+    "identity_residual": -9.499708539806306e-07,
+    "expected": -9.499856686538987e-07,
+    "caught": true
+   }
+  },
+  {
+   "g2": 4.0,
+   "grid": 800,
+   "ground_state_positive": true,
+   "identity_max_rel_err": 6.58516961323638e-16,
+   "poincare_max_ratio_sampled": 2.568607235264281e-05,
+   "poincare_ratio_at_psi1_over_psi0": 1.000000000000001,
+   "Delta_fd": 6.057934309184297,
+   "Delta_character_basis": 6.057972654204851,
+   "pass": true,
+   "gate_sign_changing_state": {
+    "negative_edge_weights": 1,
+    "caught": true
+   },
+   "gate_shifted_E0": {
+    "identity_residual": -1.0480871424078941e-06,
+    "expected": -1.0480402578786448e-06,
+    "caught": true
+   }
+  }
+ ],
+ "T10": {
+  "lichnerowicz_first_eigenvalue": 3,
+  "lichnerowicz_bound": 3,
+  "saturated": true,
+  "minmax_levels_ok": true,
+  "gaps": [
+   {
+    "g2": 0.05,
+    "gap_full": 3.968546650102327,
+    "gap_electric": 0.07500000000000001,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 0.2,
+    "gap_full": 3.8715812223018076,
+    "gap_electric": 0.30000000000000004,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 1.0,
+    "gap_full": 3.2690991855209095,
+    "gap_electric": 1.5,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 4.0,
+    "gap_full": 6.057972654203661,
+    "gap_electric": 6.0,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 16.0,
+    "gap_full": 24.000911436099464,
+    "gap_electric": 24.0,
+    "weak_coupling_prediction": 4.0
+   }
+  ],
+  "gaps_differ": true,
+  "weak_coupling_trend_ok": true,
+  "pass": true
+ },
+ "T5": {
+  "g2": 1.0,
+  "tau": 0.5,
+  "preparations": 12,
+  "min_eigenvalue": -4.332066918114569e-16,
+  "rounding_bound": 4.3025045813908365e-14,
+  "psd_certified": true,
+  "gate_negative_transfer": {
+   "min_eigenvalue": -0.0003150817273829338,
+   "bound": 4.302491315387283e-14,
+   "caught": true
+  },
+  "pass": true
+ },
+ "all_pass": true,
+ "all_gates_caught": true,
+ "ok": true
+}

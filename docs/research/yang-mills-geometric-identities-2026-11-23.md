@@ -302,6 +302,20 @@ The test is for **every** admissible finite family, not only one chosen matrix.
 Zero-norm combinations are quotiented out; completion gives the physical
 Hilbert space in the reconstruction. Reflection positivity is therefore a
 test that the reflected correlations can be an inner product.
+
+**EXACT, on a lattice: where the plane sits decides what the test sees.** With a
+symmetric transfer matrix \(T\), a preparation at time site \(t\ge1\) propagates
+as \(T^t x\). Reflecting through a *site* gives the pairing
+\(\langle x_i,T^{t_i+t_j}x_j\rangle\), which is always the Gram matrix of the
+vectors \(T^{t_i}x_i\): it is nonnegative whatever \(T\) is, so it tests nothing.
+Reflecting through a *link* gives \(\langle x_i,T^{t_i+t_j-1}x_j\rangle\), an odd
+power, which is nonnegative when \(T=S^{\mathsf T}S\) is a positive operator and
+fails as soon as \(T\) has a negative direction that the preparations reach. So
+on a lattice the test is positivity of the transfer matrix, read through link
+reflection. I learned this by getting it wrong: my first numerical version
+paired preparations through sites, and its planted failure could not fire.
+(Lean: `site_reflection_always_positive`, `link_reflection_positive`,
+`link_reflection_detects_negative`; numerical: T5 in Section 12.)
 [Jaffe, sections I-II](https://www.arthurjaffe.com/Assets/pdf/SPDE-QFT-v3.pdf).
 
 A positive probability distribution is not enough: its ordinary covariance and
@@ -550,6 +564,24 @@ parts, this second term combines with the potential into the ground-state
 equation and vanishes. Vacuum
 orthogonality becomes \(\int_Q f\,d\nu=0\), zero weighted mean.
 
+**EXACT on a finite weighted graph, with no analytic hypothesis.** Write
+\((Hx)_i=\kappa\sum_j w_{ij}(x_i-x_j)+V_ix_i\) with symmetric weights. If
+\(H\psi_0=E_0\psi_0\), then for every \(f\)
+
+\[
+\langle\psi_0f,(H-E_0)\psi_0f\rangle
+=\frac{\kappa}{2}\sum_{i,j}w_{ij}\,\psi_{0,i}\psi_{0,j}\,(f_i-f_j)^2 .
+\]
+
+The identity uses only the eigen-equation, so it holds for any eigenvector. What
+the *ground* state adds is positivity: with \(\psi_0>0\) and \(w\ge0\) the right
+side is a Dirichlet form for the measure \(\nu_i=\psi_{0,i}^2\). A sign-changing
+eigenvector gives negative edge weights, and there is then no measure and no
+Poincare inequality. A discretised configuration space is such a graph, so the
+continuum statement below is the limit of an exact finite one; the analytic
+hypotheses are what that limit costs. (Lean: `ground_state_transform`,
+`dirichlet_nonneg`, `ground_state_transform_shift`; numerical: T8.)
+
 The gap inequality is now the weighted Poincare inequality:
 
 \[
@@ -671,7 +703,20 @@ the electric term's vacuum, so a gap for the electric term is not a gap for the
 whole. The electric term's scale is also set by the bare coupling, which
 asymptotic freedom sends to zero in lattice units as the spacing shrinks. The
 curvature bound exists; it is not, by itself, a lower bound on the physical gap.
-[Kogut and Susskind 1975](https://doi.org/10.1103/PhysRevD.11.395). Also, the suggestion of using flow time as a fourth coordinate in
+[Kogut and Susskind 1975](https://doi.org/10.1103/PhysRevD.11.395).
+
+The smallest real case shows all of this. On one SU(2) plaquette the
+gauge-invariant states are class functions of the plaquette angle \(a\), with
+\(U=\cos a+n\sin a\); the class Laplacian on the unit three-sphere has first
+nonzero eigenvalue 3, which is exactly the Lichnerowicz bound (\(n=3\), Ricci
+curvature 2). The magnetic term is \((4/g^2)(1-\cos a)\): Wilson's energy, half
+the squared chord of *Three Ways Across a Turn*. In lattice units the electric
+gap is \(3g^2/2\) and vanishes as \(g\to0\), while the full gap tends to 4
+(3.9685 at \(g^2=0.05\)). Every level of the full Hamiltonian lies above the
+corresponding electric level, as the min-max principle requires, yet the two
+gaps differ at every coupling tested. The surviving 4 is the harmonic well of
+the magnetic term on a single compact cell: the finite-size separation described
+above, not a continuum gap. (Numerical: T10.) Also, the suggestion of using flow time as a fourth coordinate in
 the November 19 strategy note needs a separate construction: dissipative
 classical evolution is not automatically physical time or a Euclidean quantum
 field. I retain the earlier notes as research history; these distinctions
@@ -679,9 +724,9 @@ govern the present one.
 
 ## 11. The tests I would require before advancing this route
 
-These are proposed acceptance tests, not reported engine results. They test
-the conversion first so that a later experiment cannot pass by using the wrong
-object.
+These are acceptance tests. They test the conversion first so that a later
+experiment cannot pass by using the wrong object. Section 12 reports the ones
+that now run; the rest are still proposals.
 
 | Test | Required distinction | Deliberate failure it must detect |
 | --- | --- | --- |
@@ -699,7 +744,54 @@ Removing the mechanism should make its corresponding gate fail. Finite tests
 can reject a construction and validate a numerical implementation. They do not
 replace the universal estimates or axioms in the continuum requirement.
 
-## 12. The question I want to carry forward
+## 12. Each statement as a test
+
+Every EXACT statement above now has two independent checks: a proof in Lean 4
+of its finite form, and a numerical test on a real lattice gauge model, with the
+failure the note warns about planted and required to be caught.
+
+**The model.** Kogut–Susskind SU(2) on one plaquette, in lattice units. In the
+character basis \(n=2j+1\) the Hamiltonian is exactly tridiagonal,
+\(H_{nm}=\tfrac{g^2}{2}(n^2-1)\delta_{nm}+\tfrac{4}{g^2}\big(\delta_{nm}-\tfrac12(\delta_{m,n+1}+\delta_{m,n-1})\big)\),
+because \(\cos a\,\chi_n=\tfrac12(\chi_{n+1}+\chi_{n-1})\). It is the smallest
+system that is genuinely non-Abelian lattice Yang–Mills; it is not the
+continuum, and nothing below is a statement about the continuum.
+
+**The proofs.** `YMGeometry` in the Lean project (branch `feat/ym-geometry-tests`,
+`docs/papers/berger-spectrum/lean/YMGeometry/`), Lean 4 with Mathlib v4.36.0. All
+eleven theorems build and depend only on Lean's standard axioms (`propext`,
+`Classical.choice`, `Quot.sound`); there is no `sorry`.
+
+**The numerics.** `scripts/ym_geometry_tests.py`, receipt
+`research/ym-geometry-20261123/ym_geometry_tests.json`. The script exits 1 if any
+check fails or any planted failure goes uncaught.
+
+| § | Statement | Lean (finite form) | Numerical result on the plaquette | Planted failure, caught |
+| --- | --- | --- | --- | --- |
+| 7 | Gap ⇔ bounded fixed-energy set, radius \(\sqrt{E_*/\Delta}\) | `gap_iff_sublevel_bounded`, `sublevel_radius_sharp` (any energy with \(q(cx)=c^2q(x)\); no spectral theorem needed) | At \(g^2=1\): \(\Delta=3.26909919\); radius 0.55307745 predicted and attained; the Euclidean semigroup gives the same \(\Delta\) to \(10^{-12}\). Also at \(g^2=0.25, 4\) | Vacuum kept: zero-energy direction, set unbounded (`vacuum_kept`). Normalized-only test cannot tell this model from a gapless one |
+| 7, 9 | Every truncation gapped ⇏ limit gapped | `trunc_gap`, `no_uniform_gap` | Energies \(1/n\): radius grows as \(\sqrt N\) (\(N=10\) to \(10^4\)); the plaquette's gap is stable in the basis size to \(10^{-12}\) | The family is flagged as having no uniform bound |
+| 7 | One decaying correlation is not a certificate | — | A probe orthogonal to the first excitation decays at 6.08, the true gap is 3.27 | The blind spot (zero overlap) is detected |
+| 8 | Ground-state transform; weighted Poincaré with constant \(\kappa/\Delta\) | `ground_state_transform`, `dirichlet_nonneg`, `ground_state_transform_shift` | On an 800-point graph of the plaquette angle: identity to \(8\times10^{-16}\); Poincaré ratio 1 to \(10^{-15}\) at \(f=\psi_1/\psi_0\); graph gap 3.269078 vs exact 3.269099 | Sign-changing state: negative edge weight. Wrong \(E_0\) by \(10^{-6}\): identity breaks by exactly the predicted amount |
+| 10 | Curvature bound is not the physical gap | — | Lichnerowicz saturated (3); \(\lambda_k(H)\ge\lambda_k(H_E)\) for all \(k\) tested; gaps differ at every \(g\); electric gap \(\to0\), full gap \(\to4\) | — |
+| 5 | Reflection positivity as an inner product | `site_reflection_always_positive`, `link_reflection_positive`, `link_reflection_detects_negative` | Link-reflected correlations of 12 preparations: smallest eigenvalue \(-4\times10^{-16}\), within the rounding bound \(4\times10^{-14}\) | A transfer matrix with one negative eigenvalue: certified negative direction (\(-3.2\times10^{-4}\)) |
+
+**What these tests do not reach.** None of them touches infinite volume, the
+continuum limit, or the Clay target. They make the *conversions* reliable: each
+statement is the right object, the right inequality, and the right failure, on a
+model where everything can be computed exactly.
+
+**Next refinements, in order.**
+1. Section 1 on real cells: the flux map \(X_K\) of *Reading the Curve*'s meshes,
+   its singular values as the ellipsoid's semiaxes, through the GIGI recovery.
+2. Reflection positivity on a multi-plaquette lattice, where Osterwalder–Seiler
+   positivity of the Wilson action is a theorem the numerics must reproduce.
+3. Uniformity: the same gap and radius tests on growing lattices, with explicit
+   comparison maps between them (Section 9), so that "stable in the basis" is
+   replaced by "stable in the volume".
+4. Lean: the spectral form of Section 7 (bottom of the spectrum ⇔ form bound) for
+   self-adjoint matrices, and the min-max inequality behind T10.
+
+## 13. The question I want to carry forward
 
 **OPEN: identify and construct the quantum objects to which the exact
 reformulations would apply.**
@@ -767,7 +859,7 @@ The change-of-attention method, the requirement map, the research motivation,
 and the connections to Helike and *Reading the Curve* are mine. Each
 reformulation was checked against the primary references cited beside it.
 
-The scope here is a mathematical and source-level research note. No new
-Yang-Mills computation, certificate, engine feature, or continuum-limit result
-is claimed. Existing source files were left unchanged. The sources are
+The scope here is a mathematical and source-level research note with the finite tests of
+Section 12. No continuum-limit result, certificate of the Floor kind, or new
+engine feature is claimed. Existing source files were left unchanged. The sources are
 identified by their tags and hashes above.

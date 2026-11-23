@@ -54,14 +54,16 @@ $8$ and $16$ in $x$, $y$ and $\sqrt t$. Its restriction to the Berger path conta
 $t_A$ of the Floor paper, and these identities are also checked in Lean~4. On the domain $x\in[-3,-1.5]$,
 $y\in[0.5,3]$, $t\in[3,10]$, interval certificates prove that the twist is the floor of every sector, with multiplicity
 two, with the certificates' rows proved equal to the operator's. The all-sector edge of $H+GG^*$ is at most $\min(x^*_{12},0)$; equality is conjectured for $t\ge3$ and fails
-at and near $t=2$. Three simpler readings, each written down before its data, failed. Three further tests were
+at and near $t=2$. Three simpler readings, each written down before its data, failed. Six further tests were
 pre-registered. At $48$ new points the region in the sectors $j\le12$ is one interval on a $0.01$ grid, no sector
 $13\le j\le79$ undercuts the twist at the three tested values of $x<0$, and the edge is the $P_2$ root at $34$ of $38$
 points. At $193$ random circle-symmetric fields the region in $j\le12$ is again one interval, but the reading that the
 competitor is nearly blind to $x$ fails at $129$. In an $SU(3)$ family stretched along the hypercharge circle with a
 free fibre field, the twist is the floor of all nine tested sectors at no $x$ of the $0.25$ scan, at any of $20$ shapes.
 Stretched instead along the twist's own charge circle, the same group gives her back: she is the floor at $19$ of $20$
-shapes, in one interval, on the side where the field along her circle turns against her charge.
+shapes, in one interval, on the side where the field along her circle turns against her charge. For $x>0$ the floor of
+every sector is held, from small $j$ on, by a state that turns against the field ($60$ of $60$ points). Swept across
+the Weyl chambers of $SU(4)$ and $Sp(2)$, she lives on the coroot of her own highest root, not on the principal circle.
 \end{abstract}
 
 \noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Peter--Weyl decomposition; Weitzenb\"ock identity;
@@ -189,13 +191,14 @@ alignment together with the curvature term singling the twist out does (Section~
 edge as $c_1/t+c_2/t^2$ failed both of its pre-registered predictions. The conjecture that the all-sector edge equals
 $\min(x^*_{12},0)$ fails at and near $t=2$ and is kept only for $t\ge3$. The statement that the edge is the largest
 real root of $P_2$ is false: $P_2$ has further real roots where a higher eigenvalue of the competitor meets the twist.
-Three further tests were pre-registered (Section~\ref{sec:prereg}). At held-out points the edge clause failed at $4$ of
+Six further tests were pre-registered (Section~\ref{sec:prereg}). At held-out points the edge clause failed at $4$ of
 $38$ points, where other blocks reach the twist first. At random circle-symmetric fields the reading that the competitor
 is nearly blind to $x$ failed at $129$ of $193$ points. In an $SU(3)$ family with a free fibre field the twist is the
 floor of all nine tested sectors at no $x$ of the $0.25$ scan, at any of the $20$ shapes, so the behaviour found here
 does not carry over to that family. In a fourth test, the same group stretched along the twist's own charge circle,
 she is the floor at $19$ of $20$ shapes, in one interval, on the predicted side; the competitor is again not blind. In
-a fifth, sweeping the stretched circle across the Weyl chambers of $SU(4)$ and $Sp(2)$, she lives on the coroot of her
+a fifth, for $x>0$, the floor of every sector is held by a state whose internal turning opposes the field along the
+circle, the state $e_-$ of Theorem~\ref{thm:xpos}, at all $60$ scored points. In a sixth, sweeping the stretched circle across the Weyl chambers of $SU(4)$ and $Sp(2)$, she lives on the coroot of her
 own highest root and just inside it, not on the principal circle and not on every regular circle.
 
 \paragraph{By enough, but not too much.} The field along the long circle must turn against the twist by enough that
@@ -706,7 +709,7 @@ Section~\ref{sec:interval} uses them.
 
 The algebraic identities above, and the closed form's anatomy as an algebraic identity, are proved in
 Lean~4~\cite{lean4} (v4.36.0) with Mathlib~\cite{mathlib2020}: sixteen theorems, with no \texttt{sorry} and no axioms
-beyond \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound} (\path{docs/papers/berger-spectrum/lean/Helike/Edge.lean}
+beyond \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound} (on the branch \texttt{feat/helike-lean}: \path{docs/papers/berger-spectrum/lean/Helike/Edge.lean}
 and \path{Price.lean}). The four theorems of \texttt{Edge.lean} are the factorization $\mathtt{edgeDet}=-16384\,P_1P_2$,
 the Berger restriction, a root of $Q_{16}$ in $[1.65261,1.65262]$, and a crossing of $P_2=0$ by the Berger path with
 $s^2\in[2.73111,2.73116]$. The twelve of \texttt{Price.lean} are listed in Appendix~\ref{app:lean}.
@@ -1157,9 +1160,9 @@ the literature checked I found no edge of this kind and no Berger-sphere family 
 texts could not be read, so this is a statement about the search, not a priority claim.
 
 % ===================================================================================================
-\section{Pre-registered tests A, B, C and D}\label{sec:prereg}
+\section{Pre-registered tests A to F}\label{sec:prereg}
 
-Four further tests were written down, reviewed and fixed before any scored data were computed, as were Tests~2, 4, 5
+Six further tests were written down, reviewed and fixed before any scored data were computed, as were Tests~2, 4, 5
 and~6 of Section~\ref{sec:decide}. Each amendment was made after a code gate fired (for Amendment~C1, after a smoke test
 showed that a gate would fire) and before any scored quantity was computed. This section gives each design in brief and
 its result. The full points, predictions, gates and amendments are in Appendix~\ref{app:prereg}. Every result here is
@@ -1310,6 +1313,20 @@ the blind competitor carries over to this $SU(3)$ slice along her own circle: ex
 the lift slope $(p+q)/\sqrt t$, the bounded region in one interval, and the side. In $SU(3)$ her charge circle is at once
 the principal circle, the coroot of her highest root and a regular circle; which of these she needs is the question of
 Test~F.
+
+\paragraph{Test E: for $x>0$, who holds the floor.} Theorem~\ref{thm:xpos} shows that for $x>0$ the twist is not the
+floor of every sector, and names a state that undercuts her: $e_-$, of weight $m=l$ and type $(1,-1)$ in the block
+$B_{2l,l}$, whose internal turning is opposite to the field along the circle relative to its own orbital turning
+($c_l\,m\,x<0$). Test~E asked whether that state, and not some other, actually holds the floor. At $60$ scored points
+($y>0$, $t\ge3$, sectors $j\le400$), the floor eigenspace is at least half across-reaching from some $j_0\le272$ on,
+and from $j=1$ at most points (E1, held at $60$ of $60$). Its admixture of other types matches the first-order mixing
+predicted from the rows of its own block: the ratio of measured to predicted lies in $[0.86,1.00]$ (E3, held at $60$ of
+$60$). The registered onset-scaling arm could not be scored (four eligible pairs; descriptively their ratios are
+$4.41$ to $4.61$, against a predicted $4$). At $t=2$ a different across-reaching block, $\pm(l-2)$, holds the floor at
+$15$ of $20$ points. So the statement ``a state that turns against the field holds the floor'' survives at $t=2$, but
+the identification with $e_-$ does not. The code gates (block against full builder, her block against $\lambda_j$, the
+exact state at $y=0$, the mirror blocks) pass at $6	imes10^{-15}$ or better. Script \path{edge_wp6_two_hands.py},
+receipt \path{research/edge-theorem-20261122-e/wp6_two_hands.json}.
 
 \paragraph{Test F: which circle.} Test~F sweeps the stretched circle across the Weyl chamber of $Sp(2)$ and a line
 through the chamber of $SU(4)$, at six angles from the coroot $\theta^\vee$ of her highest root ($0^\circ$, a wall)
@@ -1738,7 +1755,11 @@ taking $231$\,s for the factorization, of degree $28$ in $s$).
 
 Each test's documents are in \path{research/edge-theorem-20261121/}: \path{wp4_prereg_A_heldout.md} (with
 \path{wp4_prereg_A_points.json}), \path{wp4_prereg_B_general_fields.md} and \path{wp4_prereg_C_su3.md}; Test~D is in
-\path{research/edge-theorem-20261122-d/wp5_prereg_D_su3_own_circle.md}.
+\path{research/edge-theorem-20261122-d/wp5_prereg_D_su3_own_circle.md}; Test~E in
+\path{research/edge-theorem-20261122-e/wp6_prereg_E_two_hands.md}; Test~F in
+\path{research/edge-theorem-20261122-f/wp7_prereg_F_principal_circle.md} with its two amendments
+(\path{wp7_prereg_F_amendment1_peak.md}, \path{wp7_prereg_F_amendment2_wall.md}); the registered, still running Test~G
+in \path{research/edge-theorem-20261122-g/wp8_prereg_G_two_new_groups.md}.
 
 \subsection{Test A}
 

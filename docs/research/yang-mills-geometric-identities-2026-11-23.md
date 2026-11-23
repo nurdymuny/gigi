@@ -349,6 +349,15 @@ fails as soon as \(T\) has a negative direction that the preparations reach. So
 on a lattice the test is positivity of the transfer matrix, read through link
 reflection. I learned this by getting it wrong: my first numerical version
 paired preparations through sites, and its planted failure could not fire.
+
+**Reach matters too.** On a lattice the time links act on each spatial link
+separately, so a state's transfer weight is a product over its links. An action
+whose time-link coefficients are negative in some spin sector produces a
+negative transfer direction only on states with an *odd* number of links in that
+sector; two such links cancel. A family of preparations that never reaches those
+states certifies positivity it has not tested. On a three-plaquette ladder, a
+mixed action with a negative adjoint term makes 290 of 590 states negative, and
+my first, too-small family missed every one of them.
 (Lean: `site_reflection_always_positive`, `link_reflection_positive`,
 `link_reflection_detects_negative`; numerical: T5 in Section 12.)
 [Jaffe, sections I-II](https://www.arthurjaffe.com/Assets/pdf/SPDE-QFT-v3.pdf).
@@ -675,6 +684,16 @@ Hamiltonian still requires suitable form/operator convergence, compatible
 vacuum projections, and control of all physical directions. Newly appearing
 low-energy directions cannot be omitted by a finite-rank comparison map.
 
+**What a finite family can show, and what it cannot.** On SU(2) ladders of one
+to five plaquettes at fixed lattice spacing (Section 12), the gap shrinks as the
+ladder grows, but each step shrinks it about half as much as the last: at
+\(g^2=2\), 3.4263, 3.3546, 3.3181, 3.3022, 3.2943. The ground energy per plaquette
+converges (1.68672 to 1.68572), and the link-spin cutoff, itself a regulator, is
+converged to \(3\times10^{-4}\) or better. This is the uniformity question asked at
+fixed spacing on a strip, and on these sizes it answers yes. It is not the
+continuum question, which needs \(g\to0\) as the spacing shrinks, and it is not
+two or three dimensions.
+
 Short-distance Yang-Mills identity is a separate requirement. Renormalized
 curvature observables must have the prescribed asymptotically free behavior;
 the correspondence with classical curvature polynomials includes operator
@@ -814,17 +833,68 @@ fails or any planted failure goes uncaught.
 | 1 | Recovery exact; conditioning is the flux ellipsoid; the chart's metric is part of the claim; curvature is gauge-blind | `amplification_lower_bound`, `exact_recovery`, `triangle_flux_scale` | All 4,320 cells of *Reading the Curve* (\(n=1,2,3\), one and two rings): \(\mathcal R_KX_K=I\) to \(5\times10^{-14}\); committed \(\Lambda_K\) reproduced exactly; one-ring \(\Lambda_K\sigma_{\min}\in[1.026,1.126]\); weakest direction \(\ge98\%\) gradient; transported metric exact to \(10^{-14}\); \(H^1=0\) from ranks; gauge data change no coefficient beyond \(1.4\times10^{-12}\) | Raw coefficient length distorts the ellipsoid by \(\approx1/d\). A connection read as physical moves under gauge. Non-closed fluxes refused by the paper's one-ring fit (40 of 40) |
 | 5 | Reflection positivity as an inner product | `site_reflection_always_positive`, `link_reflection_positive`, `link_reflection_detects_negative` | Link-reflected correlations of 12 preparations: smallest eigenvalue \(-4\times10^{-16}\), within the rounding bound \(4\times10^{-14}\) | A transfer matrix with one negative eigenvalue: certified negative direction (\(-3.2\times10^{-4}\)) |
 
+**On real lattices: ladders of one to five plaquettes.** The single plaquette
+proves the conversions; a lattice tests them where plaquettes share links.
+`scripts/ks_su2_lattice.py` builds Kogut–Susskind SU(2) on any graph whose
+vertices have at most three links, two independent ways: a spin-network basis
+(link spins, with the unique intertwiner at each vertex; the plaquette operator
+assembled from Clebsch–Gordan contractions at its vertices) and a brute-force
+product space with Gauss's law as an energy penalty. Nothing physical is reported
+until both agree and both pass first-principles checks
+(`scripts/ym_geometry_lattice_tests.py`, receipt
+`research/ym-geometry-20261123/lattice_tests.json`):
+
+| Check | Result |
+| --- | --- |
+| Link operators against sampled Wigner D-functions (product rule, inverse link, gauge generators) | \(\le7\times10^{-15}\) |
+| One plaquette, spin network vs the exact tridiagonal Hamiltonian | \(7\times10^{-15}\) |
+| Spin network vs brute force: two-plaquette ladder (78,125 product states), theta graph at spins \(\le1\) and \(\le3/2\) | 4, 11 and 23 physical states, equal to \(1.4\times10^{-12}\) |
+| Brute-force ground state under random gauge transformations of sampled configurations | unchanged to \(3\times10^{-15}\) |
+| Overlapping plaquette operators commute away from the truncation edge; spectra in \([-2,2]\) | \(10^{-15}\); the truncated spectra are \(2\cos(\pi k/(N+1))\) |
+
+Results, in lattice units (gap \(\Delta\), sublevel radius \(R=\sqrt{1/\Delta}\)
+at \(E_*=1\)):
+
+| plaquettes | states (largest cutoff) | \(\Delta\) at \(g^2=2\) | \(\Delta\) at \(g^2=1\) | \(E_0\) per plaquette, \(g^2=2\) |
+| --- | --- | --- | --- | --- |
+| 1 | 6 | 3.42629 | 3.26910 | 1.686720 |
+| 2 | 69 | 3.35458 | 3.06250 | 1.686103 |
+| 3 | 1,523 | 3.31810 | 2.95483 | 1.685891 |
+| 4 | 39,471 | 3.30219 | 2.90391 | 1.685785 |
+| 5 | 158,400 | 3.29425 | 2.89187* | 1.685722 |
+
+\* At \(g^2=1\) the five-plaquette value is not converged in the spin cutoff (2.8%
+between cutoffs 3/2 and 2); for one to four plaquettes the change between the two
+largest cutoffs is at most 0.45% at \(g^2=1\) and \(3\times10^{-6}\) at \(g^2=2\).
+
+- **Section 7 on lattices:** on all 16 cases small enough for dense algebra, the
+  spectrum, the attained sublevel radius and the Euclidean semigroup give the
+  same gap to \(2\times10^{-15}\), and no sampled vector exceeds the radius.
+- **Section 9:** the gap is bounded away from zero across one to five plaquettes,
+  with decrements that halve; the radius grows only from 0.540 to 0.551 at
+  \(g^2=2\).
+- **Section 10:** the electric gap is \(3g^2/2\) (one spin-½ loop) at every size;
+  the full gap differs from it in every case.
+- **Section 5:** with Wilson time links, every character coefficient is positive
+  (they equal the Bessel ratios \(I_{2j+1}(\beta)/I_1(\beta)\) to \(3\times10^{-15}\)),
+  and the link-reflected correlations of a family reaching every spin sector are
+  a Gram matrix within rounding. Gate: a fundamental-adjoint action with
+  \(\beta_A=-2\) has negative coefficients at spins 1 and 3/2, and link reflection
+  certifies a negative direction (\(-1.1\times10^{-7}\) against a rounding bound of
+  \(1.4\times10^{-14}\)).
+
 **What these tests do not reach.** None of them touches infinite volume, the
 continuum limit, or the Clay target. They make the *conversions* reliable: each
 statement is the right object, the right inequality, and the right failure, on a
 model where everything can be computed exactly.
 
 **Next refinements, in order.**
-1. Reflection positivity on a multi-plaquette lattice, where Osterwalder–Seiler
-   positivity of the Wilson action is a theorem the numerics must reproduce.
-2. Uniformity: the same gap and radius tests on growing lattices, with explicit
-   comparison maps between them (Section 9), so that "stable in the basis" is
-   replaced by "stable in the volume".
+1. Comparison maps between sizes (Section 9): embed the \(p\)-plaquette space in
+   the \((p+1)\)-plaquette one and test the energy form across the embedding, so
+   that the volume trend is a statement about one family of maps, not a list of
+   separate numbers.
+2. Two-dimensional lattices: vertices with four links need a second intertwiner
+   label; the spin-network builder is written for three.
 3. Mode fidelity on the cells: the 120 cells at \(n=1\) fall into two
    amplification classes (251.34 and 252.27); carry each cell's singular
    subspaces to a reference cell by the symmetry and compare projectors, not

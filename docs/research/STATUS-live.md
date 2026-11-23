@@ -121,6 +121,7 @@ More items will join this table as they are finished.
     are in the note.
   - Updated to match: the edge paper (Test F paragraph, abstract, intro, scope) and *the arc* (the bet lost; tag
     REFUTED).
+  - **The book is v5.9 on Drive**: H3, "What the failures taught me" and the proved list now name the circle (pp. 28–30; no page numbers moved). Start with `HELIKE_whole_draft_with_gap_map_v5.9.pdf`.
   - **Next idea, to register (not run):** "she lives wherever the stretched circle is a top root's own SU(2)".
 
 - **Test F, Amendment 2** (892d538):

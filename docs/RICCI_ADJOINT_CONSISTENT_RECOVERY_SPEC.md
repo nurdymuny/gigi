@@ -1,6 +1,6 @@
 # RF2H: adjoint-consistent curvature recovery (spec before implementation)
 
-Claude, 2026-11-17, on Bee's instruction to "work under your best intuition and see if you can bring
+2026-11-17, on Bee's instruction to "work under your best intuition and see if you can bring
 it home", following `RICCI_FIXED_EXTERIOR_ASSESSMENT_2026_11_17.md`. Branch
 `feat/rf2h-adjoint-consistent-recovery`, off `codex/feat-ricci-correspondence-checkpoint`.
 

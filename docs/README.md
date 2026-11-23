@@ -68,7 +68,7 @@ Paired specifications and results, in `docs/`. Published papers cite these paths
 | [`RICCI_FLOW_SU2_RESULTS.md`](RICCI_FLOW_SU2_RESULTS.md) | Native Ricci flow: RF1 evidence |
 | [`RICCI_FLOW_SU2_SPEC.md`](RICCI_FLOW_SU2_SPEC.md) | Ricci flow on homogeneous three-manifolds: RF1 |
 | [`RICCI_HANDOFF.md`](RICCI_HANDOFF.md) | Ricci / Davis-Wilson lattice correspondence: PARKED |
-| [`RICCI_HANDOFF_2026_11_17.md`](RICCI_HANDOFF_2026_11_17.md) | Claude handoff: GIGI / Davis-Wilson / Ricci correspondence |
+| [`RICCI_HANDOFF_2026_11_17.md`](RICCI_HANDOFF_2026_11_17.md) | Handoff: GIGI / Davis-Wilson / Ricci correspondence |
 | [`RICCI_INDEPENDENT_ASSESSMENT_2026_11_17.md`](RICCI_INDEPENDENT_ASSESSMENT_2026_11_17.md) | Independent assessment and one bounded spec |
 | [`RICCI_LATTICE_CORRESPONDENCE_RESULTS.md`](RICCI_LATTICE_CORRESPONDENCE_RESULTS.md) | RF2B: actual lattice / Ricci correspondence experiment |
 | [`RICCI_LATTICE_CORRESPONDENCE_SPEC.md`](RICCI_LATTICE_CORRESPONDENCE_SPEC.md) | RF2B: Davis-Wilson lattice / Ricci correspondence |

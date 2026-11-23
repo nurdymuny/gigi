@@ -1,6 +1,6 @@
 # Results: one reconstruction, both force routes, Abelian control
 
-2026-11-17, Claude. Spec: `RICCI_PG_CURVATURE_SPEC.md` (with two dated
+2026-11-17. Spec: `RICCI_PG_CURVATURE_SPEC.md` (with two dated
 amendments). Evidence: `output/ricci-pg-curvature-20261117/`. Python research
 scripts, same methods as RF2D-RF2G; nothing ran through the GIGI engine. No
 native change, full suite, Berger run, commit or deployment.

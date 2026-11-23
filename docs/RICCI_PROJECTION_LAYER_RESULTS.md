@@ -1,6 +1,6 @@
 # Bee's magnet idea: the geometry behind it, and two probes
 
-2026-11-17, Claude. **Diagnostics, not gated features.** Python research
+2026-11-17. **Diagnostics, not gated features.** Python research
 scripts; nothing ran through the GIGI engine. BW05 is not closed.
 
 ## The question

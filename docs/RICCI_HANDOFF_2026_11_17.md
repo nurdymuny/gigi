@@ -1,8 +1,8 @@
-# Claude handoff: GIGI / Davis-Wilson / Ricci correspondence
+# Handoff: GIGI / Davis-Wilson / Ricci correspondence
 
-Prepared for Bee Rosa Davis, 2026-11-17. Bee is transferring this work because
-her ChatGPT credits are nearly exhausted. She would like an independent look
-and a carefully bounded attempt, not repetition of the previous experiments.
+Prepared for Bee Rosa Davis, 2026-11-17. The work is handed over for an
+independent look and a carefully bounded attempt, not repetition of the
+previous experiments.
 
 Git checkpoint: `codex/feat-ricci-correspondence-checkpoint`. See the
 [checkpoint README](../research/ricci-checkpoint-20261117/README.md)

@@ -1,6 +1,6 @@
 # Two-ring Petrov-Galerkin curvature: BW05 and S3 both pass (Abelian control)
 
-2026-11-17, Claude (second session), building directly on `RICCI_PG_CURVATURE_RESULTS.md`. Branch
+2026-11-17 (second session), building directly on `RICCI_PG_CURVATURE_RESULTS.md`. Branch
 `feat/reading-the-curve`, based on `feat/ricci-pg-curvature`. Python research scripts, the same
 methods as RF2D–RF2G; nothing ran through the GIGI engine. No native change, full suite, Berger run
 or merge.

@@ -1,6 +1,6 @@
 # Option 1: Whitney plus a zero-mean correction — diagnostic result
 
-2026-11-17, Claude. Chosen by Bee after `RICCI_PG_CURVATURE_RESULTS.md`.
+2026-11-17. Chosen by Bee after `RICCI_PG_CURVATURE_RESULTS.md`.
 **Run as a diagnostic, not a gated feature**, for the reason below. Python
 research scripts; nothing ran through the GIGI engine. No commit.
 

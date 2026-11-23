@@ -151,7 +151,7 @@ records rather than one. Bundling them would dilute the stronger claim.
     "altitude_scope": "Holds for the metric construction as written in that passage. No numerical or proof check performed.",
     "lifecycle": "proposed",
     "lifecycle_note": "Manuscript locator is a local path. A hash would fix the version; it would not make the manuscript readable by a collaborator. Both are required before promotion to current.",
-    "asserted_by": "Astra", "asserted_by_is_agent": true,
+    "asserted_by": "review-agent", "asserted_by_is_agent": true,
     "reviewed_by": null, "reviewed_by_is_agent": null, "reviewer_decision": "unreviewed"
   },
   {
@@ -168,7 +168,7 @@ records rather than one. Bundling them would dilute the stronger claim.
     "altitude_basis": "A source with a precise locator shows the example illustrates the question. No mechanism is located on the manuscript side.",
     "altitude_scope": "The polar chart on r > 0 only.",
     "lifecycle": "proposed",
-    "asserted_by": "Astra", "asserted_by_is_agent": true,
+    "asserted_by": "review-agent", "asserted_by_is_agent": true,
     "reviewed_by": null, "reviewed_by_is_agent": null, "reviewer_decision": "unreviewed"
   }
 ]
@@ -264,7 +264,7 @@ The polar fixture must produce det J = r, J^T J = diag(1,r^2), and a round trip 
 
 ## Revisions
 
-**2026-10-24, after review by Bee and Claude.** Three corrections to the first
+**2026-10-24, after review.** Three corrections to the first
 draft, all of which removed a premature summarisation:
 
 1. **Review status was a single ladder; it is now two independent fields.**

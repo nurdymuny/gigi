@@ -1,0 +1,15 @@
+#!/bin/sh
+# Remove AI attribution from commit messages: Co-Authored-By trailers that name an AI tool,
+# "Generated with ..." lines and session-link trailers. Co-authors who are people are kept.
+# Enabled per clone with:  git config core.hooksPath .githooks
+msg="$1"
+tmp="$msg.tmp.$$"
+grep -v -i -E \
+  -e '^co-authored-by:.*(claude|anthropic|chatgpt|openai|copilot|codex|gemini|astra)' \
+  -e '^(🤖 )?generated (with|by) .*(claude|chatgpt|copilot|codex|gemini|ai)' \
+  -e '^claude-session:' \
+  "$msg" > "$tmp"
+# drop trailing blank lines left behind
+awk 'NF {for (i = 0; i < blank; i++) print ""; blank = 0; print; next} {blank++}' "$tmp" > "$msg"
+rm -f "$tmp"
+exit 0

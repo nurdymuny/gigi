@@ -3,13 +3,13 @@
 Open this file in your breaks: it says what is running, what landed and where to read it.
 Nothing here is a result in itself. Each result lives in its own note, scored as registered.
 
-**Last updated: 22 November 2026, evening: Test F is scored. She follows her own SU(2)'s circle, not the principal one.**
+**Last updated: 23 November 2026, early morning: Test G is registered (after review) and running.**
 
 ## Running
 
 | what | started | expected | where it lands |
 | --- | --- | --- | --- |
-| nothing running right now | | | |
+| **Test G**: her own circle in G₂ and Sp(3), plus the far walls (sS, s4, s5) | 23 Nov, ~1 am | about a day (two processes) | results note `edge-prereg-G-results-…md`; receipts `research/edge-theorem-20261122-g/` |
 
 The deep-dive covers:
 - five fetched-and-quoted literature briefs: the principal circle, McKay/E₈, the η-invariant, Morse theory, and the
@@ -107,6 +107,19 @@ read.
 More items will join this table as they are finished.
 
 ## Landed today
+
+- **Test G registered** (333d97c) after an adversarial review that found 1 fatal flaw and 7 major ones, all fixed
+  before data (the list is in §7 of the registration).
+  - **The question:** does F's "her own circle" replicate in two groups never computed before (G₂, Sp(3))?
+  - **The far-wall guess** is now split three ways: the short root's circle, a chamber edge, or the short root tied at
+    the top, told apart by sS, s4 and s5.
+  - **Correction to the F note:** at Sp(2)'s far wall, her state is only 32–46% short-root twist, not purely the twist.
+    The diagnostic is committed.
+- **chihiro-plasma: direction for the team** (branch `feat/helike-direction` in that repo, `theory/DIRECTION_FROM_BEE_2026-11-22.md`).
+  - T1's "unstable at β = 0" is an **edge mode** from a wrong-signed no-wall vacuum term, shared by experiment17 and
+    dcon_energy.
+  - M1's harness had two bugs (fixed N_θ; the wrong shapes). Under them: the 6π cut is a one-sided bound, and **11 of
+    37 second-stability edges are false**.
 
 - **Test F is scored** ([results](edge-prereg-F-results-2026-11-22.md)). **She lives on her own SU(2)'s circle, not
   the principal circle.**

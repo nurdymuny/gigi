@@ -2,7 +2,7 @@
 
 Bee Rosa Davis | Davis Geometric
 
-23 November 2026 | Research note, draft for author review
+23 November 2026 | Research note
 
 ## The change of attention
 
@@ -230,7 +230,10 @@ inner product against spatial volume." Infinitesimal gauge directions have the
 form \(d_A\xi\), "d sub A xi," where xi is an infinitesimal frame change. Their
 orthogonal complement obeys \(d_A^*b=0\), "d sub A adjoint b equals zero."
 This is a metric-dependent local slice condition, not a global elimination of
-every gauge ambiguity. Here xi is pronounced "ksee."
+every gauge ambiguity. For a non-Abelian group no continuous global slice exists
+on \(S^3\) or \(S^4\) (Singer, the Gribov ambiguity), so the Coulomb slice of the
+Floor paper is local by necessity, not by convenience.
+[Singer 1978](https://doi.org/10.1007/BF01609471). Here xi is pronounced "ksee."
 
 A double cover also has an exact job. The map from SU(2) to SO(3) identifies
 the two group elements \(U\) and \(-U\), pronounced "U and minus U." Their
@@ -444,6 +447,10 @@ has positive form value, since the vacuum kernel has been removed. Scale it by
 gives the radius equality. This is a standard quadratic-form consequence of
 the spectral theorem, written out here to expose its geometry.
 
+This is the same kind of object as the flux ellipsoid of Section 1, read the
+other way round. There a short axis is a direction the measurements barely
+see; here a long axis would be a direction the energy barely charges for.
+
 In finite dimension, diagonalization makes the sublevel set an ellipsoid with
 semiaxes \(\sqrt{E_*/\lambda_j}\), "the square root of E star over lambda sub j."
 The quantities \(\lambda_j\) are the positive energy eigenvalues. In infinite
@@ -654,9 +661,17 @@ These are proposed research records, not a claim that new GIGI verbs already
 implement a quantum construction. The next implementation spec must map them
 to actual engine contracts and identify what is missing.
 
-Two clarifications belong beside my earlier notes. Positive curvature of a
-compact group manifold is not, by itself, a lower bound for the quantum
-Hamiltonian. Also, the suggestion of using flow time as a fourth coordinate in
+Two clarifications belong beside my earlier notes. Curvature of the group does
+give something exact: on a compact manifold whose Ricci curvature is at least
+\((n-1)k>0\), the first nonzero eigenvalue of the Laplacian is at least \(nk\)
+(Lichnerowicz). A Hamiltonian lattice gauge theory contains such Laplacians: its
+electric term is a sum of group Laplacians, one per link (Kogut and Susskind).
+But the full Hamiltonian adds a nonnegative magnetic term, and its vacuum is not
+the electric term's vacuum, so a gap for the electric term is not a gap for the
+whole. The electric term's scale is also set by the bare coupling, which
+asymptotic freedom sends to zero in lattice units as the spacing shrinks. The
+curvature bound exists; it is not, by itself, a lower bound on the physical gap.
+[Kogut and Susskind 1975](https://doi.org/10.1103/PhysRevD.11.395). Also, the suggestion of using flow time as a fourth coordinate in
 the November 19 strategy note needs a separate construction: dissipative
 classical evolution is not automatically physical time or a Euclidean quantum
 field. I retain the earlier notes as research history; these distinctions
@@ -719,11 +734,13 @@ to inside them.
 
 - [Reading the Curve, Not Counting the Points](../papers/two-ring-pg/paper.tex),
   especially the recovery, conditioning, force-error decomposition, and
-  limitations. Working-file SHA-256 at review:
-  `4878caaec61cee2b906f72f391ad6118321a413c0105de47fa1833ec0abec3f1`.
+  limitations. Version 3 as posted (doi:10.5281/zenodo.24386756, all versions
+  doi:10.5281/zenodo.24328085): tag `reading-the-curve-v3`, source SHA-256
+  `fce414f64244236785b5fd5d7ad18fa5c3e02b397a9b8b1511ead52470571158`.
 - *The Floor Theorem for the Yang-Mills Hessian at the Berger Field*, version
-  3.3 source, Git object
-  `8f51dfe17e6ff6b4a3ef5d60f66417e2adc3f90b:docs/papers/berger-spectrum/paper.tex`.
+  3.3 source, tag `floor-theorem-v3.3`, Git object
+  `8f51dfe17e6ff6b4a3ef5d60f66417e2adc3f90b:docs/papers/berger-spectrum/paper.tex`
+  (posted as version 3, doi:10.5281/zenodo.24471504).
   The field definition, slice convention, charge structure, and scope were the
   parts used here; this note does not rerun the manuscript's certificates.
 - *The Potter's Toolkit*, local research note
@@ -746,14 +763,11 @@ reports.
 
 ### Authorship and verification scope
 
-The change-of-attention method, the research motivation, and the connection to
-Helike and *Reading the Curve* are mine. This draft was developed with the GIGI
-development assistant, which organized the requirement map, consulted the
-primary references, and helped check the reformulations. The first-person text
-is prepared for my review, not a verbatim transcript of my messages.
+The change-of-attention method, the requirement map, the research motivation,
+and the connections to Helike and *Reading the Curve* are mine. Each
+reformulation was checked against the primary references cited beside it.
 
 The scope here is a mathematical and source-level research note. No new
 Yang-Mills computation, certificate, engine feature, or continuum-limit result
-is claimed. Existing source files were left unchanged. The workspace HEAD at
-drafting was `26499d3550f93fd00c42a3f0cd0771b5bc04a170`; the working-paper hash
-above, rather than HEAD alone, identifies the actual local manuscript read.
+is claimed. Existing source files were left unchanged. The sources are
+identified by their tags and hashes above.

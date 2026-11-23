@@ -3,7 +3,7 @@
 Open this file in your breaks: it says what is running, what landed and where to read it.
 Nothing here is a result in itself. Each result lives in its own note, scored as registered.
 
-**Last updated: 22 November 2026, afternoon: F resumed under Amendment 2.**
+**Last updated: 22 November 2026, late afternoon: F's first complete receipt is in; 9 wall points are being recomputed.**
 
 ## Running
 
@@ -107,6 +107,22 @@ read.
 More items will join this table as they are finished.
 
 ## Landed today
+
+- **Test F: preliminary, NOT the verdict** (the full results note comes after the recompute).
+  - The first complete receipt is in. I then found an implementation error: Amendment 2's rule had been applied at
+    walls where the top states are *tied*, where the registered C1 rule should apply. It is disclosed in the amendment
+    file (d26e48c), and 9 wall points are being recomputed (about 3 h).
+  - **Robust to the fix** (the fix can only raise her margin at those 9 points, and the interior points are
+    unaffected). In plain words:
+    - **She lives on her own SU(2)'s circle (θ^∨) and just inside from it (9.22°), in both groups.**
+    - **She does NOT live on the principal circle.** Sp(2) is marginal (1 of 3), SU(4) none.
+    - Her margin peaks at 9.22°, not 18.43°, so Amendment 1's peak test refutes the principal-circle reading too.
+    - She dies at 27.65° and 36.87°, so "any regular circle" is refuted.
+    - At the far wall (45°) she lives in Sp(2), where that wall is itself a coroot, the short highest root's (this is
+      a post-hoc observation). That refutes "she dies at the C-type wall".
+  - **What it means for the arc.** The principal-circle idea is refuted by its own test. The other reading of D
+    survives: what carries the law is **her own SU(2)**, the circle her own root spans. In SU(3) those were the same
+    circle; here they come apart, and she follows her own.
 
 - **Test F, Amendment 2** (892d538):
   - **What happened.** F stopped at its F-mult gate at Sp(2) 45°, the C-type wall. There her top-charge space is

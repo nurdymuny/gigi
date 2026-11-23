@@ -94,6 +94,41 @@ distinction. The reconstruction's full convergence argument still needs the
 uniform constants and chart-distortion bounds identified in the paper's proof
 sketch. [Reading the Curve, recovery, conditioning, and flow analysis](../papers/two-ring-pg/paper.tex).
 
+**Tested on every cell.** On all 4,320 cells of the paper's meshes (\(n=1,2,3\);
+one and two rings), using the paper's own recovery code:
+
+- \(\mathcal R_KX_K=I_{11}\) holds to \(5\times10^{-14}\), and the committed
+  amplifications \(\Lambda_K=\|\mathcal R_K\|_2\) are reproduced exactly.
+- \(\Lambda_K\ge1/\sigma_{\min}(X_K)\) is a theorem, not an observation: a short
+  semiaxis forces a large amplification (Lean: `amplification_lower_bound`). For
+  one ring the measured ratio lies in \([1.026,1.126]\), which the paper rounds to
+  "between 1.03 and 1.13"; for two rings it lies in \([1.07,2.17]\).
+- The direction the measurements barely see is the gradient: on every cell at
+  least 98% of the weakest semiaxis lies in the \(B\) part. Face fluxes read the
+  field at face centroids, so how the field *varies* across the cell is what
+  they see least.
+- Metric fidelity: in physical units the flux map is exactly
+  \(d^2X_K\,\mathrm{diag}(1,d)\), with \(d\) the cell diameter (Lean:
+  `triangle_flux_scale`). With the coefficient metric carried along, the
+  semiaxes scale by \(d^2\) and nothing else (to \(10^{-14}\)). Read in raw
+  coefficient length instead, the ellipsoid's condition number grows by about
+  \(1/d\): 2.55 at \(n=1\), about 5 at \(n=2\), about 7.6 at \(n=3\). Raw
+  coefficients would report the recovery degrading under refinement when it is
+  not.
+
+**Gauge, on the actual space.** The Poincare homology sphere has \(H^1=0\), which
+the meshes confirm directly: the face-edge map has nullity \(V-1\) (21 at
+\(n=1\), 163 at \(n=2\)). So every edge datum with zero flux through every face
+is pure gauge. Adding such data to the paper's data, at the data's own size,
+changes no recovered coefficient by more than \(1.4\times10^{-12}\). A rival
+that fits a linear connection to the edge integrals sees the gauge in the
+connection (it moves by 0.7 to 23 times its own size), and that is the failure
+Section 11 names: a frame change reported as a physical one. Its *curl*, though,
+is gauge-blind too, to \(10^{-13}\): a closed edge datum has zero circulation
+around every face, and a linear field's curl is fixed by those circulations.
+Curvature is the gauge-safe reading whichever way it is computed; the connection
+is not.
+
 ### The mode is a field, not just an entry in a spectrum
 
 In the pinned Floor manuscript, the twist has the form
@@ -759,12 +794,15 @@ continuum, and nothing below is a statement about the continuum.
 
 **The proofs.** `YMGeometry` in the Lean project (branch `feat/ym-geometry-tests`,
 `docs/papers/berger-spectrum/lean/YMGeometry/`), Lean 4 with Mathlib v4.36.0. All
-eleven theorems build and depend only on Lean's standard axioms (`propext`,
+fourteen theorems build and depend only on Lean's standard axioms (`propext`,
 `Classical.choice`, `Quot.sound`); there is no `sorry`.
 
-**The numerics.** `scripts/ym_geometry_tests.py`, receipt
-`research/ym-geometry-20261123/ym_geometry_tests.json`. The script exits 1 if any
-check fails or any planted failure goes uncaught.
+**The numerics.** `scripts/ym_geometry_tests.py` (the plaquette), receipt
+`research/ym-geometry-20261123/ym_geometry_tests.json`, and
+`scripts/ym_geometry_rtc_cells.py` (Section 1 on the paper's cells; it needs the
+frozen inputs of *Reading the Curve*, which are archived outside git), receipt
+`research/ym-geometry-20261123/rtc_cells.json`. Each script exits 1 if any check
+fails or any planted failure goes uncaught.
 
 | § | Statement | Lean (finite form) | Numerical result on the plaquette | Planted failure, caught |
 | --- | --- | --- | --- | --- |
@@ -773,6 +811,7 @@ check fails or any planted failure goes uncaught.
 | 7 | One decaying correlation is not a certificate | — | A probe orthogonal to the first excitation decays at 6.08, the true gap is 3.27 | The blind spot (zero overlap) is detected |
 | 8 | Ground-state transform; weighted Poincaré with constant \(\kappa/\Delta\) | `ground_state_transform`, `dirichlet_nonneg`, `ground_state_transform_shift` | On an 800-point graph of the plaquette angle: identity to \(8\times10^{-16}\); Poincaré ratio 1 to \(10^{-15}\) at \(f=\psi_1/\psi_0\); graph gap 3.269078 vs exact 3.269099 | Sign-changing state: negative edge weight. Wrong \(E_0\) by \(10^{-6}\): identity breaks by exactly the predicted amount |
 | 10 | Curvature bound is not the physical gap | — | Lichnerowicz saturated (3); \(\lambda_k(H)\ge\lambda_k(H_E)\) for all \(k\) tested; gaps differ at every \(g\); electric gap \(\to0\), full gap \(\to4\) | — |
+| 1 | Recovery exact; conditioning is the flux ellipsoid; the chart's metric is part of the claim; curvature is gauge-blind | `amplification_lower_bound`, `exact_recovery`, `triangle_flux_scale` | All 4,320 cells of *Reading the Curve* (\(n=1,2,3\), one and two rings): \(\mathcal R_KX_K=I\) to \(5\times10^{-14}\); committed \(\Lambda_K\) reproduced exactly; one-ring \(\Lambda_K\sigma_{\min}\in[1.026,1.126]\); weakest direction \(\ge98\%\) gradient; transported metric exact to \(10^{-14}\); \(H^1=0\) from ranks; gauge data change no coefficient beyond \(1.4\times10^{-12}\) | Raw coefficient length distorts the ellipsoid by \(\approx1/d\). A connection read as physical moves under gauge. Non-closed fluxes refused by the paper's one-ring fit (40 of 40) |
 | 5 | Reflection positivity as an inner product | `site_reflection_always_positive`, `link_reflection_positive`, `link_reflection_detects_negative` | Link-reflected correlations of 12 preparations: smallest eigenvalue \(-4\times10^{-16}\), within the rounding bound \(4\times10^{-14}\) | A transfer matrix with one negative eigenvalue: certified negative direction (\(-3.2\times10^{-4}\)) |
 
 **What these tests do not reach.** None of them touches infinite volume, the
@@ -781,13 +820,15 @@ statement is the right object, the right inequality, and the right failure, on a
 model where everything can be computed exactly.
 
 **Next refinements, in order.**
-1. Section 1 on real cells: the flux map \(X_K\) of *Reading the Curve*'s meshes,
-   its singular values as the ellipsoid's semiaxes, through the GIGI recovery.
-2. Reflection positivity on a multi-plaquette lattice, where Osterwalder–Seiler
+1. Reflection positivity on a multi-plaquette lattice, where Osterwalder–Seiler
    positivity of the Wilson action is a theorem the numerics must reproduce.
-3. Uniformity: the same gap and radius tests on growing lattices, with explicit
+2. Uniformity: the same gap and radius tests on growing lattices, with explicit
    comparison maps between them (Section 9), so that "stable in the basis" is
    replaced by "stable in the volume".
+3. Mode fidelity on the cells: the 120 cells at \(n=1\) fall into two
+   amplification classes (251.34 and 252.27); carry each cell's singular
+   subspaces to a reference cell by the symmetry and compare projectors, not
+   vectors (Section 11, test 3).
 4. Lean: the spectral form of Section 7 (bottom of the spectrum ⇔ form bound) for
    self-adjoint matrices, and the min-max inequality behind T10.
 

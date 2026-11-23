@@ -1,0 +1,23 @@
+G-K0 3.74438737246627e-15
+G-K1 5.773159728050814e-15
+g0 circle gates {'G_S5': 1.5013375580306193e-15, 'G_S5c': 3.9368402866644914e-17, 'G_B': 1.779986404756443e-15}
+g0 0.00 (0.5, 0.5, 0.25) I [[-1.7235467905058375, -1.2595152216923022]] survives True phi* 0.0824 golden None rival 27 410s
+g0 0.00 (0.5, 0.5, 0.75) I [[-1.786373532306491, -1.0935613161296176]] survives True phi* 0.1613 golden None rival 27 934s
+g0 0.00 (0.5, 1.0, 1.0) I [] survives False phi* -0.2816 golden {'x': np.float64(-1.5946692544899244), 'phi': np.float64(-0.2733565938664353), 'blocking': '27'} rival None 639s
+g1 circle gates {'G_S5': 8.655268880502303e-16, 'G_S5c': 3.654978074143911e-17, 'G_B': 6.422176684353574e-16}
+g1 9.55 (0.5, 0.5, 0.25) I [[-1.5217497093945875, -1.1702792094620875]] survives True phi* 0.0366 golden None rival 1 385s
+g1 9.55 (0.5, 0.5, 0.75) I [[-1.718359981767528, -1.0939398308765034]] survives True phi* 0.0978 golden None rival 1 1079s
+g1 9.55 (0.5, 1.0, 1.0) I [] survives False phi* -0.3164 golden {'x': np.float64(-1.4993262555461393), 'phi': np.float64(-0.2867802804912188), 'blocking': '14'} rival None 822s
+g2 circle gates {'G_S5': 4.529148588974502e-16, 'G_S5c': 4.203241280807462e-17, 'G_B': 1.5114985924567587e-15}
+g2 19.11 (0.5, 0.5, 0.25) I [] survives False phi* -0.3587 golden {'x': np.float64(-1.4252226583101968), 'phi': np.float64(-0.35847514650149437), 'blocking': '14'} rival None 666s
+g2 19.11 (0.5, 0.5, 0.75) I [] survives False phi* -0.2614 golden {'x': np.float64(-1.5814493616933318), 'phi': np.float64(-0.26058399575404095), 'blocking': '14'} rival None 577s
+g2 19.11 (0.5, 1.0, 1.0) I [] survives False phi* -0.5885 golden {'x': np.float64(-1.716129680903033), 'phi': np.float64(-0.5843938580742523), 'blocking': '14'} rival None 406s
+g3 circle gates {'G_S5': 8.128384703819948e-16, 'G_S5c': 3.4658212794699317e-17, 'G_B': 1.1812123796769787e-15}
+g3 24.55 (0.5, 0.5, 0.25) I [] survives False phi* -0.6439 golden {'x': np.float64(-1.632648079021556), 'phi': np.float64(-0.6436527249401519), 'blocking': '14'} rival None 386s
+g3 24.55 (0.5, 0.5, 0.75) I [] survives False phi* -0.5021 golden {'x': np.float64(-1.5744948762039477), 'phi': np.float64(-0.5016242206604075), 'blocking': '14'} rival None 484s
+g3 24.55 (0.5, 1.0, 1.0) I [] survives False phi* -0.8831 golden {'x': np.float64(-1.681458059671605), 'phi': np.float64(-0.8806227924298812), 'blocking': '14'} rival None 617s
+g4 circle gates {'G_S5': 1.5695004316101932e-15, 'G_S5c': 3.852966199431116e-17, 'G_B': 1.8433812329240007e-15}
+g4 30.00 (0.5, 0.5, 0.25) I [[-2.011979160687725, -1.247175998133564]] survives True phi* 0.0066 golden None rival 14 713s
+g4 30.00 (0.5, 0.5, 0.75) I [] survives False phi* -0.0858 golden {'x': np.float64(-1.638191894513926), 'phi': np.float64(-0.08577131533881883), 'blocking': '1'} rival None 531s
+g4 30.00 (0.5, 1.0, 1.0) I [] survives False phi* -0.7231 golden {'x': np.float64(-1.5180253145001337), 'phi': np.float64(-0.6694307260548021), 'blocking': '1'} rival None 829s
+done g2

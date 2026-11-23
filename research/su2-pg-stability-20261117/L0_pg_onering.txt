@@ -1,0 +1,4 @@
+setup 6.4 s; C-grad 2.986719723886764e-14
+C-col 6.299638435162932e-13
+columns 0 / 142 4.9 s
+{"level": 0, "trial": "pg_onering", "dof": 426, "C_col": 6.299638435162932e-13, "C_grad": 2.986719723886764e-14, "B_asymmetry": 8.326672684688674e-17, "eigen_count": 426, "small_modulus_below_1": 62, "rough_real_below_minus10": 207, "negative_real_physical": 216, "min_real": -8620.869845113328, "min_real_physical": -8620.869845113328, "max_abs_imag": 345.29676817820683, "seconds": 283.6}

@@ -3,6 +3,10 @@
 # Runtime data
 /gigi_data/
 
+# Generated local outputs: research scratch, diagrams, archives and engine logs.
+# Publish intended deliverables from their dedicated repositories.
+/outputs/
+
 # Local scratch: pre-encryption backups, ad-hoc dumps, anything sensitive.
 # Never push this directory.
 /_local/
@@ -19,7 +23,7 @@
 # …but always commit theory papers and the patent draft — these are
 # load-bearing source, not scratch.
 !theory/**/*.tex
-!GIGI_Provisional_Patent.tex
+!docs/patents/GIGI_Provisional_Patent.tex
 # Exception: a COMMITTED artifact, not build noise. The HELICITY customer
 # manual \inputs it, and tests/generated_tex_is_current.rs gates it against
 # docs/SHAPE_VERBS.md so the two cannot drift. Regenerate with

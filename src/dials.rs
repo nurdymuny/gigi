@@ -73,6 +73,9 @@
 
 use std::collections::HashMap;
 
+mod sphere_transport;
+pub use sphere_transport::{sphere_parallel_transport, sphere_parallel_transport_records, SphereTransport};
+
 use crate::bundle::BundleStore;
 use crate::curvature::{self, LengthScaleEstimator};
 use crate::mmap_bundle::BundleRef;

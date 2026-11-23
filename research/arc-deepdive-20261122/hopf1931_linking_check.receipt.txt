@@ -1,0 +1,6 @@
+z1=0.126-0.132j z2=0.640+0.105j rank=2 spread(z)=2.2e-16 dist-spread=1.9e-15 (dist=0.4866) link=-1.0000
+z1=-0.536+0.362j z2=1.304+0.947j rank=2 spread(z)=6.7e-16 dist-spread=6.7e-16 (dist=1.0253) link=-1.0000
+z1=-0.704-1.265j z2=-0.623+0.041j rank=2 spread(z)=1.6e-15 dist-spread=6.7e-16 (dist=0.6829) link=-1.0000
+z1=-2.325-0.219j z2=-1.246-0.732j rank=2 spread(z)=2.6e-15 dist-spread=3.7e-15 (dist=0.2710) link=-1.0000
+z1=-0.544-0.316j z2=0.412+1.043j rank=2 spread(z)=7.8e-16 dist-spread=4.4e-16 (dist=1.2111) link=-1.0000
+z1=-0.129+1.366j z2=-0.665+0.352j rank=2 spread(z)=1.7e-15 dist-spread=1.4e-15 (dist=0.5707) link=-1.0000

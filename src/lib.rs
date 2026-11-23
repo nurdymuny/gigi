@@ -39,6 +39,12 @@ pub mod chern_weil;
 // `gauge::holonomy::walk_loop`; no new group math.
 #[cfg(feature = "gauge")]
 pub mod holonomy_cycle;
+#[cfg(feature = "gauge")]
+pub mod monodromy;
+#[cfg(feature = "gauge")]
+pub mod ricci_flow;
+#[cfg(feature = "gauge")]
+pub mod ricci_wilson;
 // GIGI Encrypt v0.3 — Sprint J (Aff(ℝ) capability delegation).
 // Composes two GaugeKeys' Affine / Isometric / Identity transforms
 // into a per-field capability the proxy applies on ciphertext, never

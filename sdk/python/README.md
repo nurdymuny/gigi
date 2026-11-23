@@ -338,7 +338,7 @@ Each one stands alone. `gigi-client` is the SDK that all of them ultimately call
 
 ## License
 
-MIT for the SDK itself. See [LICENSE](LICENSE).
+MIT for the SDK itself. See [LICENSE](../../LICENSE).
 
 GIGI itself (the server you connect to) has the dual license described above. The SDK is unconditional — install and use freely.
 

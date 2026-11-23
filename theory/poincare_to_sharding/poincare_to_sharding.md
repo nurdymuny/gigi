@@ -34,7 +34,7 @@ This is the entire pivot. The rest of this document spells it out per-verb with 
 
 ### 2.1 The Davis manifold (Davis 2026a)
 
-A Davis manifold (Definition 5 of [`Davis 2026a`](../../../curvature%20aware%20gpu/the_davis_manifold.tex)) is a Riemannian manifold M equipped with:
+A Davis manifold (Definition 5 of `Davis 2026a` (`../../../curvature aware gpu/the_davis_manifold.tex`, in the curvature-aware GPU folder, outside this repository)) is a Riemannian manifold M equipped with:
 
 - An encoder φ: X → M from observation space to states,
 - A chart map ψ: M → ℝ^d providing ambient coordinates,
@@ -50,7 +50,7 @@ is the per-chart guarantee that distortion does not destroy the configuration ma
 
 ### 2.2 The Geometry of Sameness (Davis 2026b)
 
-For a fixed semantic sameness structure S, [`Davis 2026b`](../../../marcella.worktrees/copilot-worktree-2026-03-06T20-16-01/theory/the_geometry_of%20_sameness.tex) constructs two categories of realizations and proves them ε-equivalent:
+For a fixed semantic sameness structure S, `Davis 2026b` (`../../../marcella.worktrees/copilot-worktree-2026-03-06T20-16-01/theory/the_geometry_of _sameness.tex`, in a Marcella worktree, outside this repository) constructs two categories of realizations and proves them ε-equivalent:
 
 - **SamTrans(S)** — translator-based realizations: heterogeneous observation spaces {V_i} with learned translators T_ij between them (the "patchwork of flat maps" — chart i is one shard).
 - **SamGeom(S)** — manifold-based realizations: a single Riemannian manifold (M, g) with chart maps ψ_i: V_i → M (the "globe" — the unified substrate).
@@ -69,7 +69,7 @@ This says multi-hop chart-transition compositions are consistent with the direct
 
 ### 2.3 The Smooth 4D Poincaré proof (Davis 2026c)
 
-[`Davis 2026c`](../../../davis-wilson-lattice/validation/Smooth_4D_Poincare/smooth_4d_poincare_proof_final.tex) proves that every smooth closed 4-manifold homeomorphic to S⁴ is diffeomorphic to S⁴, without using Freedman's infinite Casson towers. The core argument is the **Clean Finger Move Theorem** (Theorem 5.3):
+`Davis 2026c` (`../../../davis-wilson-lattice/validation/Smooth_4D_Poincare/smooth_4d_poincare_proof_final.tex`, in the davis-wilson-lattice repository, outside this repository) proves that every smooth closed 4-manifold homeomorphic to S⁴ is diffeomorphic to S⁴, without using Freedman's infinite Casson towers. The core argument is the **Clean Finger Move Theorem** (Theorem 5.3):
 
 > Let f: D² ↬ M⁴ be a generic immersion with double points on a smooth closed simply connected 4-manifold with H₂(M) = 0. Let (q⁺, q⁻) be an algebraically canceling pair. Then there exists a finger move resolving (q⁺, q⁻) that creates **no new double points**. In particular, **d(f₁) = d(f₀) − 2**.
 
@@ -256,10 +256,10 @@ Six gates. All green. The spec is unblocked.
 
 ## References
 
-- Davis, B. R. (2026a). *The Davis Manifold: Geometry-First Detection with Compositional Error Budgets.* Manuscript. [`the_davis_manifold.tex`](../../../curvature%20aware%20gpu/the_davis_manifold.tex).
-- Davis, B. R. (2026b). *The Geometry of Sameness: An ε-Equivalence of Translation and Distance.* Manuscript. [`the_geometry_of _sameness.tex`](../../../marcella.worktrees/copilot-worktree-2026-03-06T20-16-01/theory/the_geometry_of%20_sameness.tex).
-- Davis, B. R. (2026c). *The Smooth 4-Dimensional Poincaré Conjecture: Whitney Embedding via Curvature Flow.* Manuscript. [`smooth_4d_poincare_proof_final.tex`](../../../davis-wilson-lattice/validation/Smooth_4D_Poincare/smooth_4d_poincare_proof_final.tex).
-- Davis, B. R. (2026d). *The Davis-Poincaré Theorem: Wilson Flow as Ricci Flow on 3-Manifolds.* Manuscript. [`davis_poincare_full_proof_outline.md`](../../../davis-wilson-lattice/validation/poincare/davis_poincare_full_proof_outline.md). 9/9 PC validation tests pass.
+- Davis, B. R. (2026a). *The Davis Manifold: Geometry-First Detection with Compositional Error Budgets.* Manuscript. `the_davis_manifold.tex` (`../../../curvature aware gpu/the_davis_manifold.tex`, in the curvature-aware GPU folder, outside this repository).
+- Davis, B. R. (2026b). *The Geometry of Sameness: An ε-Equivalence of Translation and Distance.* Manuscript. `the_geometry_of _sameness.tex` (`../../../marcella.worktrees/copilot-worktree-2026-03-06T20-16-01/theory/the_geometry_of _sameness.tex`, in a Marcella worktree, outside this repository).
+- Davis, B. R. (2026c). *The Smooth 4-Dimensional Poincaré Conjecture: Whitney Embedding via Curvature Flow.* Manuscript. `smooth_4d_poincare_proof_final.tex` (`../../../davis-wilson-lattice/validation/Smooth_4D_Poincare/smooth_4d_poincare_proof_final.tex`, in the davis-wilson-lattice repository, outside this repository).
+- Davis, B. R. (2026d). *The Davis-Poincaré Theorem: Wilson Flow as Ricci Flow on 3-Manifolds.* Manuscript. `davis_poincare_full_proof_outline.md` (`../../../davis-wilson-lattice/validation/poincare/davis_poincare_full_proof_outline.md`, in the davis-wilson-lattice repository, outside this repository). 9/9 PC validation tests pass.
 - Hatcher, A. (2002). *Algebraic Topology.* Cambridge University Press.
 - Horn, R. & Johnson, C. (2013). *Matrix Analysis*, 2nd ed. Cambridge University Press.
 - Kobayashi, S. & Nomizu, K. (1996). *Foundations of Differential Geometry*, Vol. I–II. Wiley.

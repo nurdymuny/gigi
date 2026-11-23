@@ -1,0 +1,6 @@
+w (fibre rotation of the twist's frame) = sqrt(t) - x - 2/sqrt(t)
+C = 4*sqrt(t)*x - t - y**2 + 4
+lambda(x, y, t, j) = (t**(3/2)*(2*sqrt(t)*x + x**2 - y**2) + sqrt(t)*(j**2 + 4*j + 4) + 2*t*x*(j + 2))/t**(3/2)
+Berger (x = (2-t)/sqrt t, y = sqrt t): lambda - lambda_t(j) = 0
+A = s theta (x = 2s/sqrt t, y = 2s): lambda = -(-j**2 - 4*j*s - 4*j + 4*s**2*t - 4*s**2 - 4*s*t - 8*s - 4)/t
+numeric check, 40 random (x, y, t, j): max relative difference 1.44e-15

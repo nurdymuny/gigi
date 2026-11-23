@@ -1,0 +1,14 @@
+test_booleans_cannot_qualify_hardware (__main__.MeasuredTests.test_booleans_cannot_qualify_hardware) ... FAIL
+
+======================================================================
+FAIL: test_booleans_cannot_qualify_hardware (__main__.MeasuredTests.test_booleans_cannot_qualify_hardware)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 58, in test_booleans_cannot_qualify_hardware
+    self.assertFalse(measured.hardware_qualified({k:True for k in measured.REQUIRED_EVIDENCE},True))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

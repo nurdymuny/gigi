@@ -1,0 +1,72 @@
+{
+ "level": 1,
+ "trial": "native",
+ "stepper": "cayley_midpoint",
+ "N": 16,
+ "h": 0.00125,
+ "status": "ok",
+ "rows": [
+  {
+   "t": 0.005,
+   "E": 0.007554345375418076,
+   "D": 0.15488377931489491,
+   "R": 0.04877428358756214,
+   "gauge_invariant_R": 0.10364131372441458,
+   "newton_iterations": 5,
+   "seconds": 324.6
+  },
+  {
+   "t": 0.01,
+   "E": 0.009370984507324872,
+   "D": 0.28838433038676564,
+   "R": 0.03249477700385804,
+   "gauge_invariant_R": 0.04931711633644634,
+   "newton_iterations": 5,
+   "seconds": 617.3
+  },
+  {
+   "t": 0.015,
+   "E": 0.010452323906898832,
+   "D": 0.4056379378027356,
+   "R": 0.02576761918157139,
+   "gauge_invariant_R": 0.030378230648125643,
+   "newton_iterations": 5,
+   "seconds": 888.5
+  },
+  {
+   "t": 0.02,
+   "E": 0.011284502049403965,
+   "D": 0.5102180329202525,
+   "R": 0.022117019237475173,
+   "gauge_invariant_R": 0.020970442732405545,
+   "newton_iterations": 5,
+   "seconds": 1147.8
+  }
+ ],
+ "R_final": 0.022117019237475173,
+ "E_final": 0.011284502049403965,
+ "newton_iterations": [
+  4,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5,
+  5
+ ],
+ "newton_max_iterations": 5,
+ "newton_worst_final_increment": 6.71403737662673e-09,
+ "force_evaluations": 79,
+ "seconds_per_evaluation": 13.96,
+ "setup_seconds": 6.1,
+ "seconds": 1147.8
+}

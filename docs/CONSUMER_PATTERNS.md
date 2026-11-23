@@ -36,7 +36,7 @@ Cross-references for the surface this doc rides on:
   written to mirror `/v1/openapi.json` and to cover the feature-gated
   routes the spec does not yet enumerate. Use it when a wire shape
   isn't reproduced in this doc.
-- `BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` — per-primitive deep dive
+- `docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` — per-primitive deep dive
   (what the math is, when to use it, common pitfalls).
 - `docs/STABILITY_GUARANTEES.md` — feature-flag tier table; tells you
   which patterns are production-stable and which are research-grade.
@@ -48,7 +48,7 @@ Cross-references for the surface this doc rides on:
 
 ## §1 Why this doc exists
 
-`BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` tells you **what** each endpoint
+`docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` tells you **what** each endpoint
 does. This document tells you **how** to assemble those endpoints
 into a session-shaped consumer.
 
@@ -335,7 +335,7 @@ POST /v1/bundles/marcella_persistent_memory/brain/attend
 ```
 
 Response (truncated; full shape in
-`BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` §ATTEND):
+`docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` §ATTEND):
 
 ```json
 {
@@ -814,7 +814,7 @@ Three escape valves:
    Čech check uses the cocycle bound, why `lambda_budget` has the
    form it does), see `theory/brain_primitives/catalog.md` and
    the per-primitive sections of
-   `BRAIN_PRIMITIVES_CONSUMER_GUIDE.md`.
+   `docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md`.
 
 3. **Substrate features that don't exist yet.** If you need a
    substrate-side capability that doesn't exist, file a
@@ -853,7 +853,7 @@ gets a new section. The patterns themselves don't change.
 | `docs/STABILITY_GUARANTEES.md` | Feature-flag tier table |
 | `docs/GETTING_STARTED.md` | First-bundle walkthrough for new consumers |
 | `docs/SHAPE_VERBS.md` | TEXTURE / PRECEDENCE / CADENCE — "what shape is this data in", without picking a bar size |
-| `BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` | Per-primitive deep dive (math, defaults, pitfalls) |
+| `docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md` | Per-primitive deep dive (math, defaults, pitfalls) |
 | `theory/brain_primitives/catalog.md` | The 12-primitive catalog and master equation |
 | `project_marcella.md` (user memory) | Marcella's full design context — voice contract, multi-tenancy, daughter framing |
 | `reference_claude_substrate_v0.md` (user memory) | `claude_substrate_v0`'s declaration and the seven first records |

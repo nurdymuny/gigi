@@ -1,0 +1,16 @@
+{
+  "level": 0,
+  "trial": "native",
+  "dof": 426,
+  "C_col": 1.843150544795377e-12,
+  "C_grad": 4.5407253442945624e-10,
+  "B_asymmetry": 8.326672684688674e-17,
+  "eigen_count": 426,
+  "small_modulus_below_1": 62,
+  "rough_real_below_minus10": 0,
+  "negative_real_physical": 6,
+  "min_real": -4.475319092757492,
+  "min_real_physical": -4.475319092757492,
+  "max_abs_imag": 0.8010123458894159,
+  "seconds": 96.2
+}

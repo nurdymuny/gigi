@@ -1,0 +1,94 @@
+{
+ "E1": [
+  {
+   "t": 2.5,
+   "height": "0.5",
+   "predicted": -0.41323919401695963,
+   "measured": -0.430938720703125,
+   "interval": true,
+   "error": -0.017699526686165368,
+   "pass": true
+  },
+  {
+   "t": 2.5,
+   "height": "1.5",
+   "predicted": -0.4387589804491204,
+   "measured": -0.476593017578125,
+   "interval": true,
+   "error": -0.03783403712900463,
+   "pass": true
+  },
+  {
+   "t": 2.5,
+   "height": "sqrt_t",
+   "predicted": -0.43169548916457257,
+   "measured": -0.478546142578125,
+   "interval": true,
+   "error": -0.046850653413552434,
+   "pass": true
+  },
+  {
+   "t": 5.0,
+   "height": "0.5",
+   "predicted": -0.13097536019943462,
+   "measured": -0.121063232421875,
+   "interval": true,
+   "error": 0.00991212777755962,
+   "pass": true
+  },
+  {
+   "t": 5.0,
+   "height": "1.5",
+   "predicted": -0.12006220065169596,
+   "measured": -0.095672607421875,
+   "interval": true,
+   "error": 0.024389593229820955,
+   "pass": true
+  },
+  {
+   "t": 5.0,
+   "height": "sqrt_t",
+   "predicted": -0.10619999411118086,
+   "measured": -0.077117919921875,
+   "interval": true,
+   "error": 0.029082074189305862,
+   "pass": true
+  },
+  {
+   "t": 8.0,
+   "height": "0.5",
+   "predicted": -0.06413048212252669,
+   "measured": -0.031524658203125,
+   "interval": true,
+   "error": 0.032605823919401686,
+   "pass": true
+  },
+  {
+   "t": 8.0,
+   "height": "1.5",
+   "predicted": -0.05176138566366991,
+   "measured": 0.040191650390625,
+   "interval": true,
+   "error": 0.09195303605429492,
+   "pass": false
+  },
+  {
+   "t": 8.0,
+   "height": "sqrt_t",
+   "predicted": -0.04067630480282271,
+   "measured": 0.138275146484375,
+   "interval": true,
+   "error": 0.1789514512871977,
+   "pass": false
+  }
+ ],
+ "E1_pass": false,
+ "E2": {
+  "t_c": 2.6315149999977585,
+  "t_star": 2.6980269405200263,
+  "distance": 0.06651194052226783,
+  "floor_at_tc_plus": false,
+  "floor_at_tc_minus": false,
+  "pass": false
+ }
+}

@@ -1,0 +1,26 @@
+j=4 q=0: block size 9; det(B - lambda_t(j)) numerator factors:
+   degree 1 (mult 1): s - 1
+      positive real roots t = s^2: [1.0000000000000000000]
+   degree 1 (mult 1): s + 1
+      positive real roots t = s^2: []
+   degree 6 (mult 1): 3*s**6 + 10*s**4 - 68*s**2 + 64
+      positive real roots t = s^2: [1.2669501475288166105, 2.4040041818365668509]
+   degree 8 (mult 1): s**8 + 19*s**6 + 16*s**4 - 256*s**2 + 256
+      positive real roots t = s^2: [1.2546410483726054818, 2.2291756514662463269]
+   degree 16 (mult 1): 3*s**16 + 121*s**14 + 1066*s**12 - 2836*s**10 - 18624*s**8 + 20992*s**6 + 181248*s**4 - 425984*s**2 + 262144
+      positive real roots t = s^2: [1.6291038519302311338, 1.7002776260838719510, 1.7216059999883152749, 2.7311222782381136231]
+j=4 q=1: block size 8; det(B - lambda_t(j)) numerator factors:
+   degree 1 (mult 1): s - 1
+      positive real roots t = s^2: [1.0000000000000000000]
+   degree 1 (mult 1): s + 1
+      positive real roots t = s^2: []
+   degree 28 (mult 1): 8*s**28 + 461*s**26 + 8969*s**24 + 58378*s**22 - 127115*s**20 - 2149112*s**18 + 435006*s**16 + 32909670*s**14 - 12511575*s**12 - 272796750*s**10 + 319325625*s**8 + 1029206250*s**6 - 2862843750*s**4 + 2619843750*s**2 - 854296875
+      positive real roots t = s^2: [1.2775293851427730834, 1.2894263055853741804, 1.6980726291292779047, 1.7718473584320871271, 1.7871981379858325203, 2.4058357533533990214, 2.4364483309331026501]
+j=1 q=1/2: block size 5; det(B - lambda_t(j)) numerator factors:
+   degree 1 (mult 1): s - 1
+      positive real roots t = s^2: [1.0000000000000000000]
+   degree 1 (mult 1): s + 1
+      positive real roots t = s^2: []
+   degree 18 (mult 1): 8*s**18 + 81*s**16 + 18*s**14 - 1328*s**12 - 852*s**10 + 7521*s**8 + 3924*s**6 - 17820*s**4 - 5184*s**2 + 15552
+      positive real roots t = s^2: [1.3699764478563023541, 1.4130294114422938904, 2.1897677677177087664, 2.2664187594977776487]
+t_2 = sqrt(22) - 2 = 2.6904157598234295546

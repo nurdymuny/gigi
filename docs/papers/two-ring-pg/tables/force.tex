@@ -1,0 +1,12 @@
+\begin{table}[t]\centering\small
+\caption{Relative instantaneous force error $\varepsilon_n$ (\%, $q6$). Orders are observed orders between consecutive levels, computed as in \BW{} from the absolute mass-norm error. The two-ring Petrov--Galerkin column satisfies \BW{}, evaluated by the unchanged criterion.}
+\label{tab:force}
+\begin{tabular}{rrrrrrrrr}\toprule
+$n$ & $h_{\max}$ & Whitney & PG 1-ring & order & \textbf{PG 2-ring} & \textbf{order} & Var.\ 1-ring & Var.\ 2-ring \\ \midrule
+1 & 0.3881 & 29.81 & 4.84 &  & \textbf{6.22} &  & 58.2 & 45.4 \\
+2 & 0.2017 & 25.98 & 3.55 & 0.46 & \textbf{3.83} & \textbf{0.73} & 663.4 & 276.3 \\
+3 & 0.1355 & 25.86 & 2.30 & 1.09 & \textbf{2.79} & \textbf{0.80} & 778.3 & 330.2 \\
+5 & 0.0816 & 26.13 & 1.17 & 1.33 & \textbf{1.45} & \textbf{1.29} & --- & --- \\
+\midrule
+\multicolumn{9}{l}{Two-ring: \BW{} satisfied; $q4/q6$ differences 2.3e-07--1.0e-10; solver corrections $\le$ 4.1e-12.}\\
+\bottomrule\end{tabular}\end{table}

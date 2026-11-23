@@ -1,0 +1,134 @@
+FFEEEEFFEEE
+======================================================================
+ERROR: test_failed_prediction_is_not_qualified (__main__.MeasuredTests.test_failed_prediction_is_not_qualified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 45, in test_failed_prediction_is_not_qualified
+    self.assertFalse(measured.hardware_qualified({k:True for k in measured.REQUIRED_EVIDENCE},False))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\conduct_settle_measured.py", line 16, in hardware_qualified
+    raise ValueError("qualification audit not implemented")
+ValueError: qualification audit not implemented
+
+======================================================================
+ERROR: test_false_crossing_uses_entire_remaining_suffix (__main__.MeasuredTests.test_false_crossing_uses_entire_remaining_suffix)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 37, in test_false_crossing_uses_entire_remaining_suffix
+    self.assertEqual(measured.observed_settling(list(range(8)),[0,2,0,0,0,0,0,0],1),2)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\conduct_settle_measured.py", line 13, in observed_settling
+    raise ValueError("observed settling not implemented")
+ValueError: observed settling not implemented
+
+======================================================================
+ERROR: test_late_departure_is_censored (__main__.MeasuredTests.test_late_departure_is_censored)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 41, in test_late_departure_is_censored
+    self.assertIsNone(measured.observed_settling(list(range(6)),[0,0,0,0,0,2],1))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\conduct_settle_measured.py", line 13, in observed_settling
+    raise ValueError("observed settling not implemented")
+ValueError: observed settling not implemented
+
+======================================================================
+ERROR: test_missing_calibration_cannot_be_rescued_by_perfect_fit (__main__.MeasuredTests.test_missing_calibration_cannot_be_rescued_by_perfect_fit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 43, in test_missing_calibration_cannot_be_rescued_by_perfect_fit
+    self.assertFalse(measured.hardware_qualified({},True))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\conduct_settle_measured.py", line 16, in hardware_qualified
+    raise ValueError("qualification audit not implemented")
+ValueError: qualification audit not implemented
+
+======================================================================
+ERROR: test_short_followup_is_censored (__main__.MeasuredTests.test_short_followup_is_censored)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 39, in test_short_followup_is_censored
+    self.assertIsNone(measured.observed_settling([0,1,2,3],[0,0,0,0],1))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\conduct_settle_measured.py", line 13, in observed_settling
+    raise ValueError("observed settling not implemented")
+ValueError: observed settling not implemented
+
+======================================================================
+ERROR: test_source_event_is_midpoint (__main__.MeasuredTests.test_source_event_is_midpoint)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 33, in test_source_event_is_midpoint
+    phases=measured.source_phases([0,1,2,3,4],[0,0,2,2,2])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\conduct_settle_measured.py", line 10, in source_phases
+    raise ValueError("source reconstruction not implemented")
+ValueError: source reconstruction not implemented
+
+======================================================================
+ERROR: test_valid_scope_preserves_measurements (__main__.MeasuredTests.test_valid_scope_preserves_measurements)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 16, in test_valid_scope_preserves_measurements
+    t,u,v=measured.parse_scope(fixture(),1000,1e-6)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\e2e\probes\conduct_settle_measured.py", line 7, in parse_scope
+    raise ValueError("measured-data parser not implemented")
+ValueError: measured-data parser not implemented
+
+======================================================================
+FAIL: test_component_mismatch_refuses (__main__.MeasuredTests.test_component_mismatch_refuses)
+----------------------------------------------------------------------
+ValueError: measured-data parser not implemented
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 27, in test_component_mismatch_refuses
+    with self.assertRaisesRegex(ValueError,"component"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "component" does not match "measured-data parser not implemented"
+
+======================================================================
+FAIL: test_duplicate_time_refuses_by_name (__main__.MeasuredTests.test_duplicate_time_refuses_by_name)
+----------------------------------------------------------------------
+ValueError: measured-data parser not implemented
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 21, in test_duplicate_time_refuses_by_name
+    with self.assertRaisesRegex(ValueError,"strictly increasing"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "strictly increasing" does not match "measured-data parser not implemented"
+
+======================================================================
+FAIL: test_nonfinite_refuses_by_name (__main__.MeasuredTests.test_nonfinite_refuses_by_name)
+----------------------------------------------------------------------
+ValueError: measured-data parser not implemented
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 24, in test_nonfinite_refuses_by_name
+    with self.assertRaisesRegex(ValueError,"finite"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "finite" does not match "measured-data parser not implemented"
+
+======================================================================
+FAIL: test_partial_row_refuses (__main__.MeasuredTests.test_partial_row_refuses)
+----------------------------------------------------------------------
+ValueError: measured-data parser not implemented
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\OneDrive\Documents\gigi\scripts\test_conduct_settle_measured.py", line 30, in test_partial_row_refuses
+    with self.assertRaisesRegex(ValueError,"incomplete"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "incomplete" does not match "measured-data parser not implemented"
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.004s
+
+FAILED (failures=4, errors=7)

@@ -1,0 +1,249 @@
+known answers {'F_K0': 3.2751579226442118e-15, 'F_K1': 2.145486164792859e-14}
+sp2 45.0 (0.5, 0.5, 0.25) I [[-2.7422137183983573, -0.6989299052805271]] survives True golden None rival 14 cal -0.9280059445608642 628s
+sp2 45.0 (0.5, 0.5, 0.75) I [[-2.1170255592202905, -1.1041803867954798]] survives True golden None rival 1 cal -0.9649700814068756 954s
+sp2 45.0 (0.5, 1.0, 1.0) I [] survives False golden {'x': np.float64(-1.2638581888075686), 'phi': np.float64(-1.1623740160002396), 'blocking': '1'} rival None cal -0.9697599714031702 236s
+su4 0.0 (0.5, 0.5, 0.25) I [[-1.6291694493522908, -1.1472810380995122]] survives True golden None rival 1 cal -0.1590305093396088 1618s
+su4 0.0 (0.5, 0.5, 0.75) I [[-1.7863735337235953, -1.0155782919090848]] survives True golden None rival 1 cal -0.17579015281134477 1414s
+su4 0.0 (0.5, 1.0, 1.0) I [] survives False golden {'x': np.float64(-1.4391507841344882), 'phi': np.float64(-0.5743827956178814), 'blocking': '4'} rival None cal -0.17711791883792283 565s
+su4 45.0 (0.5, 0.5, 0.25) I [[-2.4214860403218976, -0.9473490130406005]] survives True golden None rival 6 cal -0.9280059445608642 1796s
+su4 45.0 (0.5, 0.5, 0.75) I [] survives False golden {'x': np.float64(-1.7491007787254866), 'phi': np.float64(-0.36194726259350224), 'blocking': '1'} rival None cal -0.9649700814068756 592s
+su4 45.0 (0.5, 1.0, 1.0) I [] survives False golden {'x': np.float64(-0.7833753094628384), 'phi': np.float64(-1.9376106136407238), 'blocking': '1'} rival None cal -0.9697599714031702 491s
+{
+ "protocol": "wp7_prereg_F_principal_circle.md (revised after review)",
+ "resumed_after": "recompute wall points (implementation correction, Amendment 2)",
+ "amendment": "wp7_prereg_F_amendment2_wall.md",
+ "F_K0": 3.2751579226442118e-15,
+ "F_K1": 2.145486164792859e-14,
+ "F_K0_by_orientation": {
+  "1": 3.2751579226442118e-15,
+  "-1": 16.970562748477146
+ },
+ "F_K1_by_orientation": {
+  "1": 2.145486164792859e-14,
+  "-1": 0.83307480850994
+ },
+ "score": {
+  "sp2@0.0": {
+   "n": 2,
+   "verdict": "lives"
+  },
+  "sp2@9.22": {
+   "n": 3,
+   "verdict": "lives"
+  },
+  "sp2@18.43": {
+   "n": 1,
+   "verdict": "marginal"
+  },
+  "sp2@27.65": {
+   "n": 0,
+   "verdict": "does not live"
+  },
+  "sp2@36.87": {
+   "n": 0,
+   "verdict": "does not live"
+  },
+  "sp2@45.0": {
+   "n": 2,
+   "verdict": "lives"
+  },
+  "su4@0.0": {
+   "n": 2,
+   "verdict": "lives"
+  },
+  "su4@9.22": {
+   "n": 2,
+   "verdict": "lives"
+  },
+  "su4@18.43": {
+   "n": 0,
+   "verdict": "does not live"
+  },
+  "su4@27.65": {
+   "n": 0,
+   "verdict": "does not live"
+  },
+  "su4@36.87": {
+   "n": 0,
+   "verdict": "does not live"
+  },
+  "su4@45.0": {
+   "n": 1,
+   "verdict": "marginal"
+  }
+ },
+ "H_P": {
+  "sp2": false,
+  "su4": false,
+  "supported_both": false
+ },
+ "H_theta": {
+  "sp2": true,
+  "su4": true,
+  "supported_both": true
+ },
+ "H_reg": {
+  "sp2": false,
+  "su4": false,
+  "supported_both": false
+ },
+ "H_C": {
+  "sp2": false,
+  "su4": false,
+  "supported_both": false
+ },
+ "marginal_cells": {
+  "sp2": [
+   18.43
+  ],
+  "su4": [
+   45.0
+  ]
+ },
+ "F_side_scored": [
+  [
+   "sp2",
+   0.0,
+   [
+    0.5,
+    0.5,
+    0.25
+   ],
+   -1.0254505529716398,
+   true
+  ],
+  [
+   "sp2",
+   0.0,
+   [
+    0.5,
+    0.5,
+    0.75
+   ],
+   -0.8354187249648453,
+   true
+  ],
+  [
+   "sp2",
+   9.22,
+   [
+    0.5,
+    0.5,
+    0.25
+   ],
+   -0.7941440133808327,
+   true
+  ],
+  [
+   "sp2",
+   9.22,
+   [
+    0.5,
+    0.5,
+    0.75
+   ],
+   -0.6509340027958874,
+   true
+  ],
+  [
+   "sp2",
+   9.22,
+   [
+    0.5,
+    1.0,
+    1.0
+   ],
+   -1.2290329995974367,
+   true
+  ],
+  [
+   "sp2",
+   18.43,
+   [
+    0.5,
+    0.5,
+    0.75
+   ],
+   -1.0628092548424215,
+   true
+  ],
+  [
+   "su4",
+   9.22,
+   [
+    0.5,
+    0.5,
+    0.25
+   ],
+   -1.2597782002495552,
+   true
+  ],
+  [
+   "su4",
+   9.22,
+   [
+    0.5,
+    0.5,
+    0.75
+   ],
+   -1.1166424656679284,
+   true
+  ],
+  [
+   "sp2",
+   45.0,
+   [
+    0.5,
+    0.5,
+    0.25
+   ],
+   -0.6989299052805271,
+   true
+  ],
+  [
+   "sp2",
+   45.0,
+   [
+    0.5,
+    0.5,
+    0.75
+   ],
+   -1.1041803867954798,
+   true
+  ],
+  [
+   "su4",
+   0.0,
+   [
+    0.5,
+    0.5,
+    0.25
+   ],
+   -1.1472810380995122,
+   true
+  ],
+  [
+   "su4",
+   0.0,
+   [
+    0.5,
+    0.5,
+    0.75
+   ],
+   -1.0155782919090848,
+   true
+  ],
+  [
+   "su4",
+   45.0,
+   [
+    0.5,
+    0.5,
+    0.25
+   ],
+   -0.9473490130406005,
+   true
+  ]
+ ],
+ "F_side": true
+}

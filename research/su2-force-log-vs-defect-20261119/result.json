@@ -1,0 +1,32 @@
+{
+ "n=1": {
+  "defect": {
+   "relative_error": 0.3624699143432461
+  },
+  "log": {
+   "relative_error": 0.36257836550874645
+  },
+  "gradient_difference_rel": 0.0009045839632015917,
+  "seconds": 12.1
+ },
+ "n=2": {
+  "defect": {
+   "relative_error": 0.07427236288817392
+  },
+  "log": {
+   "relative_error": 0.07427137444092935
+  },
+  "gradient_difference_rel": 8.448337217912267e-05,
+  "seconds": 94.1
+ },
+ "n=3": {
+  "defect": {
+   "relative_error": 0.046883727693539885
+  },
+  "log": {
+   "relative_error": 0.0468827421739921
+  },
+  "gradient_difference_rel": 2.076960997765489e-05,
+  "seconds": 339.1
+ }
+}

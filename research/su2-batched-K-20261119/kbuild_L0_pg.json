@@ -1,0 +1,13 @@
+{
+ "level": 0,
+ "trial": "pg",
+ "dof": 426,
+ "nnz": 91188,
+ "file": "outputs/su2-batched-K/L0_pg_K.npz",
+ "sha256": "c53a76a538d5a98ee7de625548722dda7c46676c0b90da7f41c2b3a55960f30d",
+ "setup_seconds": 4.8,
+ "build_seconds": 5.0,
+ "metric": "g(0) = (3, 1, 1)",
+ "eps": 1e-06,
+ "kind": "B5 batched Jacobian (research script, not an engine run)"
+}

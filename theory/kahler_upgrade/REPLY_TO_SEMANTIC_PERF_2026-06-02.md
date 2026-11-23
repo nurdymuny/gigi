@@ -178,7 +178,7 @@ A single branch with:
   proving the second-call latency contract
 - Unit tests on the cache lifecycle: miss → hit → mutation →
   invalidate → recompute → hit again
-- README ship note + an entry in `BRAIN_PRIMITIVES_CONSUMER_GUIDE.md`
+- README ship note + an entry in `docs/reference/BRAIN_PRIMITIVES_CONSUMER_GUIDE.md`
   saying "SEMANTIC is now O(1) on repeat reads; first read after
   insert recomputes lazily."
 

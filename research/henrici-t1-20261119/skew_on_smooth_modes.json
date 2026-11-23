@@ -1,0 +1,62 @@
+{
+ "n=1": {
+  "near-zero |w|<1": {
+   "k": 60,
+   "skew_within_over_force_within": 0.6606557201527836,
+   "skew_total_over_force_total": 0.8549304376486238,
+   "force_leak_out_of_smooth": 0.9629275511284402
+  },
+  "physical 1<=|w|<=200": {
+   "k": 112,
+   "skew_within_over_force_within": 0.08139207258011857,
+   "skew_total_over_force_total": 0.3440711857175083,
+   "force_leak_out_of_smooth": 0.6475785529251862
+  },
+  "physical 1<=|w|<=60": {
+   "k": 17,
+   "skew_within_over_force_within": 0.03060268068660951,
+   "skew_total_over_force_total": 0.3702110915037523,
+   "force_leak_out_of_smooth": 0.6859465655564394
+  }
+ },
+ "n=2": {
+  "near-zero |w|<1": {
+   "k": 475,
+   "skew_within_over_force_within": 0.7340345235549178,
+   "skew_total_over_force_total": 1.0889175271457494,
+   "force_leak_out_of_smooth": 0.9217454779880588
+  },
+  "physical 1<=|w|<=200": {
+   "k": 109,
+   "skew_within_over_force_within": 0.021383300460076984,
+   "skew_total_over_force_total": 0.3179558387306046,
+   "force_leak_out_of_smooth": 0.5047913186209477
+  },
+  "physical 1<=|w|<=60": {
+   "k": 25,
+   "skew_within_over_force_within": 0.03500455959416681,
+   "skew_total_over_force_total": 0.43875449407280837,
+   "force_leak_out_of_smooth": 0.6125283648282975
+  }
+ },
+ "n=3": {
+  "near-zero |w|<1": {
+   "k": 1608,
+   "skew_within_over_force_within": 0.7405041679033123,
+   "skew_total_over_force_total": 1.2723794780890323,
+   "force_leak_out_of_smooth": 0.9027408882648918
+  },
+  "physical 1<=|w|<=200": {
+   "k": 113,
+   "skew_within_over_force_within": 0.010284271000454545,
+   "skew_total_over_force_total": 0.3349984229002411,
+   "force_leak_out_of_smooth": 0.5010908997543444
+  },
+  "physical 1<=|w|<=60": {
+   "k": 38,
+   "skew_within_over_force_within": 0.027325850779368426,
+   "skew_total_over_force_total": 0.47561988705404434,
+   "force_leak_out_of_smooth": 0.6420386542403668
+  }
+ }
+}

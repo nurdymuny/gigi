@@ -435,6 +435,18 @@ pub enum Statement {
         time: String,
         block: Option<usize>,
     },
+    /// `RECOVER_CURVATURE cells FROM edges ON field [RINGS n]` — the two-ring
+    /// closed linear curvature recovery of *Reading the Curve, Not Counting
+    /// the Points* (docs/papers/two-ring-pg). One row per mesh cell: the
+    /// recovered field `c + B z` in the cell's canonical chart, and the
+    /// amplification, condition and neighbourhood size the paper reports.
+    /// Executes only with the `gauge` feature; refuses by name otherwise.
+    RecoverCurvature {
+        cells: String,
+        edges: String,
+        field: String,
+        rings: Option<usize>,
+    },
     /// `SPECTRAL bundle [FULL [LIMIT k]]` — λ₁ of the normalized
     /// field-index-graph Laplacian (Scalar), or with FULL the whole
     /// normalized spectrum ascending (Rows; Phase 2, 2026-07-16).
@@ -779,6 +791,23 @@ pub enum Statement {
     HolonomyCycle {
         field: String,
         spec: CycleSpec,
+    },
+    /// Bounded numerical subgroup closure of supplied SU(2) generator edges.
+    MonodromyGroupOrder {
+        field: String,
+        edges: Vec<usize>,
+        commutator: bool,
+        cap: usize,
+        tolerance: f64,
+    },
+    RicciWilsonAudit { metric: [f64; 3], normalized: bool },
+    /// Smooth homogeneous three-sphere Ricci flow in a declared Milnor frame.
+    RicciFlow {
+        metric: [f64; 3],
+        time: f64,
+        steps: usize,
+        normalized: bool,
+        tolerance: f64,
     },
     // ── KL Divergence / Cross-bundle analytics ──
     Divergence {
@@ -2538,6 +2567,7 @@ impl Parser {
             "CURVATURE" => self.parse_curvature(),
             // Shape verbs (2026-08-09) — GQL twins of the REST routes.
             "TEXTURE" => self.parse_texture(),
+            "RECOVER_CURVATURE" => self.parse_recover_curvature(),
             "PRECEDENCE" => self.parse_precedence(),
             "CADENCE" => self.parse_cadence(),
             "SPECTRAL" => self.parse_spectral(),
@@ -2558,6 +2588,9 @@ impl Parser {
             // Lattice, not BundleStore); OBSTRUCTION operates on a bundle's
             // gauge field via the Chern_2 / c_1 sign per src/obstruction.rs.
             "PI_1" => self.parse_pi_1(),
+            "MONODROMY_GROUP_ORDER" => self.parse_monodromy_group_order(),
+            "RICCI_FLOW" => self.parse_ricci_flow(),
+            "RICCI_WILSON_AUDIT" => self.parse_ricci_wilson_audit(),
             "OBSTRUCTION" => self.parse_obstruction(),
             "ENTROPY" => self.parse_entropy(),
             "FREEENERGY" => self.parse_free_energy(),
@@ -3532,6 +3565,90 @@ impl Parser {
             all,
             #[cfg(feature = "patterns")]
             excluding,
+        })
+    }
+
+    fn parse_ricci_wilson_audit(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("SU2")?;
+        self.expect_keyword("METRIC")?;
+        self.expect(Token::LParen)?;
+        let a = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let b = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let c = self.expect_f64()?;
+        self.expect(Token::RParen)?;
+        let normalized = !self.at_end();
+        if normalized { self.expect_keyword("NORMALIZED")?; }
+        if !self.at_end() { return Err("RICCI_WILSON_AUDIT: unexpected or repeated option; only NORMALIZED is supported".into()); }
+        Ok(Statement::RicciWilsonAudit { metric: [a,b,c], normalized })
+    }
+
+    fn parse_ricci_flow(&mut self) -> Result<Statement, String> {
+        self.expect_keyword("SU2")?;
+        self.expect_keyword("METRIC")?;
+        self.expect(Token::LParen)?;
+        let a = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let b = self.expect_f64()?;
+        self.expect(Token::Comma)?;
+        let c = self.expect_f64()?;
+        self.expect(Token::RParen)?;
+        self.expect_keyword("TIME")?;
+        let time = self.expect_f64()?;
+        self.expect_keyword("STEPS")?;
+        let steps = self.expect_usize()?;
+        let (mut normalized, mut tolerance, mut seen_tol) = (false, 1e-8, false);
+        while !self.at_end() {
+            let option = self.expect_word()?.to_ascii_uppercase();
+            match option.as_str() {
+                "NORMALIZED" if !normalized => normalized = true,
+                "TOLERANCE" if !seen_tol => { tolerance = self.expect_f64()?; seen_tol = true; }
+                _ => return Err(format!("RICCI_FLOW: unknown/repeated option {option}; use NORMALIZED and TOLERANCE once each")),
+            }
+        }
+        Ok(Statement::RicciFlow { metric: [a,b,c], time, steps, normalized, tolerance })
+    }
+
+    fn parse_monodromy_group_order(&mut self) -> Result<Statement, String> {
+        let field = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        self.expect_keyword("EDGES")?;
+        self.expect(Token::LParen)?;
+        let mut edges = vec![self.expect_usize()?];
+        while matches!(self.peek(), Some(Token::Comma)) {
+            self.advance();
+            edges.push(self.expect_usize()?);
+            if edges.len() > 32 {
+                return Err("MONODROMY_GROUP_ORDER: at most 32 generator edges".into());
+            }
+        }
+        self.expect(Token::RParen)?;
+        let (mut commutator, mut cap, mut tolerance) = (false, 256, 1e-8);
+        let (mut cap_seen, mut tolerance_seen) = (false, false);
+        while !self.at_end() {
+            let option = self.expect_word()?.to_ascii_uppercase();
+            match option.as_str() {
+                "COMMUTATOR" if !commutator => commutator = true,
+                "CAP" if !cap_seen => {
+                    cap = self.expect_usize()?;
+                    cap_seen = true;
+                    if !(1..=256).contains(&cap) {
+                        return Err("MONODROMY_GROUP_ORDER: CAP must be in 1..256".into());
+                    }
+                }
+                "TOLERANCE" if !tolerance_seen => {
+                    tolerance = self.expect_f64()?;
+                    tolerance_seen = true;
+                    if !tolerance.is_finite() || !(1e-12..=1e-6).contains(&tolerance) {
+                        return Err("MONODROMY_GROUP_ORDER: TOLERANCE must be finite in [1e-12,1e-6]".into());
+                    }
+                }
+                _ => return Err(format!("MONODROMY_GROUP_ORDER: unknown or repeated option {option}; use COMMUTATOR, CAP, TOLERANCE once each")),
+            }
+        }
+        Ok(Statement::MonodromyGroupOrder {
+            field, edges, commutator, cap, tolerance,
         })
     }
 
@@ -5824,6 +5941,22 @@ impl Parser {
             }
         }
         Ok(Statement::Texture { bundle, field, along, q, min_lag, max_lag })
+    }
+
+    /// `RECOVER_CURVATURE cells FROM edges ON field [RINGS n]`
+    fn parse_recover_curvature(&mut self) -> Result<Statement, String> {
+        let cells = self.expect_word()?;
+        self.expect_keyword("FROM")?;
+        let edges = self.expect_word()?;
+        self.expect_keyword("ON")?;
+        let field = self.expect_word()?;
+        let rings = if self.is_keyword("RINGS") {
+            self.advance();
+            Some(self.expect_usize()?)
+        } else {
+            None
+        };
+        Ok(Statement::RecoverCurvature { cells, edges, field, rings })
     }
 
     /// `PRECEDENCE bundle ON x, y [ALONG order]` — exactly two fields, because
@@ -10753,8 +10886,63 @@ pub fn shape_verb_exec(
                 Ok(ExecResult::Rows(vec![row]))
             })())
         }
+        Statement::RecoverCurvature { cells, edges, field, rings } => {
+            Some(recover_curvature_rows(engine, cells, edges, field, rings.unwrap_or(2)))
+        }
         _ => None,
     }
+}
+
+/// RECOVER_CURVATURE as GQL rows: one row per cell, in cell order.
+#[cfg(feature = "gauge")]
+fn recover_curvature_rows(
+    engine: &crate::engine::Engine,
+    cells: &str,
+    edges: &str,
+    field: &str,
+    rings: usize,
+) -> Result<ExecResult, String> {
+    use crate::types::Value as V;
+    let out = crate::gauge::curvature_recovery::recover_curvature_from_bundles(
+        engine, cells, edges, field, rings,
+    )
+    .map_err(|e| e.to_string())?;
+    let rows = out
+        .iter()
+        .enumerate()
+        .map(|(ci, r)| {
+            let mut row = crate::types::Record::new();
+            row.insert("cell".into(), V::Float(ci as f64));
+            for i in 0..3 {
+                row.insert(format!("c{i}"), V::Float(r.c[i]));
+                for j in 0..3 {
+                    row.insert(format!("b{i}{j}"), V::Float(r.b[i][j]));
+                }
+            }
+            row.insert("amplification".into(), V::Float(r.amplification));
+            row.insert("condition".into(), V::Float(r.condition));
+            row.insert("rank".into(), V::Float(r.rank as f64));
+            row.insert("faces".into(), V::Float(r.faces as f64));
+            row.insert("cells".into(), V::Float(r.cells as f64));
+            row.insert("residual".into(), V::Float(r.residual));
+            row.insert("own_residual".into(), V::Float(r.own_residual));
+            row
+        })
+        .collect();
+    Ok(ExecResult::Rows(rows))
+}
+
+#[cfg(not(feature = "gauge"))]
+fn recover_curvature_rows(
+    _engine: &crate::engine::Engine,
+    _cells: &str,
+    _edges: &str,
+    _field: &str,
+    _rings: usize,
+) -> Result<ExecResult, String> {
+    Err("RECOVER_CURVATURE requires the `gauge` feature, which this build does not \
+         enable — nothing was executed"
+        .to_string())
 }
 
 pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<ExecResult, String> {
@@ -11672,7 +11860,8 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         // a READ lock on the engine when it dispatches, so anything needing
         // `&mut` there deadlocks. Sharing one `&Engine` helper keeps a single
         // implementation and makes the lock discipline impossible to get wrong.
-        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. } => {
+        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
+        | Statement::RecoverCurvature { .. } => {
             shape_verb_exec(engine, stmt)
                 .expect("shape verb matched here must be handled by shape_verb_exec")
         }
@@ -14333,6 +14522,22 @@ pub fn execute(engine: &mut crate::engine::Engine, stmt: &Statement) -> Result<E
         Statement::HolonomyCycle { field, spec } => {
             crate::holonomy_cycle::execute_holonomy_cycle(field, spec)
         }
+        #[cfg(feature = "gauge")]
+        Statement::MonodromyGroupOrder { field, edges, commutator, cap, tolerance } => {
+            crate::monodromy::execute_monodromy_group_order(field, edges, *commutator, *cap, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::MonodromyGroupOrder { .. } => Err("MONODROMY_GROUP_ORDER requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciFlow { metric, time, steps, normalized, tolerance } => {
+            crate::ricci_flow::execute_ricci_flow(*metric, *time, *steps, *normalized, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciFlow { .. } => Err("RICCI_FLOW requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciWilsonAudit { metric, normalized } => crate::ricci_wilson::execute_ricci_wilson_audit(*metric, *normalized),
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciWilsonAudit { .. } => Err("RICCI_WILSON_AUDIT requires the `gauge` feature".into()),
         #[cfg(not(feature = "gauge"))]
         Statement::HolonomyCycle { .. } => Err(
             "HOLONOMY AROUND CYCLE requires the `gauge` feature to be enabled".to_string()

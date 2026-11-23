@@ -1,0 +1,5 @@
+t in (t_A, 2.75] (60 points), j <= 40: violations 0; smallest margin 8.621e-06 at (t, j) = (2.731123, 4)
+t = 2.731022: sectors with an eigenvalue of H + GG* below lambda_t(j): [4]
+t = 2.730122: sectors with an eigenvalue of H + GG* below lambda_t(j): [4]
+t = 2.720000: sectors with an eigenvalue of H + GG* below lambda_t(j): [4]
+t = 2.700000: sectors with an eigenvalue of H + GG* below lambda_t(j): [4]

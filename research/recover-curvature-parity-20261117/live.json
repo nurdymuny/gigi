@@ -1,0 +1,47 @@
+{
+  "kind": "live gigi-stream run of RECOVER_CURVATURE",
+  "base_url": "http://127.0.0.1:3143",
+  "mesh": "paper level 0 (n = 1)",
+  "checks": {
+    "rest_two_ring": {
+      "status": 200,
+      "n_cells": 120,
+      "coef_rel_max": 2.248201624865942e-15,
+      "amplification_rel_max": 2.6814085573926406e-15,
+      "faces": [
+        40,
+        40
+      ],
+      "amplification_median": 30.52928655048998
+    },
+    "gql_one_ring": {
+      "status": 200,
+      "rows": 120,
+      "faces": [
+        16
+      ]
+    },
+    "gql_default_matches_rest": {
+      "status": 200,
+      "max_amplification_diff": 0.0
+    },
+    "refusals": {
+      "unknown_key": {
+        "status": 422,
+        "body": "{'error': 'Failed to deserialize the JSON body into the target type: ring: unknown field `ring`, expected one of `edges`, `field`, `rings` at line 1 column 42'}"
+      },
+      "missing_bundle": {
+        "status": 404,
+        "body": "{'error': \"Bundle 'no_such' not found\"}"
+      },
+      "missing_field": {
+        "status": 422,
+        "body": "{'error': \"RECOVER_CURVATURE: edge record lacks a finite numeric field 'zz'\"}"
+      },
+      "rings_out_of_range": {
+        "status": 422,
+        "body": "{'error': 'RECOVER_CURVATURE: RINGS must be in 1..=3 (got 9)'}"
+      }
+    }
+  }
+}

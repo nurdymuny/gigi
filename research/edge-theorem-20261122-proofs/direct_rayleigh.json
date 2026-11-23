@@ -1,0 +1,290 @@
+{
+ "script": "scripts/ricci_su2_direct_rayleigh.py",
+ "JMAX": 6,
+ "status": "exact symbolic (sympy)",
+ "rows": [
+  {
+   "j": 0,
+   "twist_states_(v_index,s)": [
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     -1
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     -1
+    ]
+   ],
+   "twist_used": {
+    "v_index": 0,
+    "rho0_weight_Jz": "0",
+    "s": 1
+   },
+   "moments_match_degree2_formulas": true,
+   "e_minus_RQ_minus_lambda": "x*(-4*s - 8/s) + 4*y**2",
+   "e_0_RQ_minus_lambda": "-x**2 + x*(-2*s - 4/s) + 3*y**2",
+   "e_minus_matches_Thm_xpos_item1": true,
+   "e_0_matches_Thm_xpos_item2": true,
+   "e_minus_type_(frame,gauge)": [
+    1,
+    -1
+   ],
+   "e_0_type_(frame,gauge)": [
+    1,
+    0
+   ],
+   "|G^* e_-|^2": "y**2",
+   "theta0_tau0_RQ": "4*s**2 + 2*y**2",
+   "theta0_tau0_RQ_equals_4t+2y^2": true,
+   "theta0_tau0_Gstar_zero": true
+  },
+  {
+   "j": 1,
+   "twist_states_(v_index,s)": [
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     -1
+    ]
+   ],
+   "twist_used": {
+    "v_index": 0,
+    "rho0_weight_Jz": "1/2",
+    "s": 1
+   },
+   "moments_match_degree2_formulas": true,
+   "e_minus_RQ_minus_lambda": "x*(-4*s - 12/s) + 4*y**2",
+   "e_0_RQ_minus_lambda": "-x**2 + x*(-2*s - 6/s) + 3*y**2",
+   "e_minus_matches_Thm_xpos_item1": true,
+   "e_0_matches_Thm_xpos_item2": true,
+   "e_minus_type_(frame,gauge)": [
+    1,
+    -1
+   ],
+   "e_0_type_(frame,gauge)": [
+    1,
+    0
+   ],
+   "|G^* e_-|^2": "y**2"
+  },
+  {
+   "j": 2,
+   "twist_states_(v_index,s)": [
+    [
+     0,
+     1
+    ],
+    [
+     2,
+     -1
+    ]
+   ],
+   "twist_used": {
+    "v_index": 0,
+    "rho0_weight_Jz": "1",
+    "s": 1
+   },
+   "moments_match_degree2_formulas": true,
+   "e_minus_RQ_minus_lambda": "x*(-4*s - 16/s) + 4*y**2",
+   "e_0_RQ_minus_lambda": "-x**2 + x*(-2*s - 8/s) + 3*y**2",
+   "e_minus_matches_Thm_xpos_item1": true,
+   "e_0_matches_Thm_xpos_item2": true,
+   "e_minus_type_(frame,gauge)": [
+    1,
+    -1
+   ],
+   "e_0_type_(frame,gauge)": [
+    1,
+    0
+   ],
+   "|G^* e_-|^2": "y**2"
+  },
+  {
+   "j": 3,
+   "twist_states_(v_index,s)": [
+    [
+     0,
+     1
+    ],
+    [
+     3,
+     -1
+    ]
+   ],
+   "twist_used": {
+    "v_index": 0,
+    "rho0_weight_Jz": "3/2",
+    "s": 1
+   },
+   "moments_match_degree2_formulas": true,
+   "e_minus_RQ_minus_lambda": "x*(-4*s - 20/s) + 4*y**2",
+   "e_0_RQ_minus_lambda": "-x**2 + x*(-2*s - 10/s) + 3*y**2",
+   "e_minus_matches_Thm_xpos_item1": true,
+   "e_0_matches_Thm_xpos_item2": true,
+   "e_minus_type_(frame,gauge)": [
+    1,
+    -1
+   ],
+   "e_0_type_(frame,gauge)": [
+    1,
+    0
+   ],
+   "|G^* e_-|^2": "y**2"
+  },
+  {
+   "j": 4,
+   "twist_states_(v_index,s)": [
+    [
+     0,
+     1
+    ],
+    [
+     4,
+     -1
+    ]
+   ],
+   "twist_used": {
+    "v_index": 0,
+    "rho0_weight_Jz": "2",
+    "s": 1
+   },
+   "moments_match_degree2_formulas": true,
+   "e_minus_RQ_minus_lambda": "x*(-4*s - 24/s) + 4*y**2",
+   "e_0_RQ_minus_lambda": "-x**2 + x*(-2*s - 12/s) + 3*y**2",
+   "e_minus_matches_Thm_xpos_item1": true,
+   "e_0_matches_Thm_xpos_item2": true,
+   "e_minus_type_(frame,gauge)": [
+    1,
+    -1
+   ],
+   "e_0_type_(frame,gauge)": [
+    1,
+    0
+   ],
+   "|G^* e_-|^2": "y**2"
+  },
+  {
+   "j": 5,
+   "twist_states_(v_index,s)": [
+    [
+     0,
+     1
+    ],
+    [
+     5,
+     -1
+    ]
+   ],
+   "twist_used": {
+    "v_index": 0,
+    "rho0_weight_Jz": "5/2",
+    "s": 1
+   },
+   "moments_match_degree2_formulas": true,
+   "e_minus_RQ_minus_lambda": "x*(-4*s - 28/s) + 4*y**2",
+   "e_0_RQ_minus_lambda": "-x**2 + x*(-2*s - 14/s) + 3*y**2",
+   "e_minus_matches_Thm_xpos_item1": true,
+   "e_0_matches_Thm_xpos_item2": true,
+   "e_minus_type_(frame,gauge)": [
+    1,
+    -1
+   ],
+   "e_0_type_(frame,gauge)": [
+    1,
+    0
+   ],
+   "|G^* e_-|^2": "y**2"
+  },
+  {
+   "j": 6,
+   "twist_states_(v_index,s)": [
+    [
+     0,
+     1
+    ],
+    [
+     6,
+     -1
+    ]
+   ],
+   "twist_used": {
+    "v_index": 0,
+    "rho0_weight_Jz": "3",
+    "s": 1
+   },
+   "moments_match_degree2_formulas": true,
+   "e_minus_RQ_minus_lambda": "x*(-4*s - 32/s) + 4*y**2",
+   "e_0_RQ_minus_lambda": "-x**2 + x*(-2*s - 16/s) + 3*y**2",
+   "e_minus_matches_Thm_xpos_item1": true,
+   "e_0_matches_Thm_xpos_item2": true,
+   "e_minus_type_(frame,gauge)": [
+    1,
+    -1
+   ],
+   "e_0_type_(frame,gauge)": [
+    1,
+    0
+   ],
+   "|G^* e_-|^2": "y**2"
+  }
+ ],
+ "distinct_l_values_checked": 7,
+ "all_exact_checks_pass": true,
+ "numpy_spin_rep_crosscheck": {
+  "points": [
+   {
+    "x": 0.37,
+    "y": 1.3,
+    "t": 2.7,
+    "j": 6,
+    "e_minus_RQ_minus_lambda": -2.8774826896131067,
+    "formula1": -2.877482689613121,
+    "e_0_RQ_minus_lambda": 0.11435865519346322,
+    "formula2": 0.11435865519343924
+   },
+   {
+    "x": -1.2,
+    "y": 0.8,
+    "t": 5.0,
+    "j": 5,
+    "e_minus_RQ_minus_lambda": 28.319503100797572,
+    "formula1": 28.319503100797576,
+    "e_0_RQ_minus_lambda": 13.35975155039879,
+    "formula2": 13.359751550398789
+   },
+   {
+    "x": 0.1,
+    "y": 3.1622776601683795,
+    "t": 10.0,
+    "j": 40,
+    "e_minus_RQ_minus_lambda": 33.422462466849794,
+    "formula1": 33.42246246684978,
+    "e_0_RQ_minus_lambda": 26.70123123342495,
+    "formula2": 26.701231233424892
+   },
+   {
+    "x": 0.5,
+    "y": 0.5,
+    "t": 4.0,
+    "j": 11,
+    "e_minus_RQ_minus_lambda": -16.000000000000036,
+    "formula1": -16.0,
+    "e_0_RQ_minus_lambda": -8.000000000000021,
+    "formula2": -8.0
+   }
+  ],
+  "max_abs_dev": 5.684341886080802e-14,
+  "status": "double precision"
+ }
+}

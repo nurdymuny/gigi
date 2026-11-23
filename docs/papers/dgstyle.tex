@@ -1,0 +1,57 @@
+% Davis Geometric house style, shared by the papers in docs/papers/.
+% Loaded with \input{../dgstyle} after amsmath and amsthm (do not load amssymb: newpxmath provides it).
+% Needs (TeX Live): newpx, titlesec, caption, fancyhdr, microtype, xcolor, enumitem.
+\usepackage[T1]{fontenc}
+\usepackage{newpxtext}
+\usepackage[slantedGreek]{newpxmath}
+\renewcommand{\ttdefault}{lmtt}  % Latin Modern typewriter for code and paths
+\linespread{1.06}
+\usepackage[final]{microtype}
+\usepackage{xcolor}
+\definecolor{dgink}{HTML}{1F2328}
+\definecolor{dgmuted}{HTML}{5A5F66}
+\definecolor{dgrule}{HTML}{C9CDD2}
+\definecolor{dgchord}{HTML}{2A78D6}
+\definecolor{dgarc}{HTML}{1BAF7A}
+\definecolor{dgtan}{HTML}{EB6834}
+\definecolor{dgblend}{HTML}{6250D6}
+% headings: numbered small caps, quiet rules of space rather than ink
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\large\scshape\color{dgink}}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\itshape\color{dgink}}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}[runin]{\normalfont\normalsize\itshape}{\thesubsubsection}{0.6em}{}[.]
+\titleformat{\paragraph}[runin]{\normalfont\normalsize\scshape}{}{0pt}{}  % sources end paragraph titles with their own stop
+\titlespacing*{\section}{0pt}{2.4ex plus 0.6ex minus 0.3ex}{1.1ex plus 0.2ex}
+\titlespacing*{\subsection}{0pt}{1.8ex plus 0.5ex minus 0.2ex}{0.7ex plus 0.2ex}
+\titlespacing*{\paragraph}{0pt}{1.2ex plus 0.4ex minus 0.2ex}{0.6em}
+% captions: small, label in small caps, ragged
+\usepackage[font=small,labelfont=sc,labelsep=period,justification=justified,margin=4pt]{caption}
+% running heads
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\small\scshape\color{dgmuted}\dgauthorshort}
+\fancyhead[R]{\small\itshape\color{dgmuted}\dgshorttitle}
+\fancyfoot[C]{\small\color{dgmuted}\thepage}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\small\color{dgmuted}\thepage}}
+\setlength{\headheight}{14pt}
+% title block
+\makeatletter
+\renewcommand{\maketitle}{%
+  \thispagestyle{plain}%
+  \begin{center}
+    {\LARGE\color{dgink}\@title\par}\vspace{1.1em}
+    {\large\scshape\@author\par}\vspace{0.5em}
+    {\small\color{dgmuted}\@date\par}
+  \end{center}\vspace{0.6em}}
+\renewenvironment{abstract}{%
+  \begin{list}{}{\setlength{\leftmargin}{2.2em}\setlength{\rightmargin}{2.2em}}\item\relax
+  \small\noindent{\scshape Abstract.}\enspace}{\end{list}\vspace{0.4em}}
+\makeatother
+\usepackage{enumitem}
+\setlist{itemsep=0.25ex, topsep=0.6ex}
+% "In plain words": a quiet ruled aside
+\newenvironment{plain}{%
+  \par\smallskip\begin{list}{}{\setlength{\leftmargin}{1.4em}\setlength{\rightmargin}{1.4em}}\item\relax
+  \small\color{dgink}\noindent{\scshape In plain words.}\enspace}{\end{list}\smallskip}

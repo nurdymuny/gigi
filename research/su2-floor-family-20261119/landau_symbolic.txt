@@ -1,0 +1,6 @@
+(rho_1 + i rho_2) f coefficient: 0
+(Omega_1 + i Omega_2) beta = [0, 0, 0, 0, 0, 0, 0, 0, 0]  -> zero: True
+Omega_0 beta - i(2t-4)/sqrt(t) beta = [0, 0, 0, 0, 0, 0, 0, 0, 0]  -> zero: True
+hence X_+ b = 0 and X_0 b = i kappa b with kappa = (-j + 2*t - 4)/sqrt(t) = (2t - 4 - j)/sqrt(t), for all j >= 0, t > 0
+R0(t) beta - (12 - 8t) beta = [0, 0, 0, 0, 0, 0, 0, 0, 0]  -> zero: True
+hence the split: fibre |X_0 b|^2 = kappa^2, curvature <b, R0 b> = 12 - 8t, base = lambda - kappa^2 - (12 - 8t) = 2*(j + t)

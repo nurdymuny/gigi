@@ -1,0 +1,647 @@
+{
+ "reviews": [
+  {
+   "findings": [
+    {
+     "id": "S4-1",
+     "location": "Sec. 4.1, Table 1 caption (lines 401-403) and lines 419-421",
+     "quote": "Every positive entry is an artefact of the cut-off $j\\le12$ (Section~\\ref{sec:interval}). ... That is an artefact of the cut-off: Section~\\ref{sec:interval} proves that for $x>0$ high sectors undercut the twist.",
+     "problem": "Overclaim. The table has positive entries in the gauge-orthogonal column too: x*_S = +0.008031 (t=6, y=sqrt6), +0.040169 (t=8, y=1.5), +0.138269 (t=8, y=sqrt8). Theorem 5.1 (thm:xpos) is proved only for H+GG*. Section 5 itself says (around line 656): 'The states e_- and e_0 are not shown to be gauge-orthogonal, so for the gauge-orthogonal spectrum the same conclusion is supported by the computations below but not proved.' So for the S entries 'artefact' is computed, not proved, and 'Section 5 proves' is too broad.",
+     "evidence": "exact_edge.json: edge_S values +0.008031056 (t=6, sqrt_t), +0.040168934 (t=8, 1.5), +0.138269088 (t=8, sqrt_t). paper.tex around lines 656-657 limits Theorem 5.1 to H+GG*.",
+     "severity": "minor",
+     "fix": "Caption: 'Every positive x*_A entry is an artefact of the cut-off (proved, Theorem 5.1); the positive x*_S entries are artefacts by computation (Section 5).' Make the same split at lines 420-421: 'Section 5 proves this for H+GG* and supports it numerically for the gauge-orthogonal spectrum.'"
+    },
+    {
+     "id": "S4-2",
+     "location": "Sec. 4.3, lines 473-475",
+     "quote": "while the scale-free residual of $P_1$ there is at least $2.7\\times10^{-3}$, and at ten sample points the nearest root of $P_1$ is $0.36$--$0.55$ away (computed)",
+     "problem": "Both numbers are slightly off. (a) The receipt's minimum is 2.6586e-3, so 'at least 2.7e-3' is false after rounding up. (b) The range 0.36-0.55 comes from ten hand-picked points. It is reported only in workflow_reports.json, not in a receipt file. Over all 77 B_{4,0} grid edges, the nearest root of P_1 lies 0.13 to 0.67 from the edge. The closest is 0.132 at (t,y)=(2,1.75); others are 0.206 at (2,1.5) and 0.250 at (3,2). The quoted range overstates how far P_1 sits from the edge.",
+     "evidence": "wp1_poly_check_final.json per_block_summary['(4, 0.0)'].min_residual_other_factors = 0.0026586120246050045. I recomputed numpy roots in x of P_1(x,y,sqrt t) at all 77 B_{4,0} rows: nearest-root distance min 0.1317 at t=2, y=1.75, edge -0.69444; max 0.6741. The 0.6741 matches the receipt's max_|root-edge| for P_1 in wp1_block_polynomials.json. The 0.36-0.55 figure appears only at workflow_reports.json:761.",
+     "severity": "minor",
+     "fix": "Write 'at least 2.6x10^-3' (or '2.66x10^-3'). Replace the ten-point range with the full one: 'at all 77 grid edges the nearest root of P_1 is 0.13-0.67 away (closest at (t,y)=(2,1.75))', and cite wp1_poly_check_final.json or a reproducible script."
+    },
+    {
+     "id": "S4-3",
+     "location": "Sec. 4.2, lines 443-444",
+     "quote": "The function $\\lambda_{\\min}(B_{4,0})-\\lambda(x,y,t,4)$ is strictly decreasing on $x\\in[-3,3]$ at all $48$ pairs $(t,y)$ tested",
+     "problem": "Two problems. (a) Only 47 of the 48 pairs are distinct: the grid y in {0.5,1,1.5,2,sqrt t,3} at t=4 lists y=2 twice (sqrt 4 = 2), and the receipt has two identical rows. (b) 'Strictly decreasing on [-3,3]' was checked only as negative first differences on a 241-point grid, not on the interval.",
+     "evidence": "twist_anatomy.json Q3_rows has two entries {'t': 4, 'y': 2.0, max_diff -0.1561408095378809}. scripts/ricci_su2_twist_anatomy.py lines 132-136: xs = np.linspace(-3, 3, 241); mono = (np.diff(phi) < 0).all().",
+     "severity": "minor",
+     "fix": "Write '... has negative first differences on a 241-point grid of [-3,3] at all 47 distinct pairs (t,y) tested'."
+    },
+    {
+     "id": "S4-4",
+     "location": "Sec. 4.4, Prop. 4.3 (line 494) and lines 503-505",
+     "quote": "$t_A=2.7311222782381135$ ... which is $t_A$ to $9\\times10^{-16}$. The gauge-orthogonal edge is crossed at $t=2.6980269405211303$, which is $t^*=2.6980269405200263$ to $1.1\\times10^{-12}$.",
+     "problem": "False precision, in two places. (a) The largest root of Q_16 is t_A = 2.73112227823811362312..., so the 16-decimal value ends ...1136, not ...1135. The printed value is the nearest double, not the rounded exact value, and the crossing is 7.8e-16 from the exact t_A. (b) t* is not a known value. It is the midpoint of a 40-step double-precision bisection (scripts/ricci_su2_floor_family_scan.py) whose decision rule uses the offset 'slice_ev < lam - 1e-11'. Quoting it to 17 digits and saying the crossing equals it 'to 1.1e-12' compares two numerical estimates at about the bias of that rule. The Floor paper itself gives only t* ~ 2.6980 (located by bisection).",
+     "evidence": "Exact real-root isolation of Q16 (sympy count_roots/intervals): one root in [1.65261,1.65262], none above 1.6527; s^2 = 2.731122278238113623125 (60-digit nroots). scan.json threshold_t_star_first_sector_j4 = 2.6980269405200263, computed with lo,hi=2.65,2.7, 40 halvings and a -1e-11 offset (lines 37-41). berger-spectrum/paper.tex line 574: 't^*\\approx2.6980 (located by bisection)'.",
+     "severity": "minor",
+     "fix": "Give t_A = 2.73112227823811362... (exact algebraic, largest root of Q_16). Give t* as a computed value, e.g. 't^* = 2.69802694052 (double-precision bisection)', and say the two independent double-precision locations agree to about 1e-12."
+    },
+    {
+     "id": "S4-5",
+     "location": "Sec. 3 proof of Prop. 3.4 (lines 353-355) and Sec. 4.6 (lines 585-589, 597-601)",
+     "quote": "Item (4) and the Berger slice of (6) are also proved in Lean~4 (\\texttt{price\\_anatomy}, \\texttt{kappa\\_berger}, \\texttt{fieldCurv\\_berger}, \\texttt{price\\_berger}; ...)",
+     "problem": "The Lean coverage is overstated. In Price.lean, kappa and fieldCurv are defined as explicit formulas, (s^2-2)/s - x - j/s and y^2 - 2 s x. price_anatomy is therefore an algebraic identity between those formulas. Lean does not show that kappa is the X_0-eigenvalue of b, that B is the field strength F_12, or that the Ricci share is 4-2t. Those identifications are the content of items (1) and (3). Item (6) also claims 'the gauge part of kappa equals the frame part', which has no Lean theorem. The transverse term 2(j+t) and curvature term 12-8t are not stated separately either; they follow trivially from fieldCurv_berger. The 'What Lean does not check' paragraph lists only that price is an eigenvalue, not these identifications.",
+     "evidence": "Price.lean: 'noncomputable def kappa (x s j : \u211d) : \u211d := (s ^ 2 - 2) / s - x - j / s', 'def fieldCurv (x y s : \u211d) : \u211d := y ^ 2 - 2 * s * x'. The only Berger-slice theorems are kappa_berger, fieldCurv_berger and price_berger. twist_anatomy.json part1_exact holds the sympy proofs of the operator identifications (P1_Omega0_beta_eigen, P3_F_12_equals_B_e0, P3_R0_beta_eigen_Ricperp_minus_2B), which Lean does not cover.",
+     "severity": "minor",
+     "fix": "Write: 'The algebraic identity of item (4), with kappa and B given by their formulas, and the values of kappa, B and lambda on the Berger slice, are also proved in Lean.' Add to 'What Lean does not check': 'that kappa and B are the fibre eigenvalue and field strength of items (1) and (3), and the gauge/frame split of item (6)'."
+    },
+    {
+     "id": "S4-6",
+     "location": "Sec. 4.4, proof of Prop. 4.3 (lines 497-498); Sec. 4.3 Prop. 4.2 statement (line 451)",
+     "quote": "Exact polynomial division with zero remainder (\\path{scripts/ricci_su2_edge_polynomial.py}, receipt \\path{edge_polynomial.txt}).",
+     "problem": "The cited receipt is weaker than the claim. (a) The script only checks that Q_16 divides the restricted numerator of P_2. The receipt line reads 'Berger restriction contains the degree-16 factor of t_A: True', and the cofactor -32(s-1)(s+1) appears in no receipt; it is established only in Lean (edgeFactor_berger) and by my recomputation. (b) Prop. 4.2 defines P as 'the numerator' of the determinant. That fixes P only up to a rational constant, so the stated constant -16384 depends on an unstated normalisation. The receipt pipeline actually computes det(s^2 (B_{4,0} - lambda_4 I)), whose content is -16384.",
+     "evidence": "ricci_su2_edge_polynomial.py lines 94-104: q, rem = sp.div(Poly(num,s), Poly(deg16,s)); only the boolean is printed. wp1_block_polynomials.json 'j=4,q=0': content '-16384'; method 'det(s\u00b2(B \u2212 \u03bb_j I))'. I recomputed: expand(P2((2-s^2)/s,s,s) + 32(s-1)(s+1)Q16) = 0.",
+     "severity": "minor",
+     "fix": "Define P := det(s^2(B_{4,0}(x,y,s^2) - lambda(x,y,s^2,4) I)), a polynomial in Z[x,y,s]. For Prop. 4.3, cite Lean edgeFactor_berger, or add the full cofactor identity to the receipt."
+    }
+   ],
+   "checked_ok": [
+    "Prop 4.2 recomputed from edge_polynomial.srepr in sympy. P has 473 terms, integer coefficients, degrees (12,14,28) and total degree 32. expand(P + 16384*P1*P2) = 0. factor_list shows P1 and P2 irreducible over Q, each of multiplicity 1. P1 has 61 terms, degrees (5,6,12), total 14; P2 has 113 terms, degrees (7,8,16), total 18. Both are even in y. The printed leading terms of P1 and P2 match the receipt exactly.",
+    "Prop 4.3 recomputed: P2((2-s^2)/s, s, s) = -32(s-1)(s+1)Q16(s) exactly. The Q16 coefficients match the Floor paper's Remark 'Below the range'. P1 on the Berger path = 8*(3s^6+10s^4-68s^2+64)(s^8+19s^6+16s^4-256s^2+256). This matches the Floor paper's det factorisation in tstar_exact.txt, so the two receipts are consistent.",
+    "Q16 by exact Sturm counting: exactly one root in [1.65261,1.65262] and none above 1.6527, so the Lean bracket isolates the largest root, t_A. Q16(1.65261) < 0 < Q16(1.65262) checked in exact rationals. 1.65261^2 and 1.65262^2 lie in [2.73111, 2.73116].",
+    "The Lean statements match the paper's descriptions. Helike/Edge.lean has 4 theorems and Price.lean has 12, sixteen in total, matching the Axioms.lean #print list. edgeDet_factor, edgeFactor_berger (with hs: s \u2260 0), tA_poly_root (by IVT) and berger_crosses_edge are as the paper says. floorLaw = (j^2+(8-2t)j-2t^2-4t+16)/t. floorLaw_cutoff is stated for t \u2265 4/3. floorLaw_three_sector0 = -14/3 and floorLaw_three_sector12 = 154/3. Toolchain is v4.36.0. The 18254/18256 jobs and 231 s figures match RESULTS.md.",
+    "Lean polynomials compared with the receipts in sympy. edgeDet, the sum of 10 parts with term counts 48x9 + 41 = 473, equals edge_polynomial.srepr exactly. Lean edgeP1 and edgeP2 equal P1 and P2 of edge_polynomial.txt exactly.",
+    "Table 1: all 30 printed edge values (15 cells, x*_A / x*_S each) match exact_edge.json to 6 decimals. The S-A gaps at t=3 are 0.027 and 0.020 as stated, and x*_S > x*_A at all 27 receipt rows. The S edges agree with test6 at its 21 points with max |diff| 2.99e-5 < 3e-5. The competitors (3,1/2) at t=2, y=0.5 and (2,-1) at t=3, y=0.5 match. B_{4,0} is the competitor in every y\u22651.5 and y=sqrt t row.",
+    "Berger crossings: the receipt has the crossing t = 2.7311222782381144 against t_A_exact 2.7311222782381135 (diff 8.88e-16), the S crossing 2.6980269405211303 against t* (diff 1.104e-12), and competitor (4,0) / sector 4.",
+    "Competitor table (Sec 4.2) matches twist_anatomy.json: m=\u00b12 weights 2x0.3122 = 0.62, 0.656, 0.733; competitor slopes -1.561, -0.623, +1.684. I recomputed the twist slopes 9.741, 9.620, 10.179 analytically from d(lambda)/dx = 2(x+6/sqrt t)+2 sqrt t. The Berger point x = (2-t*)/sqrt t* = -0.42496 and y = 1.64257 check. The operator-norm route closes at 21/27 edges and fails exactly at the six y=sqrt t, t\u22654 points.",
+    "Table 2 and Sec 4.5 against wp1_competitor_map.md and wp1_block_polynomials.json. I counted the grid-edge counts per block from the map: 77/6/20/4/15/2/1/7, summing to 132. Sizes, fields of entries, factor degrees, term counts and max |root-edge| all match the receipt. The single sign change on the 401-point scan, phi_A(-3) \u2265 1.43, the runner-up gap 0.0053 at (2,0.75), all switch locations quoted, and the unlocated (12,6)\u2192(2,1) boundary match.",
+    "Irreducibility over Q re-run on all eight edge factors from the receipt, not only the four the paper names: (1,3/2), (2,2), (12,7), (2,1), (12,6), (1,1/2) and the 400-term (3,1/2) are each a single irreducible factor, and P2 was factored above. All are even in y. The printed B_{1,3/2} edge factor (26 terms) equals the receipt polynomial exactly.",
+    "The near-top family membership claim (six of eight blocks in the families q=l+1 and q=l; only (4,0) and (3,1/2) sporadic) is consistent with the (j,q) labels and with wp1_competitor_map.md section 4.",
+    "The withdrawal of 'largest real root of P2' at lines 476-481 is consistent with wp4_prereg_A_heldout.md lines 170-191: three or four further real roots, from about 0.55 to 3.5."
+   ]
+  },
+  {
+   "findings": [
+    {
+     "id": "F1",
+     "location": "Sec 2.1 Conventions, paper.tex l.161-163 (also inherited from berger-spectrum/paper.tex l.144)",
+     "quote": "$M_i$ constant in $\\su$, which has the basis $\\tau_0,\\tau_1,\\tau_2$ with the same brackets, $\\tau_0$ along the long axis.",
+     "problem": "The stated Lie-algebra convention, [tau_a,tau_b]=2 eps_abc tau_c (the frame's brackets), contradicts every formula in the paper. The code, and so all the closed forms, use [tau_a,tau_b]=eps_abc tau_c, the cross product. Under the stated convention ad(M) = 2 cross(m), and F_12 = (2y^2 - 2 sqrt t x) tau_0, not B tau_0 with B = y^2 - 2 sqrt t x. The Berger field would sit at y = sqrt t/2, and A = s theta at x = s/sqrt t, y = s, not at 2s/sqrt t and 2s. A reader who rederives eq. (B), the closed form or the anatomy from the stated convention gets factors of 2 wrong everywhere.",
+     "evidence": "scripts/ricci_su2_exact_edge.py symbolic_rows and ricci_su2_gap_certificates_t.background act with cross(m_i) (no factor 2) and set F_ik = cross(m_i) m_k - c_ik^l m_l. My sympy rerun gives F12 = (y^2 - 2 sqrt t x) e0, F01 = (xy - 2y/sqrt t) e2, F02 = -(xy - 2y/sqrt t) e1, which matches eq. (B) only with the eps convention. Berger M from background() = (-sqrt t + 2/sqrt t, sqrt t, sqrt t) = (x,y) of the paper, under the cross-product identification. At t=1 the LC connection is theta/2; with tau = e it would be y = 1/2, not 1.",
+     "severity": "major",
+     "fix": "State the convention as [tau_a,tau_b] = eps_abc tau_c, i.e. su(2) identified with (R^3, x) so that tau_a corresponds to e_a/2. Say explicitly that ad M_i acts on Lie components as m_i x. Fix the same sentence in the Floor paper (l.144) in v3."
+    },
+    {
+     "id": "F2",
+     "location": "Abstract l.39-42 and l.50-51; Intro bullets l.106-107",
+     "quote": "The set of $x$ where it is the floor of every sector is bounded on both sides, an interval $[x_{\\mathrm{lo}},x^*]$: above by the edge, below by a state of the sector $j=0$. For $x>0$ it is never the floor of every sector, and the region is bounded below; both are proved. ... At $48$ points never computed before, the twist's region is one interval and no sector $13\\le j\\le79$ undercuts it",
+     "problem": "Overclaim. (i) The paper itself says (l.757-758) that the region being one interval [x_lo,x*] 'is computed on grids and not proved'. What is proved is only that it lies in [r_lo, min(x*_12,0)] (Cor. 5.5), and x* (the all-sector edge) is a conjecture (Conj. 5.9). (ii) The Test A sentence turns A4 (a single interval in sectors j<=12, on a 0.01 grid) and A3 (no undercut at only three x values per point) into 'the region is one interval and no sector 13..79 undercuts it' without those restrictions.",
+     "evidence": "paper.tex l.757-760: 'That the region is exactly one interval ... is computed on grids and not proved.' Sec 8 l.1101-1103 and l.1213-1215: A3 is checked at three values of x<0; A4 is 'the region in j<=12 is a single interval on the 0.01 grid'.",
+     "severity": "major",
+     "fix": "Abstract: 'The set of x where it is the floor of every sector is bounded on both sides: it lies in [r_lo, min(x*_12,0)] (proved, for H+GG*); on grids it is one interval.' Test A sentence: 'the region in the sectors j<=12 is one interval on a 0.01 grid, and no sector 13<=j<=79 undercuts the twist at the three tested values of x<0.'"
+    },
+    {
+     "id": "F3",
+     "location": "Abstract l.41-42; Intro bullet l.104-105; with Sec 2.1 l.181 (definition of floor)",
+     "quote": "For $x>0$ it is never the floor of every sector, and the region is bounded below; both are proved.",
+     "problem": "Overclaim about which spectrum. Sec 2.1 defines 'floor' by default as the lowest gauge-orthogonal eigenvalue. Theorem 5.1 (x>0 loses) is proved only for H+GG*, and l.656-657 says the gauge-orthogonal case is 'supported by the computations ... but not proved'. Read with the paper's own default definition, the abstract and intro claim a result that is not proved. The same applies to 'above by the edge' and to 'The all-sector edge is at most min(x*_12,0)' (Cor. 5.4 is for H+GG* only).",
+     "evidence": "paper.tex l.181: 'The floor of a sector is its lowest gauge-orthogonal eigenvalue, or, where stated, its lowest eigenvalue of H+GG*.' l.656: 'The states e_- and e_0 are not shown to be gauge-orthogonal, so for the gauge-orthogonal spectrum the same conclusion is ... not proved.'",
+     "severity": "major",
+     "fix": "Insert 'of H+GG*' in the abstract ('For x>0 it is never the lowest eigenvalue of H+GG* in every sector') and in intro bullet l.104, and in the all-sector edge sentence. Alternatively, prove gauge-orthogonality or a slice bound for e_-/e_0, or project them onto ker G* and redo the Rayleigh bound."
+    },
+    {
+     "id": "F4",
+     "location": "Intro 'By enough, but not too much' l.136-138; Intro bullet l.106-107; Abstract l.41",
+     "quote": "but not by so much that the sector-$0$ state $\\hat\\theta^0\\otimes\\tau_0$ undercuts her: $x_{\\mathrm{lo}}\\le x\\le x^*$.",
+     "problem": "Wrong mechanism for the lower edge. theta^0 (x) tau_0 (charge 0) only gives the bound r_lo, which lies far below x_lo. The state that actually ends the region from below is the lowest state of the sector-0 block of charge -1 (and its mirror +1), a 2x2 block. The paper's own Test A result says so (l.1217-1218: x_lo 'is always set by the sector-0 block of charge -1'), so the narrative in the introduction contradicts Section 8.",
+     "evidence": "My rerun with the closed-form blocks (review/s1_lower.py) gives the sector-0 lower crossing and the blocking block. (y,t)=(3,3): x_lo = -4.134, r_lo = -9.669, blocking q=-1 states {(0,0,-1),(0,-1,0)}. (0.5,3): -5.612 vs -7.331. (3,10): -6.334 vs -12.795. (0.5,10): -7.514 vs -11.194. (1.5,6): -5.759 vs -9.650. Every case is q=-1. These match the Sec 5 values -4.1, -5.6, -6.3, -7.5, -5.75. wp4_heldout: x_lo - r_lo >= 1.61.",
+     "severity": "major",
+     "fix": "Rewrite: 'but not by so much that a sector-0 state of charge +-1 undercuts her (x >= x_lo); the gauge-orthogonal state theta^0 (x) tau_0 gives the proved, cruder bound x >= r_lo.' Since the q=+-1 block of j=0 is 2x2 with closed-form rows, x_lo in sector 0 can be had in closed form (a polynomial root) for H+GG*, which would also strengthen open problem 3. For the slice, note that this block meets the range of G."
+    },
+    {
+     "id": "F5",
+     "location": "Sec 2.1 l.172-178 (eq. weitz), Remark 3.7 l.369-371, Prop 3.2 proof l.304-313; relied on by Abstract l.45-46, Intro l.108-114, Thm 6.1(a) l.953-954",
+     "quote": "The split of $R_0$ is checked on the operator in Remark~\\ref{rem:split}. ... The identity $R_0=\\mathrm{Ric}\\otimes I-2[F,\\cdot\\,]$ was checked numerically to $4\\times10^{-15}$ on the Berger field and the squashed meron at $t=1,2,3,4,6,8$.",
+     "problem": "Gap and internal inconsistency. Every exact statement for general (x,y,t) (Prop 3.2 'for every t>0, x,y', the closed-form rows of Lemma 2.2, P_2, and the certificates of Thms 5.6 and 6.1) assumes that the closed-form rows built from eq. (weitz) with R_0 = Ric (x) I - 2[F,.] are the blocks of H+GG*. In the paper that link is only numerical: R_0 at 2 fields x 6 values of t, blocks vs full spectra at 12 random points, rows vs builder 1.7e-13. Thm 5.6 is labelled 'conditional' for exactly this reason (l.765, l.818), but Thm 6.1 and the abstract's 'interval certificates prove' are not, although they rest on the same rows (Thm 6.1(a) cites only the 1.7e-13 point check).",
+     "evidence": "The gap can be closed. I adapted scripts/ricci_su2_weitzenbock_symbolic_t.py (the PBW proof in U(su(2)) the Floor paper uses for the Berger field) to the family m_0=(x,0,0), m_1=(0,y,0), m_2=(0,0,y) with x,y,t symbolic (review/wz_family.py). Output: 'identity holds in U(su(2)) for all t > 0: True []' and 'R0 - (Ric x I - 2T) = 0' (9x9 zero matrix). From there, symbolic_rows gives the charge-basis rows exactly. I also confirmed the charge selection (Omega_+ raises c by 1, Omega_- lowers it, C preserves c), that the Omega_i are antihermitian, and that D(l,(1,1)) - lambda = 0 symbolically.",
+     "severity": "major",
+     "fix": "Add the U(su(2)) Weitzenb\u00f6ck identity for the family with x,y,t symbolic as a proved lemma, with script and receipt (the adaptation is a few lines). Add the symbolic charge-selection and antihermiticity checks to Lemma 2.2. Then drop 'conditional' from Thm 5.6. Until then, label Thm 6.1 and the abstract's domain claim with the same condition as Thm 5.6."
+    },
+    {
+     "id": "F6",
+     "location": "Abstract l.35-37",
+     "quote": "every left-invariant $SU(2)$ field that is symmetric under the rotation about the long circle is, up to a constant gauge transformation, $M_0=x\\,\\tau_0$, $M_1=y\\,\\tau_1$, $M_2=y\\,\\tau_2$",
+     "problem": "Broader than Prop 2.1. The proposition assumes invariance under the right e_0-circle lifted by a constant gauge circle, and (for t != 1) assumes without proof that the isometry group is SU(2)_L x U(1)_R (l.220-222). 'Symmetric under the rotation' in gauge theory normally allows invariance up to arbitrary gauge transformations, which the proposition excludes.",
+     "evidence": "paper.tex l.202-203 hypothesis, and l.220-222: 'It does not cover ... lifts by non-constant gauge transformations ... it assumes, without re-proving it, that the isometry group is SU(2)_L x U(1)_R.'",
+     "severity": "minor",
+     "fix": "Abstract: 'every left-invariant SU(2) field invariant under the right rotation about the long circle, lifted by a constant gauge circle, is, up to constant gauge, ...'"
+    },
+    {
+     "id": "F7",
+     "location": "Prop 2.1 proof, l.211-215",
+     "quote": "for $k=-1$ it is $m_0=x\\tau_0$, $m_1=-y\\tau_1+z\\tau_2$, $m_2=z\\tau_1+y\\tau_2$. ... For $k=-1$, a rotation by $\\pi$ about the first axis maps the $(x,y)$ member to the family member at $(-x,y)$.",
+     "problem": "Sign slip and missing step. With the paper's k=-1 parametrisation at z=0 (m_1=-y tau_1, m_2=y tau_2), a rotation by pi about tau_1 gives m_0=-x tau_0, m_1=-y tau_1, m_2=-y tau_2, i.e. (-x,-y), not (-x,y). A further pi-rotation about tau_0, or the single rotation about tau_2, is needed. The removal of z in the k=-1 case is not stated, and the receipt checks k=-1 only at z=0. The script uses a different k=-1 parametrisation (m_1 = y e1 + z e2, m_2 = z e1 - y e2, i.e. y -> -y), for which the tau_1 rotation does work, so the paper and receipt disagree in sign.",
+     "evidence": "scripts/edge_wp4_design_checks.py l.55-59 field(k=-1) and l.97-98: Mm @ rot(1,pi).T == field(-x,y) holds for the script's sign. wp4_design_checks.json D1 commutant k=-1: [[M0,0,0],[0,-M8,M7],[0,M7,M8]] matches the paper's form. Hand check: R_pi about tau_1 maps tau_0 -> -tau_0, tau_2 -> -tau_2.",
+     "severity": "minor",
+     "fix": "Write: 'For k=-1, first rotate about tau_0 to set z=0 (the reflection-type block rotates by twice the angle); then a rotation by pi about tau_2 maps (x,y) to the family member (-x,y).' Also check z != 0 for k=-1 in the receipt. Name the axis tau_1/tau_2 explicitly rather than 'the first axis'."
+    },
+    {
+     "id": "F8",
+     "location": "Intro bullet l.110-111",
+     "quote": "\\emph{Large-sector slab proofs} for every sector $j\\ge40$, on boxes reaching to within about $0.1$ of the edge ($0.02$ in one slab)",
+     "problem": "Inconsistent with Table 6, and stated as proved when it is computed. Every t-slab ([3,4],[4,5],[5,6],[6,7],[7,10]) has a box with delta of about 0.02 (0.0206, 0.0200, 0.0207, 0.0202, 0.0205), plus the x <= -0.02 box with delta 0.0196, so it is not 'one slab'. Also, delta is measured from grid edges and Sec 5 l.868-869 says the distance to the edge between grid points 'is not proved'. 'Within 0.1 of the edge' is a computed description, not part of the theorem.",
+     "evidence": "Table tab:slabs l.838-848; caveat l.868-869.",
+     "severity": "minor",
+     "fix": "'on boxes whose tops lie about 0.02 below the grid edge in every t-slab (distance measured on grid points, not proved), and up to x=-0.02 for t in [7,10], y in [1,3]'."
+    },
+    {
+     "id": "F9",
+     "location": "Intro bullet l.108-109",
+     "quote": "\\emph{An exact ``if and only if''} for the sectors $j\\le12$ on two slices ($t=3$ with $y=\\sqrt3$ and with $y=3/2$), conditional on the closed-form blocks being the blocks of $H+GG^*$",
+     "problem": "Omits the range restriction of Thm 5.6, which proves the equivalence only for x in [-3, r_next) (r_next = -0.0651 and -0.00827), and only for H+GG*.",
+     "evidence": "Thm 5.6 item 3, l.774-775: 'for x in [-3,r_next), the twist is the lowest eigenvalue of H+GG* in every sector j<=12 iff x<=x*'.",
+     "severity": "minor",
+     "fix": "Add 'for x in [-3, r_next), for H+GG*' (and drop 'conditional' once F5 is closed)."
+    },
+    {
+     "id": "F10",
+     "location": "Abstract l.52; Intro l.132-133",
+     "quote": "In an $SU(3)$ family with a free fibre field the twist is the floor nowhere",
+     "problem": "Broader than Test C supports. Test C covers nine sectors only, an x-grid of step 0.25 on [r_lo-0.5, r_hi+0.5], and 20 shape points. 'Nowhere' suggests all sectors and all x.",
+     "evidence": "Sec 8 l.1166-1169: 'Every claim of Test C is about the nine listed sectors'; x scanned in steps of 0.25.",
+     "severity": "minor",
+     "fix": "'is the floor of all nine tested sectors at no scanned x at any of the 20 shapes'."
+    },
+    {
+     "id": "F11",
+     "location": "Abstract l.47-48; Intro l.128-130",
+     "quote": "equality is conjectured for $t\\ge3$ and is refuted near $t=2.01$",
+     "problem": "Incomplete reporting of the receipt. The tail check already shows sectors 13<=j<=200 undercutting the twist at the (negative) j<=12 edge at t=2.0 exactly, for y=0.25 (margin -0.423) and y=0.5 (margin -0.0299). Sec 5 (l.899-900) reports only y=0.25 at t=2.001/2.01. So the t=2 row of Table 1 (y=0.5) is not the all-sector edge either, and nothing in the paper says so.",
+     "evidence": "research/edge-theorem-20261121/wp1_tail_check.json rows: (t,y)=(2.0,0.25) edge -0.6441, tail_min -0.4228 at (200,-100); (2.0,0.5) edge -0.6132, tail_min -0.0299 at (200,-100). These are the only nonpositive-edge points with a tail undercut. The rest of the counts check out: 57 positive, 54 undercut, plus 3 + (12,3) in the rerun = 58.",
+     "severity": "minor",
+     "fix": "Say the conjecture is refuted at and near t=2 (t=2, y in {0.25,0.5}; t=2.001, 2.01, y=0.25), and flag the t=2 row of Table 1 as j<=12 only."
+    }
+   ],
+   "checked_ok": [
+    "Closed form (Prop 3.2): sympy on symbolic_rows of scripts/ricci_su2_exact_edge.py gives w_(1,1) = sqrt t - x - 2/sqrt t and C_(1,1),(1,1) = 4 sqrt t x - t - y^2 + 4. D(l,(1,1)) - [(x+(j+2)/sqrt t)^2 + 2 sqrt t x - y^2] = 0 identically. The intermediate identity (w - j/sqrt t)^2 = (x+(j+2)/sqrt t)^2 - 2 sqrt t x - 2(j+2) + t holds.",
+    "Berger reduction lambda = lambda_t(j) (by hand: numerator j^2+8j-2tj-2t^2-4t+16), and A=s theta: (j+2s+2)^2/t + 4s(1-s). Both match receipt twist_family_closed_form.txt (40 random points, 1.44e-15).",
+    "Independent numerics (general builder T2.hessian_and_gauge, 15 random (x,y,t,j) with t in [0.3,9], x in [-4,2]): lambda is an eigenvalue of H+GG* with exactly two copies within 2e-14, and exactly two copies in the slice spectrum.",
+    "Weitzenb\u00f6ck identity H+GG* = sum X_i^*X_i + R_0 holds in U(su(2)) with x,y,t symbolic, and R_0 = Ric (x) I - 2[F,.] exactly (my adaptation of the Floor paper's PBW script). This supports eq. (weitz) and Remark 3.7 beyond the numerical check stated.",
+    "Lemma 2.2: Omega_0 diagonal in the charge basis; Omega_+ = Omega_1 + i Omega_2 has nonzero entries only for c -> c+1 and Omega_- only for c -> c-1; C preserves c; Omega_i antihermitian. X_+^*X_+ + X_-^*X_- = 2(X_1^*X_1 + X_2^*X_2) holds. The ladder coefficients 2i sqrt((l-m)(l+m+1)) (Omega_-) for m -> m+1 follow from the cross terms. Transverse term = 4(l(l+1) - m^2).",
+    "Block sizes: at most 9 states, 9(j+1) per sector, j+5 charge values. Sizes of (4,0)=9, (3,1/2)=8, (2,1)=6, (1,1/2)=5, (1,3/2)=3, (2,2)=3, (12,6)=6, (12,7)=3 all recounted.",
+    "Fibre-rotation table and w_a = c_f(t-2)/sqrt t - c_l x verified symbolically for all nine types. C has degree <= 1 in x; Omega_+- free of x. On the Berger path every nonzero |Omega_+-|^2 = 2t.",
+    "Eq. (B): F_12 = (y^2 - 2 sqrt t x) tau_0, F_01 = (xy - 2y/sqrt t) tau_2, F_02 = -(xy - 2y/sqrt t) tau_1 (under the cross-product convention; see F1). B = 3t-4 on the Berger path and 4s(s-1) on A = s theta.",
+    "Anatomy items 1-6: kappa = (t-2)/sqrt t - x - j/sqrt t; Omega_+ beta = 0 (twist column of Omega_+ is zero); beta is an eigenvector of R_0 with eigenvalue 4 - 2t - 2B, and the -2[F,.] share = 4 sqrt t x - 2y^2; -(Omega_1^2 + Omega_2^2) on beta = t + y^2. Item 4 sums to the closed form; d lambda/dx = -2 kappa + 4 sqrt t = 2(x+(j+2)/sqrt t) + 2 sqrt t; Berger kappa = (2t-4-j)/sqrt t, transverse 2(j+t), curvature 12-8t.",
+    "Twist slopes 9.741, 9.620, 10.179 recomputed from 2(x+6/sqrt t) + 2 sqrt t at the three points.",
+    "Corollary 3.3 expansion, and lambda_2(j) - lambda_2(0) = (j^2+4j)/2 with lambda_2(0) = 0. Consistent at t=2 with the Floor paper's Casimir remark (its split differs but agrees there).",
+    "Prop 2.1: commutant dimensions 1,3,3,3,1 for k=-2..2 and the general forms match wp4_design_checks.json. The weight argument for |k|>=3 and half-integer k (only M_00 survives) is correct. k=+1 reduction by rotation about tau_0 is correct. (x,0) ~ (-x,0). Receipt values 2.2e-16, 1.95e-15, 0.0, 2.23e-15 match.",
+    "Prop 3.1 logic: the twist (l,1,1) is the unique charge-(l+2) state; the range of G has charge <= l+1, so G^*b = 0; the antiunitary mirror gives the charge -(l+2) copy.",
+    "Remark 3.7 numbers (Berger share 8-6t: -4 at t=2, -40 at t=8; meron +1.2614, +0.9265, +0.7334, +0.5183, +0.4010) match gyromagnetic_split.txt.",
+    "Intro numbers vs receipts: t_A crossing 2.7311222782381144, diff 8.9e-16; t* crossing diff 1.104e-12; blocks vs full spectra 1.47e-15 (exact_edge.json); Table 1 entries match exact_edge.json; 58 = 54 + 4 positive-edge undercuts (wp1_tail_check.json: 57 positive, 54 undercut, plus (7,2.0), (7,2.25), (7,2.5) and (12,3) in the rerun); sixteen Lean theorems (4 in Edge.lean + 12 in Price.lean), and price_anatomy matches item 4; Floor paper's [2.75,10] theorem, t*~2.6980 and t_A statements; Test A 34/38, 4 failures, A3 range 13..79; Test B still running (wp4_general_fields.json has B_II_code false/partial)."
+   ]
+  },
+  {
+   "findings": [
+    {
+     "id": "S5-1",
+     "location": "Sec 5, Thm 5.1 (thm:xpos) lines 616-655; Prop lower lines 710-745; Thm slabs (thm:slabs) lines 825-873; contributions list lines 104-112",
+     "quote": "\\begin{theorem}[Large sectors on slabs]\\label{thm:slabs} On each box of Table~\\ref{tab:slabs}, for every $(x,y,t)$ in the box and every sector $j\\ge40$, every charge block of the sector other than the twist and its mirror has lowest eigenvalue greater than $\\lambda_j$.",
+     "problem": "Three results are stated with no conditions: Thm xpos, Prop lower item 2, and Thm slabs. All three rest on the closed-form charge-block rows (eq. diag, the w_a table, C, Omega_pm) being the blocks of H+GG*. That identification is only checked in double precision: at 12 random points, plus a row comparison to 1.7e-13. Thm slice (line 766) states the same fact as an explicit hypothesis, and the contributions list marks only the slice as conditional. Thm slabs is the circular case the review brief warns about. Its interval certificate takes the matrix entries from EE.symbolic_rows (edge_wp2_symbolic.exact_rows); nothing in the certificate links them to the operator. The paper's own caveat (lines 869-872) names the wrong weak link. It says the near-end matrices and G are checked only numerically, but those follow symbolically from S1-S3 and the symmetry C_{-a,-a}=C_aa (I checked that symmetry on the exact rows). The link that really is unproved, closed-form rows equal H+GG*, is not mentioned. The numerical cross-check in the proof of Thm xpos (lines 651-653, j=300/306/310) is also circular: it compares the formula with the same closed-form block builder.",
+     "evidence": "wp3_slice_iff.md: 'The rigour chain assumes that the closed-form blocks are the charge blocks of H + GG*... I did not re-derive it symbolically.' scripts/edge_wp2_interval_proof.py builds its entries from WS.exact_rows(), i.e. ricci_su2_exact_edge.symbolic_rows. I ran an independent check (review/s5_rq.py) with the Hessian-definition builder ricci_su3_test2_family.hessian_and_gauge, which uses no charge blocks. It gives <e_-,(H+GG*)e_-> - lambda equal to the formula: -2.87748268961 at (0.37,1.3,2.7,j=6), 28.3195031008 at (-1.2,0.8,5,j=5), 33.4224624668 at (0.1,sqrt10,10,j=40), and -16 at (0.5,0.5,4,j=11). e_0 also agrees, and <v,Hv>=18.88=4t+2y^2 at (-3.3,1.2,4). The formulas are right, but this is evidence, not a proof.",
+     "severity": "major",
+     "fix": "Either (a) add to Thm xpos, Prop lower and Thm slabs the same hypothesis Thm slice carries ('assume the closed-form blocks are the charge blocks of H+GG*'), and mark the slab bullet in the intro as conditional too; or (b) remove the condition by proof. For Prop lower, a hand computation from Q is three lines: R_0 gives Ric_00=2t, since ([F,v])_0=0. The Lie parts of Omega_1 and Omega_2 give |[M_i,tau_0]|^2=y^2 each. The Levi-Civita parts give |nabla_{e_i}e_0|^2=t each (Gamma_{10}^2=-sqrt t). Total 4t+2y^2, with the bracket convention [tau_a,tau_b]=eps tau_c (see S5-6). Do the same direct computation of <e_-,(H+GG*)e_->, which is one diagonal matrix element, for Thm xpos. For Thm slabs, derive the block matrix elements symbolically in (l,m) from eq. weitz with the standard J_pm matrix elements. In the proof of Thm xpos, replace the j=300 cross-check with the independent-builder values above."
+    },
+    {
+     "id": "S5-2",
+     "location": "Abstract lines 41-42; Intro bullet lines 104-105 and line 148; Thm 5.1 title (line 616) and item 3 last sentence (line 633)",
+     "quote": "For $x>0$ it is never the floor of every sector, and the region is bounded below; both are proved.",
+     "problem": "Section 2 (line 178) defines 'the floor' by default as the lowest gauge-orthogonal eigenvalue. Thm xpos proves the x>0 statement only for H+GG*, and the paper says so at line 656 ('for the gauge-orthogonal spectrum the same conclusion is supported by the computations below but not proved'). The abstract, the intro bullet ('For x>0 the twist is never the floor of every sector'), line 148 ('proves ... that x>0 loses'), the theorem title and the sentence at line 633 all drop the qualifier. Read with the paper's own definition, they claim a proof that does not exist. The Rayleigh argument does not carry over easily. e_- is not gauge-orthogonal, and projecting it onto ker G* can raise the quotient.",
+     "evidence": "review/s5_rq.py: |G* e_-| = |G* e_0| = y (1.3, 0.8, 3.16, 0.5 at the four test points), so neither state lies in the slice. review/s5_proj.py: over 25 random (x,y,t,j), the H-Rayleigh quotient of the projection onto ker G* minus the H+GG* quotient reaches +5.14, so the projection does not always lower it. The gauge-orthogonal edge is higher than the H+GG* edge (-0.3552 vs -0.3822 on the slice, Table tab:slice remark), so the gauge-orthogonal statement does not follow from the H+GG* one.",
+     "severity": "major",
+     "fix": "Write 'of H+GG*' in every place listed: 'For x>0 the twist is never the lowest eigenvalue of H+GG* in every sector (proved); for the gauge-orthogonal spectrum this is computed (j=120: margin -0.581), not proved.' Retitle Thm 5.1 '...not the floor of H+GG* in every sector' and end line 633 with 'of H+GG*'."
+    },
+    {
+     "id": "S5-3",
+     "location": "Abstract lines 39-41 (also intro bullet lines 106-107)",
+     "quote": "The set of $x$ where it is the floor of every sector is bounded on both sides, an interval $[x_{\\mathrm{lo}},x^*]$: above by the edge, below by a state of the sector $j=0$.",
+     "problem": "The abstract states as fact that the region is an interval. Section 5 (lines 756-758) says: 'That the region is exactly one interval [x_lo,x*], with no holes, is computed on grids and not proved.' What is proved is containment in [r_lo, r_hi] for both spectra (Prop lower) and in x<=min(x*_12,0) for H+GG* (Cor interval). 'Above by the edge' also suggests the upper bound comes from the edge, but for the gauge-orthogonal spectrum the only proved upper bound is r_hi (about +1.56 at t=3, y=0.5), not the edge.",
+     "evidence": "paper.tex lines 756-758; Cor interval lines 747-751. I re-derived r_{lo,hi} = -(sqrt t + 2/sqrt t) -/+ sqrt(5t+3y^2+4) with sympy (review/s5_sym.py).",
+     "severity": "major",
+     "fix": "Abstract: 'The set of x where it is the floor of every sector is bounded on both sides: it lies in [r_lo, r_hi] (a sector-0 state, both spectra), and for H+GG* in x<=0. On grids it is one interval [x_lo, x*].' Intro bullet: keep 'lies in', and say the interval shape is computed."
+    },
+    {
+     "id": "S5-4",
+     "location": "Sec 5, proof of Thm slabs, lines 860-861",
+     "quote": "Every receipt reports \\texttt{all\\_proved} true and the mirror exclusion checked symbolically.",
+     "problem": "The receipt field mirror_symbolic is the identity G(l,2l-xi,a)=G(l,xi,-a) (edge_wp2_interval_proof.mirror_check). The bulk Gershgorin step uses it to reduce the rows with xi>l. It is not a check that the excluded block q=-(l+2) equals lambda_j. That fact comes from Prop exact and Lemma blocks, and in this script it is only checked numerically (check_matrix_numeric includes n0'=-2 'check only').",
+     "evidence": "edge_wp2_interval_proof.py, mirror_check() docstring: 'Symbolic: G_exact(l, 2l - xi, a) == G_exact(l, xi, -a)'. Log line: 'mirror symmetry of G (symbolic): True'.",
+     "severity": "minor",
+     "fix": "'Every receipt reports all_proved true and the mirror symmetry G(l,2l-xi,a)=G(l,xi,-a), used to reduce the bulk rows to xi<=l, checked symbolically; the excluded block of charge -(l+2) equals lambda_j by Proposition exact and Lemma blocks.'"
+    },
+    {
+     "id": "S5-5",
+     "location": "Intro contributions, lines 110-111 (vs Table tab:slabs, lines 837-851)",
+     "quote": "on boxes reaching to within about $0.1$ of the edge ($0.02$ in one slab)",
+     "problem": "In Table tab:slabs, every one of the five t-slabs ([3,4], [4,5], [5,6], [6,7], [7,10]) has a box with delta about 0.02 (0.0206, 0.0200, 0.0207, 0.0202, 0.0205), plus the extra x<=-0.02 box (delta 0.0196). So 0.02 is reached in all five slabs, not one. Also, delta is measured against the j<=12 grid edge at the worst grid point of each slab, not against 'the edge'.",
+     "evidence": "Table tab:slabs; wp2_large_sector_bound.md section 4; receipts wp2_interval_proof_slab_*_y0.5-3_*.json, all with all_proved true.",
+     "severity": "minor",
+     "fix": "'on boxes whose top lies about 0.1, and in every t-slab also about 0.02, below the smallest grid value of min(x*_12,0) in the slab (and up to x=-0.02 on [1,3]x[7,10])'."
+    },
+    {
+     "id": "S5-6",
+     "location": "Sec 2 Conventions, lines 161-162 (feeds Sec 5: Prop lower value 4t+2y^2, Thm xpos constants, eq. B)",
+     "quote": "$M_i$ constant in $\\su$, which has the basis $\\tau_0,\\tau_1,\\tau_2$ with the same brackets",
+     "problem": "'The same brackets' means [tau_a,tau_b]=2 eps_abc tau_c. Every computation and every closed form uses [tau_a,tau_b]=eps_abc tau_c (the cross product). With the factor 2, F_12 would be 2y^2-2sqrt t x, not B=y^2-2sqrt t x. On the Berger path B would be 4t-4, not 3t-4. The Section 5 constants would also change (e.g. <v,Hv>=4t+2y^2 uses |[M_1,tau_0]|^2=y^2). This is outside Section 5, but every Section 5 formula depends on it.",
+     "evidence": "scripts/ricci_su2_spin_sector.py: frame brackets BR=2.0. scripts/ricci_su3_test2_family.su2_data: gauge structure constants eps with entries +-1. edge_wp3_slice_iff.symbolic_data uses cross(m) for ad. With the cross product, B on the Berger path is t-2(2-t)=3t-4, matching the paper.",
+     "severity": "minor",
+     "fix": "Replace 'with the same brackets' by '$[\\tau_a,\\tau_b]=\\epsilon_{abc}\\tau_c$ (so $\\tau_a$ corresponds to the cross product on $\\mathbb R^3$; the frame has $[e_a,e_b]=2\\epsilon_{abc}e_c$)'."
+    },
+    {
+     "id": "S5-7",
+     "location": "Sec 5, 'The conjecture fails near t=2', line 895-897",
+     "quote": "At $x=-0.62460$, where $\\phi_A$ over $j\\le12$ is still $+0.0052$, the block $q=8$ of the sector $j=16$ lies below $\\lambda_{16}$ by $0.00492$",
+     "problem": "At x=-0.62460 exactly, the margin is -0.004899 (0.00490), not 0.00492. The quoted 0.00492 belongs to x=x*_12-5e-4=-0.6245982. The conclusion is unaffected; only the third significant figure is.",
+     "evidence": "review/s5_ref2.py with EE.Blocks: x=-0.6245982106562898 gives margin -0.0049178 and phi_A=+0.005228; x=-0.6246 gives margin -0.0048987 and phi_A=+0.005246. The general builder agrees (two eigenvalues at -0.0048987).",
+     "severity": "minor",
+     "fix": "Write 'At x=x^*_{12}-5\\times10^{-4}=-0.624598' or change the value to 0.00490."
+    }
+   ],
+   "checked_ok": [
+    "Thm xpos items 1-2: I re-derived both Rayleigh quotients from eq. (diag) with sympy (review/s5_sym.py), and they match exactly. Independently, the Hessian-definition builder (hessian_and_gauge, no charge blocks) reproduces both formulas to ~1e-11 at 4 points, including t<2 and j=40.",
+    "Thm xpos item 3 threshold: it simplifies to l > (sqrt t y^2 - (t+2)x)/(2x). At (0.1,sqrt10,10) the constants are K=-0.252982 and c=38.4821 for (1,-1), giving l>152.11, and K=-0.126491 and c=29.2311 for (1,0), giving l>231.09. These match wp2_symbolic.txt.",
+    "K_a slopes: K_(1,1)=0, K_(1,0)=-4x/sqrt t, K_(1,-1)=-8x/sqrt t, from K_a=4-8/t-4(w_a+x)/sqrt t and the w_a table.",
+    "Worked example: margin -0.58346 at j=120 with argmin q=-61, recomputed with EE.Blocks.",
+    "Prop lower: <v,Hv>=4t+2y^2 (C_(0,0),(0,0)=4t+2y^2 in the exact rows; 18.88 at (-3.3,1.2,4) with the independent builder; I also derived it by hand: 2t+2y^2+t+t). G*v=0 numerically. The roots r_lo,hi are re-derived. The four example values of r_lo are correct, and r_lo is monotone in y and, for t>2, in t.",
+    "Thm slice: the receipt wp3_slice_iff.json matches Table tab:slice (x*, r_next, dP2/dx and P1 enclosures, pivots 0.0038/0.027, E4 pivots 30.09/30.40, 116 blocks = 143-26-1). The logic is sound: squarefree norm gives simple roots, the sign-change test is exact, the Rellich argument gives sign(m), the only-if direction needs only B_{4,0}, and to_iv/iv_cholesky are rigorous with exact rationals. A double-precision edge reproduces x* to 4e-15. The conditional hypothesis is stated.",
+    "Thm slabs certificate: the lambdified entries contain only integers and iv.sqrt(2), so no rationals are rounded. The interval LDL^T is isotone. The double 1/L0 covers U=1/L0. Coverage is complete: top/bottom n0 in {-1..N1}, and the bulk has min(xi,2l-xi)>=N1-1 with region A integer xi and region B relaxed. I checked the FA/FB scalings algebraically. The receipt counts (20 or 24 near-end blocks, 126 or 18 bulk-A entries) and all_proved=true in all 13 boxes plus the rerun match Table tab:slabs (domains, L0, pieces, seconds), and the delta column is consistent (box top + delta is constant within each slab).",
+    "Remark gersh: the cutoffs 8978/353.5/345 match wp2_bounds and the verifier report.",
+    "Positive-edge paragraph: 57 tail-run positive points, 54 undercut in 13..200, the 3 exceptions at t=7, and (12,3) missing from the tail run. Table tab:cutoff values match wp1_tail_check.json edge_vs_cutoff.",
+    "Near-top families: c_+ = -128 s x (s-1)(s+1)(s^2-2) follows from the leading l^3 coefficient 16x(s^4-3s^2+2) times content -8s. c_0 matches wp1_top_family.txt. The degrees (4,4,9,3) and (8,10,19,6) are right, and the root (t-2)/sqrt t = 0.5774 at t=3 is right. Table tab:family (q=l+1, t=12, y=2) and the t=2 q=l limits -0.68467/-0.61843 match the receipt. The six-of-eight competitor assignment is consistent with the block sizes.",
+    "Refutation at (2.001,0.25): sector j=58 lies below by 0.23874 and 0.21093, reproduced. At (2.01,0.25), x*_12=-0.624098, reproduced.",
+    "Conjecture robustness (extra check, not in paper): at t=3 with y=0.01,0.05,0.1,0.25 and at t=2.5 with y=0.1,0.25, the near-top blocks of 13<=j<=3000 stay at least 5.9 above lambda at x*_12-1e-4, so I found no small-y counterexample for t>=2.5."
+   ]
+  },
+  {
+   "findings": [
+    {
+     "id": "S6-1",
+     "location": "Sec. 6, Theorem thm:domain (paper.tex 940-943) and proof (a) 947-954; compare Theorem thm:slice 765-766 and intro 108-109; abstract 45-46",
+     "quote": "On $D=...$ the twist is the lowest eigenvalue of $H+GG^*$ in every sector, with multiplicity exactly two ... (abstract: \"interval certificates prove that the twist is the floor of every sector\")",
+     "problem": "Both halves of the certificate run entirely on the closed-form charge-block rows, in block_iv/dshift for j<80 and the closed-form G for j>=80. Nothing in the proof establishes, as an exact identity, that these rows are the matrix of H+GG*. The rows are derived symbolically from the Weitzenbock form (eq:weitz), but on these fields that form, R_0 = Ric (x) I - 2[F,.] included, is only checked numerically: Remark rem:split covers the Berger field and the squashed meron, and exact_edge.json compares full spectra at 12 random points with j<=8, x in [-2,2], t<=8. None of those points lies in D (x in [-3,-1.5], t up to 10, j up to 79). Theorem thm:slice and the intro list exactly this identification as an explicit hypothesis ('Assume that the closed-form charge blocks ... are the charge blocks of H+GG*'). Theorem thm:domain, Theorem thm:slabs and the abstract state their results unconditionally. The paper is inconsistent with itself, and as written Theorem thm:domain is a conditional result presented as unconditional.",
+     "evidence": "scripts/ricci_su2_family_block_cert.py: block_iv and dshift are lambdified from the symbolic C, Lp, Lm and w. ricci_su2_family_large_j.py: the closed-form ingredients(). exact_edge.py main(): 12 points from rng(3) with x~U[-2,2], t~U[0.5,8], j<=8. I ran an independent check (review/s6_check5.py): general builder T2.hessian_and_gauge against Blocks.sector_spectrum at 10 points in D, j up to 33, including corners (x,y,t)=(-3,0.5,10) and (-3,3,10). Largest relative difference 3.9e-15. So the identification is very likely true, but it is not proved.",
+     "severity": "major",
+     "fix": "Either (i) state Theorem thm:domain (and thm:slabs, and the abstract sentence) under the same hypothesis as Theorem thm:slice; or (ii) give an exact proof that the symbolic rows equal H+GG* in every sector. One route: verify sum X_i^* X_i + R_0 = H + GG^* symbolically as an operator identity in the generators J_z, J_+-, with l symbolic. That removes the hypothesis from all three theorems."
+    },
+    {
+     "id": "S6-2",
+     "location": "Sec. 6 proof (a), paper.tex 952-954; same sentence in Sec. 2, 272-273 (and in the v3 draft of the Floor paper, berger-spectrum/paper.tex 752-753)",
+     "quote": "The closed-form rows, built symbolically with $x$ and $y$ free, agree with the general sector builder to $1.7\\times10^{-13}$ (receipt entry \\texttt{point\\_check}).",
+     "problem": "The receipt entry point_check does not compare against the general sector builder. In ricci_su2_family_block_cert.py, point_check() compares the interval blocks (block_iv) with EE.Blocks from ricci_su2_exact_edge.py. Blocks is built from the same symbolic_rows() construction (the same w, C, Omega_+-), so this is block against block, a check of the lambdify/interval plumbing only. Citing it as agreement with the general builder makes the check look independent when it is not.",
+     "evidence": "ricci_su2_family_block_cert.py point_check(): 'bl = EE.Blocks() ... _, Bd = bl.block(...)'. ricci_su2_exact_edge.py: 'class Blocks: def __init__(self): self.ch, self.f = symbolic_rows()'. The receipt family_block_cert_j80.json has point_check = 1.7053e-13 over 20 random points with j in [1,11].",
+     "severity": "major",
+     "fix": "Reword to 'the interval blocks agree with the double-precision closed-form blocks to 1.7e-13 (point_check)'. Cite exact_edge.json (and preferably a new check inside D, at larger j) as the comparison with the general builder, labelled double precision."
+    },
+    {
+     "id": "S6-3",
+     "location": "Sec. 6 proof (b), paper.tex 964-966",
+     "quote": "The closed-form $G$ is a lower bound on the actual Gershgorin quantity, checked on random rows with excess at most $2.84\\times10^{-13}$ (double precision).",
+     "problem": "As written, the step that links the interval-proved quantity G to the Gershgorin discs of the actual blocks rests on a double-precision spot check of 30 random points with j in [2,29], so the j>=80 half is not fully proved. The step can be proved exactly. I checked the diagonal identity symbolically, and the radius terms R_a and P+-_a match the symbolic C, Lp and Lm exactly. The paper should say so instead of relying on the numerical check. The same remark applies to Theorem thm:slabs, which says outright that it 'rests on those checks'.",
+     "evidence": "review/s6_check3.py, sympy: (w_a-2(l-xi)/s)^2+4(l(l+1)-(l-xi)^2)+C_aa-lambda_{2l} - [4xi(2l-xi)(1-1/t)+lK_a+E_a+R_a] simplifies to 0 for all nine types. review/s6_check2.py prints the symbolic matrices. Off-diagonal C entries have modulus 2|y||t-sqrt(t)x+2|/sqrt t: none in the columns of (+-1,+-1), two in (0,0), one elsewhere, which is R_a. The column sums of |Lp| are 2sqrt2(|y|+sqrt t) for (-1,-1),(-1,0),(0,-1),(0,0); 2sqrt2 sqrt t for (-1,1),(0,1); 2sqrt2|y| for (1,-1),(1,0); 0 for (1,1). With the ladder factors sqrt(xi(2l-xi+1)) and sqrt((2l-xi)(xi+1)), this is exactly 2 sqrt(.)P+-_a as in the script. The mirror symmetry G(xi,a) = G(2l-xi,-a) also checks.",
+     "severity": "major",
+     "fix": "Replace the numerical sentence with a short lemma: the diagonal identity (already symbolic in wp2_symbolic.txt) plus the exact radius bound, from the listed moduli of C and Omega_+-, give G <= diagonal - lambda - radius for every row. Add a sympy script and receipt for the radius part, and keep the double-precision check as a cross-check."
+    },
+    {
+     "id": "S6-4",
+     "location": "Sec. 6 proof (c), paper.tex 974-975, and Table tab:domain 980-992; also proof (b) 963-964",
+     "quote": "The smallest certified margin is $1.2220726\\times10^{-6}$, in the sector $j=1$ ... caption: \"the four sectors with the smallest margins\"",
+     "problem": "The reported 'margins' are not spectral margins. Each is the slack of the last mean-value bound on a box that bisection made just small enough to certify. They are artefacts of the subdivision stopping rule; they say nothing about how close the twist comes to being undercut. On D the actual margin min_q lambda_min(B_{1,q}) - lambda_1 is about 2.35, so the table suggests a near-tie of order 1e-6 that does not exist. The same applies to the region-A value 1.0678e-4 in (b).",
+     "evidence": "review/s6_check4.py, a 7x6x8 grid of D using Blocks: smallest true margins are j=0: 3.34, j=1: 2.35 (at x=-1.5, y=3, t=3, q=1.5), j=2: 2.87, j=3: 3.56, j=36: 30.95. This matches Remark rem:Dinside ('min phi_A ... is 2.35'). In certify_mv, lower = mu - var with var = sum sup||dA||_F hw, and boxes are split until lower > 0, so min lower is near 0 by construction.",
+     "severity": "minor",
+     "fix": "Rename the column 'smallest certified lower bound (box slack)', and add one sentence: the actual margin on D is at least about 2.35 (double precision, Remark rem:Dinside); the small numbers reflect the stopping rule of the bisection."
+    },
+    {
+     "id": "S6-5",
+     "location": "Sec. 6 proof (c), paper.tex 969-972",
+     "quote": "bounded below by an interval $LDL^\\top$ certificate with outward rounding and an a~posteriori residual ... Its variation over the box is bounded by $\\sum_i\\sup\\lVert\\partial_iA\\rVert_F$ times the half-widths",
+     "problem": "Not all of the final combination is directed. In certify_point, 'mpmath.mpf(eta) - eps' is computed at 64-bit round-to-nearest. In certify_mv, the s half-width 'max(sh - mpf(sc), mpf(sc) - sl)', 'var = mpmath.fsum(dblock_upper*hw)' and 'lower = mu - var' are also round-to-nearest, not rounded up or down. Each error is about 1e-19 relative, far below the smallest slack of 1.2e-6, so the conclusion is safe. But 'outward rounding' overstates what the code does.",
+     "evidence": "ricci_su2_family_block_cert.py, lines in certify_point (return mpmath.mpf(eta) - eps) and certify_mv (hw, var, lower). Everything else is properly enclosed: entries via iv lambdify (sqrt bound to iv.sqrt, I checked the globals; all coefficients are integers), mid_rad outward, the residual in interval arithmetic, and the derivative norms taken as iv upper endpoints.",
+     "severity": "minor",
+     "fix": "Either compute hw, var and mu - var in iv arithmetic and test the lower endpoint, or add a sentence bounding the final round-to-nearest error (below 1e-18, against a minimum slack of 1.2e-6)."
+    },
+    {
+     "id": "S8-1",
+     "location": "Sec. 8 Results, Test B, paper.tex 1253-1255; Sec. 7 'What does decide it' 1067-1068; also Sec. 4 line 430 and intro 133",
+     "quote": "B-II-code passed under Amendment~B1. The B-II scan is running, and its results will be reported here. / The competitor is nearly blind to $x$; the twist is not.",
+     "problem": "The B-II data are essentially complete in research/edge-theorem-20261121/wp4_general_fields.json.partial: 195 of 200 draws, 188 scored, well above B-count's 60. The pre-registered arm B-S (rho_s < 0.5 at every scored edge) fails at 125 of 188 scored points, and at 66 of the 72 scored points with x* <= 0. So the not-yet-reported result of a pre-registered test counts against the 'nearly blind' reading, which Sections 4 and 7 present (from three hand-picked points) as what decides the edge. The paper cannot be posted with Test B 'running' while it asserts the reading its own test is failing. Separately, the only finished Test B receipt, wp4_general_fields.json (dated 21 Nov 22:25), records B_II_code false, the pre-amendment run. No receipt in the tree shows the 'passed under Amendment B1' claim.",
+     "evidence": "From the .partial file (my count): scored = 188, rho_s >= 0.5 at 125, B_half false at 0, x* > 0 at 116. For x* <= 0: 72 scored, 66 with rho_s >= 0.5, mostly competitors (1,+-3/2), (5,-7/2), (3,-5/2), (4,-3); largest ratios 0.75-0.82. Draw 0: slope_comp 7.90 against slope_twist 9.33, rho_s 0.847. Even the B_{4,0} competitors reach rho_s = 0.52. wp4_general_fields.json: 'B_II_code': false.",
+     "severity": "major",
+     "fix": "Finish B-II and write its final receipt with the B-II-code gate under Amendment B1 recorded. Report B-S as failed (if confirmed) by the registered rule, and B-half and B-N as they come out. Rewrite the 'nearly blind' sentences (lines 133, 430, 1067) as a statement about the three sample points and the B_{4,0} competitor only, and point to the Test B failure. Do not post until this is in."
+    },
+    {
+     "id": "S8-2",
+     "location": "Sec. 8 Results, Test C diagnostic, paper.tex 1245-1248",
+     "quote": "At $t=4$, at the $x$ that maximises its worst margin over the sectors, the margin is negative in every sector other than $(0,0)$. ... $(4,0)$ is the blocking sector at $121$ of the $127$ values of $x$ scanned.",
+     "problem": "Two errors against the receipt. (1) At the best x the (0,0) margin is also negative at three of the four shapes: -1.094 at (u,y)=(1/2,1/2), -0.276 at (1/2,1), -1.000 at (1,1). It is positive (+2.76) only at (1,2). So the twist is not even the floor of the trivial sector there. (2) The scan has 123 x values, not 127; (4,0) blocks at 121 and (3,1) at 2. The 127 count comes from the log file, whose last four lines are the summary lines, not scan points.",
+     "evidence": "wp4_su3_diagnostic_posthoc.json: four entries; len(scan) totals 123; blocker counts {(4,0): 121, (3,1): 2}. best.margins['(0, 0)'] = -1.0936, -0.2755, -1.0000, +2.7625. wp4_su3_diagnostic_posthoc_log.txt has 127 lines starting with a digit, 4 of them summaries.",
+     "severity": "minor",
+     "fix": "'... the margin is negative in every sector at three of the four shapes, and in every sector other than (0,0) at (u,y)=(1,2) ... (4,0) is the blocking sector at 121 of the 123 values of x scanned (the other two: (3,1)).'"
+    },
+    {
+     "id": "S8-3",
+     "location": "Sec. 8 Results, Test C gates, paper.tex 1234-1235",
+     "quote": "C-K4 (the $SU(2)$ analogue: coefficient of $x^2$ equal to $1$ to $3\\times10^{-14}$, three known edges to $3\\times10^{-10}$)",
+     "problem": "The three known edges agree to 2.5e-9, not 3e-10. The gate tolerance (1e-6) is still met, but the number is wrong.",
+     "evidence": "wp4_su3_free_fibre.json C_K4.edges: edge - edge_S = -2.31e-10 (t=4, y=1.5), +2.53e-9, +3.55e-10. second_diff deviations 1.4e-14, 5.3e-15, 2.8e-14 (so '3e-14' for 2a is fine; for a=1 it is 1.4e-14).",
+     "severity": "minor",
+     "fix": "Write 'three known edges to $3\\times10^{-9}$'."
+    },
+    {
+     "id": "S7-1",
+     "location": "Sec. 7 Test 5 paragraph, paper.tex 1036-1037",
+     "quote": "The twist is the floor of every sector at none of them. At every singled-out point it is the floor of $j=0$ only.",
+     "problem": "False at one of the 35 singled-out (L1) points. At (s,t)=(1.25,1.5) the twist is not the floor of j=0 either: extremal 12.25, slice floor 9.997. It is the floor of no sector there. The source note stretch-test-results-2026-11-21.md line 37 has the same error.",
+     "evidence": "stretch_test.json: points with L == 'L1': 34 are floor of ('0',) only, 1 of () (s=1.25, t=1.5). The L2 points: 4 of j=0, 1 of none.",
+     "severity": "minor",
+     "fix": "'At 34 of the 35 singled-out points it is the floor of j=0 only, and at (s,t)=(1.25,1.5) of no sector.' Correct the results note too."
+    },
+    {
+     "id": "S7-2",
+     "location": "Sec. 7 'What does decide it', paper.tex 1058-1060",
+     "quote": "In each sector, whether the twist is the floor is a comparison between $\\lambda_j$ and the lowest eigenvalues of that sector's other charge blocks. Its structure is exact.",
+     "problem": "This holds for the floor of H+GG*. Section 2 defines 'floor' by default as the lowest gauge-orthogonal eigenvalue, and every test in Section 7 (2, 4, 5, 6 and the map) scores the gauge-orthogonal floor. For that spectrum the block comparison is sufficient but not necessary: the lowest block eigenvalue can be a gauge-dominated mode. Test A itself measures the gauge-orthogonal edge above the H+GG* edge at every point, by up to 0.091. So the sentence, read with the paper's own definition, is false.",
+     "evidence": "wp4_heldout.json: x_S - x_meas ranges over [1.48e-4, 0.0908] at all 48 points. ricci_su2_twist_family_map.py uses T2.slice_spectrum (gauge-orthogonal).",
+     "severity": "minor",
+     "fix": "'For $H+GG^*$, whether the twist is the floor of a sector is a comparison ...; for the gauge-orthogonal spectrum the same comparison gives a sufficient condition, and the gauge-orthogonal edge lies slightly above (Test A: by 1.5e-4 to 0.091).'"
+    },
+    {
+     "id": "S9-1",
+     "location": "Sec. 9 Open problems item 5, paper.tex 1282-1283 (also intro 133)",
+     "quote": "In the $SU(3)$ family of Test~C, stretched along the hypercharge circle, the twist is the floor nowhere.",
+     "problem": "Overclaim. Test C establishes only that, at the 20 shape points (t in {2,3,4,6,8}, four (u,y)), in the nine listed sectors, on an x grid of step 0.25, the twist is never the floor. The prereg itself says every C claim is 'in the nine listed sectors' and that holes narrower than 0.25 are not seen. 'Nowhere' reads as a statement about the whole family and all sectors.",
+     "evidence": "wp4_prereg_C_su3.md sections 3-4 ('every C claim is \"in the nine listed sectors\"', 'A hole narrower than one step, 0.25, cannot be seen'); wp4_su3_free_fibre.json: I = [] at 20 points.",
+     "severity": "minor",
+     "fix": "'... the twist is the floor of all nine listed sectors at none of the 20 shapes on the scan (double precision).' The diagnostic margins (at least about 6 below in (4,0) at t=4) can be cited to show the failure is not marginal."
+    },
+    {
+     "id": "AV-1",
+     "location": "Code and data availability, paper.tex 1295-1332",
+     "quote": "Scripts by result: ... the tests of Section~\\ref{sec:decide}: ... Receipts: ... in \\path{research/edge-theorem-20261121/}: \\path{wp1_*}, ..., \\path{wp4_design_checks.json}, \\path{workflow_reports.json}, and the pre-registrations ...",
+     "problem": "The scripts and receipts of Section 8's Tests A, B and C are missing from the list, although Section 8 cites them: scripts edge_wp4_points.py, edge_wp4_heldout.py, edge_wp4_general_fields.py, edge_wp4_su3_free_fibre.py, edge_wp4_su3_diagnostic.py; receipts wp4_heldout.json (+log), wp4_general_fields.json, wp4_su3_free_fibre.json (+log), wp4_su3_diagnostic_posthoc.json (+log). Also missing: stretch_test.json's source notes and test2_berger_control.json, which is the code control of Test 2. Separately, the Lean files (Helike/Price.lean, Edge.lean, Axioms.lean, README, RESULTS) are not in this checkout of the repository under docs/papers/berger-spectrum/lean; they exist only in the separate lean worktree (feat/helike-lean). The tag must include them. I checked the Lean content itself: 16 theorems (12 in Price.lean, 4 in Edge.lean), no 'sorry', toolchain v4.36.0, and Axioms.lean prints the axioms of all 16.",
+     "evidence": "grep of paper.tex 1295-1332 finds no 'wp4_heldout', 'su3_free_fibre', 'general_fields' or 'edge_wp4_heldout'. ls rtc/docs/papers/berger-spectrum/ shows no lean/ directory; /tmp/lean/docs/papers/berger-spectrum/lean/ holds the files.",
+     "severity": "minor",
+     "fix": "Add the Test A/B/C scripts and receipts (with logs) to the lists. Before tagging, merge the Lean branch so that the tagged tree contains docs/papers/berger-spectrum/lean/."
+    }
+   ],
+   "checked_ok": [
+    "Sec. 6 coverage of D: the receipt domain is [[-3,-1.5],[0.5,3],[3,10]]; 80 rows (j=0..79), no fails, all_certified true. The q-list in task() covers every block -l-2..l+2 except the two twist blocks |q|=l+2: sum_{j<80}(j+3) = 3400 blocks. Bisection starts from all of D with a depth limit of 20, and failures are recorded.",
+    "Sec. 6 numbers against family_block_cert_j80.json: 1,640,935 boxes; min 1.2220726e-6 at j=1; 229,134.7 s = 63.6 h; Table rows j=0 (11,431, 1.41e-4, 400.0), j=1, j=2 (2.94e-5, 5,360.8), j=3 (5.77e-6, 5,501.7), j=36 (6.90e-5, 2,103.3); the four smallest are j=1, 3, 2, 36; point_check 1.7e-13.",
+    "Sec. 6 large-j numbers against family_large_j.json: L0=40, X0=20, all_proved true, 188 region-A cases (9x21-1), min 1.0678e-4 for type (0,1) xi=0 with 1360 pieces, region-B min 0.7226 (0,0) and max 1.5918 (-1,1), 13.5 s, G check 2.84e-13.",
+    "Small-j certificate logic: the mean-value bound lambda_min(A(p)) >= lambda_min(A(c)) - sum sup||d_iA||_F |p_i-c_i| is valid on the convex box in (x,y,s=sqrt t). The s half-width uses outward iv.sqrt endpoints. Box endpoints are dyadic, so the centres and half-widths in x and t are exact. The LDL^T-plus-residual argument (LDL^T congruent to D>0, ||exact-LDL^T||_2 <= rho+||M-LDL^T||_F, rho = min(Frobenius, max row sum), valid for symmetric matrices) is correct. dblock_upper counts each ordered off-diagonal pair once, which is the Frobenius norm of the symmetric derivative. The interval block is exactly symmetric (checked at j=1,2,5). The lambdified expressions have integer coefficients only, and sqrt resolves to iv.sqrt.",
+    "Large-j reductions: F_A = G/l and F_B = G/(l xi) are algebraically exact rewrites (checked by hand). Region B's box (XN, U, V independent) is a valid relaxation. The mirror (xi,a) -> (2l-xi,-a) leaves G invariant (checked symbolically: the lK_a + 4w_a xi/sqrt t combination and the ladder terms swap). So xi <= l suffices, and regions A (xi <= 20) and B (xi >= 20) cover every non-twist row for all l >= 40, half-integer l included. Float endpoints 1/40 and 1/20 round up, so l=40 is covered.",
+    "Diagonal identity D_{m,a} - lambda_{2l} = 4xi(2l-xi)(1-1/t) + lK_a + E_a + R_a: exact for all nine types (sympy). K_a > 0 on D for every type except (1,1) (K_{(1,1)} = 0, covered by the xi term).",
+    "Sec. 6 reduction (a): twist blocks are 1x1 (the unique state m=+-l, a=+-(1,1)); gauge-orthogonal floor follows from <v,Hv> = <v,(H+GG*)v> on ker G*.",
+    "Remark rem:Dinside: r_lo(3,0.5) = -7.3309; r_lo decreases in y and, for t>2, in t, so r_lo < -7.33 on D. Actual min phi_A on D for j<=3 recomputed as 2.35 (j=1), matching 'min phi_A ... 2.35'.",
+    "Blocks vs the general H+GG* builder recomputed at 10 points inside D, j up to 33: max relative difference 3.9e-15, and both twist copies present at lambda_j (numerical support for the identification in S6-1).",
+    "The 'Theorem 7.3 of the version 3 draft' reference: thm:domain is the third numbered environment of Section 7 of berger-spectrum/paper.tex, with a shared counter.",
+    "Sec. 7 Test 2: 2,600 meron pairs (200 t x 13 j), no floor, residual <= 4.7e-12, ||G*b|| <= 8.5e-15; Berger control floor of all j<=12 from t=2.70; SU(3) 2a/2b: 200 points x 9 sectors, no floor; svd_fallback in exactly 1 of 1,800 (family 2b); 2a = U(2) fibre, 2b = hypercharge.",
+    "Sec. 7 Test 4: 40 points s=1.05..3.00; s_F -0.42 to -48 (SU(2)); SU(2) floor of j=0 exactly for s >= 1.5 (31 points), no j >= 1; j=1 gap 16.53 -> 35.86; SU(3) floor of (0,0) only, s >= 1.5.",
+    "Sec. 7 Test 5: 72 points = 35 L1 + 5 L2 + 32 L0; no all-sector floor; gaps at s=1.5, t=3: 6.58, 12.64, 25.68, 41.08 (j=1,2,4,8); j=1 at s=1.5: 13.79, 6.58, 2.12 for t=1.5, 3, 8.",
+    "Sec. 7 Test 6: all nine E1 errors (-0.018, -0.038, -0.047, +0.010, +0.024, +0.029, +0.033, +0.092, +0.179) and predicted/measured values; E2 t_c = 2.6315, t* = 2.6980, distance 0.0665.",
+    "Sec. 7 neutrality: 42 grid points with y >= 1.1 and x*_12 <= 0, of which 14 have competitor (1,+-3/2) (12) or (2,+-2) (2); y=0.5 competitors (2,+-1), (3,-1/2).",
+    "Sec. 7 slopes from twist_anatomy.json: twist 9.741, 9.620, 10.179; B_{4,0} -1.561, -0.623, +1.684. Twist family map: 3,294 all-floor cells, all with x <= 0, the 8 non-negative ones at x = 0 exactly (t=6), 49 x values x 37 y values.",
+    "Sec. 7 structure claims: C entries have degree <= 1 in x, ladder entries are x-free (2sqrt2 y or 2sqrt2 sqrt t), w_a = c_f(t-2)/sqrt t - c_l x (from the symbolic matrices).",
+    "Sec. 8 Test A against wp4_heldout.json and the prereg with Amendment 1: gates (A-code-1 4.1e-15, A-code-2 113 terms with 2.4e-13, A-code-3 1.0e-18, A-mult all 2, A-branch 100%, x_lo - r_lo >= 1.61); A1 fails at exactly the 4 tabulated points with the listed predicted/measured values and competitors; other 34 agree to 1.35e-12; A2: (2,+-1) x 8 and (3,-1/2) x 2; A3 min margin 0.519; A4 single interval at all 48; x_lo in [-7.81,-3.64], always (0,-1); x_S - x_A in [1.5e-4, 0.091]; Test 6 baseline mean 0.076, max 0.20; 20 positive upper edges; the 0.02 offsets of the A3 points match the prereg.",
+    "Sec. 8 Test C against wp4_su3_free_fibre.json and the prereg with C1/C2: C-K5 2.6e-14; C-sym 1.07e-14 / 8e-16 / 7e-16; C-quad max deviation 8.9e-15 at all 20 shapes; C-lin 0.0; sigma = +1; [r_lo, r_hi] = [-7.656, 4.120] at (8,1,2); n_b counts 6,4,8,5,5,6,10,6,7 = (p+3)(2 if p=q); extra ties at the five (1/2,1) shapes; C-P1 weak and strict false; C-P2 not informative (0 informative points); diagnostic ranges (1,0) -1.5..-2.55 and (4,0) -6.09..-8.28.",
+    "Sec. 8 Test B B-I numbers against wp4_general_fields.json: sym 1.7e-15, exact 3.5e-15, red 2.2e-14, spec 3.9e-15, even 3.7e-16; the Amendment B1 text matches the prereg.",
+    "Sec. 9: degrees (11,14,26) of the (3,1/2) edge factor, rational coefficients, a single factor (wp1_block_polynomials.txt); open problems 1-3 consistent with Sections 5-6 (j<40 on the slabs, x in (-0.02,0), x_lo only bounded).",
+    "Availability: all scripts named in the list exist in scripts/; the Lean count (16 theorems, no sorry, v4.36.0, the Axioms.lean list) matches the statement."
+   ]
+  }
+ ],
+ "verdicts": [
+  {
+   "verdicts": [
+    {
+     "id": "S4-1",
+     "verdict": "confirmed",
+     "reason": "The Table 1 caption (lines 401-403) and lines 420-421 say every positive entry is an artefact proved in Section 5. But paper.tex lines 656-657 limit Theorem 5.1 to H+GG* and say the gauge-orthogonal case is 'supported by the computations below but not proved'. The table has three positive x*_S entries: +0.008031, +0.040169 and +0.138269. Two of these sit next to x*_A entries that are also positive (+0.031482, +0.082513), so for those cells the H+GG* part is covered. For the x*_S column, 'proves' is too broad.",
+     "corrected_fix": "Caption: 'Every positive entry is an artefact of the cut-off j<=12. For x*_A this is proved (Theorem 5.1); for x*_S it is supported by computation (Section 5).' Lines 420-421: 'Section 5 proves that for x>0 high sectors undercut the twist in H+GG*, and the computations there support the same for the gauge-orthogonal spectrum.'"
+    },
+    {
+     "id": "S4-2",
+     "verdict": "confirmed",
+     "reason": "From wp1_poly_check_final.json, per_block_summary['(4, 0.0)'].min_residual_other_factors = 0.0026586, so 'at least 2.7e-3' is false. The per-row data in the same receipt (77 rows with competitor (4,0)) give P_1 root_minus_edge between 0.1317 at (t,y)=(2,1.75) and 0.6741 at (11,2.25). There is 0.206 at (2,1.5), 0.250 at (3,2) and 0.2507 at (2,1). One row has no real root of P_1 at all (root_minus_edge = None). The figure 0.36-0.55 comes only from 10 sample points in workflow_reports.json. It understates how close P_1 can come to the edge, and it has no receipt file.",
+     "corrected_fix": "Write: 'the scale-free residual of P_1 there is at least 2.6x10^-3, and at the 76 grid edges where P_1 has a real root nearby, the nearest root is 0.13-0.67 away (closest at (t,y)=(2,1.75)); receipt wp1_poly_check_final.json'."
+    },
+    {
+     "id": "S4-3",
+     "verdict": "confirmed",
+     "reason": "twist_anatomy.json part2_exploratory.Q3_rows has 48 rows. At t=4 the row y=2.0 appears twice with identical max_diff -0.15614, because sqrt(4)=2 duplicates y=2. That leaves 47 distinct pairs. The script checks np.diff(phi)<0 on np.linspace(-3,3,241), which is a grid check, not strict monotonicity on the interval. The paper's '(computed)' tag already marks this as not proved, so the fix is local wording only.",
+     "corrected_fix": "Write: '... has negative first differences on a 241-point grid of x in [-3,3] at all 47 distinct pairs (t,y) tested (computed; receipt twist_anatomy.json).'"
+    },
+    {
+     "id": "S4-4",
+     "verdict": "confirmed",
+     "reason": "(a) mpmath at 40 digits gives the root of Q_16 as s=1.6526107461341626 and t_A = s^2 = 2.731122278238113623..., so to 16 decimals t_A is 2.7311222782381136, not ...1135. The printed value is the nearest double. The crossing 2.7311222782381144 is 7.8e-16 from the true t_A, so 'to 9e-16' is a valid bound. (b) scan.json's t* comes from 40 halvings of the bracket [2.65,2.7] under the rule 'slice_ev < lam - 1e-11' (scan script lines 37-41). It is a numerical estimate whose bias from that offset is comparable to the stated 1.1e-12 agreement. The Floor paper gives only t*~2.6980 (berger-spectrum line 574). Printing 17 digits is false precision. The same value appears again around line 722.",
+     "corrected_fix": "Write t_A = 2.73112227823811362... (the largest root of Q_16; the crossing is within 8x10^-16 of it). Write t* ~ 2.698026940520 (double-precision bisection, Floor paper), and say the gauge-orthogonal crossing agrees with it to about 10^-12, the precision of both computations. Make the same change near line 722."
+    },
+    {
+     "id": "S4-5",
+     "verdict": "partly",
+     "reason": "Part of the finding misreads the paper. Item (4) of Prop. 3.4 is the identity lambda = kappa^2 + (2j+t+y^2) + (Ric_perp - 2B), with kappa and B as already defined in items (1) and (3). The paper only claims that item (4) and the Berger slice of (6) are proved in Lean, not items (1) and (3). price_anatomy proves exactly that identity, and line 586 states that kappa and fieldCurv are the Lean names for those formulas. The identifications in (1) and (3) are attributed to sympy, which is correct. What remains is small. (i) 'The Berger slice of (6)' includes 'gauge part equals frame part', the transverse term 2(j+t) and the curvature term 12-8t. None of these is a separately stated Lean theorem, although each follows from kappa_berger or fieldCurv_berger by trivial algebra. (ii) 'What Lean does not check' could add that the Lean kappa and B are formulas, not operator eigenvalues.",
+     "corrected_fix": "Lines 353-355: 'The algebraic identity of item (4), with kappa and B given by their formulas, and the values kappa=(2t-4-j)/sqrt t, B=3t-4 and lambda=lambda_t(j) on the Berger path, are also proved in Lean 4 (...).' In 'What Lean does not check', add: 'that kappa and B are the fibre eigenvalue and field strength of Proposition 3.4 (1) and (3)'."
+    },
+    {
+     "id": "S4-6",
+     "verdict": "partly",
+     "reason": "(a) The proof cites both the receipt and Lean. Edge.lean line 88, theorem edgeFactor_berger, states edgeP2((2-s^2)/s) s s = -32*(s-1)*(s+1)*tAPoly s, proved by field_simp and ring. So the full cofactor identity is proved, and the claim is not unsupported. The receipt edge_polynomial.txt line 9 only records the boolean 'contains the degree-16 factor: True', so citing it alone for the cofactor overstates it. The remedy is to make Lean the primary citation, not to add new proof. (b) The point about 'numerator' fixing P only up to a constant is valid. The script docstring says 'numerator of det(B - lambda I)', the content -16384 appears only in wp1_block_polynomials.json, and that file uses det(s^2(B - lambda_j I)). edge_polynomial.txt does not record the constant.",
+     "corrected_fix": "Prop. 4.2: define P := det(s^2 (B_{4,0}(x,y,s^2) - lambda(x,y,s^2,4) I)) in Z[x,y,s], whose content is -16384 (receipt wp1_block_polynomials.json). Proof of Prop. 4.3: 'Proved in Lean (edgeFactor_berger); the script edge_polynomial.py checks only that Q_16 divides the restriction.'"
+    }
+   ]
+  },
+  {
+   "verdicts": [
+    {
+     "id": "F1",
+     "verdict": "confirmed",
+     "reason": "I rechecked this by hand. With the stated convention [tau_a,tau_b]=2 eps tau_c and c_12^0=2 sqrt t, F_12=(2y^2-2 sqrt t x) tau_0, which does not match eq. (B). With the cross-product convention it is (y^2-2 sqrt t x) tau_0, which matches. For A=s theta: with tau_a=e_a you get M_0=(s/sqrt t)tau_0 and B=2s(s-1). With tau_a=e_a/2 you get the paper's x=2s/sqrt t, y=2s and B=4s(s-1), which is flat at s=1 as the Maurer-Cartan form must be. The code (ricci_su2_exact_edge.cross, gap_certificates_t.background) uses cross(m) with no factor 2. Floor paper l.144 has the same sentence ('same brackets as the frame').",
+     "corrected_fix": "State [tau_a,tau_b]=eps_abc tau_c (tau_a corresponds to e_a/2), so ad M_i acts on Lie components as m_i x. Fix the same sentence in berger-spectrum/paper.tex l.144 in v3."
+    },
+    {
+     "id": "F2",
+     "verdict": "confirmed",
+     "reason": "Abstract l.39-40 calls the region 'an interval [x_lo,x*]' with no qualifier, but l.757-758 says single-interval-ness 'is computed on grids and not proved'. Cor 5.5 proves only r_lo<=x<=min(x*_12,0), and only for H+GG*. The Test A sentence in the abstract (l.50-51) drops both restrictions in Sec 8: A3 tests only three x<0 values (l.1100-1102, 1213-1214) and A4 is j<=12 on a 0.01 grid (l.1103, 1215).",
+     "corrected_fix": "As proposed. Also define x* in the abstract or replace it with min(x*_12,0)."
+    },
+    {
+     "id": "F3",
+     "verdict": "confirmed",
+     "reason": "Sec 2.1 l.181 makes the gauge-orthogonal floor the default. Thm 5.1 and Cor 5.4 are for H+GG* only, and l.656-657 concedes this. I also checked that the gap cannot be closed trivially. For e_- (m=l, type (1,-1)), G*e_- has a Lie part proportional to y[tau_1+i tau_2, tau_1-i tau_2] f, which is proportional to y f tau_0 and nonzero. The derivative part would need weight l+1 and so vanishes. So e_- is not gauge-orthogonal for y!=0, and the same holds for e_0 ([tau_+,tau_0]!=0). 'Bounded below' (Prop 5.6) holds for both spectra, so only the x>0 claim and the edge bound are affected.",
+     "corrected_fix": "Insert 'for H+GG*' in abstract l.41 and in intro bullet l.104, and in the 'all-sector edge is at most min(x*_12,0)' sentence. A slice version would need a projected Rayleigh bound; e_- and e_0 themselves are provably not in ker G* when y!=0."
+    },
+    {
+     "id": "F4",
+     "verdict": "confirmed",
+     "reason": "Prop 5.6 shows theta^0 (x) tau_0 gives only r_lo. The paper's own Test A (l.1202, 1217-1218) reports x_lo-r_lo>=1.61 and x_lo 'always set by the sector-0 block of charge -1'. The values at l.743-744 (-4.1,-5.6,...) are well above r_lo (-9.67,-7.33,...). So the 'By enough' paragraph (l.136-138) and intro bullet l.106-107, which name theta^0 (x) tau_0 as the state at x_lo, are wrong. Abstract l.40 ('a state of the sector j=0') is fine.",
+     "corrected_fix": "Name the sector-0 charge +-1 block as what ends the region at x_lo (computed, j<=12), and theta^0 (x) tau_0 as the state behind the proved, cruder bound x>=r_lo, valid for both spectra. A closed-form x_lo from the 2x2 block is a possible strengthening. The claim about how that block sits relative to the range of G was not verified here and should not go in the paper without a check."
+    },
+    {
+     "id": "F5",
+     "verdict": "partly",
+     "reason": "The inconsistency is real. Thm 5.6 is labelled 'conditional' on the closed-form blocks being the blocks of H+GG*. Thm 6.1(a), Thm 5.8 (l.870-872: 'the theorem rests on those checks') and the abstract's 'interval certificates prove' rest on the same rows, but Thm 6.1 and the abstract are not labelled. However, 'the link is only numerical' overstates the gap. Eq. (weitz) is the Bourguignon-Lawson Weitzenb\u00f6ck identity, a theorem for every connection, and the rows are built symbolically from it (symbolic_rows uses Om, Ric, T). What is unverified is the convention match: sign and factor of [F,.], and the LC part of Omega against the paper's Q. Remark 3.7 checks this only numerically on two fields. The reviewer's review/wz_family.py output (wz_out.json: identity_holds_all_t true, no residual words) closes exactly that.",
+     "corrected_fix": "State eq. (weitz) as the Bourguignon-Lawson identity, valid for every connection. Add the symbolic U(su(2)) check for the family (x,y,t free) as the convention check, with script and receipt. Then drop 'conditional' from Thm 5.6. Otherwise, attach the same condition to Thm 5.8, Thm 6.1 and the abstract."
+    },
+    {
+     "id": "F6",
+     "verdict": "confirmed",
+     "reason": "Prop 2.1's hypothesis (l.202-203) is invariance under the right e_0 circle lifted by a constant gauge circle. The scope paragraph (l.220-222) excludes non-constant gauge lifts and assumes the isometry group. The abstract's 'symmetric under the rotation about the long circle' is broader than that.",
+     "corrected_fix": "As proposed."
+    },
+    {
+     "id": "F7",
+     "verdict": "confirmed",
+     "reason": "Hand check of the paper's k=-1 form at z=0 (m1=-y tau1, m2=y tau2). A pi rotation about tau_1 (tau0->-tau0, tau2->-tau2) gives (-x tau0, -y tau1, -y tau2), which is family (-x,-y). A pi rotation about tau_0 does not give a family member either. The rotation about tau_2 gives (-x,y). The script's k=-1 form (m1=y e1+z e2, m2=z e1-y e2) is the paper's with y->-y; for it rot(1,pi) works, so paper and receipt disagree in sign. Removing z for k=-1 is possible (a reflection-type block times a rotation is a reflection, so z can be rotated to 0), but the paper does not state it, and D1b checks only z=0.",
+     "corrected_fix": "As proposed: rotate about tau_0 to set z=0, then rotate by pi about tau_2 to get (-x,y). Name the axes explicitly and add a z!=0 k=-1 check to the receipt."
+    },
+    {
+     "id": "F8",
+     "verdict": "confirmed",
+     "reason": "Table tab:slabs (l.838-848) has a box with delta about 0.02 in every t-slab (0.0206, 0.0200, 0.0207, 0.0202, 0.0205), plus the x<=-0.02 box. So '0.02 in one slab' is wrong. l.868-869 says delta is grid-measured and the distance between grid points is not proved.",
+     "corrected_fix": "As proposed."
+    },
+    {
+     "id": "F9",
+     "verdict": "confirmed",
+     "reason": "Thm 5.6 item 3 (l.774-775) gives the equivalence only for x in [-3,r_next) and only for H+GG*. The intro bullet omits both restrictions.",
+     "corrected_fix": "As proposed."
+    },
+    {
+     "id": "F10",
+     "verdict": "partly",
+     "reason": "The nine-sector restriction does not weaken this claim. The claim is negative ('floor of every sector nowhere'), so failing within the nine sectors already implies failing over all sectors. Outside [r_lo,r_hi] the affine bounding state (F2, C-lin exact) excludes the twist, so x outside the scan is covered too, at least in the sense the gate checks. What remains is that x was scanned only in steps of 0.25 and at 20 shapes, and the intro (l.132-133) says 'nowhere' without those limits. The abstract (l.52, 'at none of 20 shapes') is accurate apart from the grid.",
+     "corrected_fix": "Intro l.132: 'at none of the 20 shapes is the twist the floor at any x of the 0.25 scan (outside it, the affine bounding state excludes it)'. The nine-sector qualifier is unnecessary for this negative statement."
+    },
+    {
+     "id": "F11",
+     "verdict": "confirmed",
+     "reason": "wp1_tail_check.json rows: (2.0,0.25) edge -0.6441, tail_min -0.4228 at (200,-100); (2.0,0.5) edge -0.6132, tail_min -0.0299 at (200,-100). Both undercut at t=2 exactly. Sec 5 l.899-900 mentions only y=0.25 at t=2.001/2.01. l.919 (family q=l at j=2000 gives -0.61843 < -0.61324 for y=0.5) implies the t=2, y=0.5 undercut but does not say it. Table 1's caption does say j<=12, so nothing contradicts the paper, but the reporting is incomplete.",
+     "corrected_fix": "As proposed: say the conjecture fails at and near t=2 (t=2 with y=0.25 and 0.5; t=2.001 and 2.01 with y=0.25), and note that the t=2 row of Table 1 is not the all-sector edge at y=0.5."
+    }
+   ]
+  },
+  {
+   "verdicts": [
+    {
+     "id": "S5-1",
+     "verdict": "partly",
+     "reason": "The inconsistency is real, but 'circular' overstates it. Thm xpos, Prop lower item 2 and Thm slabs all rest on the closed-form rows. Thm slice rests on exactly the same rows, yet only Thm slice (line 766) and its intro bullet carry the hypothesis 'assume the closed-form blocks are the charge blocks of H+GG*'. Treating identical foundations differently is an internal inconsistency that needs fixing. However, the rows are not free-standing formulas checked only numerically. ricci_su2_exact_edge.symbolic_rows derives w, C and Omega_pm symbolically in sympy from the Weitzenbock data of eq. weitz: Omega_i = I3 x ad(M_i) - Gamma_i x I3 with the Levi-Civita gmat, R0 = Ric x I - 2[F,.], and F built from the structure constants. edge_wp2_interval_proof.exact_entry_functions lambdifies those exact expressions. So the unproved link is narrower than 'closed-form rows = H+GG*'. It is that eq. weitz, with these Omega_i and this R_0, equals H+GG*. That is a standard Bochner-Weitzenbock identity (cited to [bl1981]); the paper checks its sign and factor conventions only numerically (Remark split; the 12-point spectrum checks). The finding is right that the slab caveat (lines 869-872) names the wrong weak link. The near-end entries and G are compared numerically against EE.Blocks, which is built from the same symbolic_rows, so that check can never detect an operator error. The j=300/306/310 cross-check is likewise only a check of the S3 algebra, not independent. I reran review/s5_rq.py: the Hessian-definition builder (ricci_su3_test2_family.hessian_and_gauge, built from Q directly with no charge blocks) reproduces the e_- and e_0 formulas exactly at all four points, and gives <v,Hv> = 18.88 = 4t+2y^2. So the results are right; the issue is how the paper presents what is proved. Prop exact and Prop closed (Section 3) rest on the same eq. weitz route and should be treated the same way.",
+     "corrected_fix": "Treat the foundation uniformly with one stated standing assumption, or one proof, in Section 2. Option (a): state once, after eq. weitz, that every closed-form statement (Props exact, closed and lower, Thm xpos, Thm slice, Thm slabs, Thm domain) rests on eq. weitz with the displayed Omega_i and R_0. Say the rows are derived symbolically from it (symbolic_rows), and that the identity of eq. weitz with H+GG* is the standard Weitzenbock formula, whose conventions are checked numerically (Remark split; 12 random points to 1.5e-15). Then either drop the special hypothesis from Thm slice, or add it to all the others. Option (b): remove the condition by direct computation from Q. For Prop lower this takes three lines (Ric_00 = 2t, |[M_i,tau_0]|^2 = y^2 each, |nabla_{e_i} e_0|^2 = t each, total 4t+2y^2). For Thm xpos it is one diagonal matrix element of each of e_- and e_0. In both cases, rewrite the slab caveat (lines 869-872): the near-end matrices and G are symbolic consequences of the rows (S1-S3, mirror symmetry), and the remaining dependence is on eq. weitz. Replace the j=300 cross-check in the Thm xpos proof with the independent-builder values (-2.87748268961 at (0.37,1.3,2.7,j=6), and so on)."
+    },
+    {
+     "id": "S5-2",
+     "verdict": "confirmed",
+     "reason": "Line 180 makes 'floor' mean the lowest gauge-orthogonal eigenvalue by default. Thm xpos item 3 proves only that the twist is not the lowest eigenvalue of H+GG*, and line 656 itself says the gauge-orthogonal case is 'supported by the computations below but not proved'. Yet the abstract (lines 41-42, 'both are proved'), the intro bullet (lines 104-105), line 148 and the theorem title all drop the qualifier. My rerun confirms |G* e_-| = |G* e_0| = y, so neither state is gauge-orthogonal. review/s5_proj.py reproduces a maximum of +5.143 for (projected Rayleigh quotient) - (H+GG* quotient), so projecting onto ker G* can raise the quotient, and the H+GG* result does not transfer by a one-line argument. The 'region bounded below' half of 'both are proved' is fine for both spectra (Prop lower).",
+     "corrected_fix": "Abstract: 'For x>0 it is never the lowest eigenvalue of H+GG* in every sector (proved; for the gauge-orthogonal spectrum computed, e.g. margin -0.581 at j=120), and the region is bounded below in both spectra (proved).' Make the same qualification in the intro bullet, at line 148, in the title of Thm 5.1 ('...not the floor of H+GG* in every sector') and in the last sentence of item 3."
+    },
+    {
+     "id": "S5-3",
+     "verdict": "confirmed",
+     "reason": "The abstract states that the region 'is ... an interval [x_lo,x*]', but lines 756-758 say the single-interval shape (no holes) 'is computed on grids and not proved'. What Cor interval proves is containment: in [r_lo, r_hi] for both spectra, and also in x <= min(x*_12, 0) for H+GG*. I rechecked r_{lo,hi} = -(sqrt t + 2/sqrt t) -/+ sqrt(5t+3y^2+4) by solving lambda_0 = 4t+2y^2 by hand, and r_lo(3,0.5) = -7.3308 matches the paper. For the gauge-orthogonal spectrum the only proved upper bound is r_hi, so 'above by the edge' carries no proved content there beyond the definition of the edge. The intro bullet's 'lies in an interval [x_lo,x*]' has the same problem in softer form.",
+     "corrected_fix": "Abstract: 'The set of x where it is the floor of every sector is bounded on both sides: it lies in [r_lo, r_hi], bounded below by a sector-0 state (both spectra), and for H+GG* it lies in x <= min(x*_12, 0); on grids it is a single interval [x_lo, x*].' Intro bullet: 'lies between r_lo and r_hi; that the region is one interval is computed.'"
+    },
+    {
+     "id": "S5-4",
+     "verdict": "confirmed",
+     "reason": "In edge_wp2_interval_proof.py, mirror_check() (receipt field mirror_symbolic) checks only G(l,2l-xi,a) = G(l,xi,-a), the symmetry that reduces the bulk rows xi>l to xi<l. That the excluded block of charge -(l+2) equals lambda_j is checked there only numerically: check_matrix_numeric includes n0'=-2 'check only'. The fact itself holds, by Prop exact and Lemma blocks, so this is a wording fix.",
+     "corrected_fix": "'Every receipt reports all_proved true and the symmetry G(l,2l-xi,a)=G(l,xi,-a), used to reduce the bulk rows to xi<=l, checked symbolically. The excluded block of charge -(l+2) equals lambda_j by Proposition exact and Lemma blocks.'"
+    },
+    {
+     "id": "S5-5",
+     "verdict": "confirmed",
+     "reason": "In Table tab:slabs, each of the five t-slabs has a box with delta near 0.02 (0.0206, 0.0200, 0.0207, 0.0202, 0.0205), and there is the extra box at 0.0196. '0.02 in one slab' is therefore wrong. It may have been meant for the [-3,-0.02] box that reaches x=-0.02, but as written it misstates the table. The limits paragraph (line 866) confirms that delta is measured from the worst grid point of each slab, not from the true edge.",
+     "corrected_fix": "'on boxes whose top lies about 0.1 below, and in every t-slab also about 0.02 below, the smallest grid value of min(x*_12,0) in that slab (and up to x=-0.02 on [1,3]x[7,10])'."
+    },
+    {
+     "id": "S5-6",
+     "verdict": "confirmed",
+     "reason": "Line 162 says 'with the same brackets', i.e. [tau_a,tau_b] = 2 eps tau_c like the frame. But B = y^2 - 2 sqrt t x needs [tau_1,tau_2] = tau_0: the frame contributes c_12^0 = 2 sqrt t, giving -2 sqrt t x, and [M_1,M_2] = y^2 tau_0 only with factor 1. The Berger-path value B = t - 2(2-t) = 3t-4 also needs factor 1; with the factor 2 it would be 4t-4. The code uses factor 1: ricci_su3_test2_family.su2_data has eps entries of +-1, and symbolic_rows uses cross(m). The same wording appears in the Floor paper (berger-spectrum/paper.tex line 144), so the misstatement is inherited and should be fixed in both.",
+     "corrected_fix": "Replace 'with the same brackets' with '[tau_a,tau_b] = epsilon_{abc} tau_c (the cross product on R^3; note the frame has [e_a,e_b] = 2 epsilon_{abc} e_c)', and make the same correction in the Floor paper v3."
+    },
+    {
+     "id": "S5-7",
+     "verdict": "confirmed",
+     "reason": "I reran review/s5_rq2 (s5_ref2.py) with EE.Blocks. At x = -0.62460 the q=8, j=16 margin is -0.0048987 (phi_A = +0.005246). The value 0.00492 belongs to x = x*_12 - 5e-4 = -0.6245982 (margin -0.0049178, phi_A = +0.005228). The conclusion is unaffected; only the third significant figure of the quoted value is off. The gauge-orthogonal figure 0.00353 was probably taken at the same shifted x and should be checked too.",
+     "corrected_fix": "Either write 'At x = x*_12 - 5e-4 = -0.624598, where phi_A over j<=12 is still +0.0052, ... lies below lambda_16 by 0.00492', or keep x = -0.62460 and change the value to 0.00490 (and recheck the 0.00353 gauge-orthogonal value at the same x)."
+    }
+   ]
+  },
+  {
+   "verdicts": [
+    {
+     "id": "S6-1",
+     "verdict": "confirmed",
+     "reason": "The inconsistency is real. Theorem thm:slice (765-766) and the intro (108-109) state the hypothesis that the closed-form blocks are the blocks of H+GG*, and the remark at 818-819 calls that theorem 'conditional' because the blocks are 'not re-derived symbolically'. Theorem thm:domain (940-943), thm:slabs (825-829) and the abstract (45-46) run on the same symbolic construction and state no such hypothesis. I checked ricci_su2_family_block_cert.py symbolic(): it builds w, C and Lp/Lm from Om and R0 = Ric(x)I - 2T, the same construction as ricci_su2_exact_edge.symbolic_rows. The only comparison with the general builder T2.hessian_and_gauge is exact_edge.py main(): 12 points, rng(3), x in [-2,2], y in [0,3], t in [0.5,8], j<=8. None of those points lies in D. The split of R_0 is checked only numerically (Remark rem:split). Severity major is right.",
+     "corrected_fix": "Either state thm:domain, thm:slabs and the abstract sentence under the same hypothesis as thm:slice, or prove the identity exactly, once for all three. One route: a sympy identity sum X_i^*X_i + R_0 = H + GG^* in the generators, with l symbolic, plus an exact proof of the split of R_0 for this family."
+    },
+    {
+     "id": "S6-2",
+     "verdict": "confirmed",
+     "reason": "point_check() (block_cert.py 255-270) compares block_iv with EE.Blocks().block. Blocks.__init__ calls symbolic_rows(), so both sides come from the same symbolic rows, and the check is closed-form against closed-form. The script's own docstring (line 11) says 'checked against the double-precision block (EE.Blocks)', and the main() printout says 'interval blocks vs double blocks'. Lines 272-273 and 952-954 misdescribe it as agreement with the general sector builder. The sample points (rng 5) lie in D with j in [1,11], and the receipt value is 1.7053e-13.",
+     "corrected_fix": "Reword both sentences: 'the interval blocks agree with the double-precision closed-form blocks to 1.7e-13 (point_check)'. Cite exact_edge.json (12 points, outside D) as the only comparison with the general builder, labelled double precision, and preferably add a general-builder check inside D at larger j."
+    },
+    {
+     "id": "S6-3",
+     "verdict": "confirmed",
+     "reason": "In ricci_su2_family_large_j.py, check_against_rows() compares G_exact with 'actual' rows from EE.Blocks, the same closed-form construction, at random points in double precision. That check is the only link in the proof as written between the interval-proved G and the Gershgorin discs, so part (b) rests on a numerical spot check. The paper itself labels it '(double precision)' at 964-966. The finding's claim that the link can be made exact (symbolic diagonal identity, exact radius from the moduli of C and Omega_+-) is consistent with the script's docstring formula. The gap is real and can be fixed. Major is acceptable, since it affects a result stated as proved.",
+     "corrected_fix": "Replace the numerical sentence with a lemma: the diagonal identity (sympy) plus the exact radius bound from the moduli of C, Lp and Lm give G <= diagonal - lambda - radius. Add a sympy receipt, and keep the numerical check as a cross-check."
+    },
+    {
+     "id": "S6-4",
+     "verdict": "confirmed",
+     "reason": "In certify_point, mu = eta - eps, with eta set to half the double-precision centre margin. certify_mv returns lower = mu - var, and task() splits a box until lower > 0, keeping worst = min(lower) over the accepted boxes. So the 'smallest margin' is the slack of the subdivision stopping rule. It is a valid but very loose lower bound, not a near-tie. Remark rem:Dinside gives the actual minimum as about 2.35. Calling it 'smallest certified margin' in the table and text invites a misreading.",
+     "corrected_fix": "Rename the column 'smallest certified lower bound (box slack)', and add that the actual margin on D is about 2.35 or more (double precision, Remark rem:Dinside)."
+    },
+    {
+     "id": "S6-5",
+     "verdict": "confirmed",
+     "reason": "Confirmed in the code: certify_point returns 'mpmath.mpf(eta) - eps' at mp.prec 64 with round-to-nearest. In certify_mv, hw (including max(sh - sc, sc - sl)), var = mpmath.fsum(...) and lower = mu - var are ordinary mpf operations, not directed rounding. The errors are about 1e-19 relative, far below the 1.2e-6 slack, so the conclusion holds. Only the 'outward rounding' wording overstates what the code does. Minor.",
+     "corrected_fix": "Compute hw, var and mu - var in iv arithmetic and test the lower endpoint, or add a sentence bounding the final round-to-nearest error (below 1e-18, against a minimum slack of 1.2e-6)."
+    },
+    {
+     "id": "S8-1",
+     "verdict": "confirmed",
+     "reason": "The core problem stands, and the run has now finished. wp4_general_fields.json was rewritten at 2026-11-22 06:23:39 with protocol '... + Amendment B1': B_II_code true, B_count 193 (met), B_S 'fail' with 129 of 193 scored points at rho_s >= 0.5, B_half 'pass', B_N_fraction_neutral 0.316. At the 76 scored points with x* <= 0, 70 fail B-S, mostly competitors (1,-3/2) (31) and (1,3/2) (14). Even the 61 B_{4,0}-competitor points reach rho_s 0.522. Paper line 1255 ('running') is out of date, and the 'nearly blind' sentences (133, 430, 1067-1068) contradict a pre-registered test that has failed. One sub-claim of the finding is now superseded: the final receipt does record B-II-code passing under Amendment B1, so the claim that no receipt shows this is no longer true. The partial counts (188/125) are replaced by 193/129.",
+     "corrected_fix": "Report Test B from the final wp4_general_fields.json: B-I passed; B-II-code passed under B1; B-count met (193); B-S failed (129/193 with rho_s >= 0.5; 70/76 at x* <= 0); B-half passed at every scored point; B-N descriptive, 31.6% neutral. Restrict the 'nearly blind' sentences (lines 133, 430, 1067) to the three sample points and the B_{4,0} competitor, and point to the B-S failure. Update the abstract and intro ('is running')."
+    },
+    {
+     "id": "S8-2",
+     "verdict": "confirmed",
+     "reason": "Verified against wp4_su3_diagnostic_posthoc.json. The best-x (0,0) margins are -1.0936, -0.2755, -1.0000 and +2.7625. Scan lengths are 25+29+28+41 = 123. Blockers: (4,0) 121, (3,1) 2. The ranges -1.5 to -2.6 for (1,0) and -6.1 to -8.3 for (4,0) are correct.",
+     "corrected_fix": "'... the margin is negative in every sector at three of the four shapes, and in every sector other than (0,0) at (u,y)=(1,2) ... (4,0) is the blocking sector at 121 of the 123 values of x scanned (the other two: (3,1)).'"
+    },
+    {
+     "id": "S8-3",
+     "verdict": "confirmed",
+     "reason": "wp4_su3_free_fibre.json C_K4.edges: t=4: edge - edge_S = -2.31e-10; t=8 (sqrt_t): 0.13826909073684 - 0.13826908820942 = 2.53e-9. The largest deviation is 2.5e-9, not 3e-10. The second_diff values (max 2.8e-14) support '3e-14'.",
+     "corrected_fix": "Write 'three known edges to $3\\times10^{-9}$'."
+    },
+    {
+     "id": "S7-1",
+     "verdict": "confirmed",
+     "reason": "Recounted from stretch_test.json: L1 points with floor sectors ('0',) number 34, and with () number 1, at (s,t)=(1.25,1.5), where extremal 12.25 > slice_floor 9.9966. So 'At every singled-out point it is the floor of j=0 only' is false at one point.",
+     "corrected_fix": "'At 34 of the 35 singled-out points it is the floor of j=0 only; at (s,t)=(1.25,1.5) it is the floor of no sector.' Correct the results note too."
+    },
+    {
+     "id": "S7-2",
+     "verdict": "confirmed",
+     "reason": "Line 181 makes the default 'floor' the gauge-orthogonal one. The block comparison is exact for H+GG*. For the gauge-orthogonal floor it is only sufficient, because the twist is gauge-orthogonal while a lower H+GG* block eigenvalue may be gauge-dominated. wp4_heldout.json: x_S - x_meas lies in [1.48e-4, 0.0908] over all 48 points, so the two edges differ. Read with the paper's definition, 'Its structure is exact' overstates. Minor.",
+     "corrected_fix": "'For $H+GG^*$, whether the twist is the floor of a sector is a comparison between $\\lambda_j$ and the lowest eigenvalues of the other charge blocks; for the gauge-orthogonal spectrum this gives a sufficient condition, and the gauge-orthogonal edge lies slightly above (Test A: by $1.5\\times10^{-4}$ to $0.091$).'"
+    },
+    {
+     "id": "S9-1",
+     "verdict": "confirmed",
+     "reason": "Test C covers 20 shapes, nine listed sectors and an x grid of step 0.25, in double precision. The prereg restricts every C claim to the nine listed sectors and says holes narrower than 0.25 cannot be seen. 'The twist is the floor nowhere' at 1282 and in the intro ('floor nowhere') reads as a statement about the whole family and all sectors. Minor overclaim.",
+     "corrected_fix": "'... the twist is the floor of all nine listed sectors at none of the 20 shapes on the scan (step 0.25, double precision); at t=4 the post-hoc margins in (4,0) are about -6 or lower.'"
+    },
+    {
+     "id": "AV-1",
+     "verdict": "partly",
+     "reason": "The main point stands. The availability list (1292-1335) has no edge_wp4_points/heldout/general_fields/su3_free_fibre/su3_diagnostic scripts and no wp4_heldout, wp4_general_fields, wp4_su3_free_fibre or wp4_su3_diagnostic_posthoc receipts or logs, although all exist in scripts/ and research/edge-theorem-20261121/. The Lean directory is absent from rtc/docs/papers/berger-spectrum/ and present only in the lean worktree (no 'sorry' in Edge.lean or Price.lean). One sub-claim is wrong: test2_berger_control.json is covered by the listed glob test2_*.json (availability line 33), and stretch_test.json is listed explicitly.",
+     "corrected_fix": "Add the Test A/B/C scripts (edge_wp4_points.py, edge_wp4_heldout.py, edge_wp4_general_fields.py, edge_wp4_su3_free_fibre.py, edge_wp4_su3_diagnostic.py) and receipts with logs (wp4_heldout.json/_log.txt, wp4_general_fields.json, wp4_su3_free_fibre.json/_log.txt, wp4_su3_diagnostic_posthoc.json/_log.txt). Merge feat/helike-lean before tagging so that docs/papers/berger-spectrum/lean/ is in the tagged tree."
+    }
+   ]
+  }
+ ]
+}

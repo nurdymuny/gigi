@@ -1,0 +1,689 @@
+//! RECOVER_CURVATURE — two-ring closed linear curvature recovery.
+//!
+//! Engine form of `scripts/ricci_pg_tworing.py` (paper: *Reading the Curve,
+//! Not Counting the Points*, `docs/papers/two-ring-pg/`). Spec:
+//! `docs/RECOVER_CURVATURE_SPEC.md`.
+//!
+//! For each tetrahedral cell of a closed mesh on a quotient of S³ (vertices
+//! are unit quaternions, scalar first) and a 1-cochain `a` of edge integrals,
+//! recover the closed linear curvature `P_K(z) = c + B z`, `tr B = 0`, in the
+//! cell's chart, by equality-constrained least squares:
+//!
+//! * the cell's own four face fluxes are held exactly;
+//! * every other distinct face within `rings` face-steps is fitted in least
+//!   squares;
+//! * every neighbour is first carried onto the cell's sheet of the cover by
+//!   the left quaternion multiplication fixed at a shared vertex, and refused
+//!   if its shared vertices then fail to coincide.
+//!
+//! The chart frame is canonical (Gram–Schmidt, positive diagonal), so the
+//! coefficients are reproducible. Amplification, condition and fluxes do not
+//! depend on the frame's signs.
+//!
+//! Every failure is a refusal naming the cell. Nothing is guessed.
+
+use nalgebra::{DMatrix, DVector, Matrix3, Vector3, Vector4};
+use std::collections::HashMap;
+use std::fmt;
+
+/// Local edges (i, j), i < j, in the order the cell's `edges` / `reverse` use.
+pub const EDGES: [(usize, usize); 6] = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)];
+/// Local faces (i, j, k), boundary i → j → k.
+pub const FACES: [(usize, usize, usize); 4] = [(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)];
+
+/// Relative singular-value cutoff for rank and pseudo-inverses.
+pub const RCOND: f64 = 1e-12;
+/// Largest admissible condition number of a cell's flux map.
+pub const COND_CAP: f64 = 1e12;
+/// Largest admissible vertex gap after transport onto a cell's sheet.
+pub const COINCIDE: f64 = 1e-12;
+/// Admissible range of `rings`.
+pub const MAX_RINGS: usize = 3;
+
+/// One tetrahedral cell.
+#[derive(Clone, Debug)]
+pub struct Cell {
+    /// Unit quaternions (q0, q1, q2, q3), scalar first.
+    pub vertices: [[f64; 4]; 4],
+    /// Global edge id of each local edge in [`EDGES`] order.
+    pub edges: [usize; 6],
+    /// True if the stored edge runs opposite to the local edge (i → j).
+    pub reverse: [bool; 6],
+}
+
+/// The recovered curvature of one cell and its diagnostics.
+#[derive(Clone, Debug)]
+pub struct CellRecovery {
+    /// Constant part of the closed linear proxy, in the cell's chart.
+    pub c: [f64; 3],
+    /// Linear part, traceless, in the cell's chart.
+    pub b: [[f64; 3]; 3],
+    /// The eleven basis coefficients (3 constant, 6 off-diagonal, 2 diagonal).
+    pub coefficients: [f64; 11],
+    /// 2-norm of the linear map from neighbourhood fluxes to coefficients.
+    pub amplification: f64,
+    /// Ratio of largest to smallest singular value of the flux map.
+    pub condition: f64,
+    /// Numerical rank of the flux map (11 when accepted).
+    pub rank: usize,
+    /// Distinct faces read.
+    pub faces: usize,
+    /// Cells in the neighbourhood, the cell itself included.
+    pub cells: usize,
+    /// Largest |recovered flux − data flux| over all faces read.
+    pub residual: f64,
+    /// Largest |recovered flux − data flux| over the cell's own four faces.
+    pub own_residual: f64,
+}
+
+/// A refusal. Each names what was violated and where.
+#[derive(Clone, Debug, PartialEq)]
+pub enum RecoveryError {
+    InvalidRings(usize),
+    EdgeOutOfRange { cell: usize, edge: usize, n_edges: usize },
+    OpenMesh { faces_not_shared_twice: usize },
+    NoCoincidence { cell: usize, neighbour: usize, gap: f64 },
+    OutsideChart { cell: usize },
+    DegenerateCell { cell: usize },
+    RankDeficient { cell: usize, rank: usize },
+    IllConditioned { cell: usize, condition: f64 },
+    OwnFluxNotReproduced { cell: usize, residual: f64 },
+}
+
+impl fmt::Display for RecoveryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use RecoveryError::*;
+        match self {
+            InvalidRings(r) => write!(f, "RECOVER_CURVATURE: RINGS must be in 1..={MAX_RINGS} (got {r})"),
+            EdgeOutOfRange { cell, edge, n_edges } => write!(
+                f, "RECOVER_CURVATURE: cell {cell} names edge {edge}, but the edge data has only {n_edges} edges"),
+            OpenMesh { faces_not_shared_twice } => write!(
+                f, "RECOVER_CURVATURE: the mesh is not closed — {faces_not_shared_twice} faces are not shared by exactly two cells"),
+            NoCoincidence { cell, neighbour, gap } => write!(
+                f, "RECOVER_CURVATURE: cell {neighbour} does not coincide with cell {cell} after transport onto its sheet (gap {gap:.3e} > {COINCIDE:e})"),
+            OutsideChart { cell } => write!(
+                f, "RECOVER_CURVATURE: a neighbourhood vertex of cell {cell} lies outside the cell's projective chart"),
+            DegenerateCell { cell } => write!(
+                f, "RECOVER_CURVATURE: cell {cell} is degenerate (its vertices do not span a 3-plane)"),
+            RankDeficient { cell, rank } => write!(
+                f, "RECOVER_CURVATURE: the closed linear flux map of cell {cell} has rank {rank} < 11"),
+            IllConditioned { cell, condition } => write!(
+                f, "RECOVER_CURVATURE: the flux map of cell {cell} has condition {condition:.3e}, above the cap {COND_CAP:e}"),
+            OwnFluxNotReproduced { cell, residual } => write!(
+                f, "RECOVER_CURVATURE: the own face fluxes of cell {cell} are not reproduced (residual {residual:.3e})"),
+        }
+    }
+}
+
+impl std::error::Error for RecoveryError {}
+
+// ── quaternions ───────────────────────────────────────────────────────────
+
+fn qmul(p: &Vector4<f64>, q: &Vector4<f64>) -> Vector4<f64> {
+    let (pv, qv) = (Vector3::new(p[1], p[2], p[3]), Vector3::new(q[1], q[2], q[3]));
+    let s = p[0] * q[0] - pv.dot(&qv);
+    let v = qv * p[0] + pv * q[0] + pv.cross(&qv);
+    Vector4::new(s, v[0], v[1], v[2])
+}
+
+fn qconj(p: &Vector4<f64>) -> Vector4<f64> {
+    Vector4::new(p[0], -p[1], -p[2], -p[3])
+}
+
+type Verts = [Vector4<f64>; 4];
+
+fn verts(cell: &Cell) -> Verts {
+    cell.vertices.map(|v| Vector4::new(v[0], v[1], v[2], v[3]))
+}
+
+// ── mesh combinatorics ────────────────────────────────────────────────────
+
+fn edge_index(i: usize, j: usize) -> usize {
+    EDGES.iter().position(|&e| e == (i.min(j), i.max(j))).expect("local edge")
+}
+
+/// A face, identified by its three global edge ids (sorted).
+fn face_key(cell: &Cell, face: (usize, usize, usize)) -> [usize; 3] {
+    let (i, j, k) = face;
+    let mut key = [
+        cell.edges[edge_index(i, j)],
+        cell.edges[edge_index(i, k)],
+        cell.edges[edge_index(j, k)],
+    ];
+    key.sort_unstable();
+    key
+}
+
+/// Corners of a face, keyed by the two global face edges meeting there, in
+/// face order. Shared faces of two cells have the same keys.
+fn corners(cell: &Cell, face: (usize, usize, usize)) -> Vec<((usize, usize), usize)> {
+    let f = [face.0, face.1, face.2];
+    f.iter()
+        .map(|&v| {
+            let others: Vec<usize> = f.iter().copied().filter(|&w| w != v).collect();
+            let (a, b) = (cell.edges[edge_index(v, others[0])], cell.edges[edge_index(v, others[1])]);
+            ((a.min(b), a.max(b)), v)
+        })
+        .collect()
+}
+
+/// Flux of the cochain through a face, boundary i → j → k.
+fn data_flux(cell: &Cell, a: &[f64], face: (usize, usize, usize)) -> f64 {
+    let (i, j, k) = face;
+    let s = |e: usize| if cell.reverse[e] { -1.0 } else { 1.0 };
+    let (eij, ejk, eik) = (edge_index(i, j), edge_index(j, k), edge_index(i, k));
+    s(eij) * a[cell.edges[eij]] + s(ejk) * a[cell.edges[ejk]] - s(eik) * a[cell.edges[eik]]
+}
+
+pub type FaceIndex = HashMap<[usize; 3], Vec<(usize, usize)>>;
+
+fn face_index(cells: &[Cell]) -> Result<FaceIndex, RecoveryError> {
+    let mut index: FaceIndex = HashMap::new();
+    for (ci, c) in cells.iter().enumerate() {
+        for (fi, &f) in FACES.iter().enumerate() {
+            index.entry(face_key(c, f)).or_default().push((ci, fi));
+        }
+    }
+    let bad = index.values().filter(|v| v.len() != 2).count();
+    if bad > 0 {
+        return Err(RecoveryError::OpenMesh { faces_not_shared_twice: bad });
+    }
+    Ok(index)
+}
+
+/// Cells within `rings` face-steps of `ci`, each carried onto `ci`'s sheet.
+/// Insertion order is breadth-first; the first sheet a cell is reached on wins.
+fn neighbourhood(
+    cells: &[Cell],
+    faces: &FaceIndex,
+    ci: usize,
+    rings: usize,
+    transport: bool,
+) -> Result<Vec<(usize, Verts)>, RecoveryError> {
+    let mut out: Vec<(usize, Verts)> = vec![(ci, verts(&cells[ci]))];
+    let mut slot: HashMap<usize, usize> = HashMap::from([(ci, 0)]);
+    let mut frontier = vec![ci];
+    for _ in 0..rings {
+        let mut fresh = Vec::new();
+        for &cj in &frontier {
+            let c = out[slot[&cj]].1;
+            for &face in FACES.iter() {
+                for &(nj, fnj) in &faces[&face_key(&cells[cj], face)] {
+                    if nj == cj {
+                        continue;
+                    }
+                    let ck = corners(&cells[cj], face);
+                    let cn: HashMap<(usize, usize), usize> =
+                        corners(&cells[nj], FACES[fnj]).into_iter().collect();
+                    let mut v = verts(&cells[nj]);
+                    if transport {
+                        let (k0, vk) = ck[0];
+                        let h = qmul(&c[vk], &qconj(&v[cn[&k0]]));
+                        v = v.map(|p| qmul(&h, &p));
+                    }
+                    let gap = ck
+                        .iter()
+                        .map(|(k, vk)| (c[*vk] - v[cn[k]]).amax())
+                        .fold(0.0_f64, f64::max);
+                    if gap > COINCIDE {
+                        return Err(RecoveryError::NoCoincidence { cell: cj, neighbour: nj, gap });
+                    }
+                    if slot.contains_key(&nj) {
+                        continue;
+                    }
+                    slot.insert(nj, out.len());
+                    out.push((nj, v));
+                    fresh.push(nj);
+                }
+            }
+        }
+        frontier = fresh;
+    }
+    Ok(out)
+}
+
+// ── chart ─────────────────────────────────────────────────────────────────
+
+struct Chart {
+    n: Vector4<f64>,
+    c: f64,
+    cen: Vector4<f64>,
+    q: [Vector4<f64>; 3],
+    diam: f64,
+}
+
+/// Generalised cross product: the vector orthogonal to three vectors of R⁴.
+fn cross4(a: &Vector4<f64>, b: &Vector4<f64>, c: &Vector4<f64>) -> Vector4<f64> {
+    let m = |cols: [usize; 3]| {
+        Matrix3::new(
+            a[cols[0]], a[cols[1]], a[cols[2]],
+            b[cols[0]], b[cols[1]], b[cols[2]],
+            c[cols[0]], c[cols[1]], c[cols[2]],
+        )
+        .determinant()
+    };
+    Vector4::new(m([1, 2, 3]), -m([0, 2, 3]), m([0, 1, 3]), -m([0, 1, 2]))
+}
+
+fn chart(k: &Verts, cell: usize) -> Result<Chart, RecoveryError> {
+    let p0 = k[0];
+    let b = [k[1] - p0, k[2] - p0, k[3] - p0];
+    let mut n = cross4(&b[0], &b[1], &b[2]);
+    let nn = n.norm();
+    if !(nn > 0.0) {
+        return Err(RecoveryError::DegenerateCell { cell });
+    }
+    n /= nn;
+    let mut c = n.dot(&p0);
+    if c < 0.0 {
+        n = -n;
+        c = -c;
+    }
+    // Gram–Schmidt with one re-orthogonalisation pass: Q with R's diagonal > 0,
+    // the unique such frame for the column span of b.
+    let mut q = [Vector4::zeros(); 3];
+    for i in 0..3 {
+        let mut v = b[i];
+        for _ in 0..2 {
+            for j in 0..i {
+                let proj = q[j].dot(&v);
+                v -= q[j] * proj;
+            }
+        }
+        let norm = v.norm();
+        if !(norm > 0.0) {
+            return Err(RecoveryError::DegenerateCell { cell });
+        }
+        q[i] = v / norm;
+    }
+    let mean = (k[0] + k[1] + k[2] + k[3]) / 4.0;
+    let cen = mean * (c / mean.dot(&n));
+    let mut diam = 0.0_f64;
+    for i in 0..4 {
+        for j in (i + 1)..4 {
+            diam = diam.max((k[i] - k[j]).norm());
+        }
+    }
+    Ok(Chart { n, c, cen, q, diam })
+}
+
+impl Chart {
+    fn to_orth(&self, v: &Verts, cell: usize) -> Result<[Vector3<f64>; 4], RecoveryError> {
+        let mut out = [Vector3::zeros(); 4];
+        for (i, p) in v.iter().enumerate() {
+            let den = p.dot(&self.n);
+            if !(den > 0.0) {
+                return Err(RecoveryError::OutsideChart { cell });
+            }
+            let w = p * (self.c / den) - self.cen;
+            out[i] = Vector3::new(self.q[0].dot(&w), self.q[1].dot(&w), self.q[2].dot(&w)) / self.diam;
+        }
+        Ok(out)
+    }
+}
+
+// ── closed linear basis ───────────────────────────────────────────────────
+
+/// Basis of closed linear fields c + B z with tr B = 0: three constants, six
+/// off-diagonal B entries in (i, j) order, then diag(1,−1,0) and diag(0,1,−1).
+fn basis() -> [(Vector3<f64>, Matrix3<f64>); 11] {
+    let mut out = [(Vector3::zeros(), Matrix3::zeros()); 11];
+    for i in 0..3 {
+        out[i].0[i] = 1.0;
+    }
+    let mut k = 3;
+    for i in 0..3 {
+        for j in 0..3 {
+            if i != j {
+                out[k].1[(i, j)] = 1.0;
+                k += 1;
+            }
+        }
+    }
+    out[9].1 = Matrix3::from_diagonal(&Vector3::new(1.0, -1.0, 0.0));
+    out[10].1 = Matrix3::from_diagonal(&Vector3::new(0.0, 1.0, -1.0));
+    out
+}
+
+/// Exact flux of each basis field through a straight chart triangle.
+fn flux_row(tri: [Vector3<f64>; 3], basis: &[(Vector3<f64>, Matrix3<f64>); 11]) -> [f64; 11] {
+    let area = (tri[1] - tri[0]).cross(&(tri[2] - tri[0])) / 2.0;
+    let cen = (tri[0] + tri[1] + tri[2]) / 3.0;
+    std::array::from_fn(|k| (basis[k].0 + basis[k].1 * cen).dot(&area))
+}
+
+// ── linear algebra ────────────────────────────────────────────────────────
+
+// nalgebra 0.33's SVD was measured to reconstruct the rank-deficient 11×4
+// own-face matrix with error 2.6e-3 (it should be ~1e-16), which corrupted
+// the pseudo-inverse and broke the equality constraint. The matrices here are
+// tiny (at most ~60×11), so a one-sided Jacobi SVD is used instead: it is
+// simple, and it computes small singular values to high relative accuracy.
+
+/// One-sided Jacobi SVD of a tall matrix (rows ≥ cols): returns U (m×n, columns
+/// orthonormal where s > 0), s (n, unsorted) and V (n×n) with M = U diag(s) Vᵀ.
+fn jacobi_svd(m: &DMatrix<f64>) -> (DMatrix<f64>, Vec<f64>, DMatrix<f64>) {
+    debug_assert!(m.nrows() >= m.ncols());
+    let n = m.ncols();
+    let mut u = m.clone();
+    let mut v = DMatrix::<f64>::identity(n, n);
+    for _sweep in 0..80 {
+        let mut rotated = false;
+        for p in 0..n {
+            for q in (p + 1)..n {
+                let alpha = u.column(p).norm_squared();
+                let beta = u.column(q).norm_squared();
+                let gamma = u.column(p).dot(&u.column(q));
+                if gamma == 0.0 || gamma.abs() <= 1e-15 * (alpha * beta).sqrt() {
+                    continue;
+                }
+                rotated = true;
+                let zeta = (beta - alpha) / (2.0 * gamma);
+                let t = zeta.signum() / (zeta.abs() + (1.0 + zeta * zeta).sqrt());
+                let c = 1.0 / (1.0 + t * t).sqrt();
+                let s = c * t;
+                for (mat, rows) in [(&mut u, m.nrows()), (&mut v, n)] {
+                    for r in 0..rows {
+                        let (xp, xq) = (mat[(r, p)], mat[(r, q)]);
+                        mat[(r, p)] = c * xp - s * xq;
+                        mat[(r, q)] = s * xp + c * xq;
+                    }
+                }
+            }
+        }
+        if !rotated {
+            break;
+        }
+    }
+    let s: Vec<f64> = (0..n).map(|j| u.column(j).norm()).collect();
+    for (j, &sj) in s.iter().enumerate() {
+        if sj > 0.0 {
+            u.column_mut(j).scale_mut(1.0 / sj);
+        }
+    }
+    (u, s, v)
+}
+
+fn singular_values(m: &DMatrix<f64>) -> Vec<f64> {
+    if m.nrows() < m.ncols() {
+        return singular_values(&m.transpose());
+    }
+    jacobi_svd(m).1
+}
+
+/// Moore–Penrose pseudo-inverse with a cutoff relative to the largest
+/// singular value (numpy's `pinv(…, rcond)` convention).
+fn pinv(m: &DMatrix<f64>) -> DMatrix<f64> {
+    if m.nrows() < m.ncols() {
+        return pinv(&m.transpose()).transpose();
+    }
+    let (u, s, v) = jacobi_svd(m);
+    let smax = s.iter().copied().fold(0.0_f64, f64::max);
+    let cut = RCOND * smax;
+    let mut out = DMatrix::zeros(m.ncols(), m.nrows());
+    for (i, &si) in s.iter().enumerate() {
+        if si > cut {
+            out += (v.column(i) * u.column(i).transpose()) / si;
+        }
+    }
+    out
+}
+
+// ── the recovery ──────────────────────────────────────────────────────────
+
+/// Mechanism switches. Production uses [`Mechanism::FULL`]; the others exist
+/// so tests can remove one mechanism and watch a gate turn red.
+#[derive(Clone, Copy, Debug)]
+pub struct Mechanism {
+    pub transport: bool,
+    pub equality: bool,
+}
+
+impl Mechanism {
+    pub const FULL: Mechanism = Mechanism { transport: true, equality: true };
+}
+
+/// Recover one cell. `flux` overrides the cochain fluxes with a field
+/// evaluated on chart triangles (planted-field tests).
+pub fn recover_cell(
+    cells: &[Cell],
+    faces: &FaceIndex,
+    a: &[f64],
+    ci: usize,
+    rings: usize,
+    mech: Mechanism,
+    flux: Option<&dyn Fn([Vector3<f64>; 3]) -> f64>,
+) -> Result<CellRecovery, RecoveryError> {
+    let nb = neighbourhood(cells, faces, ci, rings, mech.transport)?;
+    let ch = chart(&nb[0].1, ci)?;
+    let basis = basis();
+    let mut seen = std::collections::HashSet::new();
+    let (mut own_rows, mut own_d, mut rest_rows, mut rest_d) = (vec![], vec![], vec![], vec![]);
+    for (nj, v) in &nb {
+        let o = ch.to_orth(v, ci)?;
+        for &f in FACES.iter() {
+            if !seen.insert(face_key(&cells[*nj], f)) {
+                continue;
+            }
+            let tri = [o[f.0], o[f.1], o[f.2]];
+            let d = match flux {
+                Some(g) => g(tri),
+                None => data_flux(&cells[*nj], a, f),
+            };
+            let row = flux_row(tri, &basis);
+            if *nj == ci {
+                own_rows.push(row);
+                own_d.push(d);
+            } else {
+                rest_rows.push(row);
+                rest_d.push(d);
+            }
+        }
+    }
+    let to_mat = |rows: &[[f64; 11]]| DMatrix::from_fn(rows.len(), 11, |i, j| rows[i][j]);
+    let (am, rm) = (to_mat(&own_rows), to_mat(&rest_rows));
+    let all_rows: Vec<[f64; 11]> = own_rows.iter().chain(rest_rows.iter()).copied().collect();
+    let rows = to_mat(&all_rows);
+    let d = DVector::from_iterator(all_rows.len(), own_d.iter().chain(rest_d.iter()).copied());
+
+    let s = singular_values(&rows);
+    let smax = s.iter().copied().fold(0.0_f64, f64::max);
+    let smin = s.iter().copied().fold(f64::INFINITY, f64::min);
+    let rank = s.iter().filter(|&&x| x > RCOND * smax).count();
+    if rank < 11 {
+        return Err(RecoveryError::RankDeficient { cell: ci, rank });
+    }
+    let condition = smax / smin;
+    if condition > COND_CAP {
+        return Err(RecoveryError::IllConditioned { cell: ci, condition });
+    }
+
+    // Linear map from all neighbourhood fluxes to the eleven coefficients.
+    let fmap = if mech.equality {
+        // Null-space method: own faces exact, the rest in least squares within
+        // the freedom the own faces leave. With P = I − A⁺A the projector onto
+        // null(A), N (R N)⁺ = (R P)⁺ for any orthonormal basis N of null(A).
+        let ap = pinv(&am);
+        let p = DMatrix::<f64>::identity(11, 11) - &ap * &am;
+        let rpp = pinv(&(&rm * &p));
+        let left = &ap - &rpp * &rm * &ap;
+        let mut f = DMatrix::zeros(11, all_rows.len());
+        f.columns_mut(0, own_rows.len()).copy_from(&left);
+        f.columns_mut(own_rows.len(), rest_rows.len()).copy_from(&rpp);
+        f
+    } else {
+        pinv(&rows)
+    };
+    let x = &fmap * &d;
+
+    let scale = d.iter().take(own_rows.len()).fold(1.0_f64, |m, v| m.max(v.abs()));
+    let own_res = (&am * &x - d.rows(0, own_rows.len())).amax();
+    if mech.equality && own_res > 1e-12 * scale {
+        return Err(RecoveryError::OwnFluxNotReproduced { cell: ci, residual: own_res });
+    }
+    let amplification = singular_values(&fmap).into_iter().fold(0.0_f64, f64::max);
+    let residual = (&rows * &x - &d).amax();
+
+    let mut cvec = [0.0; 3];
+    let mut bmat = Matrix3::zeros();
+    for k in 0..11 {
+        for i in 0..3 {
+            cvec[i] += x[k] * basis[k].0[i];
+        }
+        bmat += basis[k].1 * x[k];
+    }
+    Ok(CellRecovery {
+        c: cvec,
+        b: std::array::from_fn(|i| std::array::from_fn(|j| bmat[(i, j)])),
+        coefficients: std::array::from_fn(|k| x[k]),
+        amplification,
+        condition,
+        rank,
+        faces: all_rows.len(),
+        cells: nb.len(),
+        residual,
+        own_residual: own_res,
+    })
+}
+
+/// Recover every cell of a closed mesh from a cochain of edge integrals.
+pub fn recover_curvature(
+    cells: &[Cell],
+    a: &[f64],
+    rings: usize,
+) -> Result<Vec<CellRecovery>, RecoveryError> {
+    recover_curvature_with(cells, a, rings, Mechanism::FULL)
+}
+
+/// [`recover_curvature`] with explicit mechanism switches (tests).
+pub fn recover_curvature_with(
+    cells: &[Cell],
+    a: &[f64],
+    rings: usize,
+    mech: Mechanism,
+) -> Result<Vec<CellRecovery>, RecoveryError> {
+    if rings == 0 || rings > MAX_RINGS {
+        return Err(RecoveryError::InvalidRings(rings));
+    }
+    for (ci, c) in cells.iter().enumerate() {
+        if let Some(&e) = c.edges.iter().find(|&&e| e >= a.len()) {
+            return Err(RecoveryError::EdgeOutOfRange { cell: ci, edge: e, n_edges: a.len() });
+        }
+    }
+    let faces = face_index(cells)?;
+    (0..cells.len())
+        .map(|ci| recover_cell(cells, &faces, a, ci, rings, mech, None))
+        .collect()
+}
+
+/// Face index for callers that drive [`recover_cell`] directly (tests).
+pub fn build_face_index(cells: &[Cell]) -> Result<FaceIndex, RecoveryError> {
+    face_index(cells)
+}
+
+// ── engine surface ────────────────────────────────────────────────────────
+
+/// Why a bundle-level request could not be answered.
+#[derive(Clone, Debug, PartialEq)]
+pub enum BundleRecoveryError {
+    /// A named bundle does not exist (HTTP 404).
+    NotFound(String),
+    /// The bundles exist but cannot be honestly read as a mesh and a cochain,
+    /// or the recovery refused (HTTP 422).
+    Refused(String),
+}
+
+impl fmt::Display for BundleRecoveryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BundleRecoveryError::NotFound(m) | BundleRecoveryError::Refused(m) => f.write_str(m),
+        }
+    }
+}
+
+fn refuse(msg: String) -> BundleRecoveryError {
+    BundleRecoveryError::Refused(format!("RECOVER_CURVATURE: {msg}"))
+}
+
+/// Read a field that must hold a whole number in `0..limit`.
+fn index_field(rec: &crate::types::Record, field: &str, what: &str, limit: usize) -> Result<usize, BundleRecoveryError> {
+    let v = rec
+        .get(field)
+        .and_then(|v| v.as_f64())
+        .ok_or_else(|| refuse(format!("{what} record lacks numeric field '{field}'")))?;
+    if v.fract() != 0.0 || v < 0.0 || v >= limit as f64 {
+        return Err(refuse(format!("{what} field '{field}' = {v} is not a whole number in 0..{limit}")));
+    }
+    Ok(v as usize)
+}
+
+fn number_field(rec: &crate::types::Record, field: &str, what: &str) -> Result<f64, BundleRecoveryError> {
+    rec.get(field)
+        .and_then(|v| v.as_f64())
+        .filter(|v| v.is_finite())
+        .ok_or_else(|| refuse(format!("{what} record lacks a finite numeric field '{field}'")))
+}
+
+/// Read the mesh from `cells_bundle` and the cochain `field` from
+/// `edges_bundle`, then recover. Bundle shapes: docs/RECOVER_CURVATURE_SPEC.md.
+pub fn recover_curvature_from_bundles(
+    engine: &crate::engine::Engine,
+    cells_bundle: &str,
+    edges_bundle: &str,
+    field: &str,
+    rings: usize,
+) -> Result<Vec<CellRecovery>, BundleRecoveryError> {
+    let cstore = engine
+        .bundle(cells_bundle)
+        .ok_or_else(|| BundleRecoveryError::NotFound(format!("Bundle '{cells_bundle}' not found")))?;
+    let estore = engine
+        .bundle(edges_bundle)
+        .ok_or_else(|| BundleRecoveryError::NotFound(format!("Bundle '{edges_bundle}' not found")))?;
+
+    let erecs: Vec<crate::types::Record> = estore.records().collect();
+    if erecs.is_empty() {
+        return Err(refuse(format!("edge bundle '{edges_bundle}' is empty")));
+    }
+    let n_edges = erecs.len();
+    let mut a = vec![f64::NAN; n_edges];
+    for r in &erecs {
+        let id = index_field(r, "edge", "edge", n_edges)?;
+        if !a[id].is_nan() {
+            return Err(refuse(format!("edge id {id} appears more than once in '{edges_bundle}'")));
+        }
+        a[id] = number_field(r, field, "edge")?;
+    }
+
+    let crecs: Vec<crate::types::Record> = cstore.records().collect();
+    if crecs.is_empty() {
+        return Err(refuse(format!("cell bundle '{cells_bundle}' is empty")));
+    }
+    let n_cells = crecs.len();
+    let mut slots: Vec<Option<Cell>> = vec![None; n_cells];
+    for r in &crecs {
+        let id = index_field(r, "cell", "cell", n_cells)?;
+        if slots[id].is_some() {
+            return Err(refuse(format!("cell id {id} appears more than once in '{cells_bundle}'")));
+        }
+        let mut vertices = [[0.0; 4]; 4];
+        for (i, vtx) in vertices.iter_mut().enumerate() {
+            for (k, comp) in vtx.iter_mut().enumerate() {
+                *comp = number_field(r, &format!("v{i}_{k}"), "cell")?;
+            }
+        }
+        let mut edges = [0usize; 6];
+        let mut reverse = [false; 6];
+        for e in 0..6 {
+            edges[e] = index_field(r, &format!("e{e}"), "cell", n_edges)?;
+            let flag = number_field(r, &format!("r{e}"), "cell")?;
+            reverse[e] = match flag {
+                x if x == 0.0 => false,
+                x if x == 1.0 => true,
+                x => return Err(refuse(format!("cell field 'r{e}' = {x} must be 0 or 1"))),
+            };
+        }
+        slots[id] = Some(Cell { vertices, edges, reverse });
+    }
+    let cells: Vec<Cell> = slots.into_iter().map(|c| c.expect("every id 0..N-1 filled once")).collect();
+    recover_curvature(&cells, &a, rings).map_err(|e| BundleRecoveryError::Refused(e.to_string()))
+}

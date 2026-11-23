@@ -9641,6 +9641,75 @@ async fn bundle_solve(
     })))
 }
 
+/// Request for `POST /v1/bundles/{name}/recover_curvature`. Unknown keys are
+/// rejected, so a misspelt parameter is an error, never a silent default.
+#[cfg(feature = "gauge")]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RecoverCurvatureRequest {
+    /// Bundle holding the 1-cochain: numeric `edge` = 0..E-1 and the value field.
+    edges: String,
+    /// Numeric field of the edge bundle holding the edge integrals.
+    field: String,
+    /// Neighbourhood radius in face-steps, 1..=3 (default 2, the paper's choice).
+    #[serde(default = "default_recover_rings")]
+    rings: usize,
+}
+#[cfg(feature = "gauge")]
+fn default_recover_rings() -> usize { 2 }
+
+/// POST /v1/bundles/{name}/recover_curvature
+///
+/// RECOVER_CURVATURE: the two-ring closed linear curvature recovery of
+/// *Reading the Curve, Not Counting the Points* (docs/papers/two-ring-pg).
+/// `{name}` is the cell bundle. Refusals are 422 and name the cell and the
+/// violated requirement.
+#[cfg(feature = "gauge")]
+async fn bundle_recover_curvature(
+    State(state): State<Arc<StreamState>>,
+    Path(name): Path<String>,
+    ApiJson(req): ApiJson<RecoverCurvatureRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    use gigi::gauge::curvature_recovery::{recover_curvature_from_bundles, BundleRecoveryError};
+    let engine = state.engine_read();
+    let out = recover_curvature_from_bundles(&engine, &name, &req.edges, &req.field, req.rings)
+        .map_err(|e| match e {
+            BundleRecoveryError::NotFound(m) => (StatusCode::NOT_FOUND, Json(ErrorResponse { error: m })),
+            BundleRecoveryError::Refused(m) => (StatusCode::UNPROCESSABLE_ENTITY, Json(ErrorResponse { error: m })),
+        })?;
+    let mut amps: Vec<f64> = out.iter().map(|r| r.amplification).collect();
+    amps.sort_by(|a, b| a.total_cmp(b));
+    let median = if amps.is_empty() { f64::NAN } else { amps[amps.len() / 2] };
+    let max_faces = out.iter().map(|r| r.faces).max().unwrap_or(0);
+    let min_faces = out.iter().map(|r| r.faces).min().unwrap_or(0);
+    let cells: Vec<serde_json::Value> = out.iter().enumerate().map(|(ci, r)| serde_json::json!({
+        "cell": ci, "c": r.c, "b": r.b, "coefficients": r.coefficients,
+        "amplification": r.amplification, "condition": r.condition, "rank": r.rank,
+        "faces": r.faces, "cells": r.cells, "residual": r.residual, "own_residual": r.own_residual,
+    })).collect();
+    Ok(Json(serde_json::json!({
+        "bundle": name,
+        "edges": req.edges,
+        "field": req.field,
+        "rings": req.rings,
+        "n_cells": out.len(),
+        "amplification_median": median,
+        "amplification_max": amps.last().copied().unwrap_or(f64::NAN),
+        "faces_min": min_faces,
+        "faces_max": max_faces,
+        "cells": cells,
+        "reads": [
+            "Each cell's curvature is the closed linear field c + B z in that cell's canonical chart.",
+            "The cell's own four face fluxes are held exactly; the other faces in the neighbourhood are fitted in least squares.",
+            "amplification is how strongly the fit can magnify rough edge data; lower is steadier.",
+        ],
+        "notes": [
+            "Coefficients are in each cell's own chart (Gram-Schmidt frame, positive diagonal); amplification, condition and fluxes do not depend on that frame.",
+            "This verb recovers curvature only. The Petrov-Galerkin force and the BW05 gate are computed by the research scripts in the repository.",
+        ],
+    })))
+}
+
 /// POST /v1/bundles/{name}/circulation
 ///
 /// Directed-flow circulation analysis (rung two). Splits a directed flow into the
@@ -13511,6 +13580,23 @@ async fn gql_query(
     // `BETTI` with `order = None` is NOT routed here — it falls
     // through to the legacy bundle path which returns `β_0 + β_1`
     // from the field-index graph.
+    #[cfg(not(feature = "gauge"))]
+    if matches!(&stmt, gigi::parser::Statement::RicciWilsonAudit { .. }) {
+        return (StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "RICCI_WILSON_AUDIT requires the `gauge` feature"})));
+    }
+    #[cfg(not(feature = "gauge"))]
+    if matches!(&stmt, gigi::parser::Statement::RicciFlow { .. }) {
+        return (StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "RICCI_FLOW requires the `gauge` feature"})));
+    }
+    #[cfg(not(feature = "gauge"))]
+    if matches!(&stmt, gigi::parser::Statement::MonodromyGroupOrder { .. }) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "MONODROMY_GROUP_ORDER requires the `gauge` feature"})),
+        );
+    }
     #[cfg(feature = "gauge")]
     {
         let is_topology_verb = matches!(
@@ -13525,6 +13611,9 @@ async fn gql_query(
                 // would 404 "No bundle") and dispatch through the
                 // topology helper like CHERN_CLASS.
                 | gigi::parser::Statement::HolonomyCycle { .. }
+                | gigi::parser::Statement::MonodromyGroupOrder { .. }
+                | gigi::parser::Statement::RicciFlow { .. }
+                | gigi::parser::Statement::RicciWilsonAudit { .. }
         );
         if is_topology_verb {
             let result = gigi::halcyon_gql_dispatch::try_dispatch_topology_statement(
@@ -15142,6 +15231,22 @@ fn execute_gql_on_store_read(
         Statement::HolonomyCycle { field, spec } => {
             gigi::holonomy_cycle::execute_holonomy_cycle(field, spec)
         }
+        #[cfg(feature = "gauge")]
+        Statement::MonodromyGroupOrder { field, edges, commutator, cap, tolerance } => {
+            gigi::monodromy::execute_monodromy_group_order(field, edges, *commutator, *cap, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::MonodromyGroupOrder { .. } => Err("MONODROMY_GROUP_ORDER requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciFlow { metric, time, steps, normalized, tolerance } => {
+            gigi::ricci_flow::execute_ricci_flow(*metric, *time, *steps, *normalized, *tolerance)
+        }
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciFlow { .. } => Err("RICCI_FLOW requires the `gauge` feature".into()),
+        #[cfg(feature = "gauge")]
+        Statement::RicciWilsonAudit { metric, normalized } => gigi::ricci_wilson::execute_ricci_wilson_audit(*metric, *normalized),
+        #[cfg(not(feature = "gauge"))]
+        Statement::RicciWilsonAudit { .. } => Err("RICCI_WILSON_AUDIT requires the `gauge` feature".into()),
         #[cfg(not(feature = "gauge"))]
         Statement::HolonomyCycle { .. } => {
             Err("HOLONOMY AROUND CYCLE requires the `gauge` feature to be enabled".to_string())
@@ -15736,7 +15841,8 @@ fn execute_gql_on_store_read(
         //
         // Delegating to `gigi::parser::execute` keeps ONE implementation: same
         // kernels, same refusals, same row shape as the heap path and as REST.
-        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. } => {
+        Statement::Texture { .. } | Statement::Precedence { .. } | Statement::Cadence { .. }
+        | Statement::RecoverCurvature { .. } => {
             let eng_lock = engine.ok_or_else(|| {
                 "shape verbs require engine context (not available in this \
                  dispatch path)".to_string()
@@ -15849,6 +15955,7 @@ fn get_bundle_name(stmt: &gigi::parser::Statement) -> Option<String> {
         ProjectInvariant { bundle, .. } => Some(bundle.clone()),
         // Cognitive Geometry (Branch VII — Davis 2026-05-29)
         Capacity { bundle, .. } | Horizon { bundle, .. } | Depth { bundle, .. } => Some(bundle.clone()),
+        RecoverCurvature { cells, .. } => Some(cells.clone()),
         // Divergence is cross-bundle; no single name
         _ => None,
     }
@@ -15874,9 +15981,13 @@ fn gql_stmt_type_name(stmt: &gigi::parser::Statement) -> &'static str {
         Spectral { .. }       => "SPECTRAL",
         Helicity { .. }       => "HELICITY",
         SpectralGauge { .. }  => "SPECTRAL_GAUGE",
+        RecoverCurvature { .. } => "RECOVER_CURVATURE",
         ChernClass { .. }     => "CHERN_CLASS",
         Pontryagin { .. }     => "PONTRYAGIN",
         HolonomyCycle { .. }  => "HOLONOMY_CYCLE",
+        MonodromyGroupOrder { .. } => "MONODROMY_GROUP_ORDER",
+        RicciFlow { .. } => "RICCI_FLOW",
+        RicciWilsonAudit { .. } => "RICCI_WILSON_AUDIT",
         CreateBundle { .. }   => "CREATE_BUNDLE",
         Collapse { .. }       => "DROP_BUNDLE",
         RotateKey { .. }      => "ROTATE_KEY",
@@ -16874,6 +16985,10 @@ async fn main() {
     }
     #[cfg(feature = "gauge")]
     let app = app.merge(gigi::gauge::http::build_router());
+    // RECOVER_CURVATURE (docs/RECOVER_CURVATURE_SPEC.md): the two-ring curvature
+    // recovery of docs/papers/two-ring-pg as an engine verb. Gauge-only.
+    #[cfg(feature = "gauge")]
+    let app = app.route("/v1/bundles/{name}/recover_curvature", post(bundle_recover_curvature));
 
     let app = app
         // GQL endpoint
@@ -18672,6 +18787,111 @@ mod tests {
         .await
         .into_response()
         .status()
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn monodromy_wire_gate() {
+        let _env = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("GIGI_DATA_DIR");
+        std::env::set_var("GIGI_DATA_DIR", dir.path());
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "monodromy-wire");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        match previous { Some(p) => std::env::set_var("GIGI_DATA_DIR", p), None => std::env::remove_var("GIGI_DATA_DIR") }
+        state.ready.store(true, Ordering::Release);
+        #[cfg(feature = "gauge")]
+        let _gauge = gigi::gauge::registry::test_serial_lock();
+        #[cfg(feature = "gauge")]
+        {
+            use gigi::gauge::{DenseLinkBuffer, Group, GaugeFieldInit, SU2GaugeField};
+            let b = DenseLinkBuffer::new_identity(Group::SU2, 1).unwrap();
+            gigi::gauge::registry::register(Arc::new(SU2GaugeField::from_buffer(
+                "mg_wire".into(), "supplied".into(), b, GaugeFieldInit::Identity, None,
+            )));
+        }
+        let response = gql_query(State(state), axum::http::HeaderMap::new(),
+            Json(serde_json::json!({"query":"MONODROMY_GROUP_ORDER mg_wire FROM EDGES (0) COMMUTATOR;"})))
+            .await.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        #[cfg(feature = "gauge")]
+        {
+            assert_eq!(status, StatusCode::OK);
+            assert_eq!(body["rows"][0]["group_order"], 1);
+            assert_eq!(body["rows"][0]["commutator_subgroup_order"], 1);
+            assert_eq!(body["rows"][0]["table_verified"], true);
+            assert_eq!(body["rows"][0]["exact_subgroup_certified"], false);
+        }
+        #[cfg(not(feature = "gauge"))]
+        {
+            assert_ne!(status, StatusCode::OK, "feature-off must not silently return status:ok: {body}");
+            assert!(body["error"].as_str().unwrap().contains("gauge"));
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn ricci_flow_wire_gate() {
+        let _env = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("GIGI_DATA_DIR");
+        std::env::set_var("GIGI_DATA_DIR", dir.path());
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "ricci-wire");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        match previous { Some(p) => std::env::set_var("GIGI_DATA_DIR", p), None => std::env::remove_var("GIGI_DATA_DIR") }
+        state.ready.store(true, Ordering::Release);
+        let response = gql_query(State(state), axum::http::HeaderMap::new(),
+            Json(serde_json::json!({"query":"RICCI_FLOW SU2 METRIC (1,1,1) TIME 0.125 STEPS 4;"})))
+            .await.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        #[cfg(feature = "gauge")]
+        {
+            assert_eq!(status, StatusCode::OK);
+            assert_eq!(body["rows"].as_array().unwrap().len(), 5);
+            assert!((body["rows"][4]["a"].as_f64().unwrap()-0.5).abs()<1e-14);
+            assert!((body["rows"][4]["scalar_curvature"].as_f64().unwrap()-12.).abs()<1e-12);
+            assert_eq!(body["rows"][4]["topology_inferred"], false);
+        }
+        #[cfg(not(feature = "gauge"))]
+        {
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert!(body["error"].as_str().unwrap().contains("gauge"));
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn ricci_wilson_wire_gate() {
+        let _env = stream_env_lock().lock().unwrap_or_else(|p| p.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("GIGI_DATA_DIR");
+        std::env::set_var("GIGI_DATA_DIR", dir.path());
+        let (logger, _ingester) = Logger::new(LogConfig::default(), "ricci-wilson-wire");
+        let state = Arc::new(StreamState::new(logger, Arc::new(Metrics::new())));
+        match previous { Some(p) => std::env::set_var("GIGI_DATA_DIR", p), None => std::env::remove_var("GIGI_DATA_DIR") }
+        state.ready.store(true, Ordering::Release);
+        let response = gql_query(State(state), axum::http::HeaderMap::new(),
+            Json(serde_json::json!({"query":"RICCI_WILSON_AUDIT SU2 METRIC (3,1,1);"})))
+            .await.into_response();
+        let status = response.status();
+        let bytes = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        #[cfg(feature = "gauge")]
+        {
+            assert_eq!(status, StatusCode::OK);
+            let rows = body["rows"].as_array().unwrap();
+            assert_eq!(rows.len(),1);
+            assert_eq!(rows[0]["connection"][0],-1.);
+            assert!((rows[0]["mapped_ricci_velocity"][0].as_f64().unwrap()-48.).abs()<1e-12);
+            assert!((rows[0]["yang_mills_velocity"][0].as_f64().unwrap()-48.).abs()<1e-12);
+            assert_eq!(rows[0]["lattice_correspondence_tested"],false);
+        }
+        #[cfg(not(feature = "gauge"))]
+        {
+            assert_eq!(status,StatusCode::BAD_REQUEST);
+            assert!(body["error"].as_str().unwrap().contains("gauge"));
+        }
     }
 
     // ── Post-Kähler Phase 1 endpoint integration (PK-1..4) ──────────

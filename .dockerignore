@@ -29,7 +29,7 @@ theory/
 docs/
 *.md
 GQL_REFERENCE.md
-GQL_SPECIFICATION.md
+docs/reference/GQL_SPECIFICATION.md
 
 # Python tooling + scratch
 scripts/

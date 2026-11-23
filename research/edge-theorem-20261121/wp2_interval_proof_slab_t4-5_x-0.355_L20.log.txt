@@ -1,0 +1,33 @@
+mirror symmetry of G (symbolic): True
+G_exact - actual Gershgorin quantity (<= ~1e-9): 2.8421709430404007e-13
+near-end M vs Blocks.block: 4.526834081597196e-16
+top -1 True 359 0.000708  15.6 s
+top 0 True 28 0.0234  16.0 s
+top 1 True 5 0.767  16.1 s
+top 2 True 1 0.482  16.1 s
+top 3 True 1 6.24  16.1 s
+top 4 True 1 11.3  16.1 s
+top 5 True 1 16.1  16.1 s
+top 6 True 1 20.5  16.1 s
+top 7 True 1 24.7  16.1 s
+top 8 True 1 28.5  16.1 s
+bottom -1 True 359 0.00341  18.4 s
+bottom 0 True 29 0.257  18.8 s
+bottom 1 True 5 0.943  18.8 s
+bottom 2 True 1 0.384  18.8 s
+bottom 3 True 1 6.22  18.9 s
+bottom 4 True 1 11.3  18.9 s
+bottom 5 True 1 16.1  18.9 s
+bottom 6 True 1 20.5  18.9 s
+bottom 7 True 1 24.7  18.9 s
+bottom 8 True 1 28.5  18.9 s
+bulk (-1, -1) A ok: True B: True 1 1.39 18.9 s
+bulk (-1, 0) A ok: True B: True 1 1.05 19.0 s
+bulk (-1, 1) A ok: True B: True 1 1.66 19.0 s
+bulk (0, -1) A ok: True B: True 1 1.09 19.0 s
+bulk (0, 0) A ok: True B: True 1 0.683 19.0 s
+bulk (0, 1) A ok: True B: True 1 1.24 19.0 s
+bulk (1, -1) A ok: True B: True 1 1.62 19.1 s
+bulk (1, 0) A ok: True B: True 1 1.19 19.1 s
+bulk (1, 1) A ok: True B: True 1 1.53 19.1 s
+ALL PROVED

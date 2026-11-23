@@ -1,0 +1,392 @@
+{
+ "blocks_vs_full_spectra_max_rel_diff": 1.471251732733615e-15,
+ "berger_crossing_A": {
+  "t": 2.7311222782381144,
+  "t_A_exact": 2.7311222782381135,
+  "diff": 8.881784197001252e-16,
+  "competitor_(j,q)": [
+   4,
+   0.0
+  ]
+ },
+ "berger_crossing_S": {
+  "t": 2.6980269405211303,
+  "t_star": 2.6980269405200263,
+  "diff": 1.1040057756872557e-12,
+  "competitor_sector": 4
+ },
+ "edges": [
+  {
+   "t": 2.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.613239820630044,
+   "edge_S": -0.6052918121417526,
+   "competitor_block_A": [
+    3,
+    0.5
+   ],
+   "competitor_sector_S": 3,
+   "test6_measured": -0.605316162109375,
+   "S_minus_test6": 2.43499676223502e-05
+  },
+  {
+   "t": 2.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": -0.6827925723386974,
+   "edge_S": -0.657566996086205,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.657562255859375,
+   "S_minus_test6": -4.740226829946792e-06
+  },
+  {
+   "t": 2.0,
+   "height": "sqrt_t",
+   "y": 1.4142135623730951,
+   "edge_A": -0.677814031703059,
+   "edge_S": -0.6550999959276453,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.655120849609375,
+   "S_minus_test6": 2.0853681729660067e-05
+  },
+  {
+   "t": 2.5,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.4429404520213263,
+   "edge_S": -0.43095823190609733,
+   "competitor_block_A": [
+    2,
+    1.0
+   ],
+   "competitor_sector_S": 3,
+   "test6_measured": -0.430938720703125,
+   "S_minus_test6": -1.951120297233322e-05
+  },
+  {
+   "t": 2.5,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": -0.4989167310787427,
+   "edge_S": -0.4766016955539274,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.476593017578125,
+   "S_minus_test6": -8.677975802395821e-06
+  },
+  {
+   "t": 2.5,
+   "height": "sqrt_t",
+   "y": 1.5811388300841898,
+   "edge_A": -0.503285115745425,
+   "edge_S": -0.47856994073017745,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.478546142578125,
+   "S_minus_test6": -2.379815205244551e-05
+  },
+  {
+   "t": 3.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.33548782404591376,
+   "edge_S": -0.3180610190337889,
+   "competitor_block_A": [
+    2,
+    -1.0
+   ],
+   "competitor_sector_S": 2,
+   "test6_measured": -0.318084716796875,
+   "S_minus_test6": 2.3697763086083512e-05
+  },
+  {
+   "t": 3.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": -0.37158172515045024,
+   "edge_S": -0.3515803052502421,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.351593017578125,
+   "S_minus_test6": 1.2712327882913321e-05
+  },
+  {
+   "t": 3.0,
+   "height": "sqrt_t",
+   "y": 1.7320508075688772,
+   "edge_A": -0.38216848224191763,
+   "edge_S": -0.35518720868126497,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.355194091796875,
+   "S_minus_test6": 6.883115610034629e-06
+  },
+  {
+   "t": 4.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.20297157270899807,
+   "edge_S": -0.19170224414253317,
+   "competitor_block_A": [
+    2,
+    1.0
+   ],
+   "competitor_sector_S": 2,
+   "test6_measured": -0.191680908203125,
+   "S_minus_test6": -2.1335939408173576e-05
+  },
+  {
+   "t": 4.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": -0.20804765796608346,
+   "edge_S": -0.19165198299451208,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.191680908203125,
+   "S_minus_test6": 2.8925208612917697e-05
+  },
+  {
+   "t": 4.0,
+   "height": "sqrt_t",
+   "y": 2.0,
+   "edge_A": -0.22116339339864244,
+   "edge_S": -0.189150344428478,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.189178466796875,
+   "S_minus_test6": 2.8122368396998887e-05
+  },
+  {
+   "t": 5.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.12831719473318784,
+   "edge_S": -0.12103331532589834,
+   "competitor_block_A": [
+    2,
+    1.0
+   ],
+   "competitor_sector_S": 2,
+   "test6_measured": -0.121063232421875,
+   "S_minus_test6": 2.991709597666148e-05
+  },
+  {
+   "t": 5.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": -0.10937880812040637,
+   "edge_S": -0.09567880156071376,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.095672607421875,
+   "S_minus_test6": -6.194138838760965e-06
+  },
+  {
+   "t": 5.0,
+   "height": "sqrt_t",
+   "y": 2.23606797749979,
+   "edge_A": -0.11468119863157236,
+   "edge_S": -0.07713851546887206,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.077117919921875,
+   "S_minus_test6": -2.0595546997057013e-05
+  },
+  {
+   "t": 6.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.08284207413570817,
+   "edge_S": -0.07803187844258017,
+   "competitor_block_A": [
+    2,
+    -1.0
+   ],
+   "competitor_sector_S": 2,
+   "test6_measured": -0.078033447265625,
+   "S_minus_test6": 1.5688230448340779e-06
+  },
+  {
+   "t": 6.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": -0.044874370615320555,
+   "edge_S": -0.03324860829440061,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": -0.033233642578125,
+   "S_minus_test6": -1.4965716275607e-05
+  },
+  {
+   "t": 6.0,
+   "height": "sqrt_t",
+   "y": 2.449489742783178,
+   "edge_A": -0.03538577069636422,
+   "edge_S": 0.008031056173173306,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": 0.008026123046875,
+   "S_minus_test6": 4.933126298305515e-06
+  },
+  {
+   "t": 8.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.03379868805113794,
+   "edge_S": -0.03153003163967189,
+   "competitor_block_A": [
+    2,
+    -1.0
+   ],
+   "competitor_sector_S": 2,
+   "test6_measured": -0.031524658203125,
+   "S_minus_test6": -5.373436546891874e-06
+  },
+  {
+   "t": 8.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": 0.031481868227787826,
+   "edge_S": 0.040168933613602555,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": 0.040191650390625,
+   "S_minus_test6": -2.27167770224454e-05
+  },
+  {
+   "t": 8.0,
+   "height": "sqrt_t",
+   "y": 2.8284271247461903,
+   "edge_A": 0.08251298154731371,
+   "edge_S": 0.13826908820941733,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": 0.138275146484375,
+   "S_minus_test6": -6.058274957670973e-06
+  },
+  {
+   "t": 10.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": -0.010254752653725498,
+   "edge_S": -0.009078937482294575,
+   "competitor_block_A": [
+    2,
+    -1.0
+   ],
+   "competitor_sector_S": 2,
+   "test6_measured": null
+  },
+  {
+   "t": 10.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": 0.07267910373822133,
+   "edge_S": 0.07942173829882251,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": null
+  },
+  {
+   "t": 10.0,
+   "height": "sqrt_t",
+   "y": 3.1622776601683795,
+   "edge_A": 0.17277431182002168,
+   "edge_S": 0.24120305483326263,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": null
+  },
+  {
+   "t": 12.0,
+   "height": "0.5",
+   "y": 0.5,
+   "edge_A": 0.002235826261585061,
+   "edge_S": 0.0028935986821024117,
+   "competitor_block_A": [
+    2,
+    -1.0
+   ],
+   "competitor_sector_S": 2,
+   "test6_measured": null
+  },
+  {
+   "t": 12.0,
+   "height": "1.5",
+   "y": 1.5,
+   "edge_A": 0.09676975144570313,
+   "edge_S": 0.10215501562039232,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": null
+  },
+  {
+   "t": 12.0,
+   "height": "sqrt_t",
+   "y": 3.4641016151377544,
+   "edge_A": 0.2483333336131201,
+   "edge_S": 0.32946685125991876,
+   "competitor_block_A": [
+    4,
+    0.0
+   ],
+   "competitor_sector_S": 4,
+   "test6_measured": null
+  }
+ ]
+}

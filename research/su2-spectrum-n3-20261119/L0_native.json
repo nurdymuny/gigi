@@ -1,0 +1,28 @@
+{
+ "level": 0,
+ "trial": "native",
+ "dof": 426,
+ "C_col": 1.4638443547904396e-12,
+ "C_chol": 1.5383068807168156e-16,
+ "C_W_eig_left_violation": 0.0,
+ "rough_real_below_minus10": 0,
+ "small_modulus_below_1": 62,
+ "negative_real": 39,
+ "min_real": -4.475129718737625,
+ "five_most_negative_real": [
+  -4.475129718737625,
+  -4.470667172797769,
+  -2.191259785541753,
+  -2.1194211064554294,
+  -0.6740184088709948
+ ],
+ "max_abs_imag": 0.8010918977851799,
+ "W_left": -4.633834821562997,
+ "S_negative_count": 41,
+ "norm_estimate": 1912.5019754041716,
+ "seconds": {
+  "build": 0.0,
+  "eig": 0.1,
+  "total": 4.7
+ }
+}

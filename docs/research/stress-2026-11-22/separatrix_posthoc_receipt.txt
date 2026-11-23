@@ -1,0 +1,6 @@
+t= 2.75: Berger y = 1.658312, boundary at y = 1.480027, margin +0.178286 (+10.75% of y)
+t=  3.0: Berger y = 1.732051, boundary at y = 1.516282, margin +0.215769 (+12.46% of y)
+t= 3.55: Berger y = 1.884144, boundary at y = 1.583153, margin +0.300992 (+15.97% of y)
+t=  5.0: Berger y = 2.236068, boundary at y = 1.705027, margin +0.531041 (+23.75% of y)
+t=  7.0: Berger y = 2.645751, boundary at y = 1.805712, margin +0.840040 (+31.75% of y)
+t= 10.0: Berger y = 3.162278, boundary at y = 1.892587, margin +1.269690 (+40.15% of y)

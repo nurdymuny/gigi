@@ -1,0 +1,162 @@
+{
+ "date": "2026-11-22",
+ "script": "scripts/ricci_su2_gershgorin_lemma_symbolic.py",
+ "assumptions": "x, y real; t > 0; l > 0; rows m in {-l,...,l}; closed-form rows of ricci_su2_exact_edge",
+ "status_label": "PROVED (exact sympy identities) except 'numeric_cross_check' (COMPUTED)",
+ "L1_charge_conservation": true,
+ "L2_real_symmetric": true,
+ "L3_exact_moduli": {
+  "(-1, -1)": {
+   "ok": true,
+   "n_same_charge_partners": 0,
+   "R_a": "0",
+   "P-_a": "0",
+   "P+_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)"
+  },
+  "(-1, 0)": {
+   "ok": true,
+   "n_same_charge_partners": 1,
+   "R_a": "2*Abs(y*(-sqrt(t)*x + t + 2))/sqrt(t)",
+   "P-_a": "sqrt(2)*Abs(y)",
+   "P+_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)"
+  },
+  "(-1, 1)": {
+   "ok": true,
+   "n_same_charge_partners": 1,
+   "R_a": "2*Abs(y*(-sqrt(t)*x + t + 2))/sqrt(t)",
+   "P-_a": "sqrt(2)*Abs(y)",
+   "P+_a": "sqrt(2)*sqrt(t)"
+  },
+  "(0, -1)": {
+   "ok": true,
+   "n_same_charge_partners": 1,
+   "R_a": "2*Abs(y*(-sqrt(t)*x + t + 2))/sqrt(t)",
+   "P-_a": "sqrt(2)*sqrt(t)",
+   "P+_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)"
+  },
+  "(0, 0)": {
+   "ok": true,
+   "n_same_charge_partners": 2,
+   "R_a": "4*Abs(y*(-sqrt(t)*x + t + 2))/sqrt(t)",
+   "P-_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)",
+   "P+_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)"
+  },
+  "(0, 1)": {
+   "ok": true,
+   "n_same_charge_partners": 1,
+   "R_a": "2*Abs(y*(-sqrt(t)*x + t + 2))/sqrt(t)",
+   "P-_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)",
+   "P+_a": "sqrt(2)*sqrt(t)"
+  },
+  "(1, -1)": {
+   "ok": true,
+   "n_same_charge_partners": 1,
+   "R_a": "2*Abs(y*(-sqrt(t)*x + t + 2))/sqrt(t)",
+   "P-_a": "sqrt(2)*sqrt(t)",
+   "P+_a": "sqrt(2)*Abs(y)"
+  },
+  "(1, 0)": {
+   "ok": true,
+   "n_same_charge_partners": 1,
+   "R_a": "2*Abs(y*(-sqrt(t)*x + t + 2))/sqrt(t)",
+   "P-_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)",
+   "P+_a": "sqrt(2)*Abs(y)"
+  },
+  "(1, 1)": {
+   "ok": true,
+   "n_same_charge_partners": 0,
+   "R_a": "0",
+   "P-_a": "sqrt(2)*sqrt(t) + sqrt(2)*Abs(y)",
+   "P+_a": "0"
+  }
+ },
+ "L4_radius_exact_note": "rad(m,a) = R_a + 2 sqrt((l-m)(l+m+1)) P-_a + 2 sqrt((l+m)(l-m+1)) P+_a is the exact Gershgorin radius: same-m partners always exist (L1); m+1 partners exist iff m<=l-1 and the factor (l-m) vanishes at m=l; m-1 likewise at m=-l",
+ "L5_diagonal_identity_G_equals_D_minus_lambda_minus_radius": {
+  "(-1, -1)": true,
+  "(-1, 0)": true,
+  "(-1, 1)": true,
+  "(0, -1)": true,
+  "(0, 0)": true,
+  "(0, 1)": true,
+  "(1, -1)": true,
+  "(1, 0)": true,
+  "(1, 1)": true
+ },
+ "L6_proof_code_computes_G": {
+  "(-1, -1)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(-1, 0)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(-1, 1)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(0, -1)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(0, 0)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(0, 1)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(1, -1)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(1, 0)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  },
+  "(1, 1)": {
+   "FA_times_l_equals_G": true,
+   "FB_times_l_xi_equals_G": true,
+   "mirror": true
+  }
+ },
+ "L6_note": "checked with xi > 0 and r = 2l - xi > 0 symbolic (so every square-root argument is a product of positive factors and powsimp(force=True) is valid); both sides are continuous in (xi, r) >= 0, so the identities extend to the endpoints xi = 0 (FA) and xi = 2l",
+ "L7_excluded_blocks": {
+  "block_q=l+2_states": [
+   "(1, 1)"
+  ],
+  "block_q=-(l+2)_states": [
+   "(-1, -1)"
+  ],
+  "blocks_|q|>l+2_empty": true,
+  "twist_entry_equals_lambda": true,
+  "mirror_entry_equals_lambda": true,
+  "twist_radius_zero": true,
+  "mirror_radius_zero": true,
+  "G_twist_row_zero": true,
+  "G_mirror_row_zero": true,
+  "G_not_identically_zero_as_function_of_xi_for_any_type": true,
+  "ok": true
+ },
+ "numeric_cross_check": {
+  "label": "COMPUTED",
+  "rows": 23031,
+  "points": 40,
+  "j_range": [
+   0,
+   119
+  ],
+  "max_rel_abs_diff_G_vs_actual_gershgorin": 1.0177234227809058e-12
+ },
+ "all_proved": true,
+ "seconds": 34.9
+}

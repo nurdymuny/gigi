@@ -1,0 +1,13 @@
+{
+ "level": 0,
+ "trial": "pg_onering",
+ "columns_checked": 426,
+ "worst_column_rel": 5.2922356398552996e-11,
+ "median_column_rel": 2.484689852123908e-12,
+ "matrix_rel": 2.602096273185615e-12,
+ "pattern_identical": true,
+ "gate": "P-K1",
+ "pass": true,
+ "batched_seconds": 1.8,
+ "seconds_total": 149.1
+}

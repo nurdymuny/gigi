@@ -1,0 +1,38 @@
+{
+ "order": 120,
+ "centre": [
+  [
+   -1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  [
+   1.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ ],
+ "symmetric": true,
+ "fold_cells": 60,
+ "AP_equals_PB": true,
+ "walk_identity_max_error_k_le_12": 0.0,
+ "even_count": 60,
+ "odd_count": 60,
+ "even_equals_quotient_spectrum": true,
+ "full_equals_even_plus_odd": true,
+ "laplacian_gap_full": 0.3819660112501042,
+ "laplacian_gap_even_folded": 0.3819660112501042,
+ "laplacian_lowest_odd_twin": 1.381966011250105,
+ "twin_distance_min_max": [
+  3,
+  3
+ ],
+ "diameter": 8,
+ "ollivier_edge_curvature_min_max": [
+  -0.5,
+  -0.5
+ ],
+ "random_walk_gap_1_minus_lambda2": 0.09549150281252605
+}

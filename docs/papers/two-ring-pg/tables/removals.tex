@@ -1,0 +1,15 @@
+\begin{table}[t]\centering\small
+\caption{Mechanism removals: relative force error (\%) at $n=1,2$ (and $n=5$ where measured). ``Transpose term'' is $D^\top(\cR-j)^\top Hj\,Da$, measured in the same norm.}
+\label{tab:removals}
+\begin{tabular}{l rrr l}\toprule
+Variant & $n=1$ & $n=2$ & $n=5$ & Fails \\ \midrule
+Two-ring Petrov--Galerkin (this work) & 6.22 & 3.83 & 1.45 & --- \\
+$-$ second ring (one-ring PG) & 4.84 & 3.55 & 1.17 & S3 \\
+$-$ recovered trial (Whitney) & 29.81 & 25.98 & 26.13 & \BW{} floor \\
+$-$ Whitney test (variational, 2-ring) & 45.4 & 276.3 & --- & \BW{}, diverges \\
+$-$ Whitney test (variational, 1-ring) & 58.2 & 663.4 & --- & \BW{}, diverges \\
+Symmetrized $K_{\mathrm{PG}}+K_{\mathrm{PG}}^\top-K_W$, 2-ring & 23.0 & 276.5 & --- & \BW{} \\
+\quad transpose term alone, 2-ring & 19.7 & 275.6 & --- & \\
+Symmetrized, 1-ring & 64.8 & 671.3 & --- & \BW{} \\
+\quad transpose term alone, 1-ring & 61.2 & 669.8 & --- & \\
+\bottomrule\end{tabular}\end{table}

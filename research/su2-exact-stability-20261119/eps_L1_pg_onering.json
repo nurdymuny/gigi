@@ -1,0 +1,56 @@
+{
+ "level": 1,
+ "trial": "pg_onering",
+ "rows": [
+  {
+   "eps": 1e-05,
+   "W_left": -19992.638094019196,
+   "small_modulus_below_1": 483,
+   "rough_real_below_minus10": 1451,
+   "negative_real_physical": 1483,
+   "min_real": -19829.322784696244,
+   "min_real_physical": -19829.322784696244,
+   "max_abs_imag": 663.0253314573646,
+   "nearest_unit_circle": [
+    0.02538957282948895,
+    0.02538957282948895,
+    0.07350952656056686
+   ]
+  },
+  {
+   "eps": 1e-06,
+   "W_left": -19992.638095001705,
+   "small_modulus_below_1": 483,
+   "rough_real_below_minus10": 1451,
+   "negative_real_physical": 1483,
+   "min_real": -19829.322785675315,
+   "min_real_physical": -19829.322785675315,
+   "max_abs_imag": 663.0253314577113,
+   "nearest_unit_circle": [
+    0.025389585727770503,
+    0.025389585727770503,
+    0.07350952933424215
+   ]
+  },
+  {
+   "eps": 1e-07,
+   "W_left": -19992.63809535364,
+   "small_modulus_below_1": 483,
+   "rough_real_below_minus10": 1451,
+   "negative_real_physical": 1483,
+   "min_real": -19829.32278601436,
+   "min_real_physical": -19829.32278601436,
+   "max_abs_imag": 663.0253314453018,
+   "nearest_unit_circle": [
+    0.025389575607854487,
+    0.025389575607854487,
+    0.0735095367872689
+   ]
+  }
+ ],
+ "small_modulus_count_identical": true,
+ "W_left_max_rel_diff": 4.9143536323847766e-11,
+ "G_eps_pass": true,
+ "seconds": 55.8,
+ "kind": "B6 G-eps (research script, not an engine run)"
+}

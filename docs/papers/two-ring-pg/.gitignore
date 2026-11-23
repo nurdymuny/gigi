@@ -1,0 +1,9 @@
+# Paper source and deliverable: exempt from the repo-wide *.tex / *.pdf ignore rules
+!*.tex
+!*.pdf
+*.aux
+*.log
+*.out
+
+# Zenodo upload folder, built by zenodo/build_package.py
+zenodo/upload/

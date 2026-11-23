@@ -1,0 +1,209 @@
+{
+  "schema": "ricci_research_checkpoint_v1",
+  "purpose": "progress preservation, not release acceptance",
+  "captured_root": "C:\\Users\\nurdm\\OneDrive\\Documents\\gigi",
+  "base_head": "99882091",
+  "branch": "feat/ricci-pg-curvature",
+  "global_gate": "UNCHANGED_OPEN",
+  "archives": [
+    {
+      "archive": "ricci-pg-curvature-20261117-part01.zip",
+      "bytes": 20936,
+      "sha256": "813f31192c053959246287d2f9004c955efacae7119bb8f880c637915d31eb44",
+      "entries": [
+        {
+          "path": "output/ricci-pg-curvature-20261117/cell_means.json",
+          "bytes": 692,
+          "sha256": "636d85a9e8c7781eaa4a2d429ee7c9a30b7d196d4d4db5c7edaaa5773cef511a"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/GREEN.log",
+          "bytes": 1165,
+          "sha256": "cb6d1ac7d944b12ff2faef004a96630ad15fd236ddf279be48b73c55a5aae106"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/GREEN_R2.log",
+          "bytes": 1343,
+          "sha256": "513151d0c33ab51bf15aedbcf1a951042d595285de71a1ea539cfe8dbb20b8ca"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/GREEN_R3.log",
+          "bytes": 1912,
+          "sha256": "482d10ea378b78156d64650b053e73c06d8bdd426fe9aefca2db64e3075dda9b"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/MUTATIONS.json",
+          "bytes": 2033,
+          "sha256": "66356e30b504556ba8b42e7749fcecda86a7d3cc321514e1306dcf3345fe9cf6"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/MUTATIONS_R2.json",
+          "bytes": 2314,
+          "sha256": "2f49afea26222b2e78d4bb5d8d9ad1b4ee44c68200f8047ba69e0b2cce1597f2"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/MUTATIONS_R3.json",
+          "bytes": 3332,
+          "sha256": "ba1261ab3cd162f2c09bb33c36c8c824b0b1d18ad3cd12e9f930003689044618"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/projection_layer_probe.json",
+          "bytes": 1459,
+          "sha256": "c07ba0ee98446f28bbea8fd884ebccc7a580bc9feb39f67a64923f57dd1496a0"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/RED.log",
+          "bytes": 7090,
+          "sha256": "a4422ac96e1995b447f58c3fc435af8316ee02c8c81a29ac150f41aeff6d9144"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/RED0_setup_only.log",
+          "bytes": 746,
+          "sha256": "d418ff8f685b75786e8ae68689dcf6f7ba6fb8db41f835d59abb133e2abc845f"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/RED_R2.log",
+          "bytes": 1983,
+          "sha256": "f41ec8686fb8b0e1bfe8bb78ad8521598d2b10fe395bcc81c20b704231f903e4"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/RED_R3.log",
+          "bytes": 5372,
+          "sha256": "2a6fb6153d1d302f36c271b74ebf3025cbf3d1d34a481773fccabebbaa11357e"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/RED_R3_class_level.log",
+          "bytes": 2029,
+          "sha256": "b1b5edaade297dcf08f67fe097423127649dee6b8f0cf0643f3d4ec36f435bde"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/rf2h_forms_bdm.json",
+          "bytes": 899,
+          "sha256": "2b7684c3b9358dfa7b7432b3571502e14731ad40e5c8cd042df5c509ec4e3f51"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/rf2h_forms_whitney.json",
+          "bytes": 905,
+          "sha256": "d6cc145f96e59e55205854eac7e4ee835af1fe77131df1e2145cac002cbec8d7"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L0_q4_reconstruction.json",
+          "bytes": 479,
+          "sha256": "77a8e4d943aa5f3b83699b9b7fc151ebd481f525d591ec5a4f303a66af90a956"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L0_q6_reconstruction.json",
+          "bytes": 476,
+          "sha256": "e995a764370b00f43e045d41e8ab7cb03bc11b33ca31529b4dbfaded313d9ac8"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L0_q6_reconstruction_variational.json",
+          "bytes": 502,
+          "sha256": "ed43a518b816183ad95163c7abc325c7b14b895c835c0d7f0a992a4462e20594"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L0_q6_whitney.json",
+          "bytes": 456,
+          "sha256": "7ca1673d344692170978a1753671153e5e4f88f866ad5fe3e3581051f95f1c77"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L1_q4_reconstruction.json",
+          "bytes": 480,
+          "sha256": "b7b88b684d3702a0644d49546f49c440952f278eadcc0246d6399c4c41e313e0"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L1_q6_reconstruction.json",
+          "bytes": 483,
+          "sha256": "af4d710ec89b835d2e8c3d40baf624f7fda8bab9aa2bc9ab268fd919bd4af7a3"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L1_q6_reconstruction_variational.json",
+          "bytes": 506,
+          "sha256": "ca442e0dad39f396bc08e65c446fc874da4da17d48e45367daaf73c339f28c2d"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L1_q6_whitney.json",
+          "bytes": 458,
+          "sha256": "eb05eca3ab82ddba7a2d166e6c07a0cc0e5cb0b8eaf0ea94dab790a51514c834"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L2_q4_reconstruction.json",
+          "bytes": 481,
+          "sha256": "a300d83e23c80f7d29cbebe5433bffae046b2924ef7905948fbfdbab65ab96ab"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L2_q6_reconstruction.json",
+          "bytes": 483,
+          "sha256": "dc8ed46339880a4ba00e4fc27d5b8f16cb65bac11e734e8f2a593874e59cdc5d"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L2_q6_reconstruction_variational.json",
+          "bytes": 506,
+          "sha256": "0b3405c931f3ca06084e5b3ec746f729da387cf3e7921d599851e10a0be18e88"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L2_q6_whitney.json",
+          "bytes": 458,
+          "sha256": "55fb1f271d3e00d2c938b512dd952679cfe2da72c59a500aed79af084c92f9e2"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L3_q4_reconstruction.json",
+          "bytes": 487,
+          "sha256": "69441db1399d9d5165b123998ae5ee05a3440739200a7bff2b77338a06b6bed2"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L3_q6_reconstruction.json",
+          "bytes": 487,
+          "sha256": "5a85718ca3c5caa2a67d31e9f06ede7ab0eea3251edb4b14438880f5494a1ad4"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s12_L3_q6_whitney.json",
+          "bytes": 461,
+          "sha256": "3fb72dd3bee9de54c2dd3235b31b4f9e17872de32dba6d71c66c8dd4e0cc932f"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s3_L0.json",
+          "bytes": 487,
+          "sha256": "817e1b2561dc75586e64a83a8aa69202b9706a14ff58b15918a8007022729da8"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s3_L1.json",
+          "bytes": 489,
+          "sha256": "ac05ac9ae18d17e027b705df3ce653b4fb89e513cb289303e3887c34c174e9cc"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s3_modes.json",
+          "bytes": 1207,
+          "sha256": "118932c7e3fdb27b1239de1d685e7783811e2177eb98ce8477528d98977079dd"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/s4_energy_check.json",
+          "bytes": 709,
+          "sha256": "31dc8450c5df1b070ec662cdd17d7abd979fa4622c086ab5a9ce009c87fcee90"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/zero_mean_diagnostic.json",
+          "bytes": 1237,
+          "sha256": "58366bf32bb833204eee2cefb2758249258d696387aebe9f99b28a22599b9b8e"
+        },
+        {
+          "path": "output/ricci-pg-curvature-20261117/zero_mean_diagnostic_L3.json",
+          "bytes": 357,
+          "sha256": "908fb15e8a9e3c8ca6d099694b0237a37fb98a93bb88557e06481d74c9b6a62d"
+        }
+      ]
+    },
+    {
+      "archive": "ricci-exterior-conformity-20261117-part01.zip",
+      "bytes": 1677,
+      "sha256": "4e55ad182860a56391003d9d23fab22c5f6ecfdada0275c7e548c8e591e0e8ae",
+      "entries": [
+        {
+          "path": "output/ricci-exterior-conformity-20261117/receipt.json",
+          "bytes": 3192,
+          "sha256": "25ba2377708bbb64634f84b4d3d240ce3045e45284c589e650d52de543a9f104"
+        }
+      ]
+    }
+  ]
+}

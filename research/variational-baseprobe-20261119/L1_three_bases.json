@@ -1,0 +1,89 @@
+{
+ "level": 1,
+ "kind": "exploratory probe, not gated",
+ "rings2_linear": {
+  "pg_error": 0.03833696121596987,
+  "variational_error": 2.7634020861594797,
+  "reconstruction_term": 0.03668757368305696,
+  "test_variation_term": 2.759427633274435,
+  "curvature_relative_error": 0.009240731961240744,
+  "amplification_median_max": [
+   35.17832034417175,
+   44.71850870408972
+  ],
+  "quadratic_bias_median": 3.7795710439439496,
+  "own_flux_defect_median": 4.3799116865250836e-16,
+  "linear_exactness_max": 8.854028621385623e-15
+ },
+ "rings2_quad": {
+  "pg_error": 0.01659504792480397,
+  "variational_error": 11.617470094351352,
+  "reconstruction_term": 0.06465277991947034,
+  "test_variation_term": 11.599379154843165,
+  "curvature_relative_error": 0.0041103127502779314,
+  "amplification_median_max": [
+   60.489386778039375,
+   832.9128372900259
+  ],
+  "quadratic_bias_median": 9.206118329196125e-15,
+  "own_flux_defect_median": 0.04791113566807555,
+  "linear_exactness_max": 4.263256414560601e-14
+ },
+ "rings2_hybrid": {
+  "pg_error": 0.010584032877596038,
+  "variational_error": 8.089255993858892,
+  "reconstruction_term": 0.06799405070009845,
+  "test_variation_term": 8.12413680238188,
+  "curvature_relative_error": 0.0035380580285094406,
+  "amplification_median_max": [
+   60.1832803471861,
+   832.8214073035584
+  ],
+  "quadratic_bias_median": 0.2685398488986367,
+  "own_flux_defect_median": 6.557783473641815e-16,
+  "linear_exactness_max": 4.618527782440651e-14
+ },
+ "rings3_linear": {
+  "pg_error": 0.05630782591034863,
+  "variational_error": 1.8380960561004496,
+  "reconstruction_term": 0.047820265202000944,
+  "test_variation_term": 1.8231855961670609,
+  "curvature_relative_error": 0.009833571377909345,
+  "amplification_median_max": [
+   21.455396441397806,
+   34.46922518808194
+  ],
+  "quadratic_bias_median": 1.6859421857812509,
+  "own_flux_defect_median": 4.362687551710308e-16,
+  "linear_exactness_max": 9.043005060049847e-15
+ },
+ "rings3_quad": {
+  "pg_error": 0.01192514900709061,
+  "variational_error": 2.4923872020101747,
+  "reconstruction_term": 0.012925412405532527,
+  "test_variation_term": 2.4859400358954016,
+  "curvature_relative_error": 0.004112419028367272,
+  "amplification_median_max": [
+   16.420591737161317,
+   19.011584182784286
+  ],
+  "quadratic_bias_median": 3.978314667949183e-15,
+  "own_flux_defect_median": 0.047911135668075575,
+  "linear_exactness_max": 6.626643678231403e-15
+ },
+ "rings3_hybrid": {
+  "pg_error": 0.008476560263862627,
+  "variational_error": 1.11142169793784,
+  "reconstruction_term": 0.009202968925102232,
+  "test_variation_term": 1.1136403404292035,
+  "curvature_relative_error": 0.0036068002293215403,
+  "amplification_median_max": [
+   16.20358203381106,
+   18.482486523715167
+  ],
+  "quadratic_bias_median": 0.11994047445072285,
+  "own_flux_defect_median": 4.588490098618822e-16,
+  "linear_exactness_max": 6.574601973952099e-15
+ },
+ "seconds": 495.8
+}

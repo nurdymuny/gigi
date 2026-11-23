@@ -1,0 +1,18 @@
+2026-11-18, n = 1 (level 0), N = 8, first step, metric at t = h/2.
+
+newton_floor.py 0 native 8
+velocity CG vs direct, relative: 4.318091719084624e-13
+cg     1.0e+00 1.7e-03 1.1e-05 1.0e-07 1.1e-09 3.5e-10 3.3e-10 3.2e-10 3.5e-10 3.7e-10 3.6e-10 3.3e-10 3.5e-10 3.1e-10 3.4e-10 3.7e-10 3.4e-10 3.2e-10 2.9e-10 3.3e-10 3.2e-10 2.8e-10 3.3e-10 3.3e-10 3.5e-10
+direct 1.0e+00 1.7e-03 1.1e-05 1.0e-07 1.1e-09 3.7e-10 3.2e-10 2.8e-10 3.3e-10 3.5e-10 3.3e-10 2.9e-10 3.1e-10 3.2e-10 3.6e-10 3.6e-10 3.0e-10 2.7e-10 3.3e-10 2.8e-10 3.4e-10 3.2e-10 3.0e-10 3.4e-10 3.4e-10
+
+force_noise.py 0 native 8
+rounding-level nudge 0: velocity moves 3.4e-10, gradient moves 5.0e-10
+rounding-level nudge 1: velocity moves 3.8e-10, gradient moves 5.3e-10
+rounding-level nudge 2: velocity moves 3.3e-10, gradient moves 5.2e-10
+|grad| = 8.774896600307526  h|xi| per link (rms) = 0.010781282596420994
+
+force_noise.py 0 pg 8
+rounding-level nudge 0: velocity moves 3.5e-10, gradient moves 4.6e-10
+rounding-level nudge 1: velocity moves 3.9e-10, gradient moves 4.9e-10
+rounding-level nudge 2: velocity moves 3.5e-10, gradient moves 4.7e-10
+|grad| = 9.012916624528133  h|xi| per link (rms) = 0.009908563319114333

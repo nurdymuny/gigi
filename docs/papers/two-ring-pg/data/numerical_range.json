@@ -1,0 +1,30 @@
+{
+ "L0_r1": {
+  "min_symmetric_part": -13511.564051143061,
+  "max_symmetric_part": 206.83483958834788,
+  "negative_count": 70,
+  "physical_dim": 121,
+  "gauge_annihilated_max": 2.7711166694643907e-13
+ },
+ "L0_r2": {
+  "min_symmetric_part": 3.997608506565052,
+  "max_symmetric_part": 2533.566964446457,
+  "negative_count": 0,
+  "physical_dim": 121,
+  "gauge_annihilated_max": 5.4902408822525715e-14
+ },
+ "L1_r1": {
+  "min_symmetric_part": -24226.547433301468,
+  "max_symmetric_part": 1104.8554661230316,
+  "negative_count": 472,
+  "physical_dim": 961,
+  "gauge_annihilated_max": 2.0938806244430452e-13
+ },
+ "L1_r2": {
+  "min_symmetric_part": 3.96898278011093,
+  "max_symmetric_part": 8158.249966965981,
+  "negative_count": 0,
+  "physical_dim": 961,
+  "gauge_annihilated_max": 1.545430450278218e-13
+ }
+}

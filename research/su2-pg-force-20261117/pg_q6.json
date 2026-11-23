@@ -1,0 +1,77 @@
+{
+  "kind": "S2a research script (not an engine run)",
+  "rows": [
+    {
+      "level": 0,
+      "order": 6,
+      "trial": "pg",
+      "energy_replay_rel": 1.5207243080036733e-16,
+      "gradient_vs_native_rel": 0.24494061686017812,
+      "relative_error": 0.3624699143825472,
+      "full_mass_error": 11.803109379080212,
+      "reference_mass_norm": 32.56300429564293,
+      "solver": {
+        "iterations": 36,
+        "relative_linear_residual": 6.124441096796248e-13,
+        "absolute_linear_residual": 5.550131539993868e-12,
+        "rhs_norm": 9.062266176251075,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 8.4
+    },
+    {
+      "level": 1,
+      "order": 6,
+      "trial": "pg",
+      "energy_replay_rel": 7.310380189642152e-16,
+      "gradient_vs_native_rel": 0.2636553482281542,
+      "relative_error": 0.07427236291853997,
+      "full_mass_error": 2.493420200320821,
+      "reference_mass_norm": 33.57130569624586,
+      "solver": {
+        "iterations": 50,
+        "relative_linear_residual": 8.72604578655251e-13,
+        "absolute_linear_residual": 6.626589174602638e-12,
+        "rhs_norm": 7.594034384755014,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 59.3
+    },
+    {
+      "level": 2,
+      "order": 6,
+      "trial": "pg",
+      "energy_replay_rel": 1.4546596532414476e-16,
+      "gradient_vs_native_rel": 0.25541399199780235,
+      "relative_error": 0.046883727696024724,
+      "full_mass_error": 1.5835285447164171,
+      "reference_mass_norm": 33.77565356968586,
+      "solver": {
+        "iterations": 53,
+        "relative_linear_residual": 8.701127537186263e-13,
+        "absolute_linear_residual": 5.552251134616956e-12,
+        "rhs_norm": 6.381070856493182,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 142.1
+    },
+    {
+      "level": 3,
+      "order": 6,
+      "trial": "pg",
+      "energy_replay_rel": 4.3544036756250403e-16,
+      "gradient_vs_native_rel": 0.2538236113469691,
+      "relative_error": 0.02506854289385465,
+      "full_mass_error": 0.849362685379681,
+      "reference_mass_norm": 33.88161366123499,
+      "solver": {
+        "iterations": 58,
+        "relative_linear_residual": 8.734598301993675e-13,
+        "absolute_linear_residual": 4.407220863831386e-12,
+        "rhs_norm": 5.045705264803576,
+        "solver": "scipy_cg_external_diagnostic"
+      },
+      "seconds": 634.7
+    }
+  ]
+}

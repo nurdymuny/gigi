@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
  * :5177/gigi/sheets/, which playwright.config.js auto-starts via the
  * `webServer` block.
  *
- * Spec reference: GIGI_SHEETS_SPRINT_SPEC.md §5/S0, addendum §Q1.
+ * Spec reference: docs/specs/GIGI_SHEETS_SPRINT_SPEC.md §5/S0, addendum §Q1.
  */
 
 const SHEETS_URL =

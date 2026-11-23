@@ -1,0 +1,32 @@
+% Три пути через поворот: хорда, дуга и касательная — русское издание.
+% Перевод статьи «Three Ways Across a Turn: Chord, Arc and Tangent» (doi:10.5281/zenodo.24375338).
+% Сборка: xelatex paper_ru.tex (дважды). Текст по частям: part1.tex … part5.tex.
+\documentclass[11pt]{article}
+\usepackage[margin=1.1in,headsep=18pt]{geometry}
+\newcommand{\dgshorttitle}{Три пути через поворот}
+\newcommand{\dgauthorshort}{Б. Р. Дэвис}
+\usepackage{graphicx}
+\graphicspath{{./}{../}}
+\usepackage{float}
+\usepackage{amsmath,amsthm}
+\input{../../dgstyle-ru}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\expandafter\def\expandafter\UrlBreaks\expandafter{\UrlBreaks\do\_\do\-}
+\setlength{\emergencystretch}{2.5em}   % long Russian words
+\usepackage{listings}
+\usepackage{array}
+\lstdefinestyle{rust}{basicstyle=\ttfamily\footnotesize, columns=fullflexible, keepspaces=true,
+  frame=lines, framesep=4pt, xleftmargin=6pt, xrightmargin=6pt, showstringspaces=false,
+  morekeywords={let,mut,for,in,fn,pub}}
+
+\newtheorem{proposition}{Предложение}
+\newtheorem{remark}{Замечание}
+
+\input{part1}
+\input{part2}
+\input{part3}
+\input{part4}
+\input{part5}

@@ -1,0 +1,78 @@
+PASS |U-1| = 2 sin(theta/2)
+PASS U-1 = 2i sin(theta/2) e^{i theta/2}  (chord direction turns by theta/2)
+chord   = theta**5/1920 - theta**3/24 + theta
+outside = theta**5/120 + theta**3/12 + theta
+PASS arc - chord = theta^3/24 + O(theta^5)
+PASS outside - arc = theta^3/12 + O(theta^5)
+(2 chord + outside)/3 - arc = theta**5/320
+PASS Snell-Huygens: (2C+T)/3 = theta + theta^5/320 + O(theta^7)
+PASS chord < arc < outside on (0, pi) (grid)
+PASS Snell-Huygens estimate >= arc on (0, pi) (grid)
+chord^2   = -theta**8/20160 + theta**6/360 - theta**4/12 + theta**2
+outside^2 = 31*theta**8/10080 + 17*theta**6/720 + theta**4/6 + theta**2
+PASS chord^2 = 2(1 - cos theta) (Wilson)
+PASS chord^2 = theta^2 - theta^4/12 + ...
+PASS outside^2 = theta^2 + theta^4/6 + ...
+(2 chord^2 + outside^2)/3 - theta^2 = theta**8/1008 + 7*theta**6/720
+PASS energy mix: (2C^2+T^2)/3 = theta^2 + 7 theta^6/720 + O(theta^8)  (theta^4 cancels)
+PASS S + d^2 = 1 with d = half chord
+PASS S = (1 + Re U)/2
+PASS 1 - S = chord^2 / 4
+PASS U = (1 + i tan(theta/2)) / (1 - i tan(theta/2))  (dense grid, |err| < 1e-12)
+PASS tan(theta/2) = sin(theta) / (1 + cos(theta))  (|theta| < 3.1, pointwise rel err < 1e-12)
+PASS algebraic: ((1+i t)/(1-i t)) has modulus 1 and argument 2 arctan t
+quaternion worst errors: {'chord': np.float64(4.440892098500626e-16), 'cayley': np.float64(9.71738245425513e-11), 'log': np.float64(2.220446049250313e-16)}
+PASS SU(2): |U - 1| = 2 sin(a/2) and arc = a (to 1e-14)
+PASS SU(2): Cayley (1+v)(1-v)^-1 = U with |v| = tan(a/2) (to 1e-9; conditioning ~1/(1+cos a) near the half-turn)
+PASS Crank-Nicolson |r(z)| <= 1 exactly on Re z >= 0 (sample)
+PASS r(i s) = Cayley rotation with tan(theta/2) = -s/2: |r(i s)| = 1
+PASS explicit Euler leaves the circle outward along the tangent: |1+is| = sqrt(1+s^2) > 1
+PASS implicit Euler falls inside: |1/(1-is)| = 1/sqrt(1+s^2) < 1
+PASS Crank-Nicolson stays on the circle, turning by phi = 2 arctan(s/2) (step s plays the outside path)
+PASS Crank-Nicolson phase lag s - 2 arctan(s/2) = s^3/12 + O(s^5) (= outside minus arc)
+PASS outside path -> infinity as theta -> pi
+PASS Snellius lower twin: theta - L = theta^5/2880 + O(theta^7)
+PASS L < theta on [0.05, pi) (grid; the series covers small theta)
+PASS blending the twins 9:1 cancels theta^5
+PASS chord(theta) = chord(2 pi - theta)
+PASS tangent leg(2 pi - theta) = -tangent leg(theta)
+PASS chord-line distance x corner distance = 1
+PASS chord(i phi) = 2 i sinh(phi/2)
+PASS tangent leg(i phi) = i tanh(phi/2)
+PASS S + d^2 = 1 survives: cosh^2(phi/2) + (i sinh(phi/2))^2 = 1
+PASS uniform arc theta on [0, pi]: P(theta > 2 pi/3) = 1/3
+PASS chord > sqrt3  <=>  theta > 2pi/3  <=>  cos(theta/2) < 1/2  <=>  S < 1/4
+Bertrand (endpoints, radius, midpoint): [0.3333, 0.5004, 0.2498]
+PASS Bertrand: 1/3, 1/2, 1/4 within 0.002 (2 million chords each)
+PASS random midpoint makes S uniform: S = 1 - chord^2/4 = 1 - (1 - U) = U
+PASS one ticket of arc at exactly one radian (57.2958 deg)
+PASS one ticket of chord at exactly 60 deg: 2 sin(30 deg) = 1
+PASS one ticket of energy (1 - cos theta) at exactly 90 deg
+PASS energy of the crossing = energy of two radius walks (1/2 + 1/2) iff theta = 90 deg  (Pythagoras)
+PASS crossing energy < two-trip energy below 90 deg, > above (grid)
+PASS hexagon: arc premium at 60 deg = pi/3 - 1 = circumference/hexagon perimeter - 1
+PASS two whole tickets: the only turning points are the centre O and its twin A + B (1..179 deg)
+PASS |A + B| = 2 cos(theta/2): twin corner on the circle exactly at 120 deg
+PASS at 120 deg the crossing is Bertrand's sqrt 3
+PASS tangent corner sec(theta/2) = twin corner 2 cos(theta/2) iff theta = 90 deg
+PASS at 90 deg the outside path is exactly two whole tickets: 2 tan(45 deg) = 2
+PASS at 180 deg the twins merge: A + B = O
+PASS detour one ticket of length at 2 arctan(1/2) = 53.130 deg, the 3-4-5 angle (cos 3/5, sin 4/5)
+PASS Cayley with rational leg t gives a rational point: ((1-t^2)/(1+t^2), 2t/(1+t^2)); t = 1/2 -> (3/5, 4/5)
+PASS energy rows (L^2/2 = 1): detour at 2 arctan(1/sqrt2) = arccos(1/3) = 70.529 deg
+PASS energy rows: arc at sqrt 2 rad = 81.028 deg; chord at 90 deg
+PASS order of the grid: 53.13 < 57.30 < 60 and 70.53 < 81.03 < 90
+PASS Thales twin: (1 - cos t) + (1 + cos t) = 2, i.e. 2 d^2 + 2 S = 2
+PASS energy break-even at 90 deg is S = d^2 = 1/2
+PASS small tickets: the three energy rules agree to 0.2% at 5 deg
+PASS Haar answer to Bertrand on SU(2): P(S < 1/4) = 1/3 - sqrt3/(4 pi) = 0.19550
+PASS explicit Euler points lie exactly on r = exp(b theta), b = ln(1+s^2)/(2 arctan s) (s = 0.3, 60 steps)
+PASS implicit Euler lies on the mirror spiral r = exp(-b theta), same pitch
+PASS Crank-Nicolson is the pitch-zero member (the circle)
+PASS s = 0.3: growth 1.2614 per quarter turn, pitch 8.41 deg
+PASS golden spiral: growth phi per quarter turn, b = 2 ln(phi)/pi = 0.306349, pitch 17.03 deg
+PASS explicit Euler is exactly golden at s* = 0.651505 (33.08 deg per step)
+PASS b(s) increases with s on (0, 3), so s* is the only golden step there
+PASS consecutive Fibonacci ratios tend to phi (F31/F30 within 1e-12)
+
+68/68 PASS

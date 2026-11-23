@@ -1,0 +1,43 @@
+
+running 9 tests
+test adapter::checked::tests::sphere_output_guard_rejects_bad_kernel_results ... ok
+test contract::sphere_identity_small_angle_roundoff_normalization_and_zero ... FAILED
+test contract::sphere_refuses_dimensions_nonfinite_and_magnitude ... ok
+test contract::sphere_refuses_nonunit_nontangent_and_antipodal ... FAILED
+test contract::sphere_legacy_antipodal_and_small_angle_behavior_unchanged ... ok
+test contract::sphere_nonaxis_oracle_inverse_and_frame_covariance ... FAILED
+test contract::sphere_record_adapter_never_invents_components ... FAILED
+test contract::sphere_quarter_loop_basis_positions_reverse_and_backtrack ... FAILED
+test contract::sphere_embedded_gigi_showcase_persists_derived_transport_and_reopens ... FAILED
+
+failures:
+
+failures:
+    contract::sphere_embedded_gigi_showcase_persists_derived_transport_and_reopens
+    contract::sphere_identity_small_angle_roundoff_normalization_and_zero
+    contract::sphere_nonaxis_oracle_inverse_and_frame_covariance
+    contract::sphere_quarter_loop_basis_positions_reverse_and_backtrack
+    contract::sphere_record_adapter_never_invents_components
+    contract::sphere_refuses_nonunit_nontangent_and_antipodal
+
+test result: FAILED. 3 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+thread 'contract::sphere_identity_small_angle_roundoff_normalization_and_zero' (59592) panicked at C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:103:36:
+called `Result::unwrap()` on an `Err` value: "numerically unresolved sphere transport: residuals [1.4142135623730951, 0.0, 0.0, 0.0] must be finite and <= 1e-10; use better-resolved intermediate waypoints"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'contract::sphere_embedded_gigi_showcase_persists_derived_transport_and_reopens' (59472) panicked at C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:159:100:
+called `Result::unwrap()` on an `Err` value: "numerically unresolved sphere transport: residuals [1.4142135623730951, 0.0, 1.0, 0.0] must be finite and <= 1e-10; use better-resolved intermediate waypoints"
+
+thread 'contract::sphere_refuses_nonunit_nontangent_and_antipodal' (25312) panicked at C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:97:58:
+called `Result::unwrap()` on an `Err` value: "numerically unresolved sphere transport: residuals [1.9999997500001718, 0.0, 0.000999999500000375, 0.0] must be finite and <= 1e-10; use better-resolved intermediate waypoints"
+
+thread 'contract::sphere_nonaxis_oracle_inverse_and_frame_covariance' (63744) panicked at C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:66:35:
+called `Result::unwrap()` on an `Err` value: "numerically unresolved sphere transport: residuals [0.9293543836636905, 0.0, 0.702043046667539, 0.0] must be finite and <= 1e-10; use better-resolved intermediate waypoints"
+
+thread 'contract::sphere_record_adapter_never_invents_components' (63500) panicked at C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:119:70:
+called `Result::unwrap()` on an `Err` value: "numerically unresolved sphere transport: residuals [1.4142135623730951, 0.0, 1.0, 0.0] must be finite and <= 1e-10; use better-resolved intermediate waypoints"
+
+thread 'contract::sphere_quarter_loop_basis_positions_reverse_and_backtrack' (49608) panicked at C:\Users\nurdm\AppData\Local\Temp\gigi-sphere-mutations-xija9c94\audit.rs:42:41:
+called `Result::unwrap()` on an `Err` value: "numerically unresolved sphere transport: residuals [1.4142135623730951, 0.0, 1.0, 0.0] must be finite and <= 1e-10; use better-resolved intermediate waypoints"

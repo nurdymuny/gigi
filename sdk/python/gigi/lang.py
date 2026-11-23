@@ -107,7 +107,7 @@ class TranslationResult:
 
 
 # ---------------------------------------------------------------------------
-# Error envelope (unified per GIGI_LANG_SPEC.md §8a Q7)
+# Error envelope (unified per docs/specs/GIGI_LANG_SPEC.md §8a Q7)
 # ---------------------------------------------------------------------------
 
 class ErrorCategory(str, Enum):
@@ -248,7 +248,7 @@ class GigiLang:
     ):
         raise NotImplementedError(
             "GigiLang.__init__ is a v0.0 skeleton. "
-            "See GIGI_LANG_SPEC.md (v0.1.1) for the contract this pins."
+            "See docs/specs/GIGI_LANG_SPEC.md (v0.1.1) for the contract this pins."
         )
 
     # ----- High-level: prompt → fiber response -----
@@ -381,7 +381,7 @@ class GigiLang:
         Args:
             format:  "sdl" (default), "json" (GraphQL introspection JSON),
                      or "dhoom" (fiber-shaped). See
-                     GIGI_SCHEMA_INTROSPECTION_SPEC.md §3 for details.
+                     docs/specs/GIGI_SCHEMA_INTROSPECTION_SPEC.md §3 for details.
             version: Optional version pin (e.g., "v1", "v1.3"). If omitted,
                      fetches the latest. Pinning provides stability against
                      additive schema changes.

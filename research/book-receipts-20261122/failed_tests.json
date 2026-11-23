@@ -1,0 +1,44 @@
+{
+ "tests": {
+  "Test 2 (squashed meron): symmetry makes her the floor": {
+   "receipt": "research\\su2-floor-family-20261119\\test2_meron.json",
+   "field": "summary.class",
+   "value": "N",
+   "failed": true,
+   "note": "docs/research/skeleton-test2-family1-results-2026-11-20.md"
+  },
+  "Test 4 (alignment, A = s theta): alignment makes her the floor": {
+   "receipt": "research\\su2-floor-family-20261119\\alignment_test_4b.json",
+   "field": "summary.class",
+   "value": "N",
+   "failed": true,
+   "note": "docs/research/alignment-test-results-2026-11-21.md"
+  },
+  "Test 5 (stretch): being singled out by curvature is sufficient": {
+   "receipt": "research\\su2-floor-family-20261119\\stretch_test.json",
+   "field": "summary.P_suf",
+   "value": false,
+   "floor_among_singled_out": {
+    "floor": 0,
+    "not_floor": 35
+   },
+   "failed": true,
+   "note": "docs/research/stretch-test-results-2026-11-21.md"
+  },
+  "Test 6 (edge): the fitted curve x* = c1/t + c2/t^2 and its Berger crossing": {
+   "receipt": "research\\su2-floor-family-20261119\\edge_test_results.json",
+   "field": "E1_pass, E2.pass",
+   "value": [
+    false,
+    false
+   ],
+   "failed": true,
+   "note": "docs/research/edge-test-results-2026-11-21.md"
+  }
+ },
+ "summary": {
+  "tests": 4,
+  "failed": 4,
+  "verdict": "4 of 4 pre-registered readings failed"
+ }
+}

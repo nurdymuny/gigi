@@ -1,0 +1,13 @@
+{
+ "level": 1,
+ "trial": "pg_onering",
+ "dof": 3372,
+ "nnz": 399194,
+ "file": "outputs/su2-batched-K/L1_pg_onering_K.npz",
+ "sha256": "c47b3500be2d2552a5a3413e0bb9910ff9847d431e0bf83972c72022ff960b0d",
+ "setup_seconds": 11.5,
+ "build_seconds": 12.2,
+ "metric": "g(0) = (3, 1, 1)",
+ "eps": 1e-06,
+ "kind": "B5 batched Jacobian (research script, not an engine run)"
+}

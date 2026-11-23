@@ -57,3 +57,20 @@ jobs:
         run: pip install requests
       - name: boot server + run both SDKs end-to-end
         run: ./scripts/sdk_smoke.sh
+      - name: Registry decision tests and removed-safeguard controls
+        run: |
+          python -m unittest discover -s e2e/probes/registry -p test_registry.py -v
+          python e2e/probes/registry/verify_registry_mutations.py
+      - name: Build current engine for registry verification
+        run: cargo build --release --bin gigi-stream
+      - name: Registry live decisions and read-only restart verification
+        run: python e2e/probes/registry/verify_registry_live.py --engine target/release/gigi-stream
+      - name: Preserve registry verification receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: registry-verification
+          path: |
+            outputs/registry-verification-*/*.json
+            outputs/registry-verification-*/*.log
+          if-no-files-found: ignore

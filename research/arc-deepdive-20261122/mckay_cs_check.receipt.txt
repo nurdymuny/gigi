@@ -1,0 +1,22 @@
+   ((1, 1, 1), 31, Fraction(1, 120), Fraction(119, 120))
+   ((1, 1, 3), 43, Fraction(49, 120), Fraction(71, 120))
+  rep (1, 1, 1): relation residuals max 1.5e-12, image order 120, traces [np.float64(-2.0), np.float64(-1.618034), np.float64(-1.0), np.float64(-0.618034), np.float64(0.0), np.float64(0.618034), np.float64(1.0), np.float64(1.618034), np.float64(2.0)]
+  rep (1, 1, 3): relation residuals max 1.2e-14, image order 120, traces [np.float64(-2.0), np.float64(-1.618034), np.float64(-1.0), np.float64(-0.618034), np.float64(0.0), np.float64(0.618034), np.float64(1.0), np.float64(1.618034), np.float64(2.0)]
+classes: 9 sizes [np.int64(1), np.int64(30), np.int64(20), np.int64(1), np.int64(12), np.int64(20), np.int64(12), np.int64(12), np.int64(12)] defining traces [ 2.     0.     1.    -2.     0.618 -1.    -0.618 -1.618  1.618]
+irrep dims: [1, 2, 2, 3, 3, 4, 4, 5, 6] sum sq 120
+McKay adjacency (V_2 (x) rho_i contains rho_j):
+ [[0 0 1 0 0 0 0 0 0]
+ [0 0 0 0 0 1 0 0 0]
+ [1 0 0 1 0 0 0 0 0]
+ [0 0 1 0 0 0 1 0 0]
+ [0 0 0 0 0 0 0 0 1]
+ [0 1 0 0 0 0 0 0 1]
+ [0 0 0 1 0 0 0 1 0]
+ [0 0 0 0 0 0 1 0 1]
+ [0 0 0 0 1 1 0 1 0]]
+degrees [np.int64(1), np.int64(1), np.int64(2), np.int64(2), np.int64(1), np.int64(2), np.int64(2), np.int64(2), np.int64(3)]
+affine Cartan eigenvalues: [-0.        0.381966  1.        1.381966  2.        2.618034  3.
+  3.618034  4.      ]
+C @ dims = [0. 0. 0. 0. 0. 0. 0. 0. 0.] (zero vector => dims are the affine-E8 null vector / marks)
+2-dim irrep char values on classes: [ 2.     0.     1.    -2.    -1.618 -1.     1.618  0.618 -0.618]
+2-dim irrep char values on classes: [ 2.     0.     1.    -2.     0.618 -1.    -0.618 -1.618  1.618]

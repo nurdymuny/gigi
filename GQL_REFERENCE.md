@@ -2511,3 +2511,90 @@ pred_atom       = field comp_op value | field "MATCHES" string
 | Cross-bundle gauge invariance test (GAUGE … VS … ON FIBER) | — | ✓ | ✅ |
 | Sheaf restriction / gluing | — | ✓ | ⚠️ Sheaf module built; not wired |
 | Subscriptions (WebSocket) | — | ✓ | ✅ |
+
+## Homogeneous Three-Sphere Ricci Flow (RICCI_FLOW)
+
+Requires `gauge`. This evolves a smooth, left-invariant SU(2) metric, not a
+record-variance statistic or graph curvature proxy. Input coefficients are
+squared lengths in a fixed frame with cyclic bracket `[e1,e2]=2e3`.
+
+```sql
+RICCI_FLOW SU2 METRIC (1,1,1) TIME 0.2 STEPS 16;
+RICCI_FLOW SU2 METRIC (0.5,1,2) TIME 2 STEPS 1024 NORMALIZED;
+```
+
+The first is Hamilton flow `dg/dt=-2Ric`; the second adds `(2/3)R*g` to
+preserve volume. Returns `STEPS+1` trajectory rows, including time zero,
+metric components, Ricci and sectional curvature, cover volume, anisotropy,
+step-doubling error estimates and scope disclosures. Computation does not
+require an existing bundle and does not mutate stored records.
+
+Optional `TOLERANCE` defaults to `0.00000001`. It applies to a Richardson
+estimate relative to the largest initial metric coefficient, not a rigorous
+error enclosure. `STEPS` is bounded to 1..4096. A nonpositive intermediate
+metric or excessive estimate refuses the whole request. Shorten the interval
+or increase the resolution; the engine does not step through singularities.
+
+`NORMALIZED` and `TOLERANCE` may each occur once. Only `SU2` is supported.
+There is no surgery, arbitrary-manifold recognition, or Wilson/Ricci
+equivalence claim. See [the scope, equations and gates](docs/RICCI_FLOW_SU2_SPEC.md).
+
+## Ricci / Yang-Mills Mapping Audit (RICCI_WILSON_AUDIT)
+
+Requires the `gauge` feature. This diagnostic evaluates two independently
+implemented operators at the same positive diagonal SU(2) metric:
+
+```sql
+RICCI_WILSON_AUDIT SU2 METRIC (3,1,1);
+RICCI_WILSON_AUDIT SU2 METRIC (0.5,1,2) NORMALIZED;
+```
+
+The first operator maps the Ricci metric velocity through its Levi-Civita
+connection. The second is the negative Yang-Mills action gradient using that
+instantaneous metric. The time scale is fixed at one. The response includes
+both three-component velocities, their actual difference, weighted norms,
+connection/curvature coefficients, action density and explicit conventions.
+At `(3,1,1)`, both velocities are `(48,-8*sqrt(3),-8*sqrt(3))`.
+
+Metric coefficients are squared lengths in `[1e-6,1e6]`, with max/min at most
+10,000. No bundle is created or scanned. This is a local homogeneous continuum
+audit, not a lattice Wilson-flow solver or a fixed-background equivalence
+claim. In particular, the map forgets overall metric scale. Deck groups and
+Levi-Civita holonomy are different objects.
+
+See [the mapping, independent operators and gates](docs/RICCI_WILSON_CORRESPONDENCE_SPEC.md).
+
+## Bounded SU(2) Generator Closure (MONODROMY_GROUP_ORDER)
+
+Requires `--features gauge` (included by `halcyon`). Operates on a declared
+gauge field, not a bundle name. Both embedded GQL and `POST /v1/gql` use the
+same closure implementation.
+
+```sql
+MONODROMY_GROUP_ORDER field FROM EDGES (0, 1)
+  COMMUTATOR CAP 256 TOLERANCE 0.00000001;
+```
+
+GIGI enumerates products of the selected forward edge elements and their
+inverses, constructs a complete multiplication table, and checks identity,
+inverses, and every associativity triple. It returns one row with the table's
+order and an element-order histogram (`element_orders`, `element_order_counts`).
+`COMMUTATOR` additionally computes the derived subgroup order, `is_perfect`,
+and the abelianization order.
+
+`COMMUTATOR`, `CAP`, and `TOLERANCE` are optional, order-independent, and may
+appear only once. Default cap: 256; default tolerance: 1e-8. Limits: 1..32
+generator edges, cap 1..256, tolerance [1e-12, 1e-6]. Only SU(2) is supported.
+Unit-norm inputs are required within 1e-10; the query normalizes accepted
+copies once and reports the input residual. It never identifies q with -q.
+
+An accepted table has `status: numerically_closed`, `table_verified: true`,
+and `exact_subgroup_certified: false`. Cap exhaustion or ambiguous numerical
+matches return `status: unresolved` with null order fields and a reason.
+They do not establish an infinite group. Invalid inputs refuse.
+
+This computes the subgroup of **supplied generators**. It does not infer that
+the edges are loops, prove a representation faithful, or recognize a manifold.
+Simultaneous conjugation preserves the answer; arbitrary independent changes
+at unrelated edge endpoints need not. See
+[the mathematical contract and gates](docs/MONODROMY_GROUP_ORDER_SPEC.md).

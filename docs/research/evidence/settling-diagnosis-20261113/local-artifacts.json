@@ -1,0 +1,57 @@
+[
+  {
+    "name": "build.log",
+    "bytes": 7031,
+    "sha256": "8ff061728afbbbd8072f9ba4d66a87fdc6dcaf23c828e5099d1c5effd4d73e9f"
+  },
+  {
+    "name": "rc1-diagnosis.csv",
+    "bytes": 506350,
+    "sha256": "314212e1f08be8c791fc386d78764dc3dbef7a5a59248e3f3cd1756147ce806f"
+  },
+  {
+    "name": "rc2-diagnosis.csv",
+    "bytes": 505977,
+    "sha256": "92ac5dbfe07c4604e29b2679ab42eeb14fd3f1cc240d518bc0e8a0ddfa0f3b45"
+  },
+  {
+    "name": "rc3-diagnosis.csv",
+    "bytes": 505475,
+    "sha256": "f2f9ca329a11c43d4894b07cce6cdc20c0778f1c6015f0aa61bbf6dfd608825d"
+  },
+  {
+    "name": "rc4-diagnosis.csv",
+    "bytes": 510379,
+    "sha256": "9994cf986b5e95ab21f6889c20ea5b12220d49c0f319e1bad8637a81e6aa14ed"
+  },
+  {
+    "name": "rc5-diagnosis.csv",
+    "bytes": 510139,
+    "sha256": "e29074446ff92b8e6ae8f885fce1be84c2b04e7e5518bdb7f35549655a2bccdb"
+  },
+  {
+    "name": "rc6-diagnosis.csv",
+    "bytes": 511454,
+    "sha256": "9a8a711b6eed198c2bad0ab0daf24561a7636f509f37f4bd415172c3c8563d98"
+  },
+  {
+    "name": "receipts.json",
+    "bytes": 20417617,
+    "sha256": "fed6cac6d46f04cf9d598c0e15cc0acb7b17973d1b016bd21d7fc128ec639cb0"
+  },
+  {
+    "name": "report.json",
+    "bytes": 28490,
+    "sha256": "3f1a2af076d44a547e3ed53aef818998b0c5339f6fc36e0f7d04e3665c5ce71b"
+  },
+  {
+    "name": "server.log",
+    "bytes": 89206,
+    "sha256": "11c703755bf70198089139499c30f45500b0c1f346a758999f4a1ad442902483"
+  },
+  {
+    "name": "tests.json",
+    "bytes": 3984,
+    "sha256": "7da4cde905fe0a0b35d04c47eddb45735293b7a28408fe521ef4afde9c41e719"
+  }
+]

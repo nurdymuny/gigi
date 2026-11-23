@@ -1,0 +1,20 @@
+{
+ "level": 0,
+ "trial": "native",
+ "stepper": "cayley_midpoint",
+ "N": 4,
+ "h": 0.005,
+ "status": "failed at step 1: Newton increment 2.60e-10 after 40 iterations",
+ "rows": [],
+ "R_final": null,
+ "E_final": null,
+ "newton_iterations": [
+  40
+ ],
+ "newton_max_iterations": 40,
+ "newton_worst_final_increment": 2.6009624222575543e-10,
+ "force_evaluations": 40,
+ "seconds_per_evaluation": 10.22,
+ "setup_seconds": 0.8,
+ "seconds": 409.6
+}

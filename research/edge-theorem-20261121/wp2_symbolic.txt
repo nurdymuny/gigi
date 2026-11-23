@@ -1,0 +1,25 @@
+S1 (-1, -1): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (-1, 0): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (-1, 1): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (0, -1): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (0, 0): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (0, 1): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (1, -1): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (1, 0): w, C_aa, R_a, P+_a, P-_a match table: True
+S1 (1, 1): w, C_aa, R_a, P+_a, P-_a match table: True
+S2 assembled block real symmetric (raw entries already Hermitian and real): True
+S3 (-1, -1): identity holds: True;  S4 K_a = 8 - 16/t - 8*x/sqrt(t);  xi=0 diag - lambda = l*(8 - 16/t - 8*x/sqrt(t)) + 0
+S3 (-1, 0): identity holds: True;  S4 K_a = 8 - 16/t - 4*x/sqrt(t);  xi=0 diag - lambda = l*(8 - 16/t - 4*x/sqrt(t)) + -2*sqrt(t)*x - x**2 + 3*y**2 - 4*x/sqrt(t)
+S3 (-1, 1): identity holds: True;  S4 K_a = 8 - 16/t;  xi=0 diag - lambda = l*(8 - 16/t) + -4*sqrt(t)*x + 4*y**2 - 8*x/sqrt(t)
+S3 (0, -1): identity holds: True;  S4 K_a = 4 - 8/t - 8*x/sqrt(t);  xi=0 diag - lambda = l*(4 - 8/t - 8*x/sqrt(t)) + -2*sqrt(t)*x + 4*t + 2*y**2 - 4/t - 4*x/sqrt(t)
+S3 (0, 0): identity holds: True;  S4 K_a = 4 - 8/t - 4*x/sqrt(t);  xi=0 diag - lambda = l*(4 - 8/t - 4*x/sqrt(t)) + -2*sqrt(t)*x + 4*t - x**2 + 3*y**2 - 4/t - 4*x/sqrt(t)
+S3 (0, 1): identity holds: True;  S4 K_a = 4 - 8/t;  xi=0 diag - lambda = l*(4 - 8/t) + -2*sqrt(t)*x + 4*t + 2*y**2 - 4/t - 4*x/sqrt(t)
+S3 (1, -1): identity holds: True;  S4 K_a = -8*x/sqrt(t);  xi=0 diag - lambda = l*(-8*x/sqrt(t)) + -4*sqrt(t)*x + 4*y**2 - 8*x/sqrt(t)
+S3 (1, 0): identity holds: True;  S4 K_a = -4*x/sqrt(t);  xi=0 diag - lambda = l*(-4*x/sqrt(t)) + -2*sqrt(t)*x - x**2 + 3*y**2 - 4*x/sqrt(t)
+S3 (1, 1): identity holds: True;  S4 K_a = 0;  xi=0 diag - lambda = l*(0) + 0
+S4 note: K_(1,1) = 0 (twist type); K_(1,0) = -4*x/sqrt(t) ; K_(1,-1) = -8*x/sqrt(t)
+S5 Rayleigh quotient with e_(m=l, a=(1, -1)) (block q = l + 0):  lambda_min(block) - lambda_2l <= l*(-8*x/sqrt(t)) + (-4*sqrt(t)*x + 4*y**2 - 8*x/sqrt(t))
+S5 Rayleigh quotient with e_(m=l, a=(1, 0)) (block q = l + 1):  lambda_min(block) - lambda_2l <= l*(-4*x/sqrt(t)) + (-2*sqrt(t)*x - x**2 + 3*y**2 - 4*x/sqrt(t))
+S5 example (x,y,t) = (1/10, sqrt10, 10): type (1, -1): K = -0.252982212813, c = 38.4821067231; diag - lambda < 0 for all l > 152.113883008 (first integer-or-half l beyond)
+S5 example (x,y,t) = (1/10, sqrt10, 10): type (1, 0): K = -0.126491106407, c = 29.2310533616; diag - lambda < 0 for all l > 231.091767571 (first integer-or-half l beyond)
+ALL SYMBOLIC CHECKS PASS

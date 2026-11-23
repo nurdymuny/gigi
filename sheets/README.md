@@ -4,8 +4,8 @@ A spreadsheet-style front-end for GIGI fiber-bundle databases. Non-technical
 operators read, edit, filter, and visualize bundles without writing GQL.
 
 Visual contract: [`mockups/sheets.html`](../mockups/sheets.html).
-Sprint plan: [`GIGI_SHEETS_SPRINT_SPEC.md`](../GIGI_SHEETS_SPRINT_SPEC.md)
-+ [`GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md`](../GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md).
+Sprint plan: [`docs/specs/GIGI_SHEETS_SPRINT_SPEC.md`](../docs/specs/GIGI_SHEETS_SPRINT_SPEC.md)
++ [`docs/specs/GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md`](../docs/specs/GIGI_SHEETS_SPRINT_SPEC_ADDENDUM_v0.1.md).
 
 ## Stack
 

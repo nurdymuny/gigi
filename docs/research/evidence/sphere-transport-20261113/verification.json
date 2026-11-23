@@ -1,0 +1,140 @@
+{
+  "scope": "local default all-target verification and focused gauge holonomy; no deployment",
+  "git_head": "c9e31d1887ffb2ae5129950c20be5b8c3c454c09",
+  "working_tree_clean": false,
+  "default": {
+    "passed": 1589,
+    "failed": 0,
+    "ignored": 22,
+    "summaries": 219,
+    "exit_code": 0
+  },
+  "gauge_holonomy": {
+    "passed": 5,
+    "failed": 0,
+    "exit_code": 0
+  },
+  "mutations": {
+    "passed": true,
+    "scope": "Isolated source mutations against actual GIGI library, no worktree edits",
+    "pinned_files": {
+      "src\\dials\\sphere_transport.rs": "1b827b5fe23c214e58ed16b5b7649002f7b85e25fcd2d38f87a481e1c77ff86a",
+      "tests\\sphere_transport.rs": "dd0e415b2fa2c92e35cd3f3a9a954d77a95b6d38eef9476030a19c48dd9a05ed",
+      "target\\debug\\deps\\libgigi-d1800bbf7db81122.rlib": "aabf41c3834e95e7846ddb3bb79d9524cd07ff1ff124cf3d29e59fceea546c0f"
+    },
+    "cases": [
+      {
+        "name": "baseline",
+        "compiled": true,
+        "test_exit": 0,
+        "assertion_failure": false,
+        "source_sha256": "1b827b5fe23c214e58ed16b5b7649002f7b85e25fcd2d38f87a481e1c77ff86a"
+      },
+      {
+        "name": "identity_instead_of_rotation",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "581ccb446bbeeba748a270cab316d9e772f3f6b98d7c27156313d217cfc3a37e"
+      },
+      {
+        "name": "reverse_rotation",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "db3ec54da11ec40e6f303f074acc26b645c0e712af2d4d540caff3183168cc4c"
+      },
+      {
+        "name": "no_unit_guard",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "5b3e0693ebbe4aa510c381c5ed60cad4be40b0cb0aaa62ca21c37f86f8468a1f"
+      },
+      {
+        "name": "no_tangency_guard",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "a378304b6b58ee6d954a4011702e4ac55f9718004f0e9b079292b09f4a2b7b57"
+      },
+      {
+        "name": "no_antipodal_guard",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "46e8e0ec604c9c24d3adba0409a140c570eabae1e45c0d7d208a34a5cf27a6ff"
+      },
+      {
+        "name": "no_magnitude_guard",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "5a329acfaa67db93dfc1145c17452ee39e873f032b35039c46c12bd4e9183d0f"
+      },
+      {
+        "name": "no_roundoff_normalization",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "46f4a129e4313a4474488cd585db15204bfda6d48f852bcc0f7d3fd278526c6c"
+      },
+      {
+        "name": "missing_measurements_become_zero",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "95b3d50f441adbce36d8644114cf544ca16300522f8df842bd90c2f78a36b1f9"
+      },
+      {
+        "name": "no_postcondition_check",
+        "compiled": true,
+        "test_exit": 101,
+        "assertion_failure": true,
+        "source_sha256": "42be0bee799e41b58704d6d0e8857e21050622fe23e435d01e25bb3152dfb99c"
+      }
+    ]
+  },
+  "sha256": {
+    "src/dials.rs": "76ab5a3c5093f75487653ba57d1e9927c58096f0b4ea2c75ff7c4d83d8ac6f8a",
+    "src/dials/sphere_transport.rs": "1b827b5fe23c214e58ed16b5b7649002f7b85e25fcd2d38f87a481e1c77ff86a",
+    "src/holonomy_cycle.rs": "9658986bf3758e59567204820faf45b119d74e40eb989a1d4779b203b9c5f710",
+    "tests/sphere_transport.rs": "dd0e415b2fa2c92e35cd3f3a9a954d77a95b6d38eef9476030a19c48dd9a05ed",
+    "scripts/sphere_transport_mutations.py": "519e365bdaf85968b7c4caf9990a0a8b83006f9e3107db7d093920c2e233cdb5",
+    "docs/SPHERE_TRANSPORT_SPEC.md": "6da36499cc13fdd69bb5832aa6ab0e35838142037346c8a7ffc66aad0b469550",
+    "docs/SPHERE_TRANSPORT_RESULTS.md": "c04d678239070a73d710a8e8025e8c69c947bd3c91794cf84e425ab569e1ec4d",
+    "Cargo.toml": "9f967025bc84609e99d1e7964a1a05aa500ed58e07903b0ef52c884e07dbc429",
+    "Cargo.lock": "7735a45dde192eba9e8b28a7cde43922d7b386b05aff10e1d40c1b6e3059361b",
+    "target/debug/deps/libgigi-d1800bbf7db81122.rlib": "aabf41c3834e95e7846ddb3bb79d9524cd07ff1ff124cf3d29e59fceea546c0f",
+    "target/debug/deps/sphere_transport-d9e7d8b5f220b0d9.exe": "2a5f4f2bf77da0d0b5de7b06245726feef99d531993f572021a7acd5686ca6f8"
+  },
+  "log_sha256": {
+    "all-targets-green.log": "e067aa0e60c3c4c95e90a9fc4e1d85da1f47e50d7361a41ca6f4a3faaf4fbb93",
+    "baseline-build.log": "cbe5f8485b3685fde267f2501bcb98bcb173e3ad724f819be1d0b18bca292302",
+    "baseline-test.log": "a7f202638e07eb2344415dc1409e3a1757f589f2f96abb59ed23ee026f7432f2",
+    "default-first-run-failure.log": "e7436d6970ba93f8b0a0d70ff061931eae716946bce51f62ccecf3cbd8f4e898",
+    "feature-disk-full.log": "f275e201afb7d723a6c7c4327cc16bc1d82d24d71ac78a6c4dc2ebc9025e1f82",
+    "feature-green.log": "99bf48c3a857fb03a0bd6ae5e21d17a63b9df33fb337b78ad70ac3f1e81d60c3",
+    "field-coverage-isolated.log": "6204fbaee7b2550cee77bfad756cc99d648b5ce04d632578982f10e0a28e5525",
+    "focused-initial-green.log": "669512b1da2e62ee717548ed13eaad7e47ae682d22645341bed266b0f4d9a429",
+    "identity_instead_of_rotation-build.log": "16717012988ec2d3faad839aede0e07f125770feb1f85fabc0ab759366787e49",
+    "identity_instead_of_rotation-test.log": "9520b1e90fa0e366f4c95f055dfdf93b8177cca3d871940853d68a50711b1465",
+    "missing_measurements_become_zero-build.log": "cbe5f8485b3685fde267f2501bcb98bcb173e3ad724f819be1d0b18bca292302",
+    "missing_measurements_become_zero-test.log": "f27914df440d47f09c347970f5b149b655809663494597b633f7d9305c1bbda7",
+    "no_antipodal_guard-build.log": "fb85e07accdf819490e9fb42e8d95f74d17ff62240c42446807def8eb93c9d51",
+    "no_antipodal_guard-test.log": "2ce3b52513a36f4a194155c88a0dc5f18716dea346a34b16b342583b12b59049",
+    "no_magnitude_guard-build.log": "cbe5f8485b3685fde267f2501bcb98bcb173e3ad724f819be1d0b18bca292302",
+    "no_magnitude_guard-test.log": "7e1df2f23b75d6dac6a07fcf0f7e17d43a940c2242711cb301661f41b3a22a8e",
+    "no_postcondition_check-build.log": "a51dadfd19115749917d38f999e6982f912b1ef038653b7126ced9d3981b931a",
+    "no_postcondition_check-test.log": "d2ec16154317bc51d2e3f3eae16c911c1b3da3f3bf8c27c37ed09c579806d711",
+    "no_roundoff_normalization-build.log": "cbe5f8485b3685fde267f2501bcb98bcb173e3ad724f819be1d0b18bca292302",
+    "no_roundoff_normalization-test.log": "f44a994ae7aebedf8ff86d491dc0564c849a21f07b85ceafe97d5b500a0e0a77",
+    "no_tangency_guard-build.log": "d79034202fd281aac26836025b507d54e84d1bea4cef1856f7316d68a9ea7f29",
+    "no_tangency_guard-test.log": "15ae93959fc636fc7814010c2f3f80b8fb2e4e1a9affa80c227c532e9bb61cc0",
+    "no_unit_guard-build.log": "cbe5f8485b3685fde267f2501bcb98bcb173e3ad724f819be1d0b18bca292302",
+    "no_unit_guard-test.log": "b1fbea4710730aab412c816a1279cf7352fed901b55f5caca9e0e72bb24c12d2",
+    "red.log": "33331a8d13bfb28f80383fd620bc6c996a99ba74979c717f097f97cdb5081a14",
+    "reverse_rotation-build.log": "cbe5f8485b3685fde267f2501bcb98bcb173e3ad724f819be1d0b18bca292302",
+    "reverse_rotation-test.log": "4ddca7fd1575aa4591ebcfac8bda13f03166df8c6b1fc074c1d68691ae9c9a24"
+  }
+}

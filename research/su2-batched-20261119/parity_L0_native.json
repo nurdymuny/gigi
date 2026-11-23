@@ -1,0 +1,50 @@
+{
+ "level": 0,
+ "trial": "native",
+ "rows": [
+  {
+   "state": "initial",
+   "metric": "g(0)",
+   "P_grad": 0.0,
+   "P_mass": 1.090865920795668e-16,
+   "P_vel": 2.815484260564329e-15,
+   "P_angles": 0.0
+  },
+  {
+   "state": "initial",
+   "metric": "g(0.02)",
+   "P_grad": 0.0,
+   "P_mass": 1.0629081991516641e-16,
+   "P_vel": 1.74082191404382e-15,
+   "P_angles": 0.0
+  },
+  {
+   "state": "s3b_final",
+   "metric": "g(0)",
+   "P_grad": 0.0,
+   "P_mass": 1.065842620053739e-16,
+   "P_vel": 4.772826821251682e-16,
+   "P_angles": 0.0
+  },
+  {
+   "state": "s3b_final",
+   "metric": "g(0.02)",
+   "P_grad": 0.0,
+   "P_mass": 1.2291742197017228e-16,
+   "P_vel": 4.2220077978404666e-16,
+   "P_angles": 0.0
+  }
+ ],
+ "worst": {
+  "P_grad": 0.0,
+  "P_mass": 1.2291742197017228e-16,
+  "P_vel": 2.815484260564329e-15,
+  "P_angles": 0.0
+ },
+ "pass": {
+  "P_grad": true,
+  "P_mass": true,
+  "P_vel": true,
+  "P_angles": true
+ }
+}

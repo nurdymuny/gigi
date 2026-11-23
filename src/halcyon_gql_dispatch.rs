@@ -578,6 +578,13 @@ pub fn try_dispatch_topology_statement(
         Statement::HolonomyCycle { field, spec } => {
             crate::holonomy_cycle::execute_holonomy_cycle(field, spec)
         }
+        Statement::MonodromyGroupOrder { field, edges, commutator, cap, tolerance } => {
+            crate::monodromy::execute_monodromy_group_order(field, edges, *commutator, *cap, *tolerance)
+        }
+        Statement::RicciFlow { metric, time, steps, normalized, tolerance } => {
+            crate::ricci_flow::execute_ricci_flow(*metric, *time, *steps, *normalized, *tolerance)
+        }
+        Statement::RicciWilsonAudit { metric, normalized } => crate::ricci_wilson::execute_ricci_wilson_audit(*metric, *normalized),
 
         // Catch-all. The route handler gates this function on a 5-arm
         // pattern match so this branch is unreachable from production —

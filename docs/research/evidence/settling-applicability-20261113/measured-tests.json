@@ -1,0 +1,22 @@
+{
+  "tests_passed": 13,
+  "log": "test_booleans_cannot_qualify_hardware (__main__.MeasuredTests.test_booleans_cannot_qualify_hardware) ... ok\ntest_component_mismatch_refuses (__main__.MeasuredTests.test_component_mismatch_refuses) ... ok\ntest_duplicate_time_refuses_by_name (__main__.MeasuredTests.test_duplicate_time_refuses_by_name) ... ok\ntest_failed_prediction_is_not_qualified (__main__.MeasuredTests.test_failed_prediction_is_not_qualified) ... ok\ntest_false_crossing_uses_entire_remaining_suffix (__main__.MeasuredTests.test_false_crossing_uses_entire_remaining_suffix) ... ok\ntest_late_departure_is_censored (__main__.MeasuredTests.test_late_departure_is_censored) ... ok\ntest_missing_calibration_cannot_be_rescued_by_perfect_fit (__main__.MeasuredTests.test_missing_calibration_cannot_be_rescued_by_perfect_fit) ... ok\ntest_nonfinite_refuses_by_name (__main__.MeasuredTests.test_nonfinite_refuses_by_name) ... ok\ntest_partial_row_refuses (__main__.MeasuredTests.test_partial_row_refuses) ... ok\ntest_published_short_headers_require_explicit_mapping (__main__.MeasuredTests.test_published_short_headers_require_explicit_mapping) ... ok\ntest_short_followup_is_censored (__main__.MeasuredTests.test_short_followup_is_censored) ... ok\ntest_source_event_is_midpoint (__main__.MeasuredTests.test_source_event_is_midpoint) ... ok\ntest_valid_scope_preserves_measurements (__main__.MeasuredTests.test_valid_scope_preserves_measurements) ... ok\n\n----------------------------------------------------------------------\nRan 13 tests in 0.002s\n\nOK\n",
+  "mutations": [
+    {
+      "mechanism": "time_order",
+      "caught": true,
+      "log": "test_duplicate_time_refuses_by_name (__main__.MeasuredTests.test_duplicate_time_refuses_by_name) ... FAIL\n\n======================================================================\nFAIL: test_duplicate_time_refuses_by_name (__main__.MeasuredTests.test_duplicate_time_refuses_by_name)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\OneDrive\\Documents\\gigi\\scripts\\test_conduct_settle_measured.py\", line 25, in test_duplicate_time_refuses_by_name\n    with self.assertRaisesRegex(ValueError,\"strictly increasing\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "mechanism": "settling_suffix",
+      "caught": true,
+      "log": "test_false_crossing_uses_entire_remaining_suffix (__main__.MeasuredTests.test_false_crossing_uses_entire_remaining_suffix) ... FAIL\n\n======================================================================\nFAIL: test_false_crossing_uses_entire_remaining_suffix (__main__.MeasuredTests.test_false_crossing_uses_entire_remaining_suffix)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\OneDrive\\Documents\\gigi\\scripts\\test_conduct_settle_measured.py\", line 48, in test_false_crossing_uses_entire_remaining_suffix\n    self.assertEqual(measured.observed_settling(list(range(8)),[0,2,0,0,0,0,0,0],1),2)\nAssertionError: 0.0 != 2\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "mechanism": "boolean_qualification",
+      "caught": true,
+      "log": "test_booleans_cannot_qualify_hardware (__main__.MeasuredTests.test_booleans_cannot_qualify_hardware) ... FAIL\n\n======================================================================\nFAIL: test_booleans_cannot_qualify_hardware (__main__.MeasuredTests.test_booleans_cannot_qualify_hardware)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\OneDrive\\Documents\\gigi\\scripts\\test_conduct_settle_measured.py\", line 58, in test_booleans_cannot_qualify_hardware\n    self.assertFalse(measured.hardware_qualified({k:True for k in measured.REQUIRED_EVIDENCE},True))\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+    }
+  ],
+  "harness_sha256": "79bcc22db315a0343f43457c50b00f90dc6bed8873892bf103684e525c1a954c"
+}

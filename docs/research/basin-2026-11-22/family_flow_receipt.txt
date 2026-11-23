@@ -1,0 +1,26 @@
+A=0 E= 0  price= (j + 2)**2/t
+A=theta E= 0  price= (j + 4)**2/t
+
+t=3.55: E(0)=34.714
+ tau=0     x=-0.8227 y=1.8841 E=  34.7137  B=+6.6500  her min over j<=12 = -6.5930 (j=0)
+ tau=0.01  x=-0.4966 y=1.7282 E=  19.0516  B=+4.8581  her min over j<=12 = -4.5390 (j=0)
+ tau=0.02  x=-0.2580 y=1.6234 E=  11.0975  B=+3.6079  her min over j<=12 = -2.9624 (j=0)
+ tau=0.05  x=+0.1664 y=1.4578 E=   2.8250  B=+1.4982  her min over j<=12 = +0.0095 (j=0)
+ tau=0.1   x=+0.4459 y=1.3690 E=   0.7291  B=+0.1941  her min over j<=12 = +2.0781 (j=0)
+ tau=0.2   x=+0.5772 y=1.3534 E=   0.4886  B=-0.3431  her min over j<=12 = +3.0283 (j=0)
+ tau=0.5   x=+0.6497 y=1.4343 E=   0.4253  B=-0.3911  her min over j<=12 = +3.3194 (j=0)
+ tau=1     x=+0.7767 y=1.6144 E=   0.2628  B=-0.3205  her min over j<=12 = +3.6992 (j=0)
+ tau=2     x=+0.9985 y=1.9164 E=   0.0186  B=-0.0900  her min over j<=12 = +4.3334 (j=0)
+ her price (min over j<=12) turns positive at tau ~ 0.0499  energy there 2.836177673918821
+
+t=3.0: E(0)=21.500
+ tau=0     x=-0.5774 y=1.7321 E=  21.5000  B=+5.0000  her min over j<=12 = -4.6667 (j=0)
+ tau=0.01  x=-0.3366 y=1.6159 E=  12.9422  B=+3.7774  her min over j<=12 = -3.1082 (j=0)
+ tau=0.02  x=-0.1530 y=1.5332 E=   8.1684  B=+2.8806  her min over j<=12 = -1.8771 (j=0)
+ tau=0.05  x=+0.1939 y=1.3918 E=   2.5885  B=+1.2653  her min over j<=12 = +0.5536 (j=0)
+ tau=0.1   x=+0.4467 y=1.3055 E=   0.8665  B=+0.1568  her min over j<=12 = +2.4079 (j=0)
+ tau=0.2   x=+0.5840 y=1.2809 E=   0.6074  B=-0.3823  her min over j<=12 = +3.4054 (j=0)
+ tau=0.5   x=+0.6583 y=1.3490 E=   0.5545  B=-0.4607  her min over j<=12 = +3.7478 (j=0)
+ tau=1     x=+0.7888 y=1.5262 E=   0.3932  B=-0.4033  her min over j<=12 = +4.1805 (j=0)
+ tau=2     x=+1.0708 y=1.8935 E=   0.0329  B=-0.1237  her min over j<=12 = +5.0764 (j=0)
+ her price (min over j<=12) turns positive at tau ~ 0.0414  energy there 3.475221553830247

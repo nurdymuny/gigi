@@ -1,0 +1,173 @@
+   Compiling gigi v0.4.1 (C:\Users\nurdm\OneDrive\Documents\gigi)
+warning: unused import: `GroupEncoding`
+   --> src\pairing_delegation.rs:159:27
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                           ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `FieldDef`
+ --> src\join.rs:8:34
+  |
+8 | use crate::types::{BundleSchema, FieldDef, Record, Value};
+  |                                  ^^^^^^^^
+
+warning: unreachable statement
+    --> src\parser.rs:5698:17
+     |
+5694 | /                     return Err(
+5695 | |                         "CHERN_CLASS GROUP clause requires the `gauge` feature".into(),
+5696 | |                     );
+     | |_____________________- any code following this expression is unreachable
+5697 |                   }
+5698 |                   continue;
+     |                   ^^^^^^^^^ unreachable statement
+     |
+     = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Group`
+   --> src\pairing_delegation.rs:159:20
+    |
+159 | use group::{Curve, Group, GroupEncoding};
+    |                    ^^^^^
+
+warning: variable does not need to be mutable
+  --> src\ml\circulation.rs:90:9
+   |
+90 |     let mut node_of = |labels: &mut Vec<String>, idx: &mut std::collections::HashMap<String, usize>, s: String| -> usize {
+   |         ----^^^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> src\parser.rs:5658:13
+     |
+5658 |         let mut group: Option<()> = None;
+     |             ----^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: multiple methods are never used
+    --> src\parser.rs:3089:8
+     |
+2276 | impl Parser {
+     | ----------- methods in this implementation
+...
+3089 |     fn parse_encryption_mode_after_keyword(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4657 |     fn parse_seed_bracket(&mut self) -> Result<SeedRange, String> {
+     |        ^^^^^^^^^^^^^^^^^^
+...
+4667 |     fn parse_loop_transport_output_id(&mut self) -> Result<LoopTransportOutputId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4680 |     fn parse_loop_transport_return_id(&mut self) -> Result<LoopTransportReturnId, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4696 |     fn parse_loop_transport_return_list(&mut self) -> Result<Vec<LoopTransportReturnId>, String> {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+4713 |     fn parse_sham_block(&mut self) -> Result<ShamBlock, String> {
+     |        ^^^^^^^^^^^^^^^^
+...
+4755 |     fn expect_bool_word(&mut self) -> Result<bool, String> {
+     |        ^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (lib) generated 7 warnings (run `cargo fix --lib -p gigi` to apply 4 suggestions)
+warning: function `bench_point_queries` is never used
+   --> benches\ingest_bench.rs:128:4
+    |
+128 | fn bench_point_queries(n: usize, queries: usize, runs: usize) -> (f64, f64) {
+    |    ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gigi` (bin "bench_ingest") generated 1 warning
+warning: unused import: `GeometricFields`
+  --> src\bin\gigi_stream.rs:55:27
+   |
+55 | use gigi::observability::{GeometricFields, LogCategory, LogConfig, LogEvent, LogLevel, Logger, Metrics, new_request_id};
+   |                           ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:11619:9
+      |
+11619 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+      |         ----^^^^^
+      |         |
+      |         help: remove this `mut`
+      |
+      = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:11793:9
+      |
+11793 |     let mut store = engine.bundle_mut(&name).ok_or_else(|| {
+      |         ----^^^^^
+      |         |
+      |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+     --> src\bin\gigi_stream.rs:12328:9
+      |
+12328 |     let mut anomalies_sent: u64 = 0;
+      |         ----^^^^^^^^^^^^^^
+      |         |
+      |         help: remove this `mut`
+
+warning: unused variable: `row`
+     --> src\bin\gigi_stream.rs:14192:79
+      |
+14192 |             let filtered: Vec<gigi::types::Record> = rows.into_iter().filter(|row| {
+      |                                                                               ^^^ help: if this is intentional, prefix it with an underscore: `_row`
+      |
+      = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `email` is never read
+  --> src\bin\gigi_stream.rs:94:5
+   |
+92 | struct GigiClaims {
+   |        ---------- field in this struct
+93 |     #[serde(default)]
+94 |     email: String,
+   |     ^^^^^
+   |
+   = note: `GigiClaims` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `PullbackCurvatureReport` is never constructed
+   --> src\bin\gigi_stream.rs:981:8
+    |
+981 | struct PullbackCurvatureReport {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `gigi` (bin "gigi-stream") generated 7 warnings (run `cargo fix --bin "gigi-stream" -p gigi` to apply 5 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 52.05s
+     Running tests\sphere_transport.rs (target\debug\deps\sphere_transport-d9e7d8b5f220b0d9.exe)
+
+running 8 tests
+test sphere_identity_small_angle_roundoff_normalization_and_zero ... ok
+test sphere_legacy_antipodal_and_small_angle_behavior_unchanged ... ok
+test sphere_refuses_dimensions_nonfinite_and_magnitude ... ok
+test sphere_refuses_nonunit_nontangent_and_antipodal ... ok
+test sphere_record_adapter_never_invents_components ... ok
+test sphere_quarter_loop_basis_positions_reverse_and_backtrack ... ok
+octant_0: actual=[0.0, 1.232595164407831e-32, 1.0] independent=[0.0, 0.0, 1.0]
+octant_1: actual=[1.1102230246251565e-16, -1.0, 1.232595164407831e-32] independent=[0.0, -1.0, 0.0]
+test sphere_nonaxis_oracle_inverse_and_frame_covariance ... ok
+oblique_0: actual=[0.09173612215383764, 0.8141580841153078, -0.5733507634614845] independent=[0.09173612215383742, 0.8141580841153082, -0.5733507634614847]
+oblique_1: actual=[-0.959247576209398, 0.22678696689934646, 0.16855788080356832] independent=[-0.9592475762093984, 0.22678696689934652, 0.16855788080356823]
+  WAL replay starting...
+  WAL replay complete: 15 entries, 12 records in 0.0s
+test sphere_embedded_gigi_showcase_persists_derived_transport_and_reopens ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+

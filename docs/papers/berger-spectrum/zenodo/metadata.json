@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "upload_type": "publication",
+    "publication_type": "preprint",
+    "title": "The Floor Theorem for the Yang–Mills Hessian at the Berger Field: A Floor Law Across the Berger Spheres",
+    "creators": [
+      {
+        "name": "Davis, Bee Rosa",
+        "affiliation": "Davis Geometric",
+        "orcid": "0009-0009-8034-4308"
+      }
+    ],
+    "description": "@description.html",
+    "access_right": "open",
+    "license": "cc-by-4.0",
+    "version": "3",
+    "language": "eng",
+    "keywords": [
+      "Berger family",
+      "interval arithmetic in a parameter",
+      "Yang–Mills Hessian",
+      "Berger sphere",
+      "Poincaré homology sphere",
+      "spectral gap",
+      "Peter–Weyl decomposition",
+      "Weitzenböck identity",
+      "computer-assisted proof",
+      "interval arithmetic",
+      "binary icosahedral group",
+      "lattice gauge theory",
+      "general circle-symmetric fields",
+      "domain certificate"
+    ],
+    "subjects": [],
+    "notes": "MSC 2020: 58J50, 81T13, 58E15, 53C30, 65G30. This work received no funding. The author declares no competing interests.",
+    "related_identifiers": [
+      {
+        "identifier": "10.5281/zenodo.24412603",
+        "relation": "isNewVersionOf",
+        "resource_type": "publication-preprint",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "10.5281/zenodo.24328085",
+        "relation": "references",
+        "resource_type": "publication-preprint",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "10.5281/zenodo.24375338",
+        "relation": "references",
+        "resource_type": "publication-preprint",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "https://github.com/nurdymuny/gigi/tree/floor-theorem-v3.3",
+        "relation": "isSupplementedBy",
+        "resource_type": "software",
+        "scheme": "url"
+      }
+    ],
+    "custom": {
+      "code:codeRepository": "https://github.com/nurdymuny/gigi/tree/floor-theorem-v3.3",
+      "code:programmingLanguage": [
+        {
+          "id": "python",
+          "title": {
+            "en": "Python"
+          }
+        }
+      ]
+    }
+  }
+}

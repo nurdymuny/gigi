@@ -6,7 +6,13 @@
 > nothing. Every one of them actually happened.
 
 
+> **New paper on this branch:** *Reading the Curve, Not Counting the Points*. A stable,
+> convergent curvature force for discrete Yang–Mills dynamics on the Poincaré homology sphere,
+> computed entirely in GIGI. Start here: [`docs/papers/two-ring-pg/`](docs/papers/two-ring-pg/README.md).
+
 **Geometric Intrinsic Global Index** — a fiber-bundle database engine.
+
+**Shared research references:** [Coordinate translations, Jacobians, and the Geometry of Sameness](docs/research/coordinate-translations-and-sameness.md). Includes source evidence, scope, and a [proposal for typed research relationships](docs/RESEARCH_RELATIONSHIP_REGISTRY_PROPOSAL.md).
 
 > Records are sections of a fiber bundle. Keys live on the base space; values
 > live on the fiber. Curvature, spectral connectivity, holonomy, and confidence
@@ -162,7 +168,7 @@ GIGI is the substrate. As of this README, end-to-end:
 
 - **CADENCE is LIVE (2026-08-09).** The third shape verb, and the complement of the other two: TEXTURE and PRECEDENCE read *record order* and discard timestamps, while `POST /v1/bundles/{name}/cadence` reads exactly what they throw away — the spacing between events. It answers "is this stream arriving steadily or in bursts, and does the unevenness have memory?" for anything timestamped: log lines, sensor pings, request traces, seismic events, trades. It returns **two** numbers and always both, because one is not enough: `index` is the Greenwood dispersion statistic, whose null is exactly Dirichlet(1,…,1) at finite *n* **for every arrival rate**, so `E[index²] = 1` needs no simulation and does not move when the stream speeds up. But `R_n = Σt²/(Σt)²` is a **symmetric function of the gaps** — permuting them cannot change it — so `index` provably cannot see ordering, and a self-exciting stream reads identically to its own shuffle (measured: 1.448 vs 1.448). `memory`, the lag-1 autocorrelation of `ln τ`, is therefore an *exactly* non-overlapping second measurement rather than a correlated add-on. Verdict bands are **derived, not chosen**: `null_sd = n/√((n−1)(n+2)(n+3))`, bands at ±2 sd, checked against simulation from n = 64 to 8192. Eighteen blocking gates (CAD-1..18) include a gate that pins the order-blindness deliberately, a three-way separation of streams `index` alone would call identical, a refusal for a row index passed where a clock belongs (which would otherwise return a confident `index = 0` on a healthy feed), and a granularity refusal derived from a bias budget. Suite **1019 passing**, 1001 pre-existing untouched. Spec: [`theory/gigi/TDD-CAD_cadence.md`](theory/gigi/TDD-CAD_cadence.md); runnable example: [`examples/cadence_walkthrough.py`](examples/cadence_walkthrough.py).
 
-- **Post-Kähler Phase 1 (PK-1..4) is LIVE (2026-07-25).** Four geometry verbs behind the `post_kahler_phase1` feature, each tied exactly to [`theory/post_kahler_directions/validation_tests.py`](theory/post_kahler_directions/validation_tests.py): `FISHER` (the information-geometry metric `g = diag(1/σ², 2/σ²)` per fiber, read free from L4 Welford variance), `WASSERSTEIN` (exact 1D `W₂` between two cohorts via the monotone rearrangement), `PERSISTENCE` (`H₀` via MST + elder rule → an *honest* cluster count that returns 1 when there is no real grouping), and `REEB` (the standard contact form `α = dz − y·dx` + Reeb-field verification). Each has a REST twin (`/v1/bundles/{name}/{fisher_metric, ml/wasserstein, topology/persistence, brain/reeb_flow}`). 18 module ground-truth tests + 3 endpoint/GQL integration tests; the default no-feature build stays byte-unchanged. Verbatim examples on R.A. Fisher's iris dataset in [`theory/reviews/iris_pk_results.json`](theory/reviews/iris_pk_results.json) (reproduce with [`scripts/pk_iris_examples.py`](scripts/pk_iris_examples.py)). Spec: [`GIGI_POST_KAHLER_SPEC_v0.1.md`](GIGI_POST_KAHLER_SPEC_v0.1.md).
+- **Post-Kähler Phase 1 (PK-1..4) is LIVE (2026-07-25).** Four geometry verbs behind the `post_kahler_phase1` feature, each tied exactly to [`theory/post_kahler_directions/validation_tests.py`](theory/post_kahler_directions/validation_tests.py): `FISHER` (the information-geometry metric `g = diag(1/σ², 2/σ²)` per fiber, read free from L4 Welford variance), `WASSERSTEIN` (exact 1D `W₂` between two cohorts via the monotone rearrangement), `PERSISTENCE` (`H₀` via MST + elder rule → an *honest* cluster count that returns 1 when there is no real grouping), and `REEB` (the standard contact form `α = dz − y·dx` + Reeb-field verification). Each has a REST twin (`/v1/bundles/{name}/{fisher_metric, ml/wasserstein, topology/persistence, brain/reeb_flow}`). 18 module ground-truth tests + 3 endpoint/GQL integration tests; the default no-feature build stays byte-unchanged. Verbatim examples on R.A. Fisher's iris dataset in [`theory/reviews/iris_pk_results.json`](theory/reviews/iris_pk_results.json) (reproduce with [`scripts/pk_iris_examples.py`](scripts/pk_iris_examples.py)). Spec: [`docs/specs/GIGI_POST_KAHLER_SPEC_v0.1.md`](docs/specs/GIGI_POST_KAHLER_SPEC_v0.1.md).
 
 Test counts, dated to their last full run:
 
@@ -180,7 +186,7 @@ Detailed gate-by-gate ledgers live under [`theory/halcyon/`](theory/halcyon/), [
 > **Store-vs-store benchmark:** GIGI vs SQLite vs DuckDB on ingest / point
 > query / aggregate / anomaly — losses unsoftened (GIGI loses its own thesis
 > anomaly task 8.5x on PR-AUC to 15 lines of SQL) — lives in
-> [`BENCHMARKS_VS_STORES.md`](BENCHMARKS_VS_STORES.md), harness committed under
+> [`docs/reference/BENCHMARKS_VS_STORES.md`](docs/reference/BENCHMARKS_VS_STORES.md), harness committed under
 > [`benchmarks/vs_stores/`](benchmarks/vs_stores/).
 
 Same data, same split, same metric on both sides. Every number below is **mean ± sample std
@@ -249,12 +255,12 @@ code comment still stands (cross-conformal, empirically calibrated).
 
 **Cost footnote.** On a 5,000-record × 17-dimension bundle with no indexed fiber fields,
 `SPECTRAL` timed out at 30 s and passed at 180 s; the warm second run completed in ~120 s
-([`GIGI_PERF_ANALYSIS.md`](GIGI_PERF_ANALYSIS.md), 2026-04-15). The O(n²) part is the proximity
+([`docs/reference/GIGI_PERF_ANALYSIS.md`](docs/reference/GIGI_PERF_ANALYSIS.md), 2026-04-15). The O(n²) part is the proximity
 adjacency build — 25M pairwise comparisons at n=5,000; the eigensolve itself is tabulated
 O(n·k) Lanczos. Same run: `HOLONOMY` >180 s, fail (O(n²) + no loops). (`CONSISTENCY` also
 logged ~120 s in that 2026-04-15 run, but that measured the pre-fix code path — since `f912c22`
 it is a bounded ≤100-record sampled contradiction scan, and the old O(n²) Čech attribution no
-longer applies; see the closed flag in `GIGI_PERF_ANALYSIS.md`.) The dense eigensolver is capped at 4,096 vertices (`SPECTRAL_DENSE_MAX_V`,
+longer applies; see the closed flag in `docs/reference/GIGI_PERF_ANALYSIS.md`.) The dense eigensolver is capped at 4,096 vertices (`SPECTRAL_DENSE_MAX_V`,
 [`src/spectral.rs`](src/spectral.rs)); `GIGI_DENSE_CEIL` raises it, clamped to [4096, 8192] —
 raise-only, because a V ≈ 8000 complex-Hermitian dense solve is ~2–3 GB peak RSS. Past the
 ceiling, `FULL` returns a typed `SparseUnavailable`; `BULK` routes to the sparse interior arm —
@@ -268,7 +274,7 @@ out of scope to break.
 The buried numeric validation artifacts — the Wilson-loop holonomy table on bilayer graphene,
 Wu-Yang integrality, Berezin-Toeplitz semiclassics, the Poincaré-to-sharding TDD gates, the
 encryption golden vectors — are indexed with verbatim numbers and source paths in
-[`VALIDATION.md`](VALIDATION.md).
+[`docs/reference/VALIDATION.md`](docs/reference/VALIDATION.md).
 
 ---
 
@@ -354,6 +360,12 @@ rustdoc and [`CHANGELOG.md`](CHANGELOG.md). Top-level shape:
   [`theory/post_kahler_directions/`](theory/post_kahler_directions/),
   [`theory/brain_primitives/`](theory/brain_primitives/),
   [`theory/encryption/`](theory/encryption/), and [`theory/ggog/`](theory/ggog/).
+- **Documentation** (`docs/`) — one map of everything at
+  [`docs/README.md`](docs/README.md): reference, specs, operations,
+  correspondence, and the paper sources.
+- **Research Notes** ([`docs/research/`](docs/research/README.md)) — every
+  research note, pre-registration and result, grouped by thread and dated;
+  the raw receipts behind them are in [`research/`](research/README.md).
 - **End-to-end tests** (`e2e/`) — Playwright + Node against a running server;
   worked-example probes across 24 distinct SUDOKU / SAMPLE_TRANSPORT domains.
 
@@ -622,7 +634,7 @@ COMPACT, …) return an explicit notice instead of a bare ok.
 
 Complete grammar, status table, complexity per verb, and EMIT / wire format
 options live in [`GQL_REFERENCE.md`](GQL_REFERENCE.md) and
-[`GQL_SPECIFICATION.md`](GQL_SPECIFICATION.md).
+[`docs/reference/GQL_SPECIFICATION.md`](docs/reference/GQL_SPECIFICATION.md).
 
 ### 6.2 HTTP — the route catalog
 
@@ -690,11 +702,11 @@ SYMPLECTIC_FLOW U FROM (U=U, E=E)
 
 - `LATTICE` — declares a graph topology by `(VERTICES, EDGES, FACES, TOPOLOGY)` with the truncated-icosahedron shorthand. Storage: incidence table + Euler-characteristic precompute + face-cycle orientation table. Generalized `HOLONOMY` walks edge-list loops on a declared lattice. → [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) Part I.
 - `GAUGE_FIELD` — per-edge group-element store with group-erased storage (`SU(2)` only at launch; `U(1)` / `Z_N` are typed-empty arms). `INIT IDENTITY` and `INIT HAAR_RANDOM SEED n` both ship; declare → introspect → re-declare → bit-identical. → [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) Part II.
-- `PLAQUETTE` / `Q_SURROGATE` — observable battery. `PLAQUETTE` desugars to face holonomy via the Part I walker; three call shapes (`PerFace` / `Mean` / `Sum`). `Q_SURROGATE` is `(1/2π) · Σ_f arccos(clamp(q0_f, −1, 1))`. → [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) Part III and the Q1/A1 math in [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md).
+- `PLAQUETTE` / `Q_SURROGATE` — observable battery. `PLAQUETTE` desugars to face holonomy via the Part I walker; three call shapes (`PerFace` / `Mean` / `Sum`). `Q_SURROGATE` is `(1/2π) · Σ_f arccos(clamp(q0_f, −1, 1))`. → [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md) Part III and the Q1/A1 math in [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](theory/halcyon/HALCYON_TO_GIGI_REPLY_2026-06-17.md).
 - `GIBBS_SAMPLE` — Kennedy-Pendleton heatbath sweep with the staple-sum kernel and a sqrt-rejection-on-`x0` Haar fallback for `||staple|| · β < ε`. Sequential edge order is bit-identity load-bearing. Reproduces Halcyon's `<P>_canonical` byte-for-byte at fixed seed within GIGI. → [`HALCYON_PART_III_GATES.md`](theory/halcyon/HALCYON_PART_III_GATES.md) and [`HALCYON_PART_III_IMPLEMENTATION_LOG.md`](theory/halcyon/HALCYON_PART_III_IMPLEMENTATION_LOG.md).
 - `E_FIELD` — Lie-algebra sibling buffer parked next to a `GAUGE_FIELD`. `(n_edges, 4)` quaternion-packed with `q0 = 0` enforced at every entry point. `INIT MAXWELL_BOLTZMANN BETA β SEED s` draws per-edge Gaussians with sigma `= √(1/(β · 1.5))`; the fourth normal is consumed-then-discarded so β-shifted runs share an identical RNG advance per edge (the A2 row 1 bit-identity contract). → [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md) §IV.1.
 - `SYMPLECTIC_FLOW` — second-order Kick-Drift-Kick leapfrog on `(U, E)`. Drift uses the closed-form SU(2) Rodrigues exponential with a 4th-order Taylor fallback at `θ < 1e-8`. Kick uses the Wilson force `F[e] = (−β/8) · staple_sum`. `PROJECT_GAUSS TRUE` (default) projects the covariant Gauss residual back to the constraint surface every step. Kogut-Susskind Hamiltonian with `g² = 4/β` is load-bearing — the naive convention gives 65% drift over 200 steps; Kogut-Susskind gives `< 1e-4`. → [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md) §IV.4–IV.6.
-- `PROJECT_GAUSS` — knob struct exposing `{tikhonov, cg_tol, cg_max_iter}` over the unpreconditioned Hestenes-Stiefel CG projector. Production defaults are `{1e-14, 1e-10, 200}` (matches Halcyon Python). The spec-default `1e-12` lives behind explicit struct sugar. Buckyball `cond(L_cov) ~ 16` needs no preconditioner; Jacobi is P1. → A1 / Q3 in [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md).
+- `PROJECT_GAUSS` — knob struct exposing `{tikhonov, cg_tol, cg_max_iter}` over the unpreconditioned Hestenes-Stiefel CG projector. Production defaults are `{1e-14, 1e-10, 200}` (matches Halcyon Python). The spec-default `1e-12` lives behind explicit struct sugar. Buckyball `cond(L_cov) ~ 16` needs no preconditioner; Jacobi is P1. → A1 / Q3 in [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](theory/halcyon/HALCYON_TO_GIGI_REPLY_2026-06-17.md).
 
 **Embedded vs HTTP — the II.6c split, named here.**
 
@@ -702,7 +714,7 @@ SYMPLECTIC_FLOW U FROM (U=U, E=E)
 
 `GIBBS_SAMPLE`, `SYMPLECTIC_FLOW`, and `E_FIELD` declare are **embedded-only by design**. The reason isn't aesthetic — `GIBBS_SAMPLE` at β=2.5 on a 90-edge buckyball runs ~46 minutes wall-clock on production hardware doing O(10⁶) per-edge updates. Nobody runs that over JSON and waits for it. The route table absence is the enforcement; the soft-edge through `/v1/gql` is by design (any consumer routing a 46-minute mutation verb through HTTP self-deselects). Embedded GQL via PyO3 / CFFI is the canonical declarer / mutator surface for any consumer crossing a restart boundary.
 
-**Bit-identity contract.** Six rows from [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md) § A2:
+**Bit-identity contract.** Six rows from [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](theory/halcyon/HALCYON_TO_GIGI_REPLY_2026-06-17.md) § A2:
 
 | Row | Vary | Contract |
 |---|---|---|
@@ -717,7 +729,7 @@ Intra-binding strict; cross-binding (NumPy PCG64 mock vs Rust xorshift64*) impos
 
 **Where to read more.**
 
-Gates: [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md), [`HALCYON_PART_III_GATES.md`](theory/halcyon/HALCYON_PART_III_GATES.md), [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md), [`HALCYON_PART_V_SNAPSHOT_GATES.md`](theory/halcyon/HALCYON_PART_V_SNAPSHOT_GATES.md). Implementation logs (red-then-green commits, fixture SHAs): the `*_IMPLEMENTATION_LOG.md` siblings. Cross-team protocol: [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](HALCYON_TO_GIGI_REPLY_2026-06-17.md). Yang-Mills mass-gap chapter (forward-tracking content target): `GIGI Solves: The Clay Seven`, Vol 4.
+Gates: [`HALCYON_PART_I_GATES.md`](theory/halcyon/HALCYON_PART_I_GATES.md), [`HALCYON_PART_III_GATES.md`](theory/halcyon/HALCYON_PART_III_GATES.md), [`HALCYON_PART_IV_GATES.md`](theory/halcyon/HALCYON_PART_IV_GATES.md), [`HALCYON_PART_V_SNAPSHOT_GATES.md`](theory/halcyon/HALCYON_PART_V_SNAPSHOT_GATES.md). Implementation logs (red-then-green commits, fixture SHAs): the `*_IMPLEMENTATION_LOG.md` siblings. Cross-team protocol: [`HALCYON_TO_GIGI_REPLY_2026-06-17.md`](theory/halcyon/HALCYON_TO_GIGI_REPLY_2026-06-17.md). Yang-Mills mass-gap chapter (forward-tracking content target): `GIGI Solves: The Clay Seven`, Vol 4.
 
 **The Bridge Trilogy + Yang-Mills topology layer (2026-06-28).** Three substrate items unblock the 4D SU(3) pipeline, then five verbs read topological invariants off the resulting bundles.
 
@@ -803,9 +815,9 @@ SECTION conversations AT (sender='Bee', topic='lattice-gauge-substrate')
 
 The response carries the inserted record AND the geometric envelope every GIGI response carries — κ at the new section, confidence = 1/(1+κ), the DHOOM event with KL / JS divergence against the running base, and (if the bundle is Kähler-equipped) the holonomy debt component and quantum-cohomology capacity for the local region. The translator never invents the geometric quantities — they're substrate-computed and ride along.
 
-The G8 "one lossy step" rule from [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md) inherits the Kähler optionality contract: the LLM-translator step is the lossy step; everything downstream is reproducible from the emitted GQL. That gives a contract test surface — the same prompt + the same translator seed → byte-identical GQL → byte-identical response within a binding.
+The G8 "one lossy step" rule from [`docs/specs/GIGI_LANG_SPEC.md`](docs/specs/GIGI_LANG_SPEC.md) inherits the Kähler optionality contract: the LLM-translator step is the lossy step; everything downstream is reproducible from the emitted GQL. That gives a contract test surface — the same prompt + the same translator seed → byte-identical GQL → byte-identical response within a binding.
 
-Spec: [`GIGI_LANG_SPEC.md`](GIGI_LANG_SPEC.md). SDK skeleton: [`sdk/python/gigi/lang.py`](sdk/python/gigi/lang.py). Schema introspection (public `/schema` endpoint with `@public` / `@gated` directive policy): [`GIGI_SCHEMA_INTROSPECTION_SPEC.md`](GIGI_SCHEMA_INTROSPECTION_SPEC.md).
+Spec: [`docs/specs/GIGI_LANG_SPEC.md`](docs/specs/GIGI_LANG_SPEC.md). SDK skeleton: [`sdk/python/gigi/lang.py`](sdk/python/gigi/lang.py). Schema introspection (public `/schema` endpoint with `@public` / `@gated` directive policy): [`docs/specs/GIGI_SCHEMA_INTROSPECTION_SPEC.md`](docs/specs/GIGI_SCHEMA_INTROSPECTION_SPEC.md).
 
 ---
 
@@ -955,9 +967,20 @@ gigi/
 │   │                       Gromov δ, tropical, synthetic DG, NCG, CAT(κ))
 │   │                       + validation_tests.py (30/30 PASS)
 │   └── brain_primitives/ 12 brain-like operations + 26/26 numerical checks
-├── docs/                 Site + landing pages
+├── docs/                 Documentation map (docs/README.md), site + landing pages
+│   ├── research/         Research Notes: every note, pre-registration and result
+│   ├── papers/           Paper sources
+│   ├── reference/        Reference for using GIGI
+│   ├── specs/            Engine and product specifications
+│   ├── operations/       Deployment, incidents, security, audits
+│   ├── correspondence/   Letters, replies, handoffs
+│   └── patents/          Provisional patent draft
+├── research/             Receipts: raw outputs behind the notes, dated folders
+├── scripts/              Research and maintenance scripts
 ├── demos/                Self-contained Python demos
-└── *_SPEC.md             Build-ready specs (encryption, observability, …)
+├── GQL_REFERENCE.md      GQL reference
+├── GIGI_API.md           HTTP API
+└── EXTRACTION_MAP.md     Engine module map
 ```
 
 ---

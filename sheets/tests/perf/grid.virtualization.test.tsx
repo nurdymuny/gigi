@@ -4,7 +4,7 @@ import { Grid } from "../../src/components/Grid";
 import type { BundleSchema, RowMap } from "../../src/lib/gigi-client";
 
 /**
- * S0 perf gate (per GIGI_SHEETS_SPRINT_SPEC.md §6 + addendum §Q6).
+ * S0 perf gate (per docs/specs/GIGI_SHEETS_SPRINT_SPEC.md §6 + addendum §Q6).
  *
  * The Grid uses @tanstack/react-virtual for windowing. Without
  * virtualization, a 5,000-row bundle would mount 5,000 row divs and

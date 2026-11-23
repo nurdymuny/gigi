@@ -1,0 +1,62 @@
+{
+ "membership": [
+  {
+   "block": "j=1,q=0.5",
+   "family": "q=l",
+   "quotient": "s**2*x + s",
+   "remainder_zero": true
+  },
+  {
+   "block": "j=1,q=1.5",
+   "family": "q=l+1",
+   "quotient": "s",
+   "remainder_zero": true
+  },
+  {
+   "block": "j=1,q=-1.5",
+   "family": "q=l+1",
+   "quotient": "s",
+   "remainder_zero": true
+  },
+  {
+   "block": "j=2,q=1",
+   "family": "q=l",
+   "quotient": "s",
+   "remainder_zero": true
+  },
+  {
+   "block": "j=2,q=2",
+   "family": "q=l+1",
+   "quotient": "s",
+   "remainder_zero": true
+  },
+  {
+   "block": "j=12,q=6",
+   "family": "q=l",
+   "quotient": "s",
+   "remainder_zero": true
+  },
+  {
+   "block": "j=12,q=7",
+   "family": "q=l+1",
+   "quotient": "s",
+   "remainder_zero": true
+  }
+ ],
+ "mirror": [
+  {
+   "blocks": [
+    "j=1,q=1.5",
+    "j=1,q=-1.5"
+   ],
+   "identical_polynomials": true
+  },
+  {
+   "blocks": [
+    "j=3,q=0.5",
+    "j=3,q=-0.5"
+   ],
+   "identical_polynomials": true
+  }
+ ]
+}

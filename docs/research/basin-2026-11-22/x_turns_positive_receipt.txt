@@ -1,0 +1,4 @@
+t= 2.0: x turns positive at tau = 0.0000; her lowest price (j<=12) turns positive at tau = 0.0000
+t= 3.0: x turns positive at tau = 0.0308; her lowest price (j<=12) turns positive at tau = 0.0413
+t=3.55: x turns positive at tau = 0.0354; her lowest price (j<=12) turns positive at tau = 0.0499
+t= 5.0: x turns positive at tau = 0.0368; her lowest price (j<=12) turns positive at tau = 0.0572

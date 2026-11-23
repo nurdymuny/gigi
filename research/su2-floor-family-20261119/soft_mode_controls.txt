@@ -1,0 +1,16 @@
+== moving background, early times (j=3, t=3.5453):
+  tau 0.0: E  34.587  floor now -3.269  overlap twist 0.318  log|b| -0.000
+  tau 0.1: E   0.730  floor now +3.978  overlap twist 0.511  log|b| -1.016
+  tau 0.2: E   0.489  floor now +3.443  overlap twist 0.367  log|b| -1.718
+  tau 0.3: E   0.470  floor now +3.318  overlap twist 0.211  log|b| -2.259
+  tau 0.4: E   0.450  floor now +3.249  overlap twist 0.108  log|b| -2.699
+  tau 0.5: E   0.426  floor now +3.185  overlap twist 0.052  log|b| -3.088
+  tau 0.6: E   0.400  floor now +3.121  overlap twist 0.024  log|b| -3.450
+  tau 0.7: E   0.369  floor now +3.058  overlap twist 0.011  log|b| -3.794
+== frozen background control (operator at the Berger field, held fixed):
+  j=3 t=2.9953 lambda=+0.3684: tau 0: log|b| -0.00, overlap 0.318  tau 2: log|b| -1.88, overlap 1.000  tau 10: log|b| -4.83, overlap 1.000  tau 40: log|b| -15.88, overlap 1.000
+  j=3 t=3.0953 lambda=-0.3601: tau 0: log|b| -0.00, overlap 0.318  tau 2: log|b| -0.43, overlap 1.000  tau 10: log|b| +2.46, overlap 1.000  tau 40: log|b| +13.26, overlap 1.000
+  j=3 t=3.5453 lambda=-3.2695: tau 0: log|b| -0.00, overlap 0.318  tau 2: log|b| +5.39, overlap 1.000  tau 10: log|b| +31.55, overlap 1.000  tau 40: log|b| +129.63, overlap 1.000
+  j=4 t=3.3531 lambda=+0.3806: tau 0: log|b| +0.00, overlap 0.168  tau 2: log|b| -2.54, overlap 1.000  tau 10: log|b| -5.59, overlap 1.000  tau 40: log|b| -17.01, overlap 1.000
+  j=4 t=3.4531 lambda=-0.3721: tau 0: log|b| +0.00, overlap 0.168  tau 2: log|b| -1.04, overlap 1.000  tau 10: log|b| +1.94, overlap 1.000  tau 40: log|b| +13.10, overlap 1.000
+  j=4 t=3.9031 lambda=-3.4090: tau 0: log|b| +0.00, overlap 0.168  tau 2: log|b| +5.04, overlap 1.000  tau 10: log|b| +32.31, overlap 1.000  tau 40: log|b| +134.58, overlap 1.000

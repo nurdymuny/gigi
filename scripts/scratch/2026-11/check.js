@@ -1,0 +1,14 @@
+const {mathjax}=require('mathjax-full/js/mathjax.js');
+const {TeX}=require('mathjax-full/js/input/tex.js');
+require('mathjax-full/js/input/tex/ams/AmsConfiguration.js');
+const {liteAdaptor}=require('mathjax-full/js/adaptors/liteAdaptor.js');
+const {RegisterHTMLHandler}=require('mathjax-full/js/handlers/html.js');
+const {SVG}=require('mathjax-full/js/output/svg.js');
+const ad=liteAdaptor();RegisterHTMLHandler(ad);
+const doc=mathjax.document('',{InputJax:new TeX({packages:['base','ams']}),OutputJax:new SVG()});
+const ex=JSON.parse(require('fs').readFileSync(process.argv[2]));
+ex.forEach((e,i)=>{let t=e.tex.replace(/^\$\$|\$\$$/g,'').replace(/^```math|```$/g,'');
+ const n=doc.convert(t,{display:e.kind==='display'});const s=ad.outerHTML(n);
+ const m=s.match(/data-mjx-error="([^"]*)"/)||s.match(/<text[^>]*fill="red"[^>]*>([^<]*)/)||s.match(/merror[^>]*title="([^"]*)"/);
+ if(m||/merror/.test(s)) console.log(i,e.kind,'|',m?m[1]:'merror','|',t.slice(0,140).replace(/\n/g,' '));});
+console.log('checked',ex.length);

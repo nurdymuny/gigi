@@ -1,0 +1,23 @@
+prec  64 adjacent endpoints at 1                   : new covers True; old covers False
+prec  64 adjacent endpoints at 1e30                : new covers True; old covers True
+prec  64 narrow around -7.3e12                     : new covers True; old covers False
+prec  64 singleton 1/3                             : new covers True; old covers True
+prec  64 straddling zero                           : new covers True; old covers True
+prec  64 cancellation: [x] - x for x = 2/3 + 1e20  : new covers True; old covers True
+prec  64 shifted diagonal: [10/3] - 10/3           : new covers True; old covers True
+prec  96 adjacent endpoints at 1                   : new covers True; old covers False
+prec  96 adjacent endpoints at 1e30                : new covers True; old covers True
+prec  96 narrow around -7.3e12                     : new covers True; old covers False
+prec  96 singleton 1/3                             : new covers True; old covers True
+prec  96 straddling zero                           : new covers True; old covers True
+prec  96 cancellation: [x] - x for x = 2/3 + 1e20  : new covers True; old covers True
+prec  96 shifted diagonal: [10/3] - 10/3           : new covers True; old covers True
+prec 200 adjacent endpoints at 1                   : new covers True; old covers False
+prec 200 adjacent endpoints at 1e30                : new covers True; old covers True
+prec 200 narrow around -7.3e12                     : new covers True; old covers False
+prec 200 singleton 1/3                             : new covers True; old covers True
+prec 200 straddling zero                           : new covers True; old covers True
+prec 200 cancellation: [x] - x for x = 2/3 + 1e20  : new covers True; old covers True
+prec 200 shifted diagonal: [10/3] - 10/3           : new covers True; old covers True
+j = 4, q = 0, t = 3 block at 64 bits: 90 scalar intervals; old conversion misses 12, new misses 0
+ALL NEW ENCLOSURES HOLD

@@ -1,0 +1,13 @@
+{
+ "level": 0,
+ "trial": "native",
+ "dof": 426,
+ "nnz": 20712,
+ "file": "outputs/su2-batched-K/L0_native_K.npz",
+ "sha256": "69e6f048af348232fa70dc8f7990bd8722dd9acb3a47773ec24ce28e84975611",
+ "setup_seconds": 0.2,
+ "build_seconds": 0.5,
+ "metric": "g(0) = (3, 1, 1)",
+ "eps": 1e-06,
+ "kind": "B5 batched Jacobian (research script, not an engine run)"
+}

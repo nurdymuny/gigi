@@ -1,0 +1,10 @@
+max |floor(theta, j) - j^2/t|, |floor(theta, j) - floor(0, j-2)|, t in 2.75..10, j = 12..40: 4.547473508864641e-13
+t=1: max |floor(theta, j) - floor(0, j-2)| = 1.1368683772161603e-13
+max |floor(0, j) - her price| over surviving j <= 40, t in 2.75..10: 3.410605131648481e-13
+ t=1.0: A=0 sector 12 floor 144.0000, her price 196.0000
+ t=1.5: A=0 sector 12 floor 109.0835, her price 130.6667
+ t=2.0: A=0 sector 12 floor 91.0161, her price 98.0000
+ t=2.25: A=0 sector 12 floor 84.8158, her price 87.1111
+ t=2.5: A=0 sector 12 floor 78.4000, her price 78.4000
+ t=2.75: A=0 sector 12 floor 71.2727, her price 71.2727
+sector 0 floor at theta: [(2.75, 2.625718), (3.0, 2.510875), (3.55, 2.293361), (5.0, 1.875485), (7.0, 1.506098), (10.0, 1.167184)]

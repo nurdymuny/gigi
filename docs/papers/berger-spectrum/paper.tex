@@ -1,0 +1,946 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.1in,headsep=18pt]{geometry}
+\usepackage{amsmath, amsthm, amssymb}
+\newcommand{\dgshorttitle}{The Floor Theorem at the Berger Field}
+\newcommand{\dgauthorshort}{B. R. Davis}
+\input{../dgstyle}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem*{mainthm}{Theorem A}
+
+
+
+% Version 3 draft (21 November 2026): additions as a redline. \redlinetrue shows them (insertions blue, deletions red
+% and struck out); \redlinefalse gives the accepted text.
+\usepackage[normalem]{ulem}
+\newif\ifredline
+\redlinetrue
+\newcommand{\redins}[1]{\ifredline{\color{blue}#1}\else#1\fi}
+\newcommand{\reddel}[1]{\ifredline{\color{red}\sout{#1}}\fi}
+
+\newcommand{\su}{\mathfrak{su}(2)}
+\newcommand{\norm}[1]{\lVert #1\rVert}
+\newcommand{\RR}{\mathbb{R}}
+
+\title{The Floor Theorem for the Yang--Mills Hessian\\ at the Berger Field\\[4pt]
+\large A Floor Law Across the Berger Spheres}
+\author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
+{\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
+\date{November 2026 (version \reddel{2}\redins{3.3\ifredline, draft\fi})}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\redins{Let $A$ be the Levi-Civita connection of a Berger metric $g=(t,1,1)$ on $S^3=SU(2)$, viewed as an $SU(2)$
+connection; it is not a Yang--Mills critical point. We study the Hessian of the Yang--Mills energy at $A$, compressed
+to the gauge-orthogonal slice, sector by sector in the Peter--Weyl decomposition. In the sector of spin $j/2$ an
+explicit field, the twist $f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$, is an exact gauge-orthogonal
+eigenvector with eigenvalue
+$\lambda_t(j)=[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$. We prove that $\lambda_t(j)$ is the lowest eigenvalue of every sector
+for every $t\in[2.75,10]$. A conserved charge splits each sector into blocks of size at most nine; interval inertia
+certificates cover the blocks of the sectors $j<100$, and a closed-form Gershgorin bound covers $j\ge100$. At $t=3$, on
+the Poincar\'e homology sphere, this gives the gauge-orthogonal spectrum below $142$ exactly; the first sector above
+the left-invariant one begins $168/3$ above the lowest mode, one third of the first nonzero scalar eigenvalue of the
+round unit Poincar\'e sphere. Across all circle-symmetric fields the twist remains an exact eigenvector, with
+eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$, and it is the floor of every sector on the box $x\in[-3,-1.5]$,
+$y\in[0.5,3]$, $t\in[3,10]$. The construction reproduces the published round-sphere spectrum and Laquer's index. To
+our knowledge, these are the first exact eigenvalues of a Yang--Mills Hessian at a non-flat connection on a squashed
+three-sphere.}
+\end{abstract}
+
+\noindent\textbf{Keywords.} Yang--Mills Hessian; Berger sphere; Poincar\'e homology sphere; spectral
+gap; Peter--Weyl decomposition; Weitzenb\"ock identity; computer-assisted proof.
+
+\noindent\textbf{MSC 2020.} 58J50, 81T13, 58E15, 53C30, 65G30.
+
+\section{Introduction}\label{sec:intro}
+
+The second variation of the Yang--Mills energy decides whether a connection is a local minimum, how
+fast nearby fields grow or decay under the gradient flow, and what spectral observables a lattice
+discretization must reproduce. At Yang--Mills fields on round spheres and symmetric spaces it is
+classical. Bourguignon and Lawson~\cite{bl1981} studied stability and isolation over the round
+sphere and other locally homogeneous spaces. Laquer~\cite{laquer1984} computed the index and nullity
+of the canonical connection over every simply connected compact irreducible symmetric space; for a
+group manifold the index is one (see also~\cite{ohnitapan1989}). Around homogeneous backgrounds on
+the round $S^3$, Kumar, Lechtenfeld and Pican\c{c}o Costa~\cite{klc2021} diagonalized the
+fluctuation operator sector by sector in closed form. On Berger spheres, closed-form spectra are known
+for the scalar Laplacian~\cite{lauret2019}, the Dirac operator~\cite{hitchin1974,bar1992,klingschueth2022} and
+the Hodge Laplacian on $1$-forms~\cite{henkellauret2026}.
+
+We found no exact result for the Yang--Mills Hessian at a non-flat connection on a squashed
+three-sphere, nor at a connection that is not a Yang--Mills field. At the flat connection the Hessian
+on coexact $\su$-valued $1$-forms is $d^*d$ tensored with $\su$, so its spectrum on a Berger sphere follows
+from the Hodge spectrum of~\cite{henkellauret2026}. This paper supplies one, at the natural candidate: the Levi-Civita
+connection of a Berger metric, viewed as an $SU(2)$ connection (the \emph{Berger field}). It arises as
+the instantaneous state of a homogeneous gauge field transported along the Ricci flow of the
+metric~\cite{davisrtc}, and it is the background on which lattice Yang--Mills forces on the
+Poincar\'e homology sphere were tested there. Its exact spectrum gives those computations a target.
+
+\redins{\paragraph{The main theorem.} The central result is the following (Theorem~\ref{thm:range} in
+Section~\ref{sec:family}).
+
+\begin{mainthm}
+For every $t\in[2.75,10]$ and every $j\ge0$, the twist's eigenvalue
+$\lambda_t(j)=[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$ is the lowest eigenvalue of $H+GG^*$ in the sector of spin $j/2$, with
+multiplicity exactly two, and the lowest gauge-orthogonal eigenvalue there.
+\end{mainthm}
+
+\noindent\emph{How the proof goes.} (i)~\emph{Exactness:} the twist is alone in its block of a conserved charge, so
+$\lambda_t(j)$ is an exact eigenvalue (Proposition~\ref{prop:family}, Remark~\ref{rem:counting}). (ii)~\emph{Reduction:}
+the same charge splits every sector into blocks of size at most nine, whose rows are known in closed form
+(Lemma~\ref{lem:charge}). (iii)~\emph{Finitely many sectors:} for $j\le99$ every block is enclosed in interval
+arithmetic over slices of $t$ and certified to lie above $\lambda_t(j)$ by exact counts of negative pivots.
+(iv)~\emph{All remaining sectors:} for $j\ge100$ a closed-form Gershgorin quantity is proved positive by interval
+bisection. Each step has a script and a receipt (Section~\ref{sec:checks} and the code availability statement). The
+results are labelled throughout as exact identities, interval-certified inequalities, or numerical observations.}
+
+\paragraph{Main results.} Section~\ref{sec:setting} fixes the operator: the Hessian $H$ of the energy
+at the Berger field, against the $L^2$ mass, compressed to the gauge-orthogonal slice. The field is not
+at rest, so gauge directions are not zero modes, and the compression $PHP$ is the object studied.
+\begin{itemize}
+  \item \emph{The left-invariant sector} (Section~\ref{sec:spin0}) is computed exactly. Three of its
+    nine directions are gauge directions. Its slice spectrum is $-14/3$ (twice), $16-2\sqrt{73}$,
+    $22/3$ (twice) and $16+2\sqrt{73}$. All three growth directions come from the commutator.
+  \item \emph{The floor formula} (Proposition~\ref{prop:bottom}): in every sector, $(j(j+2)-14)/3$ is an
+    exact eigenvalue, on an explicit eigenvector orthogonal to the gauge directions. That it is the bottom of
+    its sector is proved for $j=0,12,20,24$ (Theorem~\ref{thm:gap}), with a gap of $1/3$, and for every $j$ by
+    Theorem~\ref{thm:range}.
+  \item \emph{A Weitzenb\"ock identity} (Lemma~\ref{lem:weitz}), proved in $U(\su)$, gives a lower
+    bound for every sector at once.
+  \item \emph{The Floor Theorem} (Theorem~\ref{thm:gap}) follows, with certified
+    inertia counts in the four sectors that matter.
+  \item \emph{The floor law} (Section~\ref{sec:family}): the formula extends to every Berger sphere $(t,1,1)$
+    as an exact eigenvalue (Proposition~\ref{prop:family}). It is certified as the floor at $t=4$
+    (Theorem~\ref{thm:t4}) and for every $t\in[2.75,10]$ in every sector
+    (Theorem~\ref{thm:range}); its eigenvector is a lowest Landau level, annihilated by the transverse
+    raising operator, with its internal frame the lowest eigenvector of the curvature term of the Weitzenb\"ock
+    identity for $t\ge12/7$, so on the whole certified range
+    (Proposition~\ref{prop:landau}),
+    with the stretches at which each twist (the circular field of Proposition~\ref{prop:bottom}; terms in Section~\ref{sec:setting}) goes free in closed form (Corollary~\ref{cor:family}).
+\redins{  \item \emph{Where the twist is the floor} (Section~\ref{sec:edge}): across every circle-symmetric field on
+    $(t,1,1)$ the twist's eigenvalue is in closed form (Proposition~\ref{prop:twistfamily}); it is the floor of
+    every sector on a box of fields (Theorem~\ref{thm:domain}); for $H+GG^*$ it is not the floor of every sector at any
+    $x>0$; and where the block $B_{4,0}$ is the competitor, the edge is a root of an explicit polynomial
+    (Proposition~\ref{prop:edge}), which contains the Berger threshold $t_A$.
+}\end{itemize}
+Section~\ref{sec:family} follows the floor across the Berger family\redins{, and Section~\ref{sec:edge} across every
+circle-symmetric field}.
+Section~\ref{sec:checks} checks the construction against the published round-sphere results and
+against lattice computations. Section~\ref{sec:discussion} states the scope.
+
+\section{Setting}\label{sec:setting}
+
+\paragraph{Frame and metric.} On $S^3=SU(2)$ let $e_0,e_1,e_2$ be a left-invariant frame with
+$[e_a,e_b]=2\varepsilon_{abc}e_c$. The Berger metric is diagonal in it, with $g_0=3$ and $g_1=g_2=1$;
+$\hat e_i=e_i/\sqrt{g_i}$ is orthonormal, with coframe $\hat\theta^i$ and structure constants
+$[\hat e_i,\hat e_j]=\sum_kc_{ij}^{\,k}\hat e_k$, $c_{ij}^{\,k}=2\varepsilon_{ijk}\sqrt{g_k}/\sqrt{g_ig_j}$.
+
+\paragraph{The Berger field.} The Levi-Civita connection has Christoffel symbols
+$\Gamma_{ijk}=\tfrac12(c_{ij}^{\,k}-c_{jk}^{\,i}+c_{ki}^{\,j})$ in the orthonormal frame. Identifying
+$\mathfrak{so}(3)$ with $\su$, write it as the $\su$-valued $1$-form $A=\sum_iM_i\hat\theta^i$ with
+constant $M_i$, where $\tau_0,\tau_1,\tau_2$ is a basis of $\su$ \reddel{with the same brackets as the frame,}\redins{with
+$[\tau_a,\tau_b]=\sum_c\varepsilon_{abc}\tau_c$ (the cross product, as for $\mathfrak{so}(3)$ under the identification; the
+frame brackets carry the factor $2$, the Lie brackets do not), so that $\operatorname{ad}M_i$ acts on Lie components as
+$m_i\times\cdot$,}
+$\tau_0$ along the long axis.
+Its curvature $F$ has components $F_{ij}=[M_i,M_j]-\sum_kc_{ij}^{\,k}M_k$. At the round metric $A$ is
+a Yang--Mills field; at $g=(3,1,1)$ it is not.
+
+\paragraph{Terms.} A field is \emph{at rest} if it is a Yang--Mills field, a critical point of the
+energy. A \emph{growth mode} is a direction of negative second variation, a negative eigenvalue of the Hessian
+below. The \emph{stretch} is the parameter $t$ of the Berger metric $(t,1,1)$ of Section~\ref{sec:family}; the
+main case is $t=3$. The \emph{twist} of the sector of spin $j/2$ is the field
+$b=f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ of Proposition~\ref{prop:bottom}, with $f$ the top
+weight along the long axis: it turns in the two short directions and, in step, in two internal directions. A
+twist \emph{goes free} at the stretch where its eigenvalue crosses zero; beyond it, it is a growth mode.\redins{ The
+\emph{floor} of a sector is its lowest gauge-orthogonal eigenvalue, the bottom of the spectrum of $PHP$ restricted to
+the sector (or, where stated, the lowest eigenvalue of $H+GG^*$ there), and a state \emph{is the floor} if it attains
+it. In Section~\ref{sec:edge} the \emph{edge} is the set of fields at which the twist's eigenvalue meets the lowest
+eigenvalue of another charge block, a level-crossing locus, and that block is the \emph{competitor}.}
+
+\paragraph{The Hessian and the slice.} A variation is $b=\sum_ib_i\hat\theta^i$. The second variation
+of $E=\tfrac12\norm{F}^2$ is the quadratic form
+\begin{equation}\label{eq:Q}
+  Q(b)=\sum_{i<j}\norm{D_{ij}b}^2+2\langle F_{ij},[b_i,b_j]\rangle,\qquad
+  D_{ij}b=\hat e_ib_j-\hat e_jb_i+[M_i,b_j]-[M_j,b_i]-\textstyle\sum_kc_{ij}^{\,k}b_k,
+\end{equation}
+and $H$ is its operator against the $L^2$ mass $\sum_i\norm{b_i}^2$. The gauge map is
+$G\xi=(\hat e_i\xi+[M_i,\xi])_i$ with $L^2$ adjoint $G^*$. Because $A$ is not at rest, $H$ does not
+preserve $\ker G^*$. The \emph{gauge-orthogonal spectrum} is the spectrum of $PHP$ on $\ker G^*$, with
+$P$ the $L^2$ projection.
+
+\paragraph{Sectors.} Everything is invariant under left translations, so by Peter--Weyl the operators
+split into sectors indexed by $j\ge0$. In the sector of spin $j/2$, $b_i\in V_j\otimes\su$, where
+$V_j$ is the spin-$j/2$ representation (dimension $j+1$) on which $e_i$ acts by an anti-Hermitian
+$\rho_i$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$. So $H$ is a finite Hermitian matrix of size
+$9(j+1)$. Write $J_0=\tfrac i2\rho_0$, with weights $-\tfrac j2,\dots,\tfrac j2$.
+
+\redins{\paragraph{Conventions.} With $[e_a,e_b]=2\varepsilon_{abc}e_c$ the metric $(1,1,1)$ is the unit round
+sphere: its Ricci tensor is $2g$, and the scalar Laplacian has eigenvalue $j(j+2)$ on the sector of spin $j/2$. On
+$(t,1,1)$ the Ricci tensor is $\mathrm{diag}(2t,4-2t,4-2t)$ in the orthonormal frame. Eigenvalues are those of $H$
+defined by $\langle b,Hb\rangle=Q(b)$, with $Q$ exactly as written in~\eqref{eq:Q} and the $L^2$ mass
+$\sum_i\norm{b_i}^2$; a convention that puts a factor $\tfrac12$ in front of $Q$ halves every eigenvalue, and scaling
+the metric by $c$ multiplies every eigenvalue by $1/c$. With these normalisations the round-sphere spectrum is the
+published one (Section~\ref{sec:checks}).}
+
+\paragraph{The Poincar\'e sphere.} The binary icosahedral group $2I$ acts by left translations, and
+the frame, the metric and $A$ descend to $S^3/2I$. The sector of spin $j/2$ survives with
+multiplicity $\dim V_j^{2I}$, given by the Molien series $(1+t^{30})/((1-t^{12})(1-t^{20}))$ of
+the binary icosahedral group, whose invariants go back to Klein~\cite{klein1884}: the surviving sectors are $j=0,12,20,24,30,32,\dots$. The first
+nonzero eigenvalue of the scalar Laplacian on the \redins{round }unit Poincar\'e sphere is $j(j+2)=168$ at
+$j=12$~\cite{lachiezerey2004}.
+
+\section{The left-invariant sector}\label{sec:spin0}
+
+At $j=0$ the Hessian is a $9\times9$ matrix with entries in $\mathbb{Q}(\sqrt3)$, computed in exact
+arithmetic.
+
+\begin{proposition}\label{prop:spin0}
+At $j=0$:
+\begin{enumerate}
+  \item the spectrum of $H$ is $-14/3$ $(\times2)$, $(29-\sqrt{1345})/3$ $(\times2)$, $16-2\sqrt{73}$,
+    $8$, $(29+\sqrt{1345})/3$ $(\times2)$, $16+2\sqrt{73}$;
+  \item the gauge directions are $b_i=[M_i,\xi]$, $\xi\in\su$, a three-dimensional space. The
+    compression of $H$ to it has eigenvalues $8$, $12$, $12$. The value $8$ is an eigenvalue of $H$ with a
+    purely gauge eigenvector; the two $12$s are values of the compression only, since $H$ does not preserve
+    this space;
+  \item the gauge-orthogonal spectrum is $-14/3$ $(\times2)$, $16-2\sqrt{73}$, $22/3$ $(\times2)$,
+    $16+2\sqrt{73}$.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+Exact symbolic computation of~\eqref{eq:Q} and of the compression to the orthogonal complement of the
+gauge span (\path{scripts/ricci_su2_left_invariant_sector.py},
+\path{scripts/ricci_su2_sector_minimality.py}).
+\end{proof}
+
+The eigenvalue $8$ is a pure gauge direction, and the pairs $(29\mp\sqrt{1345})/3$ are mixtures, $40\%$
+and $60\%$ gauge. So the left-invariant sector has exactly three \emph{physical} growth directions, $-14/3$ (twice) and
+$16-2\sqrt{73}$, each orthogonal to the gauge directions. On $S^3$ other sectors add more: at $t=3$ the
+sectors $j=1$ and $j=2$ have four each, among them their twists (Corollary~\ref{cor:family}). On the Poincar\'e
+sphere those sectors do not survive, and the three are all. All of them come from the field acting on
+itself: with the commutator dropped, the same sector is $4/3$ $(\times6)$ and $12$ $(\times3)$, all
+positive.
+
+\section{The floor formula}\label{sec:bottom}
+
+\begin{proposition}[The floor formula]\label{prop:bottom}
+In the sector of spin $j/2$, let $f\in V_j$ be the top weight, $J_0f=\tfrac j2f$. The field
+\[
+  b=f\,(\hat\theta^1+i\,\hat\theta^2)\otimes(\tau_1+i\,\tau_2)
+\]
+is an eigenvector of $H$, orthogonal to every gauge direction, with eigenvalue
+$\lambda(j)=(j(j+2)-14)/3$.
+\end{proposition}
+\begin{proof}
+At the top weight, $\hat e_0f=-ijf/\sqrt3$, $J_+f=0$, $\rho_2f=i\rho_1f$ and $\norm{\rho_1f}^2=j$. So
+every term of~\eqref{eq:Q} on fields supported at the top weight involves only $f$ and
+$u=\rho_1f/\sqrt j$, with coefficients polynomial in $j$. On the squashed plane (frame and Lie indices
+$1,2$, in the order $(1,1),(1,2),(2,1),(2,2)$) the Hessian is
+\[
+  \Bigl(\tfrac{j^2}{3}+j\Bigr)I+\frac13\begin{pmatrix}14&2ij&-ij&28\\-2ij&5&-19&-ij\\ ij&-19&5&2ij\\
+  28&ij&-2ij&14\end{pmatrix},
+\]
+with eigenvalues $\tfrac13(j^2+2j-14)$, $\tfrac13(j^2+4j-14)$ and
+$\tfrac13\bigl(j^2+3j+33\pm3\sqrt{j^2+9}\bigr)$. The first has eigenvector $(-1,-i,-i,1)$, which is $b$
+up to a factor. The other three are eigenvalues of this compression only, not of $H$. Three facts complete the argument, each an identity in $j$:
+\begin{itemize}
+  \item the coupling of $b$ to the only other top-weight direction it could reach, the $\tau_0$
+    component of $b_0$, vanishes;
+  \item $D_{ij}b$ has no component along $u$, because the two circular factors cancel, so $H$ maps $b$
+    into the top weight;
+  \item $\langle G\xi,b\rangle=0$ for every $\xi$, at every weight.
+\end{itemize}
+All of these are verified symbolically in $j$ (\path{scripts/ricci_su2_sector_formula.py}).
+\end{proof}
+
+At $j=0$ the proposition gives the growth mode $-14/3$. The circular field is the left-invariant growth
+mode lifted to the top weight of each higher sector, and the lift costs exactly $j(j+2)/3$.
+
+\section{The Weitzenb\"ock bound and the gap}\label{sec:gap}
+
+On the slice $G^*b=0$, so $\langle b,Hb\rangle=\langle b,(H+GG^*)b\rangle$: adding the gauge term changes
+nothing there. The operator $H+GG^*$ has a useful form.
+
+\begin{lemma}[Weitzenb\"ock identity]\label{lem:weitz}
+In every sector,
+\[
+  H+GG^*=\sum_iX_i^*X_i+R_0,\qquad X_i=\rho_i/\sqrt{g_i}+\Omega_i,
+\]
+where $X_i$ is the covariant derivative ($\Omega_i$ is the action of the connection on the Lie index
+together with $-\Gamma_i$ on the frame index) and $R_0$ is a constant real symmetric $9\times9$ matrix
+with eigenvalues $-12$ $(\times2)$, $7\pm\sqrt{73}$, $2\pm2\sqrt{13}$ $(\times2)$ and $8$. Moreover
+$\omega^2:=\sum_i\norm{\Omega_i}_2^2=76/3$ (operator norms).
+\end{lemma}
+\begin{proof}
+Treat the $\rho_i$ as generators of $U(\su)$ with $[\rho_a,\rho_b]=2\varepsilon_{abc}\rho_c$ and
+$\rho_i^*=-\rho_i$. Both sides are $9\times9$ matrices over $U(\su)$ of filtration degree at most two.
+Put every product in Poincar\'e--Birkhoff--Witt order. Every coefficient of degree one and two then
+agrees, and the constant terms differ by $R_0$, in exact arithmetic with $\sqrt3$ symbolic. By the PBW
+theorem the identity holds in $U(\su)$, hence in every representation $V_j$
+(\path{scripts/ricci_su2_gap_certificates.py}).
+\end{proof}
+
+\begin{theorem}[The Floor Theorem]\label{thm:gap}
+At the Berger metric $g=(3,1,1)$:
+\begin{enumerate}
+  \item every gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least
+    $\bigl(\sqrt{j(j+2)/3}-\omega\bigr)^2-12$, $\omega=\sqrt{76/3}$, whenever $\sqrt{j(j+2)/3}\ge\omega$;
+  \item for $j=0,12,20,24$, $\lambda(j)$ is the lowest gauge-orthogonal eigenvalue of its sector, and every
+    other eigenvalue of $H+GG^*$ is at least $\lambda(j)+1/3-10^{-53}$;
+  \item on the Poincar\'e sphere, the gauge-orthogonal spectrum below $142$ consists of the spin-$0$
+    values of Proposition~\ref{prop:spin0}(3) and the spin-$6$ values from $154/3$ upward; spin $10$
+    begins exactly at $142$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+\emph{Part (1).} Since $g_0=3\ge g_1=g_2=1$ and $-\sum_i\rho_i^2=j(j+2)$ on $V_j$,
+$\sum_i\norm{\rho_iv}^2/g_i\ge j(j+2)\norm v^2/3$. Each term satisfies
+$\norm{X_iv}\ge\bigl|\norm{\rho_iv}/\sqrt{g_i}-\norm{\Omega_iv}\bigr|$. The reverse triangle inequality
+in $\RR^3$ gives $\sum_i\norm{X_iv}^2\ge(\sqrt{j(j+2)/3}-\omega)^2\norm v^2$. With
+Lemma~\ref{lem:weitz} and $\langle b,Hb\rangle=\langle b,(H+GG^*)b\rangle$ on the slice, this is (1).
+
+\emph{Part (2).} Write $A=H+GG^*$. By Proposition~\ref{prop:bottom}, $\lambda(j)$ is an eigenvalue of $A$
+of multiplicity at least two: the eigenvector $b$ at the top weight, and its image at the bottom weight
+under the real structure of the integer-spin representation, which commutes with $A$ because every
+coefficient is real. The rest is a rigorous count of the eigenvalues of $A$ below $\mu=\lambda(j)+1/3$
+(\path{scripts/ricci_su2_gap_certificates.py}; every quantity below is recorded in its receipt).
+\begin{enumerate}
+  \item \emph{Enclosure.} $A-\mu$ is assembled in interval arithmetic, in mpmath's interval context
+    (outward-rounded endpoints, $200$ bits~\cite{mpmath}), with $\sqrt3$ and every entry enclosed. It is
+    realified, $\mathbb C^n\to\RR^{2n}$ by $z\mapsto(\operatorname{Re}z,\operatorname{Im}z)$, so every
+    eigenvalue of $A$ appears twice. Let $M$ be the real symmetric matrix of the stored (rounded) midpoints of its lower
+    triangle. The exact realified matrix is symmetric and each interval encloses its entry, so the two
+    differ in norm by at most $\rho$, computed from the radii. Each radius bounds the distance from the
+    interval to its stored midpoint, and is computed, like $\rho$ itself, with outward rounding.
+  \item \emph{Factorization.} $M$ is factored without pivoting in $200$-bit arithmetic. The stored factors, $L$ unit lower triangular and $D$ diagonal, define an
+    exact matrix $LDL^\top$. Its distance from $M$ is bounded a posteriori by $\norm{M-LDL^\top}_F$, evaluated
+    in interval arithmetic with outward rounding, so no rounding-error constant of the factorization
+    enters.
+  \item \emph{Inertia.} $LDL^\top$ is congruent to $D$, so by Sylvester's law $LDL^\top$ has exactly as
+    many negative eigenvalues as $D$ has negative pivots, and none equal to zero. Every pivot is recorded.
+  \item \emph{Perturbation.} Let $\varepsilon=\rho+\norm{M-LDL^\top}_F$, an upper bound
+    evaluated in interval arithmetic (\path{scripts/ricci_su2_outward.py}). If $D$ has $k$
+    negative pivots, Weyl's inequality gives at most $k$ eigenvalues of the realified $A-\mu$ below
+    $-\varepsilon$, that is, at most $k/2$ eigenvalues of $A$ below $\mu-\varepsilon$.
+\end{enumerate}
+In each of the four sectors $D$ has exactly four negative pivots, no pivot is smaller in absolute value
+than $0.63$, and $\varepsilon<7\times10^{-56}$ (Table~\ref{tab:cert}). So $A$ has at most two
+eigenvalues below $\lambda(j)+1/3-\varepsilon$, and both copies of $\lambda(j)$ are among them. Hence
+$\lambda(j)$ is the lowest eigenvalue of $A$, with multiplicity exactly two, and every other eigenvalue is
+at least $\lambda(j)+1/3-\varepsilon$. The same procedure at $\mu=\lambda(j)-1/3$ finds no negative pivot,
+a consistency check that the argument does not need. The script refuses to certify if a pivot is zero, if
+a count differs, or if $\varepsilon\ge1/3$. The eigenvector of Proposition~\ref{prop:bottom} lies in the
+slice, so $\lambda(j)$ is the minimum there.
+
+\emph{Part (3).} At $j=30$ the bound of (1) is $(\sqrt{320}-\omega)^2-12=153.26>142$; exactly,
+$\sqrt{320}-\sqrt{76/3}>\sqrt{154}$, with margin $0.45$ in that form. The bound increases with $j$
+beyond. Part (2) covers the surviving sectors $j=0,12,20,24$, and
+Proposition~\ref{prop:spin0} gives the spin-$0$ slice exactly.
+\end{proof}
+
+\begin{table}[t]\centering\small
+\caption{The inertia certificates of Theorem~\ref{thm:gap}(2), at $\mu=\lambda(j)+1/3$. $N$: size of the
+realified matrix; $\rho$: enclosure radius; residual: $\norm{M-LDL^\top}_F$; $\varepsilon=\rho+{}$residual. At $\mu=\lambda(j)-1/3$ no sector has a negative pivot,
+$\varepsilon\le6.2\times10^{-56}$ and the smallest pivot is at least $0.63$.}
+\label{tab:cert}
+\begin{tabular}{rrrccccc}\toprule
+$j$ & $\lambda(j)$ & $N$ & $\rho$ & residual & $\varepsilon$ & neg.\ pivots & $\min|d_k|$ \\ \midrule
+$0$ & $-14/3$ & $18$ & $3.0\times10^{-58}$ & $5.5\times10^{-59}$ & $3.5\times10^{-58}$ & $4$ & $0.679$ \\
+$12$ & $154/3$ & $234$ & $7.7\times10^{-57}$ & $6.3\times10^{-57}$ & $1.4\times10^{-56}$ & $4$ & $21.3$ \\
+$20$ & $142$ & $378$ & $2.4\times10^{-56}$ & $1.9\times10^{-56}$ & $4.3\times10^{-56}$ & $4$ & $60.0$ \\
+$24$ & $610/3$ & $450$ & $3.7\times10^{-56}$ & $2.9\times10^{-56}$ & $6.6\times10^{-56}$ & $4$ & $66.9$ \\
+\bottomrule\end{tabular}
+\end{table}
+
+\begin{remark}
+The double-precision computation of $H+GG^*$ for every $j\le120$ gives the same picture: bottom exactly
+$\lambda(j)$, twice, and the next eigenvalue at least $\lambda(j)+2/3$. The theorem does not rely on
+this. Minimality for $j>120$ is not needed for the gap; it holds for every $j$
+by Theorem~\ref{thm:range} at $t=3$.
+\end{remark}
+
+In one line, with $\lambda_j(\Delta_{S^3})=j(j+2)$ the eigenvalue of the scalar Laplacian of the round
+unit sphere on the sector of spin $j/2$, the floor formula reads
+\[
+  \boxed{\;\lambda_{\mathrm{floor}}(j)\;=\;\frac{\lambda_j(\Delta_{S^3})-14}{3}\;=\;\frac{j(j+2)-14}{3}\;}
+\]
+It is an eigenvalue in every sector (Proposition~\ref{prop:bottom}); the Floor Theorem shows that it is the
+floor of every sector below $j=30$ that survives on the Poincar\'e sphere, and bounds every higher
+sector; Theorem~\ref{thm:range} shows that it is the floor of every sector. On the Poincar\'e sphere the floors of the first two surviving sectors differ by
+$\lambda_1(\Delta_{S^3/2I})/3=168/3$.
+
+\begin{corollary}[The floor gap]\label{cor:56}
+On the Poincar\'e sphere, the first sector above the left-invariant one begins
+$\lambda(12)-\lambda(0)=168/3=56$ above the growth mode: one third of the \redins{round }sphere's first scalar
+eigenvalue. The spectral gap between the two sectors runs from $16+2\sqrt{73}=33.09$ to $154/3=51.33$.\redins{ The first
+number is a difference between sector floors and the second an empty interval of width $18.25$; neither is a quantum
+mass gap.}
+\end{corollary}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig_spectrum_ladder.pdf}
+  \caption{The gauge-orthogonal spectrum at the Berger field, sector by sector. Curve:
+  $\lambda(j)=(j(j+2)-14)/3$. Filled: the bottom of each sector that survives on the Poincar\'e sphere;
+  hollow: sectors the icosahedral group forbids; grey ticks: the other exact values of a surviving
+  sector. Squares and circles: lattice eigenvalues near the left-invariant values and the lowest gauge-orthogonal values of spin $6$ from the two
+  lattice forces of~\cite{davisrtc} (native $n=1,2,3$; two-ring $n=3$).}
+  \label{fig:ladder}
+\end{figure}
+
+\section{The floor across the Berger family}\label{sec:family}
+
+The computation above never used the value $3$ except through $g_0$. Replace it by any stretch $t>0$:
+the Berger metric $g=(t,1,1)$, its Levi-Civita field, and the same circular top-weight field $b$.
+
+\begin{proposition}[The floor law]\label{prop:family}
+For every $t>0$ and every $j\ge0$, the field $b=f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ is an
+eigenvector of $H$ at the Berger field of $(t,1,1)$, orthogonal to every gauge direction, with eigenvalue
+\[
+  \boxed{\;\lambda_t(j)\;=\;\frac{j(j+2)-2(t-3)\,j-2(t-2)(t+4)}{t}\;}
+\]
+At $t=3$ this is $\lambda(j)$ of Proposition~\ref{prop:bottom}.
+\end{proposition}
+\begin{proof}
+The proof of Proposition~\ref{prop:bottom}, with $t$ symbolic in place of $3$. The block on the squashed
+plane has eigenvalues $\lambda_t(j)$, $(j^2+4jt-8j-2t^2-4t+16)/t$ and
+$(j^2+jt+5t^2-4t\pm t\sqrt{j^2+t^2})/t$ (the last three of the compression only). The first has eigenvector $(-1,-i,-i,1)$, and the three facts
+listed there (no coupling to the $\tau_0$ component of $b_0$, no leak into the next weight, and
+orthogonality to every gauge direction) hold as identities in $j$ and $t$
+(\path{scripts/ricci_su2_sector_formula_squashed.py}).
+\end{proof}
+
+The Weitzenb\"ock identity of Lemma~\ref{lem:weitz} holds on every Berger sphere, and it explains the
+shape of the floor law.
+
+\begin{proposition}[The twist is a lowest Landau level]\label{prop:landau}
+Let $t>0$.
+\begin{enumerate}
+  \item In every sector, $H+GG^*=\sum_iX_i^*X_i+R_0(t)$ with $X_i=\rho_i/\sqrt{g_i}+\Omega_i$, where $R_0(t)$ is a
+    constant real symmetric $9\times9$ matrix with eigenvalues $12-8t$ $(\times2)$, $4(t-1)$,
+    $-2\bigl(\sqrt{2t^2-2t+1}-1\bigr)$ $(\times2)$, $2\bigl(\sqrt{2t^2-2t+1}+1\bigr)$ $(\times2)$ and
+    $3t-2\pm\sqrt{9t^2-4t+4}$. For $t\ge12/7$, $12-8t$ is the lowest of them.
+  \item Write $b=f\otimes\beta$, with $\beta$ the internal frame $(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$,
+    and $X_\pm=X_1\pm iX_2$. Then
+    \[
+      X_+b=0,\qquad X_0b=i\kappa\,b,\quad \kappa=\frac{2t-4-j}{\sqrt t},\qquad R_0(t)\beta=(12-8t)\beta .
+    \]
+  \item Consequently, for $\norm b=1$, in the identity of (1), the fibre term of $b$ is $\norm{X_0b}^2=\kappa^2$, the curvature term
+    is $12-8t$, and the transverse term is $\norm{X_1b}^2+\norm{X_2b}^2=2(j+t)$:
+    \[
+      \lambda_t(j)=\kappa^2+2(j+t)+(12-8t).
+    \]
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+(1) The proof of Lemma~\ref{lem:weitz} with $t$ symbolic: every coefficient of degree one and two agrees in
+$U(\su)$, identically in $t$ (\path{scripts/ricci_su2_weitzenbock_symbolic_t.py}). The eigenvalues are those of
+the symbolic $R_0(t)$, and the comparison is elementary. (2) $(\rho_1+i\rho_2)f=0$ because $f$ is the top weight,
+and $(\Omega_1+i\Omega_2)\beta=0$, $\Omega_0\beta=i(2t-4)\beta/\sqrt t$ and $R_0(t)\beta=(12-8t)\beta$ hold as
+identities in $t$; $\rho_0f=-ij f$ (\path{scripts/ricci_su2_landau_symbolic.py}). (3) follows from (1), (2) and
+Proposition~\ref{prop:family}.
+\end{proof}
+
+\begin{remark}
+In the language of a charged particle in a magnetic field, $X_+b=0$ is the lowest-Landau-level condition for the
+two transverse covariant derivatives, $\kappa$ is the momentum along the fibre, and $12-8t$ is the most negative
+curvature the internal frame can see (for $t\ge12/7$). The fibre term alone is smallest where the momentum
+vanishes, at $j=2t-4$; the transverse term $2j$ moves the minimum of $\lambda_t(j)$ over $j$ to $j=t-4$
+(Corollary~\ref{cor:family}). The statement that
+$b$ is the \emph{floor} is not implied by (2): it needs every other state of the sector to cost more, which is
+Theorem~\ref{thm:range}.\redins{ The same three pieces, a momentum along the fibre, a lowest Landau level across
+it and a spin term from $-2[F,\cdot\,]$, make up the unstable mode of Nielsen and Olesen in a constant chromomagnetic
+field on flat space~\cite{nielsenolesen1978}. We note the resemblance only; no limit relating the two is proved
+here.}
+\end{remark}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_three_pieces.pdf}
+  \caption{\redins{The three pieces of Proposition~\ref{prop:landau}(3): fibre $\kappa^2$ (dashed), transverse
+  $2(j+t)$, curvature $12-8t$ (dotted), and their sum $\lambda_t(j)$. (a) The sector $j=0$ across the family: the
+  momentum $\kappa$ vanishes at $t=2$, where $\lambda_2(0)=0$. (b) The stretch $t=6$ across the sectors (open
+  circles): the fibre term is smallest at $j=2t-4=8$, and the transverse term moves the minimum of $\lambda_6(j)$ to
+  $j=t-4=2$, with value $4-3t=-14$ (Corollary~\ref{cor:family}). Exact; the identity is checked symbolically in
+  \texttt{make\_figure\_three\_pieces.py}.}}
+  \label{fig:threepieces}
+\end{figure}
+
+The certificate of Theorem~\ref{thm:gap} takes $t$ as a parameter; run at $t=3$ it reproduces
+Table~\ref{tab:cert} exactly (\path{scripts/ricci_su2_gap_certificates_t.py}). At a second squashing it gives the same kind of
+complete statement.
+
+\begin{theorem}[The Floor Theorem at $(4,1,1)$]\label{thm:t4}
+At the Berger metric $g=(4,1,1)$:
+\begin{enumerate}
+  \item the Weitzenb\"ock identity of Lemma~\ref{lem:weitz} holds with $R_0$ of eigenvalues $-20$
+    $(\times2)$, $-8$ $(\times2)$, $12$ $(\times3)$ and $10\pm2\sqrt{33}$, and $\omega^2=36$; every
+    gauge-orthogonal eigenvalue in the sector of spin $j/2$ is at least $(\sqrt{j(j+2)/4}-6)^2-20$ whenever
+    $\sqrt{j(j+2)/4}\ge6$;
+  \item for $j=0,12,20,24,30,32$, $\lambda_4(j)=j^2/4-8$ is the lowest gauge-orthogonal eigenvalue of its
+    sector, and every other eigenvalue of $H+GG^*$ is at least $\lambda_4(j)+1/3-10^{-53}$;
+  \item on the Poincar\'e sphere, the gauge-orthogonal spectrum below $136$ consists of the spin-$0$ values
+    $-8$ $(\times2)$, $22-2\sqrt{129}$, $29/5$ $(\times2)$ and $22+2\sqrt{129}$, the spin-$6$ values from $28$
+    upward and the spin-$10$ values from $92$ upward; spin $12$ begins exactly at $136$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+As for Theorem~\ref{thm:gap}. The six sectors certify with exactly four negative pivots each,
+$\varepsilon<1.3\times10^{-55}$ and smallest pivot at least $0.649$. The tail bound exceeds $136$ from $j=36$ on:
+exactly, $\sqrt{342}-6>\sqrt{156}$, with margin $0.0032$ in that form. The spin-$0$ slice is computed in exact
+arithmetic (receipts in \path{research/su2-floor-family-20261119/}).
+\end{proof}
+
+So at $t=4$ the Poincar\'e sphere has still exactly three growth directions, and the floor gap is $36$. Unlike $t=3$, spin $6$
+begins below the top of the spin-$0$ spectrum, so the sectors interleave there.
+
+\paragraph{The floor law over a range.} A certificate need not be taken one $t$ at a time. For a slice
+$t\in[a,b]$, enclose $A(t)-\lambda_t(j)-\delta$ for \emph{all} $t$ in the slice at once, with $t$ and
+$\lambda_t(j)$ entered as intervals, and proceed as in the proof of Theorem~\ref{thm:gap}. Bound the
+perturbation by $\rho=\min(\text{Frobenius},\text{maximal row sum})$ of the enclosure radii; both bound the
+$2$-norm of a symmetric perturbation. As in Theorem~\ref{thm:gap}, the radii are taken about the stored
+midpoints, and $\rho$, the residual $\norm{M-LDL^\top}_F$ and $\varepsilon$ are evaluated with outward rounding. Then exactly four negative pivots and $\varepsilon<\delta$ give, for every
+$t$ in the slice, at most two eigenvalues below $\lambda_t(j)+\delta-\varepsilon$. By
+Proposition~\ref{prop:family}, both copies of $\lambda_t(j)$ are among them.
+
+\paragraph{Charge blocks.} The rotation about the long axis, acting at once on the sector, the frame index
+and the Lie index, is a symmetry of the Berger field. Its charge makes the certificate independent of the size of
+the sector. Take $\rho_0,\rho_1,\rho_2=-2iJ_z,-2iJ_x,-2iJ_y$ on $V_j$ (equivalent to the representation used so
+far: same brackets), with weights $m\in\{-l,\dots,l\}$, $l=j/2$, and take the frame and Lie indices in the
+eigenbasis of the rotation, with charges $c_f,c_l\in\{-1,0,1\}$.
+
+\begin{lemma}[Charge blocks]\label{lem:charge}
+Let $t>0$ and $c=c_f+c_l$. In this basis $\Omega_0=i\operatorname{diag}\bigl(c(t-2)/\sqrt t\bigr)$, $\Omega_+$
+raises $c$ by exactly one, $\Omega_-$ lowers it by exactly one, every nonzero entry of $\Omega_\pm$ has modulus
+$\sqrt{2t}$, and $R_0(t)$ preserves $c$. Hence $H+GG^*$ preserves the charge $q=m+c$, and the sector of spin $j/2$
+is the orthogonal sum of the charge blocks, each spanned by the at most nine states $(m,c_f,c_l)$ with
+$m=q-c_f-c_l$, $|m|\le l$. The state of charge $l+2$ is the twist $b$ alone, and the state of charge $-l-2$ its
+conjugate.
+\end{lemma}
+\begin{proof}
+Exact, with $t$ symbolic (\path{scripts/ricci_su2_charge_selection_symbolic.py}). For every $j$, the antiunitary map $J\otimes K$, with $J$ the real ($j$ even) or quaternionic ($j$ odd)
+structure of $V_j$ and $K$ complex conjugation on the frame and Lie indices, commutes with $H+GG^*$, whose
+coefficients are real, and reverses the charge; so the block of charge $-l-2$ has the same entry as the twist's.
+Since $\rho_0$ is diagonal and
+$\rho_1\pm i\rho_2=-2iJ_\pm$ shifts $m$ by $\pm1$, each of $X_0$ and $X_\pm$ shifts $q$ by $0$ or $\pm1$, and
+$\sum_iX_i^*X_i=X_0^*X_0+\tfrac12(X_+^*X_++X_-^*X_-)$ preserves $q$; so does $R_0(t)$.
+\end{proof}
+
+\begin{remark}[Why the floor formula is exact]\label{rem:counting}
+Lemma~\ref{lem:charge} explains Propositions~\ref{prop:bottom} and~\ref{prop:family}, which were proved by
+symbolic computation. The twist is the only state of charge $l+2$, so it spans a $1\times1$ block and is an
+eigenvector of $H+GG^*$. The gauge map preserves the charge, with the gauge parameter $\xi$ carrying the weight
+and the Lie index only, so its charges reach $l+1$ at most. Hence $G^*b=0$, and $Hb=(H+GG^*)b$: the twist is an
+exact gauge-orthogonal eigenvector of $H$, and its eigenvalue is its diagonal entry. The argument uses only the
+rotation about the long axis, so it holds for any left-invariant background with that symmetry. Whether the twist
+is the \emph{floor} is a separate statement, and it depends on the background (Section~\ref{sec:family},
+``Further observations'').
+\end{remark}
+
+\begin{theorem}[The floor law on $2.75\le t\le10$]\label{thm:range}
+For every $t\in[2.75,10]$ and every $j\ge0$, $\lambda_t(j)$ is the
+lowest eigenvalue of $H+GG^*$ in the sector of spin $j/2$, with multiplicity exactly two, and the lowest
+gauge-orthogonal eigenvalue there.
+\end{theorem}
+\begin{proof}
+By Lemma~\ref{lem:charge} it suffices to show that every charge block other than the two twist blocks has
+all its eigenvalues above $\lambda_t(j)$; the two twist blocks are $1\times1$ with entry $\lambda_t(j)$
+(Proposition~\ref{prop:family}).
+
+\emph{Sectors $j\le99$.} Each block is enclosed for all $t$ in a slice at once and certified positive
+definite after the shift $\lambda_t(j)+\eta$, as described above ($\eta>0$ plays the role of $\delta$ there, chosen per block and slice as half the double-precision gap), with no negative pivot and $\varepsilon<\eta$
+(\path{scripts/ricci_su2_block_interval_cert.py}). For $j\le40$, $943$ blocks and $12{,}596$ block-slices, smallest
+margin $\eta-\varepsilon=1.7\times10^{-5}$ (receipt \path{block_cert_j40.json}); for $41\le j\le99$, $4{,}307$
+blocks and $36{,}166$ block-slices, smallest margin $2.9\times10^{-3}$ (receipt \path{block_cert_j41_99.json}).
+
+\emph{Sectors $j\ge100$.} Write $m=l-x$. The row of $(m,c_f,c_l)$ and the row of $(-m,-c_f,-c_l)$ have the same
+quantity $G$ below ($x\mapsto2l-x$, exactly), so $0\le x\le l$ suffices. For the state of type $(c_f,c_l)$, the diagonal entry of its block minus $\lambda_t(j)$ minus
+the sum of the moduli of its off-diagonal entries (its Gershgorin radius) is, identically in $l$, $x$ and $t$,
+\[
+  G=4x(2l-x)\Bigl(1-\frac1t\Bigr)+\frac{4l(2-c)(t-2)}{t}+E-2\sqrt{2t}\Bigl[n_-\sqrt{x(2l-x+1)}+n_+\sqrt{(2l-x)(x+1)}\Bigr],
+\]
+with $E=c^2(t-2)^2/t+4c(t-2)x/t+C_a-R_a+2(t-2)(t+4)/t$, where $C_a$ is the diagonal entry of
+$-(\Omega_1^2+\Omega_2^2)+R_0(t)$, $R_a$ the sum of the moduli of its other entries in the same row, and $n_\pm$ the
+numbers of nonzero entries of $\Omega_\pm$ in the column of the type
+(\path{scripts/ricci_su2_charge_selection_symbolic.py}; the nine types are tabulated in
+\path{scripts/ricci_su2_floor_large_j.py}). If $G>0$ on every row except the twist, every other block lies above
+$\lambda_t(j)$ by Gershgorin's theorem. For $l\ge50$ and $t\in[2.75,10]$ this is proved by bisection in interval
+arithmetic: for $x\le20$ on $(1/l,t)$, $G/l>5.9\times10^{-4}$ ($373$ boxes); for $x\ge20$, after dividing by $lx$, on
+the relaxed box $(x/l,1/l,1/x,t)\in[0,1]\times[0,1/50]\times[0,1/20]\times[2.75,10]$, $G/(lx)>0.85$ ($9$ boxes)
+(receipt \path{floor_large_j.json}).
+
+Receipts are in \path{research/su2-floor-family-20261119/}. Independently, a first certificate on the full
+sector matrices of the fifteen sectors $j\le12$, $20$, $24$ agrees: \reddel{$1{,}091$ slices tile $[2.75,10]$ exactly in each of the fifteen sectors}\redins{in each of the fifteen sectors the slices tile $[2.75,10]$ exactly ($1{,}091$ slices in all)}, the finest $0.002$ wide near
+$t=2.75$, where the gap above the floor is smallest ($0.16$ for $j=4$, $0.18$ for $j=1$). Every slice has
+exactly four negative pivots and $\varepsilon<\delta$, the smallest margin $\delta-\varepsilon$ being $0.0018$.
+A degenerate slice at $t=3$ reproduces Table~\ref{tab:cert}
+(\path{scripts/ricci_su2_floor_interval_cert.py}, receipt
+\path{research/su2-floor-family-20261119/interval_cert_2.75_10.json}).
+\end{proof}
+
+At $t=3$ this completes Proposition~\ref{prop:bottom}: $(j(j+2)-14)/3$ is the floor of every sector of the
+Berger field $(3,1,1)$, not only of those that survive on the Poincar\'e sphere.
+
+\begin{remark}[Below the range]\label{rem:tstar}
+There are two thresholds, one for each statement of Theorem~\ref{thm:range}.
+\emph{Gauge-orthogonal spectrum.} In double precision, $\lambda_t(j)$ is its bottom in every sector $j\le40$ for
+every $t\in[2.7,2.75]$ tested. Below $t^*\approx2.6980$ (located by bisection) a lower eigenvalue appears, first
+in the sector $j=4$; at $t\le2$ the branch is the floor of no sector.
+\emph{The operator $H+GG^*$.} The threshold is algebraic. The charge-$0$ block of the sector $j=4$ has
+$\lambda_t(4)$ as an eigenvalue exactly when $s=\sqrt t$ is a root of its determinant, whose largest positive root
+is that of
+\[
+  3s^{16}+121s^{14}+1066s^{12}-2836s^{10}-18624s^8+20992s^6+181248s^4-425984s^2+262144,
+\]
+$t_A=s^2=2.7311222782\ldots$ (\path{scripts/ricci_su2_tstar_exact.py}). In double precision, below $t_A$ that
+block has an eigenvalue under $\lambda_t(4)$, and between $t_A$ and $2.75$ no sector $j\le40$ has one
+(\path{scripts/ricci_su2_tA_scan.py}). So between $t^*$ and $t_A$ the eigenvalue of $H+GG^*$ below
+$\lambda_t(4)$ is not gauge-orthogonal, and the twist remains the floor of the slice. Only the range of
+Theorem~\ref{thm:range} is certified.
+\end{remark}
+
+\begin{corollary}\label{cor:family}
+Where $\lambda_t(j)$ is the floor:
+\begin{enumerate}
+  \item \emph{The floor gap.} On the Poincar\'e sphere, $\lambda_t(12)-\lambda_t(0)=(240-24t)/t$: $168/3$ at
+    $t=3$, $36$ at $t=4$, and $0$ at $t=10$. The relation to the first scalar eigenvalue holds at $t=3$
+    only, and characterises it (Remark~\ref{rem:casimir}).
+  \item \emph{Where a twist goes free.} $\lambda_t(j)=0$ exactly at
+    \[
+      t_j=\tfrac12\Bigl(\sqrt{(j+2)^2+2(j+4)^2}-(j+2)\Bigr),
+    \]
+    and $\lambda_t(j)<0$ for $t>t_j$. The values are $t_3=3.045$,
+    $t_4=3.403$, inside the range of Theorem~\ref{thm:range}. The same formula gives $t_0=2$,
+    $t_1=2.341$ and $t_2=2.690$. These are zeros of the branch $\lambda_t(j)$ outside the certified range: at
+    $t_0$ the branch is not the floor (Remark~\ref{rem:tstar}), the double-precision scan already finds a lower
+    eigenvalue in the sector $j=1$ at $t=2.5>t_1$, and at $t_2$ that the branch is the floor is numerical only. At stretch
+    $t$, every sector with $j<(t-4)+\sqrt{3t^2-4t}$ has negative floor. Each floor crosses zero linearly in
+    $t-t_j$.
+  \item \emph{The softest sector moves.} Over $j$, $\lambda_t(j)$ is smallest near $j=t-4$.
+\end{enumerate}
+\end{corollary}
+\begin{proof}
+Algebra on the formula of Proposition~\ref{prop:family}; the statements about floors hold where
+Theorem~\ref{thm:range} or Theorem~\ref{thm:t4} applies.
+\end{proof}
+
+\begin{remark}[The Casimir point]\label{rem:casimir}
+The cost of lifting the twist from the left-invariant sector to the sector of spin $j/2$ splits as
+\[
+  \lambda_t(j)-\lambda_t(0)=\Bigl(\frac{j^2}{t}+2j\Bigr)-\frac{4(t-2)}{t}\,j .
+\]
+The first term is the eigenvalue of the scalar Laplacian of $(t,1,1)$ on the top-weight vector $f$
+(since $-\rho_0^2f=j^2f$ and $-\sum_i\rho_i^2=j(j+2)$); the second couples the weight along the long axis to the
+stretch. The lift equals the round Casimir divided by the stretch, $j(j+2)/t$, for every $j$ if and only if
+$t=3$. So at $t=3$ the floor gap on the Poincar\'e sphere is $\lambda_1(\Delta_{S^3/2I})/3$ because there the
+lift depends on $j$ only through the Casimir. At $t=2$ the coupling vanishes: the lift is exactly the scalar
+Laplacian on $f$, and $\lambda_2(0)=0$.
+\end{remark}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_floor_family.pdf}
+  \caption{The floor law across the Berger family. (a) $\lambda_t(j)$ for $j=0,\dots,6$; dots mark where each
+  twist goes free ($t_j$); shaded: the range of Theorem~\ref{thm:range}; dashed: $t^*$ of
+  Remark~\ref{rem:tstar}. (b) The floor gap on the Poincar\'e sphere, $(240-24t)/t$.}
+  \label{fig:family}
+\end{figure}
+
+\paragraph{Further observations (double precision; not certified).} Two numerical experiments locate what
+the floor law is and is not (scripts and receipts in the repository; see the availability section).
+\begin{itemize}
+  \item \emph{Landscape, not dynamics.} Under the gauge-fixed linearised flow with the operator held at the
+    Berger field, a disturbance in sector $j$ decays for $t<t_j$, grows for $t>t_j$, and turns into the twist
+    (overlap $1.000$ in every run). Under the actual Yang--Mills flow the Berger field is not at rest. It
+    collapses towards a flat field within flow time $0.1$ (energy $34.6\to0.73$ at $t=3.55$), faster than any
+    twist grows, and the disturbance decays. The floor law describes the second variation at the Berger
+    field. It is not by itself a dynamical transition.
+  \item \emph{Resting fields.} Among left-invariant fields on $(t_1,t_2,1)$, a multistart search
+    ($36$ shapes, axis ratios up to $20$) finds three clusters of Yang--Mills
+    fields up to constant gauge rotation: the flat field $A=0$; the flat pure-gauge field $A=g^{-1}dg$, which is
+    gauge-equivalent to $0$ under a non-constant gauge transformation but not under a constant one; and one non-flat
+    relative of the meron. A multistart search is evidence, not a classification. \reddel{In every sector and at every
+    stretch checked, the relative has exactly one negative eigenvalue of $H+GG^*$, in the left-invariant sector:}\redins{At
+    every stretch checked, the relative has exactly one negative eigenvalue of $H+GG^*$ among the sectors tested, and it
+    lies in the left-invariant sector:} for
+    $j\le12$ at $t=0.05,0.10,\dots,10$ along $(t,1,1)$, and for $j\le8$ on the $36$ uneven shapes. No eigenvalue of
+    the sectors $1\le j\le12$ is negative at these points; crossings between the sampled stretches are not
+    excluded.
+  \item \emph{Symmetry does not make the floor.} The squashed meron has the same rotation symmetry, so by
+    Remark~\ref{rem:counting} the twist is an exact gauge-orthogonal eigenvector there too. Yet on the grid
+    $t=0.05,0.10,\dots,10$ it is the floor of no sector $j\le12$ at any point. For $t\le1$ it is the top of every
+    sector $j\le12$, and it descends as $t$ grows without reaching the bottom. On the Berger field the same scan finds it
+    the floor of every sector $j\le12$ at exactly the grid points $t\ge2.70$. The difference lies in the curvature term. In
+    the Weitzenb\"ock form~\cite{bl1981}, $R_0=\mathrm{Ric}-2[F,\cdot\,]$, with
+    $([F,\cdot\,]b)_i=\sum_j[F_{ij},b_j]$: the Ricci curvature plus the field
+    strength with the factor $2$ of the Hessian (checked to $4\times10^{-15}$ on both fields). On the twist's internal
+    frame the Ricci share is $4-2t$ on both fields. The field-strength share is $8-6t$ on the Berger field (total
+    $12-8t$), but positive on the squashed meron, between $0.4$ and $1.3$ for $t$ from $2$ to $8$
+    (\path{scripts/ricci_su2_test2_family.py}, \path{scripts/ricci_su2_gyromagnetic_split.py},
+    \path{scripts/ricci_su2_meron_ceiling_check.py}).
+\end{itemize}
+
+\redins{\section{Where the twist is the floor}\label{sec:edge}
+
+The Berger field is one member of a larger family. Up to a constant gauge transformation, every left-invariant field on $(t,1,1)$
+that is symmetric under the joint rotation about the long axis has the form
+$M_0=x\,\tau_0$, $M_1=y\,\tau_1$, $M_2=y\,\tau_2$ with $y\ge0$ (a commutant computation,
+\path{scripts/edge_wp4_design_checks.py}): a strength $x$
+along the long circle and a strength $y$ across it. The Berger field is $x=(2-t)/\sqrt t$, $y=\sqrt t$; the
+multiples $A=s\theta$ of the Maurer--Cartan form are $x=2s/\sqrt t$, $y=2s$; the squashed meron lies in the family
+too. By Remark~\ref{rem:counting} the twist is an exact gauge-orthogonal eigenvector of every member.
+
+\begin{proposition}[The twist across the family]\label{prop:twistfamily}
+For every $t>0$, $x,y\in\RR$ and $j\ge0$, the twist's eigenvalue is
+\[
+  \lambda(x,y,t,j)=\Bigl(x+\frac{j+2}{\sqrt t}\Bigr)^2+2\sqrt t\,x-y^2 .
+\]
+On the Berger field it is $\lambda_t(j)$. The cost of lifting the twist from the sector $j=0$ to the sector $j$ is
+$(j^2+4j)/t+2xj/\sqrt t$; the second term lowers it if and only if $x<0$, that is, when the field along the long
+circle turns against the twist's own rotation.
+\end{proposition}
+\begin{proof}
+The twist is alone in its charge block, so its eigenvalue is the diagonal entry of $H+GG^*$ there: by the
+Weitzenb\"ock form, $\norm{X_0b}^2+\norm{X_1b}^2+\norm{X_2b}^2+\langle\beta,R_0\beta\rangle$ for $\norm b=1$,
+with $R_0=\mathrm{Ric}\otimes I-2[F,\cdot\,]$. Symbolic in $x$, $y$, $t$ and checked against the general builder at
+$40$ random points to $1.4\times10^{-15}$ (\path{scripts/ricci_su2_twist_family_closed_form.py}).
+\end{proof}
+
+The rows of every charge block are likewise in closed form in $(x,y,t)$, so whether the twist is the floor is a
+comparison between $\lambda$ and the lowest eigenvalue of finitely many competing blocks.
+
+\begin{proposition}[The edge]\label{prop:edge}
+Let $P(x,y,\sqrt t)$ be the numerator of $\det\bigl(B_{4,0}-\lambda(x,y,t,4)\bigr)$, with $B_{4,0}$ the charge-$0$
+block of the sector $j=4$. Over $\mathbb Q(\sqrt2,\sqrt3)$ it factors as $P=P_1P_2$, with $P_2$ of degree $7$, $8$ and
+$16$ in $x$, $y$ and $s=\sqrt t$. On the Berger path $x=(2-s^2)/s$, $y=s$, the factor $P_2$ contains the
+polynomial of Remark~\ref{rem:tstar} whose root is $t_A$.
+\end{proposition}
+\begin{proof}
+Exact symbolic determinant and factorization, and exact polynomial division on the Berger path
+(\path{scripts/ricci_su2_edge_polynomial.py}).
+\end{proof}
+
+\paragraph{The edge, numerically.} In the sectors $j\le12$, at every $(t,y)$ computed, the twist is the floor of
+$H+GG^*$ for $x$ below an edge $x^*(t,y)$ and not above it\redins{, within the sampled window (the region is also
+bounded below; see the end of this paragraph)}, and the same holds for the gauge-orthogonal spectrum
+with a slightly higher edge. \reddel{For $y\gtrsim1$ the competitor that sets the edge is the block $B_{4,0}$, and $x^*$ is a
+root of $P_2$ (to $10^{-8}$); at small $y$ it is a block of the sector $j=2$ or $3$.}\redins{Where the block $B_{4,0}$ is
+the active competitor, the computed edge $x^*$ is a root of $P_2$ (to $10^{-8}$). Other parameter ranges are controlled
+by other charge blocks: at small $y$ a block of the sector $j=2$ or $3$, and at $4$ of $38$ held-out points with
+$y\gtrsim1$ a block that reaches the twist before $B_{4,0}$ does; the companion edge study maps them.} Within $j\le12$ the edge rises with the stretch
+(\redins{for $y=\sqrt t$, the $H+GG^*$ edge $x^*$ is $-0.68$, $-0.38$, $-0.22$ at $t=2,3,4$, and the gauge-orthogonal edge }$-0.66$, $-0.36$, $-0.19$\reddel{ at $t=2,3,4$ for $y=\sqrt t$}) and turns positive for strongly stretched spheres with a strong
+cross field. That is an artefact of the cut-off. \emph{For $x>0$ the twist is \reddel{the floor of no field in every sector}\redins{not the floor of $H+GG^*$ in every sector}:}
+in the block of charge $q=l$ the state of weight $m=l$ and type $(1,-1)$ has Rayleigh quotient minus $\lambda$ equal to
+$-8lx/\sqrt t+O(1)$, negative for large $l$ (\path{scripts/edge_wp2_symbolic.py}; at $(x,y,t)=(0.1,\sqrt{10},10)$ the
+sector $j=120$ already falls $0.58$ below the twist).\redins{ The test vector is not gauge-orthogonal, so this is a
+statement about $H+GG^*$; for the gauge-orthogonal spectrum the same behaviour is seen numerically but not proved by
+this argument, and the argument does not settle $x=0$.} So the all-sector edge \redins{of $H+GG^*$} is at most $\min(x^*_{12},0)$. That it equals
+this is a conjecture for $t\ge3$; it fails near $t=2$, where a block of charge $q=l$ undercuts the twist first in the
+sector $j=16$ (\path{research/edge-theorem-20261121/}). The region is bounded below as well: $\lambda$ grows like $x^2$,
+while the gauge-orthogonal state $\hat\theta^0\otimes\tau_0$ of the sector $j=0$ has a Rayleigh quotient affine in
+$x$, so for strongly negative $x$ the twist is not the floor either (\path{scripts/edge_wp4_design_checks.py}).
+\reddel{Along the Berger path the crossings are exact: the $H+GG^*$ edge is crossed at $t=2.7311222782381144$ (the root
+$t_A$ of Remark~\ref{rem:tstar}, to $9\times10^{-16}$) and the gauge-orthogonal edge at $t=2.698026940521$ ($t^*$,
+to $10^{-12}$), both through the block $B_{4,0}$.}\redins{Along the Berger path, the computed $H+GG^*$ crossing agrees with
+the algebraic root $t_A=2.7311222782381144$ of Remark~\ref{rem:tstar} to $8\times10^{-16}$. The gauge-orthogonal crossing
+is located numerically, at $t^*=2.698026940521$ to $10^{-12}$; its closed form is open. Both crossings occur in the
+sector $j=4$; the $H+GG^*$ crossing is through the block $B_{4,0}$.} (\path{scripts/ricci_su2_exact_edge.py}). The thresholds of
+Remark~\ref{rem:tstar} are therefore not special to the Berger field: they are where its path meets the edge. The edge is a crossing, not an avoided one: the
+twist is alone in its charge block and every competitor found has a different charge, and eigenvalues of different
+symmetry type may cross where those of one type generically do not~\cite{vonneumannwigner1929}.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_twist_map.pdf}
+  \caption{Where the twist is the floor, over the circle-symmetric family at $t=1,2,3,4,6$ (sectors $j\le8$;
+  double precision): number of sectors in which the twist is the floor; black outline, all nine; dashed, $x=0$.
+  Star: the Berger field; diamond: the squashed meron; dashed line: $A=s\theta$.\redins{ Cells with $x>0$ counted as
+  all nine are artefacts of stopping at $j=8$: for $x>0$ some higher sector undercuts the twist.}}
+  \label{fig:twistmap}
+\end{figure}
+
+\begin{theorem}[The floor on a domain]\label{thm:domain}
+On $D=\{x\in[-3,-1.5],\ y\in[0.5,3],\ t\in[3,10]\}$ the twist is the lowest eigenvalue of $H+GG^*$ in every sector,
+with multiplicity exactly two, and the lowest gauge-orthogonal eigenvalue there.
+\end{theorem}
+\begin{proof}
+By the charge blocks, as in Theorem~\ref{thm:range}. \emph{Sectors $j\ge80$:} the Gershgorin quantity is
+$G=4\xi(2l-\xi)(1-1/t)+lK_a+E_a-(\text{ladder})$ with $K_a=4-8/t-4(w_a+x)/\sqrt t>0$ for every non-twist type on
+$D$; it is proved positive for $l\ge40$ on $D$ by interval bisection (\path{scripts/ricci_su2_family_large_j.py})\redins{,
+and an exact lemma shows that $G$ is, row by row, the diagonal minus $\lambda$ minus the exact Gershgorin radius, so
+$G>0$ gives the disc bound with no numerical step (\path{scripts/ricci_su2_gershgorin_lemma_symbolic.py})}.
+\emph{Sectors $j<80$:} every non-twist block is certified above $\lambda$ on $D$ by a mean-value interval
+certificate. On each box the lowest eigenvalue of $B-\lambda I$ at the centre is bounded below by an interval
+$LDL^\top$ certificate with outward rounding and an a posteriori residual, and its variation over the box by
+$\sum_i\sup\norm{\partial_iA}_F$ times the half-widths, the derivatives being enclosed in interval arithmetic. In all,
+$1{,}640{,}935$ boxes over the $80$ sectors, with no failure and smallest certified \reddel{margin}\redins{per-box slack} $1.2\times10^{-6}$\redins{ (the slack left on the last box the bisection kept, not a spectral margin)}
+(\path{scripts/ricci_su2_family_block_cert.py}, receipt \path{family_block_cert_j80.json})\redins{; the few
+final operations not done in directed rounding carry an error of at most $1.6\times10^{-15}$, far below that margin
+(\path{research/edge-theorem-20261122-proofs/rounding_bound.md})}. The two twist blocks are
+$1\times1$ with entry $\lambda$ (Proposition~\ref{prop:twistfamily} and the antiunitary structure, as in
+Lemma~\ref{lem:charge}). The closed-form rows used here are built symbolically by the construction of
+Lemma~\ref{lem:charge}, now with $x$ and $y$ free, and \reddel{agree with the general sector builder to $1.7\times10^{-13}$}\redins{the
+interval blocks agree with the double-precision closed-form blocks to $1.7\times10^{-13}$ (a check of the interval
+evaluation). The rows themselves are proved: the Weitzenb\"ock identity and every charge-block row hold exactly for the
+whole family, $x$, $y$, $t$ symbolic (\path{scripts/ricci_su2_weitzenbock_family_symbolic.py}), and the certificate's own
+symbolic rows are proved equal to them (\path{scripts/ricci_su2_rows_transcription_check.py})}.
+\end{proof}
+
+\paragraph{What does not decide it.} Three simpler readings were tested, each written down before its data, and each
+failed: that the rotation symmetry makes the twist the floor (on the squashed meron and on two $SU(3)$ families with the
+Maurer--Cartan field it is the floor nowhere); that a field strength aligned with the twist's spin makes it the floor
+(for $A=s\theta$ with $s>1$, aligned throughout, it is the floor only of $j=0$); and that alignment together with the
+twist alone spanning the lowest eigenspace of $R_0$ does (on $35$ such points of $A=s\theta$ on $(t,1,1)$, none). The
+curvature term alone does not decide it; the comparison above, governed by $x$, does.
+The literature checked (the chromomagnetic instability~\cite{nielsenolesen1978,savvidy1977}, the Weitzenb\"ock
+formula~\cite{bl1981}, spectra on Berger spheres~\cite{lauret2019,henkellauret2026}, homogeneous backgrounds on the round
+$S^3$~\cite{avramidicollopy2012,klc2021}) did not contain such an edge; the closest is the negative modes of covariantly constant backgrounds on the round sphere.}
+
+\section{Checks}\label{sec:checks}
+
+\paragraph{The round sphere.} At $g=(1,1,1)$ the Levi-Civita connection is a Yang--Mills field (the
+meron), and the same construction gives $-2$, $1$, $6$, $7$ and $10$ as the lowest gauge-orthogonal eigenvalues of the sectors $j=0,\dots,4$, in spins $0$ to $2$. That is the
+published fluctuation spectrum~\cite{klc2021}\redins{ (\path{scripts/ricci_su2_round_sphere_check.py}, receipt
+\path{research/su2-left-invariant-sector-20261119/round_sphere_check.json})}. It has exactly one negative eigenvalue, so index one,
+as Laquer's theorem requires for a group manifold~\cite{laquer1984}. Without the commutator it gives
+the coexact $1$-form spectrum of the unit $S^3$: $j^2$ and $(j+2)^2$ with their multiplicities, and
+gauge zeros.
+
+\paragraph{Lattice computations.} The two lattice Yang--Mills forces of~\cite{davisrtc}, linearised
+at the Berger field on triangulations of the Poincar\'e sphere, resolve the left-invariant sector and
+two eigenvalues of $H$ in spin $6$: $154/3=51.33$, the floor, and $59.52$, beside the second gauge-orthogonal value $59.50$; $H$ itself has lower, gauge-dominated eigenvalues there, and these two are matched by value (Table~\ref{tab:lattice}). At $n=1,2$ every left-invariant mode was identified
+by its eigenvector, as the lattice eigenvector with the largest overlap with the nine discrete
+left-invariant directions (overlap $0.76$ to $0.999$). The mode $16-2\sqrt{73}$ is split by the
+non-symmetric lattice Jacobian, between a real eigenvalue and a complex pair. The lattice linearises
+the force in link coordinates at a field that is not at rest, where its Jacobian differs from the
+Hessian by a term proportional to the gradient; so it is compared with the full Hessian $H$, not with
+the slice.
+
+\begin{table}[t]\centering\small
+\caption{Exact eigenvalues of $H$ at the Berger field against the real part of the lattice
+eigenvalue~\cite{davisrtc}. $^{\mathrm g}$: pure gauge; $^{\mathrm m}$: a mixture. At $n=1,2$ the
+spin-$0$ entries are identified by eigenvector; at $n=3$, and for spin $6$, by value.}
+\label{tab:lattice}
+\begin{tabular}{lcrrrr}\toprule
+Exact & mult. & native $n=1$ & native $n=2$ & native $n=3$ & two-ring $n=3$ \\ \midrule
+\multicolumn{6}{l}{\emph{spin $0$}}\\
+$-14/3=-4.6667$ & 2 & $-4.475$ & $-4.651$ & $-4.661$ & $-4.651$ \\
+$(29-\sqrt{1345})/3=-2.5581^{\mathrm m}$ & 2 & $-2.191$ & $-2.504$ & $-2.529$ & $-2.529$ \\
+$16-2\sqrt{73}=-1.0880$ & 1 & $-0.674\pm0.80i$ & $-1.041$ & $-1.088$ & $-1.084$ \\
+$8^{\mathrm g}$ & 1 & $7.083$ & $7.869$ & $7.954$ & $7.931$ \\
+$(29+\sqrt{1345})/3=21.891^{\mathrm m}$ & 2 & $20.71$ & $21.77$ & $21.86$ & $21.80$ \\
+$16+2\sqrt{73}=33.088$ & 1 & $32.64$ & $33.44$ & $33.29$ & $33.16$ \\ \midrule
+\multicolumn{6}{l}{\emph{spin $6$, full Hessian}}\\
+$51.33$ & 2 & --- & $53.41$ & $52.27$ & $49.27$ \\
+$59.52$ & 2 & --- & $61.92$ & $60.69$ & $57.50$ \\
+\bottomrule\end{tabular}
+\end{table}
+
+\section{Discussion}\label{sec:discussion}
+
+\paragraph{Scope.} The result concerns the classical linearised operator. At a field that is not at
+rest, how gauge directions are separated from physical ones is a choice; the theorem is stated for the
+$L^2$ (Coulomb) slice, and the full Hessian is given alongside. The theorem is not a statement about the
+quantum theory and not a Yang--Mills mass gap.
+
+\paragraph{What is special.} The value $(j(j+2)-14)/3$ is tied to $t=3$, but the mechanism is not. The
+circular eigenvector uses only the rotation symmetry about the long axis and the top weight, so it is an
+exact eigenvector at every squashing (Proposition~\ref{prop:family}), with the stretch entering the formula
+rationally, and it is a lowest Landau level at every squashing (Proposition~\ref{prop:landau}). Whether
+it is the \emph{floor} depends on $t$, and on the background: symmetry alone does not make it the floor
+(Section~\ref{sec:family}, ``Further observations''). It is the floor throughout $[2.75,10]$ in every sector, and (numerically) not the floor of every sector below
+$t^*\approx2.698$, where the sector $j=4$ is the first to have a lower eigenvalue. At the round metric
+and at $(2,1,1)$ other modes are lower. The relation to the \redins{round }Poincar\'e sphere's first scalar eigenvalue, $168/3$,
+is special to $t=3$, the unique stretch at which the lift of the twist depends only on the Casimir
+(Remark~\ref{rem:casimir}); in general the floor gap is $(240-24t)/t$.
+
+\paragraph{The landscape and the flow.} The Berger field is not at rest, and under the Yang--Mills flow it
+slides towards a flat field faster than any twist grows (Section~\ref{sec:family}). So the floor law is a
+statement about the second variation at the Berger field, the shape of the landscape there. Its non-flat
+resting relative, the squashed meron, \reddel{has a single unstable direction in every sector and at every stretch sampled ($j\le12$)}\redins{has, at every stretch sampled, one unstable direction in the left-invariant sector and none in the higher sectors examined ($1\le j\le12$)}, and no
+twist goes soft on it there.
+
+\paragraph{Open questions.} \redins{The edge $x^*(t,y)$ as a theorem in every sector, and its other competitors in closed form; }The floor outside $[2.75,10]$; the gauge-orthogonal threshold $t^*$ in closed form (that of
+$H+GG^*$ is algebraic, Remark~\ref{rem:tstar}); the floor along the Ricci flow of the metric; Yang--Mills fields that
+are not left-invariant on the squashed spheres, where a twist might go soft at rest; and the higher eigenvalues
+of each sector.
+
+\section*{Funding and competing interests}
+This work received no funding. The author declares no competing interests.
+
+\section*{Code and data availability}
+All programs and certificates are in the \textsc{GIGI} repository,
+\url{https://github.com/nurdymuny/gigi} (tag \texttt{\reddel{floor-theorem-v2}\redins{floor-theorem-v3.3}}; the scripts are on that tag, not yet on the main branch), with their outputs in
+\path{research/su2-left-invariant-sector-20261119/}:
+\begin{itemize}
+  \item the left-invariant sector: \path{scripts/ricci_su2_left_invariant_sector.py};
+  \item the sector matrices: \path{scripts/ricci_su2_spin_sector.py};
+  \item gauge content: \path{scripts/ricci_su2_sector_gauge_check.py};
+  \item Proposition~\ref{prop:bottom}: \path{scripts/ricci_su2_sector_formula.py};
+  \item the spin-$0$ slice and the double-precision range: \path{scripts/ricci_su2_sector_minimality.py};
+  \item Lemma~\ref{lem:weitz} and the certificates: \path{scripts/ricci_su2_gap_certificates.py}.
+\end{itemize}
+For Section~\ref{sec:family}, with outputs in \path{research/su2-floor-family-20261119/}:
+\begin{itemize}
+  \item Proposition~\ref{prop:family}: \path{scripts/ricci_su2_sector_formula_squashed.py};
+  \item Theorem~\ref{thm:t4}: \path{scripts/ricci_su2_gap_certificates_t.py} (any rational $t$);
+  \item Theorem~\ref{thm:range}: \path{scripts/ricci_su2_floor_interval_cert.py} (fifteen sectors),\\
+    \path{scripts/ricci_su2_block_interval_cert.py} ($j\le99$),\\
+    \path{scripts/ricci_su2_floor_large_j.py} ($j\ge100$);
+  \item Proposition~\ref{prop:landau}: \path{scripts/ricci_su2_weitzenbock_symbolic_t.py},\\
+    \path{scripts/ricci_su2_landau_symbolic.py};
+  \item Lemma~\ref{lem:charge}: \path{scripts/ricci_su2_charge_selection_symbolic.py};
+  \item the charge blocks: \path{scripts/ricci_su2_charge_block_direct.py};\\
+    their closed-form rows: \path{scripts/ricci_su2_block_rows_symbolic.py};
+  \item Remark~\ref{rem:tstar}: \path{scripts/ricci_su2_floor_family_scan.py},
+    \path{scripts/ricci_su2_tstar_exact.py}, \path{scripts/ricci_su2_tA_scan.py};
+  \item the flow experiment: \path{scripts/ricci_su2_soft_mode_flow.py};
+  \redins{\item Section~\ref{sec:edge}: \path{scripts/ricci_su2_twist_family_closed_form.py},
+    \path{scripts/ricci_su2_exact_edge.py},\\ \path{scripts/ricci_su2_edge_polynomial.py},
+    \path{scripts/ricci_su2_twist_family_map.py},\\ \path{scripts/ricci_su2_family_large_j.py},
+    \path{scripts/ricci_su2_family_block_cert.py};}
+  \item the outward error budget of every certificate: \path{scripts/ricci_su2_outward.py}, with its
+    adversarial tests in \path{scripts/ricci_su2_outward_test.py};
+  \item the resting relative's index for $t<1$: \path{scripts/ricci_su2_meron_index_below1.py};
+  \item symmetry does not make the floor:\\ \path{scripts/ricci_su2_test2_family.py},
+    \path{scripts/ricci_su2_gyromagnetic_split.py},\\ \path{scripts/ricci_su2_meron_ceiling_check.py};
+  \item resting fields: \path{scripts/ricci_su2_resting_fields.py},
+    \path{scripts/ricci_su2_resting_fields_general.py}, \path{scripts/ricci_su2_meron_family_soft.py}.
+\end{itemize}
+This paper, its source, and the code and data above are archived on Zenodo under the concept DOI
+\url{https://doi.org/10.5281/zenodo.24386613}, which resolves to the latest version.
+
+\begin{thebibliography}{99}\small
+\bibitem{bar1992} C.~B\"ar, The Dirac operator on homogeneous spaces and its spectrum on $3$-dimensional lens spaces, \emph{Arch.\ Math.} 59 (1992) 65--79.
+\bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230.
+\bibitem{davisrtc} B.~R.~Davis, Reading the curve, not counting the points: a two-ring Petrov--Galerkin curvature force for discrete Yang--Mills dynamics on the Poincar\'e homology sphere, 2026, \url{https://doi.org/10.5281/zenodo.24328085}.
+\bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
+\redins{\bibitem{avramidicollopy2012} I.~G.~Avramidi, S.~Collopy, Thermal Yang--Mills theory in the Einstein universe, \emph{J.\ Phys.\ A} 45 (2012) 374009, \href{https://arxiv.org/abs/1201.5163}{arXiv:1201.5163}.}
+\redins{\bibitem{savvidy1977} G.~K.~Savvidy, Infrared instability of the vacuum state of gauge theories and asymptotic freedom, \emph{Phys.\ Lett.\ B} 71 (1977) 133--134.}
+\bibitem{hitchin1974} N.~Hitchin, Harmonic spinors, \emph{Adv.\ Math.} 14 (1974) 1--55.
+\bibitem{klein1884} F.~Klein, \emph{Vorlesungen \"uber das Ikosaeder und die Aufl\"osung der Gleichungen vom f\"unften Grade}, Teubner, Leipzig, 1884.
+\bibitem{klingschueth2022} J.~Kling, D.~Schueth, On the Dirac spectrum of homogeneous $3$-spheres, \emph{J.\ Geom.\ Anal.} (2022), \href{https://doi.org/10.1007/s12220-022-00997-x}{doi:10.1007/s12220-022-00997-x}, \href{https://arxiv.org/abs/2204.12990}{arXiv:2204.12990}.
+\bibitem{klc2021} K.~Kumar, O.~Lechtenfeld, G.~Pican\c{c}o Costa, Instability of cosmic Yang--Mills fields, \emph{Nucl.\ Phys.\ B} 973 (2021) 115583, \href{https://arxiv.org/abs/2102.08401}{arXiv:2102.08401}.
+\bibitem{lachiezerey2004} M.~Lachi\`eze-Rey, Eigenmodes of dodecahedral space, \emph{Class.\ Quantum Grav.} 21 (2004) 2455--2464, \href{https://arxiv.org/abs/gr-qc/0402035}{arXiv:gr-qc/0402035}.
+\bibitem{laquer1984} H.~T.~Laquer, Stability properties of the Yang--Mills functional near the canonical connection, \emph{Michigan Math.\ J.} 31 (1984) 139--159.
+\bibitem{lauret2019} E.~A.~Lauret, The smallest Laplace eigenvalue of homogeneous $3$-spheres, \emph{Bull.\ Lond.\ Math.\ Soc.} 51 (2019) 49--69, \href{https://arxiv.org/abs/1801.04259}{arXiv:1801.04259}.
+\bibitem{mpmath} The mpmath development team, mpmath: a Python library for arbitrary-precision floating-point arithmetic, \url{https://mpmath.org}.
+\bibitem{nielsenolesen1978} N.~K.~Nielsen, P.~Olesen, An unstable Yang--Mills field mode, \emph{Nucl.\ Phys.\ B} 144 (1978) 376--396.
+\bibitem{ohnitapan1989} Y.~Ohnita, Y.~L.~Pan, On weakly stable Yang--Mills fields over positively pinched manifolds and certain symmetric spaces, \emph{Kodai Math.\ J.} 13 (1990) 317--332.
+\bibitem{vonneumannwigner1929} J.~von Neumann, E.~Wigner, \"Uber das Verhalten von Eigenwerten bei adiabatischen Prozessen, \emph{Phys.\ Z.} 30 (1929) 467--470.
+\end{thebibliography}
+
+\end{document}

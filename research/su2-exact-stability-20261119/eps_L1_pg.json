@@ -1,0 +1,56 @@
+{
+ "level": 1,
+ "trial": "pg",
+ "rows": [
+  {
+   "eps": 1e-05,
+   "W_left": -4.6644003271828405,
+   "small_modulus_below_1": 481,
+   "rough_real_below_minus10": 0,
+   "negative_real_physical": 9,
+   "min_real": -4.631994086560708,
+   "min_real_physical": -4.631994086560708,
+   "max_abs_imag": 150.33897035657418,
+   "nearest_unit_circle": [
+    0.014950801506960376,
+    0.014950801506960376,
+    0.023410904437995317
+   ]
+  },
+  {
+   "eps": 1e-06,
+   "W_left": -4.664400327389162,
+   "small_modulus_below_1": 481,
+   "rough_real_below_minus10": 0,
+   "negative_real_physical": 9,
+   "min_real": -4.631994086719117,
+   "min_real_physical": -4.631994086719117,
+   "max_abs_imag": 150.33897036285526,
+   "nearest_unit_circle": [
+    0.01495080141520666,
+    0.01495080141520666,
+    0.023410903387791837
+   ]
+  },
+  {
+   "eps": 1e-07,
+   "W_left": -4.664400327199841,
+   "small_modulus_below_1": 481,
+   "rough_real_below_minus10": 0,
+   "negative_real_physical": 9,
+   "min_real": -4.63199408674007,
+   "min_real_physical": -4.63199408674007,
+   "max_abs_imag": 150.3389703808171,
+   "nearest_unit_circle": [
+    0.01495080183888331,
+    0.01495080183888331,
+    0.023410904013553058
+   ]
+  }
+ ],
+ "small_modulus_count_identical": true,
+ "W_left_max_rel_diff": 4.4233163510767015e-11,
+ "G_eps_pass": true,
+ "seconds": 112.3,
+ "kind": "B6 G-eps (research script, not an engine run)"
+}

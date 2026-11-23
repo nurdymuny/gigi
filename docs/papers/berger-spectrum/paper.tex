@@ -456,6 +456,18 @@ field on flat space~\cite{nielsenolesen1978}. We note the resemblance only; no l
 here.}
 \end{remark}
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_three_pieces.pdf}
+  \caption{\redins{The three pieces of Proposition~\ref{prop:landau}(3): fibre $\kappa^2$ (dashed), transverse
+  $2(j+t)$, curvature $12-8t$ (dotted), and their sum $\lambda_t(j)$. (a) The sector $j=0$ across the family: the
+  momentum $\kappa$ vanishes at $t=2$, where $\lambda_2(0)=0$. (b) The stretch $t=6$ across the sectors (open
+  circles): the fibre term is smallest at $j=2t-4=8$, and the transverse term moves the minimum of $\lambda_6(j)$ to
+  $j=t-4=2$, with value $4-3t=-14$ (Corollary~\ref{cor:family}). Exact; the identity is checked symbolically in
+  \texttt{make\_figure\_three\_pieces.py}.}}
+  \label{fig:threepieces}
+\end{figure}
+
 The certificate of Theorem~\ref{thm:gap} takes $t$ as a parameter; run at $t=3$ it reproduces
 Table~\ref{tab:cert} exactly (\path{scripts/ricci_su2_gap_certificates_t.py}). At a second squashing it gives the same kind of
 complete statement.
@@ -712,7 +724,7 @@ Exact symbolic determinant and factorization, and exact polynomial division on t
 $H+GG^*$ for $x$ below an edge $x^*(t,y)$ and not above it, and the same holds for the gauge-orthogonal spectrum
 with a slightly higher edge. For $y\gtrsim1$ the competitor that sets the edge is the block $B_{4,0}$, and $x^*$ is a
 root of $P_2$ (to $10^{-8}$); at small $y$ it is a block of the sector $j=2$ or $3$. Within $j\le12$ the edge rises with the stretch
-($-0.66$, $-0.36$, $-0.19$ at $t=2,3,4$ for $y=\sqrt t$) and turns positive for strongly stretched spheres with a strong
+(\redins{for $y=\sqrt t$, the $H+GG^*$ edge $x^*$ is $-0.68$, $-0.38$, $-0.22$ at $t=2,3,4$, and the gauge-orthogonal edge }$-0.66$, $-0.36$, $-0.19$\reddel{ at $t=2,3,4$ for $y=\sqrt t$}) and turns positive for strongly stretched spheres with a strong
 cross field. That is an artefact of the cut-off. \emph{For $x>0$ the twist is the floor of no field in every sector:}
 in the block of charge $q=l$ the state of weight $m=l$ and type $(1,-1)$ has Rayleigh quotient minus $\lambda$ equal to
 $-8lx/\sqrt t+O(1)$, negative for large $l$ (\path{scripts/edge_wp2_symbolic.py}; at $(x,y,t)=(0.1,\sqrt{10},10)$ the

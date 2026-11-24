@@ -3,16 +3,16 @@ of the sphere matrix model, and what are the low levels made of?
 
 The registered survey and its convergence amendment measured three couplings. Their converged-looking energies show
 the scalar level lowest at g^2 = 0.5 and 1 and the spin-2 quintet lowest at g^2 = 2, with a spin-4 multiplet nearby.
-That is the shape of the edge paper's statement "by enough, but not too much": the twist is the floor only in a
-window. This script scans the coupling to locate the window's edges, and decomposes each low level, so that a
+That motivates a comparison with the edge paper's statement "by enough, but not too much"; it does not establish
+the same mechanism or a finite window. This script samples the coupling and describes low levels, so that a
 confirmatory study can be pre-registered with held-out couplings. Nothing here is a registered measurement.
 
 For each coupling: alpha* minimises the ground energy at cutoff 10 over ALPHAS (the registered rule, with a wider
 grid because g^2 = 2 selected the old grid's edge); then cutoffs 10 and 12 at alpha*. Per complete level:
   gap, spin decomposition, H2 and H0 weights (physical q-observables);
   size <tr(q q^T)> and orientation <det q> (the second classical vacuum sits at q = I/g, det q > 0);
-  weight by polynomial degree shell (the Wick-ordered basis is orthogonal across degrees), whose top shell is the
-  truncation tail behind the exterior residual.
+  weight by polynomial degree shell (the Wick-ordered basis is orthogonal across degrees). The highest retained
+  shell is a diagnostic, not the omitted full-space residual or the discarded probe-response fraction.
 
 usage: python scripts/explore_ym_helike_edge.py OUT.json [--cutoffs 10 12] [--device cpu]
 """

@@ -161,7 +161,7 @@ that is checked in double precision (Section~\ref{subsec:standing}).
   \item \emph{The ladder} (Section~\ref{sec:ladder}; \PROVED): $H=\mathrm{curl}^2+\Phi$, and the flux $\Phi$ has the
     same closed-form spectrum in every sector (Theorem~\ref{thm:flux}). The twist is the top rung of the flux-aligned
     states: the only one that neither leaks nor has a gauge part, with $\lambda=h_l^2-B$, helicity squared minus the
-    field along her circle (Proposition~\ref{prop:ladder}, Corollary~\ref{cor:toprung}). A sufficient condition, the flux
+    field along her circle (Theorem~\ref{thm:ladder}, Corollary~\ref{cor:toprung}). A sufficient condition, the flux
     gap against her helicity, makes her the floor of a sector (Theorem~\ref{thm:ladderfloor}); on the Berger field it
     proves the sector $0$ for every $t\ge2\sqrt5-2$ (Corollary~\ref{cor:sector0}).
   \item \emph{The edge polynomial} (Section~\ref{sec:edge}): the determinant for the charge-$0$ block of sector $4$
@@ -537,7 +537,8 @@ Section~\ref{sec:decide} shows that this alone does not decide the floor.
 Section~\ref{sec:twist} reads the twist's eigenvalue off its charge block. This section says why it has that value,
 and when that is enough to make her the floor. In three dimensions the Hessian is the square of the curl plus a flux
 term. The twist takes the whole flux discount along the long circle and pays only her own helicity. Among the states
-that take that discount she is the one that leaks nothing. I call this structure \emph{the ladder}. It gives a second
+that take that discount she is the one that leaks nothing. I call this structure \emph{the ladder}, and its central statement the \emph{Helike Ladder Theorem}
+(Theorem~\ref{thm:ladder}). It gives a second
 derivation of Proposition~\ref{prop:closed}, a sufficient condition for the floor (Theorem~\ref{thm:ladderfloor}), and a
 reading of why the simpler readings of Section~\ref{sec:decide} failed.
 
@@ -621,7 +622,7 @@ $u=\tau_1+i\tau_2$ and
 \]
 for the \emph{helicity} of weight $m$.
 
-\begin{proposition}[The ladder; \PROVED]\label{prop:ladder}
+\begin{theorem}[The Helike Ladder Theorem; \PROVED]\label{thm:ladder}
 Let $f\in V_j$ with $J_zf=mf$, and $\psi=f\otimes w_+$. Then, for all $x,y,t$,
 \[
   \mathrm{curl}\,\psi=h_m\,\psi+\chi,\qquad \chi=\bigl(2(J_+f)\otimes u,\,0,\,0\bigr)=-i\,(G^*\psi,0,0),
@@ -632,7 +633,7 @@ with $\chi$ in the frame-$0$ slot only. Hence $P\,\mathrm{curl}\,\psi=h_m\psi$, 
 \]
 independent of $x$, $y$ and $t$. For the mirror $\psi=f\otimes w_-$, the same holds with $h_{-m}$, $J_-$, $\bar u$ and
 $m(m-1)$. The compression $P\,\mathrm{curl}\,P$ has eigenvalues $h_m$, $m=-l,\dots,l$, each twice.
-\end{proposition}
+\end{theorem}
 \begin{proof}
 On $V_j$, $\hat e_1\pm i\hat e_2=\rho_1\pm i\rho_2=-2iJ_\pm$ and $\hat e_0=\rho_0/\sqrt t=-2iJ_z/\sqrt t$. In the
 orthonormal frame $c_{12}^{\,0}=2\sqrt t$ and $c_{20}^{\,1}=c_{01}^{\,2}=2/\sqrt t$. With the cross product,
@@ -671,7 +672,7 @@ which is Proposition~\ref{prop:closed}, derived without the charge-block countin
 only gauge-orthogonal state of $E$.
 \end{corollary}
 \begin{proof}
-The first part is Proposition~\ref{prop:ladder} with $\chi=0$, together with Theorem~\ref{thm:flux} and
+The first part is Theorem~\ref{thm:ladder} with $\chi=0$, together with Theorem~\ref{thm:flux} and
 Lemma~\ref{lem:curlform}. For $\psi=\sum_m(c_m^+f_m\otimes w_++c_m^-f_m\otimes w_-)\in E$, the images $G^*(f_m\otimes w_+)$
 lie in distinct weights $m+1$ times $u$, and the images of the mirror branch lie in weights $m-1$ times $\bar u$. Since
 $\langle\bar u,u\rangle=0$, these are mutually orthogonal, so
@@ -790,14 +791,14 @@ in the sector $0$ (by $3.6$ to $12.8$), yet she is the floor of $H$ there.
 \begin{conjecture}[No upper edge on the Berger path]\label{conj:noupper}
 On the Berger field the twist is the gauge-orthogonal floor of every sector for every $t\ge t^*$.
 \end{conjecture}
-The evidence is computed, not proved. She is the floor of every sector $j\le12$ at $t=10$, $12$, $15$ and $20$,
-with smallest margins between $-2\times10^{-13}$ and $-4\times10^{-14}$, at double precision (receipt
-\path{ladder.json}). The flux gap $2t-4$ grows with the stretch, and her helicity can be made small in the sector
+The evidence is computed, not proved. She is the floor of every sector $j\le12$ at $t=10$, $12$, $15$ and $20$:
+in each sector the lowest gauge-orthogonal eigenvalue equals her $\lambda_j$ to within $2\times10^{-13}$, the rounding
+of double precision (receipt \path{ladder.json}). The flux gap $2t-4$ grows with the stretch, and her helicity can be made small in the sector
 $j\approx t-4$. The upper limit $t\le10$ of Section~\ref{sec:domain} is the certificates' domain, not an observed edge.
 
 \paragraph{The literature.} The decomposition of Lemma~\ref{lem:curlform} is classical~\cite{bl1981}. In the
 literature I checked I did not find the twist stated as an exact curl eigenvector with eigenvalue $h_l^2-B$, the flux
-spectrum of Theorem~\ref{thm:flux}, the top-rung identity of Proposition~\ref{prop:ladder}, or the sufficient condition of
+spectrum of Theorem~\ref{thm:flux}, the top-rung identity of Theorem~\ref{thm:ladder}, or the sufficient condition of
 Theorem~\ref{thm:ladderfloor}. As in Section~\ref{sec:decide}, this is a statement about the search, not a priority
 claim.
 
@@ -1713,7 +1714,7 @@ Prop.~\ref{prop:exact} (twist exact) & --- (counting) & --- & \PROVED\\
 Prop.~\ref{prop:closed} (closed form) & \path{ricci_su2_twist_family_closed_form.py}, \path{ricci_su2_direct_rayleigh.py} & \texttt{F}/\path{twist_family_closed_form.txt}, \texttt{P}/\path{direct_rayleigh.json} & \PROVED\\
 Prop.~\ref{prop:anatomy} (anatomy) & \path{ricci_su2_twist_anatomy.py}; Lean \path{Price.lean} & \texttt{F}/\path{twist_anatomy.json} & \PROVED\\
 Lemma~\ref{lem:curlform}, Thm.~\ref{thm:flux} (curl form, flux spectrum) & proof; \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \PROVED; checks \COMPUTED\\
-Prop.~\ref{prop:ladder}, Cor.~\ref{cor:toprung} (ladder, top rung) & proof; \path{helike_ladder_receipt.py}, \path{test_helike_curl_spectrum.py} & \texttt{L}/\path{ladder.json} & \PROVED; checks \COMPUTED\\
+Thm.~\ref{thm:ladder}, Cor.~\ref{cor:toprung} (ladder, top rung) & proof; \path{helike_ladder_receipt.py}, \path{test_helike_curl_spectrum.py} & \texttt{L}/\path{ladder.json} & \PROVED; checks \COMPUTED\\
 Thm.~\ref{thm:ladderfloor}, Cor.~\ref{cor:sector0} (ladder floor) & proof; \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \PROVED; bands and counterexample \COMPUTED\\
 Conj.~\ref{conj:noupper}, $x_{\mathrm{flux}}$ against Table~\ref{tab:edge} & \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \COMPUTED\\
 Rem.~\ref{rem:split} (shares on the meron) & \path{ricci_su2_gyromagnetic_split.py} & \texttt{F}/\path{gyromagnetic_split.txt} & \COMPUTED\\

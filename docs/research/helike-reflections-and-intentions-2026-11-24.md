@@ -108,8 +108,8 @@ record it here with its table so it can be checked, not so it can be quoted.
 
 ## Where the theorem stands, and its working name
 
-**Working name: the Helike Ladder Theorem.** Helike is the top rung of a curl ladder whose eigenvalues are
-helicity squared minus flux. This name is the working one until I choose the final one.
+**Name: the Helike Ladder Theorem** (chosen 24 November). Helike is the top rung of a curl ladder whose eigenvalues
+are helicity squared minus flux. It is drafted as Section 4 of *By Enough* v2 (branch `feat/by-enough-v2-ladder`).
 
 **Proved:**
 - Theorem 1, the flux spectrum.

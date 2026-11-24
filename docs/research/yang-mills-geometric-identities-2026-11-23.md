@@ -694,6 +694,18 @@ fixed spacing on a strip, and on these sizes it answers yes. It is not the
 continuum question, which needs \(g\to0\) as the spacing shrinks, and it is not
 two or three dimensions.
 
+It is also not new in kind. A positive gap at strong enough lattice coupling is
+already a theorem: Osterwalder and Seiler proved it by a convergent strong-coupling
+expansion, in any dimension, together with reflection positivity of the Wilson
+action. [Osterwalder and Seiler 1978](https://doi.org/10.1016/0003-4916(78)90039-8).
+The couplings here (\(g^2=1\) and \(2\), that is \(\beta=4/g^2=4\) and \(2\)) are
+moderate, and I do not claim that the theorem's range covers them; what the ladder
+results show is consistent with that regime, not beyond it. That is what a test
+harness should do first: reproduce what is already proved, with its failures
+planted, before it is pointed at what is not. The regime that matters for the
+continuum, weak coupling with the spacing shrinking, is out of reach of exact
+diagonalisation.
+
 Short-distance Yang-Mills identity is a separate requirement. Renormalized
 curvature observables must have the prescribed asymptotically free behavior;
 the correspondence with classical curvature polynomials includes operator
@@ -902,7 +914,36 @@ model where everything can be computed exactly.
 4. Lean: the spectral form of Section 7 (bottom of the spectrum ⇔ form bound) for
    self-adjoint matrices, and the min-max inequality behind T10.
 
-## 13. The question I want to carry forward
+## 13. What a paper from this could claim
+
+If every test in Section 12 passes, and the refinements listed there are done,
+this is what could be stated with confidence, and what it rests on.
+
+| Claim | Kind | Evidence |
+| --- | --- | --- |
+| Each requirement of the official problem corresponds to a specific mathematical object (vacuum ray, energy form, reflected pairing, causal support, local observables, comparison maps), and the correspondence is stated with its hypotheses | Mathematical exposition | Sections 2–6, with the primary references |
+| A gap is the same thing as a bounded fixed-energy set; its radius is \(\sqrt{E_*/\Delta}\), and this needs only that the energy scale quadratically, not the spectral theorem | Theorem (finite and general forms) | Lean `gap_iff_sublevel_bounded`, `sublevel_radius_sharp`; T7a |
+| A gap in every truncation does not give a gap in the limit | Theorem (countermodel) | Lean `no_uniform_gap`; T7b |
+| On any finite weighted graph the energy above the ground state is exactly a Dirichlet form, so the gap is a weighted Poincaré inequality, with no analytic hypothesis | Theorem | Lean `ground_state_transform`, `dirichlet_nonneg`; T8 |
+| On a lattice, reflection through a site tests nothing; reflection through a link is positivity of the transfer matrix, and it fails exactly on directions the preparations reach | Theorem, and a lattice demonstration | Lean `site_reflection_always_positive`, `link_reflection_positive`, `link_reflection_detects_negative`; T5; P5 |
+| Curvature of the group bounds the electric term (Lichnerowicz) but not the physical gap | Exact statement, demonstrated | T10; P4 |
+| *Reading the Curve*'s recovery is exact, its conditioning is the geometry of the flux ellipsoid, its weakest direction is the gradient, and its chart metric is part of the claim (raw coefficients distort by \(1/d\)) | Theorem plus measurement on every cell | Lean `amplification_lower_bound`, `triangle_flux_scale`; T1 |
+| On the Poincare homology sphere (\(H^1=0\), verified from ranks) curvature recovery is gauge-blind; a connection read as physical is not | Measurement on every cell | T1d |
+| Kogut–Susskind SU(2) built two independent ways agrees state for state; on ladders of one to five plaquettes at fixed spacing the gap stays bounded with halving decrements, and Wilson reflection positivity holds | Computation, validated against first principles | V1–V5, P1–P5 |
+| Every finite test above is paired with a planted failure that it catches | Method | the receipts' gates |
+
+**What it would not claim.** Nothing about the continuum, infinite volume, four
+dimensions, or the existence of quantum Yang–Mills with a mass gap. The lattice
+results sit in a regime where a gap is already proved. The contribution is the
+conversions, proved and tested, and a harness that cannot pass by using the wrong
+object. That is what has to exist before any computation in the hard regime can
+be trusted.
+
+**What would move it further.** Comparison maps between lattice sizes (a family,
+not a list); two- and three-dimensional lattices (vertices with more than three
+links); and weak coupling, which needs methods beyond exact diagonalisation.
+
+## 14. The question I want to carry forward
 
 **OPEN: identify and construct the quantum objects to which the exact
 reformulations would apply.**

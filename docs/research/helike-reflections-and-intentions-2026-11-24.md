@@ -38,6 +38,12 @@ truncation is faithful exactly where restriction does not leak curvature.
 
 ## Where Helike may fit (a hypothesis, not yet checked)
 
+> **Checked the same day ([curl-spectrum note](helike-curl-spectrum-2026-11-24.md)): refuted in this simple form.**
+> The edge paper's operator is the Hessian at the non-flat Berger field, H = curl_A² + Φ. Helike is an exact curl
+> eigenvector, but she is not the lowest-helicity mode. Her eigenvalue is λ = μ² − B (helicity squared minus the flux
+> along her circle). She is the exact minimiser of the flux term, and the floor window is the balance between the two.
+> The Chern–Simons thesis survives in that refined form.
+
 At the trivial connection, the Hessian of the Yang–Mills energy is (curl)². If the operator in *By Enough, But Not
 Too Much* is that Hessian, then Helike's classical floor on the Berger sphere is the smallest |curl eigenvalue| among
 its modes. Its |m| = 2 plane is then the curl eigenspace that wins inside the stretch window, and "by enough, but

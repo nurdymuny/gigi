@@ -223,7 +223,8 @@ The thresholds $t^*$ and $t_A$ of~\cite{davisfloor2026} are therefore not specia
 the Berger path meets the edge. The literature I checked (the chromomagnetic
 instability~\cite{nielsenolesen1978,savvidy1977}, homogeneous backgrounds on the round
 $S^3$~\cite{avramidicollopy2012,klc2021}) did not contain such an edge; the nearest is the negative modes of covariantly
-constant backgrounds on the round sphere~\cite{avramidicollopy2012}.
+constant backgrounds on the round sphere~\cite{avramidicollopy2012}. The twist's eigenvalue itself, on the round sphere
+with $x=y$, does appear in~\cite{klc2021}, as an exact extremal-sector frequency (Section~\ref{subsec:ladderreading}).
 
 \paragraph{How the work was done.} I did this work inside the \textsc{GIGI} repository,
 \url{https://github.com/nurdymuny/gigi}, as part of a data-first programme: fix in advance what would count as success
@@ -451,6 +452,10 @@ general builder at $40$ random $(x,y,t,j)$ to $1.4\times10^{-15}$; and directly 
 vector is an exact eigenvector with eigenvalue $\lambda_j$ (\path{direct_rayleigh.json}).
 \end{proof}
 
+On the round sphere with $x=y$ the value $\lambda$ coincides with an exact extremal-sector frequency
+of~\cite{klc2021}; Section~\ref{subsec:ladderreading} gives the dictionary, and Section~\ref{sec:ladder} explains the
+value as helicity squared minus flux.
+
 \begin{corollary}[The lift and its discount]\label{cor:lift}
 The cost of lifting the twist from the sector $0$ to the sector $j$ is
 \[
@@ -569,7 +574,13 @@ the Chern--Simons functional and $\ast F$ its gradient. I re-derive it only to f
 code check (computed), at $12$ random members and sectors $j\le6$ the curl matrix is Hermitian exactly, $H$ equals
 $\mathrm{curl}^2+\Phi$ to $7.1\times10^{-15}$, and $H$ and $G$ equal those of the general builder, which is built from
 $Q$ with no curl, to $7.1\times10^{-15}$ and exactly (\path{scripts/helike_ladder_receipt.py}, receipt
-\path{research/helike-ladder-20261124/ladder.json}).
+\path{research/helike-ladder-20261124/ladder.json}). At the trivial connection $x=y=0$ the curl is the scalar curl of
+the Berger sphere, whose spectrum is known~\cite{gibbons1980,capoferrivassiliev2026}. In the notation
+of~\cite[Theorem~D.1]{capoferrivassiliev2026} the fibre length is $a=\sqrt t$, and their frame is oppositely oriented to
+$e_0,e_1,e_2$, so their spectrum is ours with the sign reversed. With that dictionary the two agree exactly, with
+multiplicities: every eigenvalue with $|\lambda|<5$ at $t=0.6$, $3$ and $7$ ($54$, $131$ and $275$ eigenvalues;
+computed, receipt \path{ladder.json}). At $x=0$ the twist's helicity $-(j+2)/\sqrt t$ below is their first series,
+$n/a$ with $n=j+2$.
 
 \begin{theorem}[The flux; \PROVED]\label{thm:flux}
 For every member of the family, $\Phi=\varphi\otimes I_{V_j}$: the flux does not act on $V_j$, and its spectrum is the
@@ -658,7 +669,8 @@ over a weight basis of $V_j$ are an orthogonal basis of $E$, and $P\,\mathrm{cur
 
 Along $\hat\theta^1+i\hat\theta^2$, the transverse curl and the divergence are both the single operator
 $\hat e_1+i\hat e_2=-2iJ_+$. That is why the leak equals the gauge component, with every field term cancelled. It is a
-Cauchy--Riemann identity: an adjoint-valued analogue of the scalar Cauchy--Riemann structure along the Hopf fibration.
+Cauchy--Riemann identity: an adjoint-valued analogue of the tangential Cauchy--Riemann structure of the
+sphere~\cite{folland1972}, in which the top weight plays the part of a holomorphic section.
 At six members, including $x>0$, $t<2$ and the round sphere, every line holds as a vector identity for both branches and
 all weights, to $3.6\times10^{-15}$ (computed; receipt \path{ladder.json}).
 
@@ -796,11 +808,31 @@ in each sector the lowest gauge-orthogonal eigenvalue equals her $\lambda_j$ to 
 of double precision (receipt \path{ladder.json}). The flux gap $2t-4$ grows with the stretch, and her helicity can be made small in the sector
 $j\approx t-4$. The upper limit $t\le10$ of Section~\ref{sec:domain} is the certificates' domain, not an observed edge.
 
-\paragraph{The literature.} The decomposition of Lemma~\ref{lem:curlform} is classical~\cite{bl1981}. In the
-literature I checked I did not find the twist stated as an exact curl eigenvector with eigenvalue $h_l^2-B$, the flux
-spectrum of Theorem~\ref{thm:flux}, the top-rung identity of Theorem~\ref{thm:ladder}, or the sufficient condition of
-Theorem~\ref{thm:ladderfloor}. As in Section~\ref{sec:decide}, this is a statement about the search, not a priority
-claim.
+\paragraph{The literature.} Lemma~\ref{lem:curlform} follows in one line from the second-variation formula
+of~\cite{bl1981}, since $\ast^2=1$ on $1$-forms in three dimensions; at the flat connection the Hessian written as a
+perfect square appears in~\cite[eq.~(6)]{vandenheuvel1996}. I did not find it stated at non-flat fields. The curl
+spectrum of the Berger sphere at the trivial connection is classical~\cite{gibbons1980,capoferrivassiliev2026}, and the
+code reproduces it (Section~\ref{subsec:curlflux}).
+
+The closest precedent for the twist's eigenvalue is~\cite[eq.~(3.28)]{klc2021}. On the round sphere, for the
+field $A_a=\tfrac12(1+\psi)T_a$, which is not a critical point for generic $\psi$, the extremal total-spin sector
+$v=j+2$ decouples from the gauge modes with
+\[
+  \omega^2=2(2j+3)\psi+2(2j^2+6j+5)=(2j+3+\psi)^2-(\psi^2-1).
+\]
+With $t=1$, $x=y=1+\psi$ and our $j$ twice theirs, this is exactly $\lambda=h_l^2-B$: their magnetic field is
+$\tfrac12(\psi^2-1)T_a$ and our $B$ there is $\psi^2-1$ (exact symbolic check; receipt \path{ladder.json}). So the closed
+form of Proposition~\ref{prop:closed} on the round, isotropic slice $t=1$, $x=y$ is in~\cite{klc2021}, in the language
+of spin Casimirs. They do not use helicity or flux, do not squash the sphere, and do not ask which mode is the floor;
+their instability comes from the middle sectors and the time dependence of $\psi$. The twist on the Berger field, and
+its reading as a lowest Landau level, are from~\cite{davisfloor2026}. The covariantly constant fields
+of~\cite{avramidicollopy2012} are critical, and treated with $-\Delta+\mathrm{Ric}-2F$, not curl and flux.
+
+In the literature I checked I did not find the flux spectrum of Theorem~\ref{thm:flux} with $B\ne\Theta$, the leak
+identity of Theorem~\ref{thm:ladder}, or the sufficient condition of Theorem~\ref{thm:ladderfloor}. As in
+Section~\ref{sec:decide}, this is a statement about the search, not a priority claim. The search did not reach the
+full texts of several classical stability papers~\cite{bl1981,kot1986,laquer1984} or a forward-citation search
+from~\cite{klc2021}.
 
 % ---------------------------------------------------------------------------------------------------
 \section{The edge}\label{sec:edge}
@@ -1716,7 +1748,7 @@ Prop.~\ref{prop:anatomy} (anatomy) & \path{ricci_su2_twist_anatomy.py}; Lean \pa
 Lemma~\ref{lem:curlform}, Thm.~\ref{thm:flux} (curl form, flux spectrum) & proof; \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \PROVED; checks \COMPUTED\\
 Thm.~\ref{thm:ladder}, Cor.~\ref{cor:toprung} (ladder, top rung) & proof; \path{helike_ladder_receipt.py}, \path{test_helike_curl_spectrum.py} & \texttt{L}/\path{ladder.json} & \PROVED; checks \COMPUTED\\
 Thm.~\ref{thm:ladderfloor}, Cor.~\ref{cor:sector0} (ladder floor) & proof; \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \PROVED; bands and counterexample \COMPUTED\\
-Conj.~\ref{conj:noupper}, $x_{\mathrm{flux}}$ against Table~\ref{tab:edge} & \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \COMPUTED\\
+Conj.~\ref{conj:noupper}, $x_{\mathrm{flux}}$ against Table~\ref{tab:edge}; curl spectrum vs.~\cite{capoferrivassiliev2026}; dictionary to~\cite{klc2021} & \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \COMPUTED\\
 Rem.~\ref{rem:split} (shares on the meron) & \path{ricci_su2_gyromagnetic_split.py} & \texttt{F}/\path{gyromagnetic_split.txt} & \COMPUTED\\
 Edge table, Berger crossings & \path{ricci_su2_exact_edge.py} & \texttt{F}/\path{exact_edge.json} & \COMPUTED\\
 Competitor slopes, monotone grid & \path{ricci_su2_twist_anatomy.py} & \texttt{F}/\path{twist_anatomy.json} & \COMPUTED\\
@@ -2231,8 +2263,11 @@ Section~\ref{sec:prereg}: D-P1 (weak and strict), D-P2 and D-P3 held; D-P4 faile
 \bibitem{bar1992} C.~B\"ar, The Dirac operator on homogeneous spaces and its spectrum on $3$-dimensional lens spaces, \emph{Arch.\ Math.} 59 (1992) 65--79, \href{https://doi.org/10.1007/BF01199016}{doi:10.1007/BF01199016}.
 \bibitem{bcgk2014} S.~Bolognesi, C.~Chatterjee, S.~B.~Gudnason, K.~Konishi, Vortex zero modes, large flux limit and Ambj{\o}rn--Nielsen--Olesen magnetic instabilities, \emph{JHEP} 10 (2014) 101, \href{https://doi.org/10.1007/JHEP10(2014)101}{doi:10.1007/JHEP10(2014)101}, \href{https://arxiv.org/abs/1408.1572}{arXiv:1408.1572}.
 \bibitem{bl1981} J.-P.~Bourguignon, H.~B.~Lawson, Stability and isolation phenomena for Yang--Mills fields, \emph{Comm.\ Math.\ Phys.} 79 (1981) 189--230, \href{https://doi.org/10.1007/BF01942061}{doi:10.1007/BF01942061}.
+\bibitem{capoferrivassiliev2026} M.~Capoferri, D.~Vassiliev, Beyond the Hodge theorem: curl and asymmetric pseudodifferential projections, \emph{J.\ London Math.\ Soc.} 113 (2026), no.~1, e70431, \href{https://doi.org/10.1112/jlms.70431}{doi:10.1112/jlms.70431}, \href{https://arxiv.org/abs/2309.02015}{arXiv:2309.02015}.
 \bibitem{davisfloor2026} B.~R.~Davis, The Floor Theorem for the Yang--Mills Hessian at the Berger field: a floor law across the Berger spheres, 2026, \url{https://doi.org/10.5281/zenodo.24412603} (concept DOI \href{https://doi.org/10.5281/zenodo.24386613}{10.5281/zenodo.24386613}).
 \bibitem{davisrtc} B.~R.~Davis, Reading the curve, not counting the points: a two-ring Petrov--Galerkin curvature force for discrete Yang--Mills dynamics on the Poincar\'e homology sphere, 2026, \url{https://doi.org/10.5281/zenodo.24328085}.
+\bibitem{folland1972} G.~B.~Folland, The tangential Cauchy--Riemann complex on spheres, \emph{Trans.\ Amer.\ Math.\ Soc.} 171 (1972) 83--133, \href{https://doi.org/10.1090/S0002-9947-1972-0309156-X}{doi:10.1090/S0002-9947-1972-0309156-X}.
+\bibitem{gibbons1980} G.~W.~Gibbons, Spectral asymmetry and quantum field theory in curved spacetime, \emph{Ann.\ Physics} 125 (1980) 98--116, \href{https://doi.org/10.1016/0003-4916(80)90120-7}{doi:10.1016/0003-4916(80)90120-7}.
 \bibitem{haldane1983} F.~D.~M.~Haldane, Fractional quantization of the Hall effect: a hierarchy of incompressible quantum fluid states, \emph{Phys.\ Rev.\ Lett.} 51 (1983) 605--608, \href{https://doi.org/10.1103/PhysRevLett.51.605}{doi:10.1103/PhysRevLett.51.605}.
 \bibitem{hanwen2026} X.~Han, Y.~Wen, Nonexistence of weakly stable Yang--Mills fields, 2026, \href{https://arxiv.org/abs/2601.17649}{arXiv:2601.17649}.
 \bibitem{henkellauret2026} J.~Henkel, E.~A.~Lauret, Hodge Laplacian on $1$-forms of homogeneous $3$-spheres, 2026, \href{https://arxiv.org/abs/2605.05406}{arXiv:2605.05406}.
@@ -2252,6 +2287,7 @@ Section~\ref{sec:prereg}: D-P1 (weak and strict), D-P2 and D-P3 held; D-P4 faile
 \bibitem{sympy2017} A.~Meurer et al., SymPy: symbolic computing in Python, \emph{PeerJ Comput.\ Sci.} 3 (2017) e103, \href{https://doi.org/10.7717/peerj-cs.103}{doi:10.7717/peerj-cs.103}.
 \bibitem{tanjiitakura2012} N.~Tanji, K.~Itakura, Schwinger mechanism enhanced by the Nielsen--Olesen instability, \emph{Phys.\ Lett.\ B} (2012), \href{https://doi.org/10.1016/j.physletb.2012.05.043}{doi:10.1016/j.physletb.2012.05.043}, \href{https://arxiv.org/abs/1111.6772}{arXiv:1111.6772}.
 \bibitem{varga2001} R.~S.~Varga, Ger\v{s}gorin-type eigenvalue inclusion theorems and their sharpness, \emph{Electron.\ Trans.\ Numer.\ Anal.} 12 (2001) 113--133.
+\bibitem{vandenheuvel1996} B.~M.~van den Heuvel, One-loop effective action for SU(2) gauge theory on $S^3$, \emph{Phys.\ Lett.\ B} 386 (1996) 233--240, \href{https://doi.org/10.1016/0370-2693(96)00917-3}{doi:10.1016/0370-2693(96)00917-3}, \href{https://arxiv.org/abs/hep-lat/9604017}{arXiv:hep-lat/9604017}.
 \bibitem{vonneumannwigner1929} J.~von Neumann, E.~Wigner, \"Uber das Verhalten von Eigenwerten bei adiabatischen Prozessen, \emph{Phys.\ Z.} 30 (1929) 467--470.
 \bibitem{wuyang1976} T.~T.~Wu, C.~N.~Yang, Dirac monopole without strings: monopole harmonics, \emph{Nucl.\ Phys.\ B} 107 (1976) 365--380, \href{https://doi.org/10.1016/0550-3213(76)90143-7}{doi:10.1016/0550-3213(76)90143-7}.
 \end{thebibliography}

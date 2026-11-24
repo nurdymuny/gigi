@@ -13,10 +13,16 @@ Light: 9(j+1)-dimensional sector matrices only. Checks, at the stated points:
     sector-0 threshold 2 sqrt 5 - 2 on the Berger path; the sectors covered at t = 4, 6, 10, 20;
  6. the flux boundary x_flux against Table 2's x*_A;
  7. the flux gap B - |Theta| on A = s theta (zero on the round sphere);
- 8. observation: the twist is the gauge-orthogonal floor of every sector j <= 12 at t = 10, 12, 15, 20.
+ 8. observation: the twist is the gauge-orthogonal floor of every sector j <= 12 at t = 10, 12, 15, 20;
+ 10. KLC 2021 eq. (3.28), extremal sector v = j+2 on the round sphere, equals lambda at t = 1, x = y = 1 + psi, j_ours = 2 j_KLC
+     (exact symbolic identity).
+ 9. at the trivial connection, curl reproduces Capoferri-Vassiliev (J. LMS 2026, arXiv:2309.02015) Theorem D.1 with
+    a = sqrt t and the opposite orientation: every eigenvalue |lambda| < 5, with multiplicity, at t = 0.6, 3, 7.
 """
 import json
+import math
 import sys
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -167,6 +173,39 @@ def main(out):
         r["H_worst"] = [int(r["H_worst"][0]), float(r["H_worst"][1])]
         r["curl_worst"] = [int(r["curl_worst"][0]), float(r["curl_worst"][1])]
         r["H_every_sector"], r["curl_every_sector"] = bool(r["H_every_sector"]), bool(r["curl_every_sector"])
+    # 9
+    cv = []
+    for t in (0.6, 3., 7.):
+        a, L = math.sqrt(t), 5.0
+        ours = Counter()
+        for j in range(int(L * a) + 9):
+            Cm = hc.operators(0., 0., t, j)[0]
+            for e in np.linalg.eigvalsh((Cm + Cm.conj().T) / 2):
+                if 1e-9 < abs(e) < L:
+                    ours[round(float(e), 8)] += (j + 1) / 3
+        theirs = Counter()
+        for n in range(2, 400):
+            for v, mult in ((n / a, 2 * n - 2), ((n + 2 * (a * a - 1)) / a, 1 if n == 2 else 2 * n - 2)):
+                if v < L:
+                    theirs[round(-v, 8)] += mult
+            for l in range(1, n // 2 + 1):
+                r = math.sqrt(a * a + n * (n + 2) + (1 / a ** 2 - 1) * (n - 2 * l) ** 2)
+                mult = n + 1 if (n % 2 == 0 and l == n // 2) else 2 * n + 2
+                for v in (a + r, a - r):
+                    if abs(v) < L:
+                        theirs[round(-v, 8)] += mult
+        keys = set(ours) | set(theirs)
+        cv.append(dict(t=t, cutoff=L, count_ours=sum(ours.values()), count_theirs=sum(theirs.values()),
+                       mismatches=sum(abs(ours.get(k, 0) - theirs.get(k, 0)) > 1e-6 for k in keys)))
+    rec["capoferri_vassiliev_D1"] = cv
+    # 10
+    import sympy as sp
+    psi, jk = sp.symbols("psi j", real=True)
+    xs = 1 + psi
+    ours = (xs + (2 * jk + 2)) ** 2 + 2 * xs - xs ** 2           # closed form at t = 1, x = y, j_ours = 2 j_KLC
+    klc = 2 * (2 * jk + 3) * psi + 2 * (2 * jk ** 2 + 6 * jk + 5)
+    rec["klc2021_eq3_28"] = dict(difference=str(sp.expand(ours - klc)),
+                                 B_at_round_isotropic=str(sp.expand(xs ** 2 - 2 * xs)))
     Path(out).write_text(json.dumps(rec, indent=1))
     print(json.dumps(rec, indent=1))
 

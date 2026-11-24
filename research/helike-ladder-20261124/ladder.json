@@ -356,5 +356,32 @@
     -12.800000000000004
    ]
   }
- ]
+ ],
+ "capoferri_vassiliev_D1": [
+  {
+   "t": 0.6,
+   "cutoff": 5.0,
+   "count_ours": 54.0,
+   "count_theirs": 54,
+   "mismatches": 0
+  },
+  {
+   "t": 3.0,
+   "cutoff": 5.0,
+   "count_ours": 131.0,
+   "count_theirs": 131,
+   "mismatches": 0
+  },
+  {
+   "t": 7.0,
+   "cutoff": 5.0,
+   "count_ours": 275.0,
+   "count_theirs": 275,
+   "mismatches": 0
+  }
+ ],
+ "klc2021_eq3_28": {
+  "difference": "0",
+  "B_at_round_isotropic": "psi**2 - 1"
+ }
 }

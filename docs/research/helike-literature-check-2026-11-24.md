@@ -65,3 +65,27 @@ crossing near g² ≈ 1.76 in this model, I must:
 
 The search found that Zenodo record 24412603 lists the affiliation as Brown University. My affiliation for this work
 is Davis Geometric. I will fix it in the next version of that record.
+
+## Second pass (later on 24 November): the Helike Ladder Theorem
+
+A fuller check for *By Enough* v2 §4. Each item says what I read myself and what I took from a search.
+- **Capoferri–Vassiliev, J. London Math. Soc. 113 (2026) e70431 (arXiv:2309.02015), Theorem D.1.** I read
+  Appendices C–D (v6). Their Berger parameter is a = √t, and their frame is oppositely oriented to mine. With that
+  dictionary my curl at the trivial connection reproduces all four series exactly, multiplicities included: every
+  eigenvalue with |λ| < 5 at t = 0.6, 3, 7 (receipt `research/helike-ladder-20261124/ladder.json`). Helike's
+  helicity at x = 0 is their Series I with n = j + 2. The first computation is Gibbons, Ann. Phys. 125 (1980) 98–116.
+  The Bracchi–Capoferri–Vassiliev relabelling (arXiv:2607.03273) is equivalent.
+- **Kumar–Lechtenfeld–Picanço Costa, NPB 973 (2021) 115583, eq. (3.28).** I read it. This is the closest precedent.
+  On the round sphere, for A_a = ½(1+ψ)T_a, the extremal sector v = j+2 has
+  ω² = 2(2j+3)ψ + 2(2j²+6j+5) = (2j+3+ψ)² − (ψ²−1). That equals my λ = h² − B at t = 1, x = y = 1+ψ, with my j twice
+  theirs (exact symbolic identity, receipt). So the closed form on the round isotropic slice is theirs, in Casimir
+  language. They have no helicity or flux reading, no squashing, and no floor question.
+- **van den Heuvel, PLB 386 (1996), eq. (6).** Read by the search agent: the flat Hessian as a perfect square.
+  Bourguignon–Lawson gives the curl² + flux form in one line. I found no statement of it at non-flat fields.
+- **Kobayashi–Ohnita–Takeuchi, Math. Z. 193 (1986) 165–189, doi:10.1007/BF01174329.** The bibliographic data is
+  confirmed; I have not read the content.
+- **Folland, Trans. AMS 171 (1972) 83–133.** This is the standard citation for the tangential CR complex on spheres,
+  the scalar analogue of the ladder's Cauchy–Riemann identity. Abstract only.
+- **Not found:** the flux spectrum with B ≠ Θ, the leak = gauge identity, and the sufficient floor condition.
+- **Still open:** a forward-citation search from KLC 2021 and from van Baal–Hari Dass 1992 (MathSciNet or Google
+  Scholar, best done in a browser), and full texts of Bourguignon–Lawson, Taubes 1983 and Laquer 1984.

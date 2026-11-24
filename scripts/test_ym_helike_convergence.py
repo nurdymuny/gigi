@@ -64,6 +64,19 @@ class WidthTests(unittest.TestCase):
             with self.subTest(alpha=alpha), self.assertRaises(ValueError):
                 q.hamiltonian(self.ops, 1., alpha)
 
+    def test_solver_orders_eigenpairs_without_changing_values(self):
+        for values in ([2., 7.], [1., np.nextafter(1., 2.)]):
+            with self.subTest(values=values):
+                expected = np.array(values)
+                s = np.diag([4., 1.])
+                h = np.diag(expected*np.diag(s))
+                ordered_vectors = np.diag([.5, 1.])
+                with patch.object(q.la, 'eigh', return_value=(expected[::-1].copy(), ordered_vectors[:, ::-1].copy())):
+                    e, v, _ = q.solve_generalized(h, s, 'cpu')
+                np.testing.assert_array_equal(e, expected)
+                np.testing.assert_array_equal(v, ordered_vectors)
+                np.testing.assert_allclose(h@v, (s@v)*e, atol=0, rtol=0)
+
 
 class SpinTests(unittest.TestCase):
     def mixed_fixture(self):
@@ -264,6 +277,14 @@ class RunnerTests(unittest.TestCase):
             process = Mock(pid=123); process.poll.return_value = 0; process.wait.return_value = 0
             self.assertEqual(runner.supervise(process, folder), 2)
             self.assertEqual(runner.read_json(folder/'receipt.json')['status'], 'FAILED')
+
+    def test_supervisor_preserves_worker_failure_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            runner.atomic(folder/'receipt.json', {'status':'FAILED', 'error':'specific numerical refusal', 'results':{}})
+            process = Mock(pid=123); process.poll.return_value = 1; process.wait.return_value = 1
+            self.assertEqual(runner.supervise(process, folder), 1)
+            self.assertEqual(runner.read_json(folder/'receipt.json')['error'], 'specific numerical refusal')
 
     def manifest_fixture(self):
         # Metadata-only fixture: no claimed simulation or planted survey output.

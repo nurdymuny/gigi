@@ -1,0 +1,9 @@
+test_alpha_one_preserves_matrix_and_exterior (test_ym_helike_convergence.WidthTests.test_alpha_one_preserves_matrix_and_exterior) ... ok
+test_exterior_scaled_trace_matches_independent_oscillator_action (test_ym_helike_convergence.WidthTests.test_exterior_scaled_trace_matches_independent_oscillator_action) ... ok
+test_invalid_width_refused (test_ym_helike_convergence.WidthTests.test_invalid_width_refused) ... ok
+test_physical_probe_normalization (test_ym_helike_convergence.WidthTests.test_physical_probe_normalization) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.355s
+
+OK

@@ -101,3 +101,17 @@ Every run starts with RUNNING and ends atomically as COMPLETE, FAILED or RESOURC
 requested sequence finished, not that it converged. Numerical convergence additionally requires all amendment
 prerequisites and the unchanged HP08 thresholds. This convergence experiment does not run the HP09 utility
 comparison and does not close the original survey's full acceptance gate. The original runner is unchanged.
+
+## Execution note: eigenpair ordering
+
+After authorization to run, attempt `20261124T032926Z-92f909f6` passed the prerequisites and selected alpha,
+then stopped before saving its first convergence case. A bounded reproduction at N=8, g2=1, alpha=1 found
+GPU energies 19.85429364793703 followed by 19.854293647937027, an inversion of 3.552713678800501e-15.
+All energies and residuals were finite; the solver residual was 1.1882286578357973e-16.
+
+Before retrying: stable-sort the eigenvalues and apply exactly the same permutation to eigenvector columns,
+before residual validation and energy grouping. Do not round, merge, average or perturb any eigenvalue;
+do not weaken the ordered-input guard or change any threshold. Plant both reversed distinct eigenpairs
+and a one-ULP inversion in a nonidentity metric. Removing the sort must fail that test. Preserve the worker's
+specific failure reason in the terminal receipt instead of replacing it with a generic exit message.
+The first attempt and its source snapshot remain intact. This is an ordering correction, not a physics result.

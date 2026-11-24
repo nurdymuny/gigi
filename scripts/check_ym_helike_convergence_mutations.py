@@ -13,6 +13,8 @@ import test_ym_helike_convergence as tests
 
 def run():
     cases = [
+        ('omit_eigenpair_ordering', q, 'solve_generalized', 'order = np.argsort(energies, kind="stable")',
+         'order = np.arange(len(energies))', 'WidthTests.test_solver_orders_eigenpairs_without_changing_values'),
         ('unscaled_H2', q, 'scaled_probes', '[p/alpha for p in ops["tensor"]]', 'ops["tensor"]',
          'WidthTests.test_physical_probe_normalization'),
         ('unscaled_H0', q, 'scaled_probes', 'ops["scalar"]/alpha**2', 'ops["scalar"]',

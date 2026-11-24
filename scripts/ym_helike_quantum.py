@@ -224,6 +224,9 @@ def solve_generalized(h, s, device="cuda"):
             torch.cuda.synchronize()
             energies, vectors = e.cpu().numpy(), v.cpu().numpy()
             actual = str(a.device)
+    # GPU roundoff can invert adjacent nearly degenerate values; keep the pairs intact.
+    order = np.argsort(energies, kind="stable")
+    energies, vectors = energies[order], vectors[:, order]
     residual = float(np.max(la.norm(h@vectors-(s@vectors)*energies, axis=0)
                            / np.maximum(1., (la.norm(h)+np.abs(energies)*la.norm(s))*la.norm(vectors, axis=0))))
     orthogonality = float(la.norm(vectors.conj().T@s@vectors-np.eye(len(energies))))

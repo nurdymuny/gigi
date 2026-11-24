@@ -1,0 +1,92 @@
+[
+  {
+    "mutation": "unscaled_H2",
+    "test": "WidthTests.test_physical_probe_normalization",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_physical_probe_normalization (test_ym_helike_convergence.WidthTests.test_physical_probe_normalization) (channel='H2')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 41, in test_physical_probe_normalization\n    self.assertAlmostEqual(a['excited_norm_squared']/b['excited_norm_squared'], factor, places=11)\nAssertionError: 1.0 != 4.0 within 11 places (3.0 difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.064s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "unscaled_H0",
+    "test": "WidthTests.test_physical_probe_normalization",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_physical_probe_normalization (test_ym_helike_convergence.WidthTests.test_physical_probe_normalization) (channel='H0')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 41, in test_physical_probe_normalization\n    self.assertAlmostEqual(a['excited_norm_squared']/b['excited_norm_squared'], factor, places=11)\nAssertionError: 1.0 != 16.0 within 11 places (15.0 difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.065s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "drop_exterior_trace",
+    "test": "WidthTests.test_exterior_scaled_trace_matches_independent_oscillator_action",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_exterior_scaled_trace_matches_independent_oscillator_action (test_ym_helike_convergence.WidthTests.test_exterior_scaled_trace_matches_independent_oscillator_action)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 60, in test_exterior_scaled_trace_matches_independent_oscillator_action\n    np.testing.assert_allclose(result['full_residual_norms'], np.linalg.norm(action, axis=0), atol=1e-12)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 7 / 7 (100%)\nFirst 5 mismatches are at indices:\n [0]: 5.158282703811904 (ACTUAL), 1.0873936117744698 (DESIRED)\n [1]: 4.875 (ACTUAL), 1.9121323175972942 (DESIRED)\n [2]: 4.875000000000001 (ACTUAL), 1.9121323175972946 (DESIRED)\n [3]: 4.874999999999998 (ACTUAL), 1.9121323175972944 (DESIRED)\n [4]: 4.874999999999998 (ACTUAL), 1.9121323175972944 (DESIRED)\nMax absolute difference among violations: 4.07088909\nMax relative difference among violations: 3.74371253\n ACTUAL: array([5.158283, 4.875   , 4.875   , 4.875   , 4.875   , 4.875   ,\n       3.689291])\n DESIRED: array([1.087394, 1.912132, 1.912132, 1.912132, 1.912132, 1.912132,\n       2.237203])\n\n----------------------------------------------------------------------\nRan 1 test in 0.174s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "average_mixed_spin",
+    "test": "SpinTests.test_mixed_level_keeps_scalar_signal",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_mixed_level_keeps_scalar_signal (test_ym_helike_convergence.SpinTests.test_mixed_level_keeps_scalar_signal)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 78, in test_mixed_level_keeps_scalar_signal\n    r = q.probe_report_with_spin(e, v, [o], j2, 'H0')\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\ym_helike_quantum.py\", line 578, in probe_report_with_spin\n    spins = level_spins(energies, vectors, j2)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<mutation:average_mixed_spin>\", line 26, in level_spins\nValueError: Casimir eigenvalues do not resolve integer spin within 1e-6\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 80, in test_mixed_level_keeps_scalar_signal\n    self.fail(f'mixed-spin level was not resolved: {type(exc).__name__}: {exc}')\nAssertionError: mixed-spin level was not resolved: ValueError: Casimir eigenvalues do not resolve integer spin within 1e-6\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "allow_incomplete_multiplet",
+    "test": "SpinTests.test_incomplete_multiplet_refused",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_incomplete_multiplet_refused (test_ym_helike_convergence.SpinTests.test_incomplete_multiplet_refused)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 105, in test_incomplete_multiplet_refused\n    with self.assertRaisesRegex(ValueError, 'multiplet'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "ignore_probe_rank",
+    "test": "SpinTests.test_wrong_rank_probe_refused",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_wrong_rank_probe_refused (test_ym_helike_convergence.SpinTests.test_wrong_rank_probe_refused)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 124, in test_wrong_rank_probe_refused\n    with self.assertRaisesRegex(ValueError, 'probe'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "drop_ground_guard",
+    "test": "EnclosureTests.test_ground_guard",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_ground_guard (test_ym_helike_convergence.EnclosureTests.test_ground_guard)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 135, in test_ground_guard\n    self.assertNotIn('kato_temple_conditional', r)\nAssertionError: 'kato_temple_conditional' unexpectedly found in {'level': 0, 'E': 0.0, 'residual': 2.0, 'group_center_allowance': 0.0, 'weinstein': [-2.0, 2.0], 'certified': False, 'status': 'NUMERICAL_ESTIMATE', 'kato_temple_conditional': [-4.0, 0.0]}\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "claim_certification",
+    "test": "EnclosureTests.test_eligible_interval_is_uncertified",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_eligible_interval_is_uncertified (test_ym_helike_convergence.EnclosureTests.test_eligible_interval_is_uncertified)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 141, in test_eligible_interval_is_uncertified\n    self.assertIs(r['certified'], False)\nAssertionError: True is not False\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_group_spread",
+    "test": "EnclosureTests.test_group_center_includes_energy_spread",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_group_center_includes_energy_spread (test_ym_helike_convergence.EnclosureTests.test_group_center_includes_energy_spread)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 147, in test_group_center_includes_energy_spread\n    self.assertLessEqual(r['weinstein'][0], e[1])\nAssertionError: 1.0000000005 not less than or equal to np.float64(1.0)\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "bypass_acceptance",
+    "test": "RunnerTests.test_missing_or_failed_gate_cannot_converge",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_missing_or_failed_gate_cannot_converge (test_ym_helike_convergence.RunnerTests.test_missing_or_failed_gate_cannot_converge)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 170, in test_missing_or_failed_gate_cannot_converge\n    self.assertFalse(runner.gated_convergence(self.history(), bad))\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "bypass_budget",
+    "test": "RunnerTests.test_budget_refusal_precedes_construction",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_budget_refusal_precedes_construction (test_ym_helike_convergence.RunnerTests.test_budget_refusal_precedes_construction)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 190, in test_budget_refusal_precedes_construction\n    self.assertIsInstance(raised, MemoryError)\nAssertionError: TypeError(\"'>' not supported between instances of 'MagicMock' and 'int'\") is not an instance of <class 'MemoryError'>\n\n----------------------------------------------------------------------\nRan 1 test in 0.564s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "stale_convergence_on_failure",
+    "test": "RunnerTests.test_resource_stop_clears_acceptance",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_resource_stop_clears_acceptance (test_ym_helike_convergence.RunnerTests.test_resource_stop_clears_acceptance)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 198, in test_resource_stop_clears_acceptance\n    self.assertFalse(receipt['results']['one']['converged'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_probe_replay",
+    "test": "RunnerTests.test_case_arrays_replay_and_corruption",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_case_arrays_replay_and_corruption (test_ym_helike_convergence.RunnerTests.test_case_arrays_replay_and_corruption)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 211, in test_case_arrays_replay_and_corruption\n    with self.assertRaises((ValueError, AssertionError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: (<class 'ValueError'>, <class 'AssertionError'>) not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.315s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "skip_source_drift_check",
+    "test": "RunnerTests.test_worker_source_drift_stops_before_basis",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_worker_source_drift_stops_before_basis (test_ym_helike_convergence.RunnerTests.test_worker_source_drift_stops_before_basis)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 227, in test_worker_source_drift_stops_before_basis\n    self.assertIsInstance(raised, RuntimeError)\nAssertionError: KeyError('gates') is not an instance of <class 'RuntimeError'>\n\n----------------------------------------------------------------------\nRan 1 test in 0.313s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "accept_partial_history",
+    "test": "RunnerTests.test_manifest_rejects_missing_gate_partial_run_and_forged_choice",
+    "rejected": true,
+    "test_output": "F\n======================================================================\nFAIL: test_manifest_rejects_missing_gate_partial_run_and_forged_choice (test_ym_helike_convergence.RunnerTests.test_manifest_rejects_missing_gate_partial_run_and_forged_choice)\n----------------------------------------------------------------------\nValueError: forged convergence verdict\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_convergence.py\", line 295, in test_manifest_rejects_missing_gate_partial_run_and_forged_choice\n    with self.assertRaisesRegex(ValueError, 'partial'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: \"partial\" does not match \"forged convergence verdict\"\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  }
+]

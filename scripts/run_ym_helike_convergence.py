@@ -358,7 +358,8 @@ def supervise(process, folder):
     receipt = read_json(folder/'receipt.json')
     receipt['peak_host_rss_bytes'] = peak
     if code != 0 or receipt['status'] != 'COMPLETE':
-        mark_failed(receipt, 'FAILED', f'worker exited {code} without verified completion')
+        reason = receipt.get('error') or f'worker exited {code} without verified completion'
+        mark_failed(receipt, 'FAILED', reason)
     atomic(folder/'receipt.json', receipt)
     return code if code else (0 if receipt['status'] == 'COMPLETE' else 2)
 

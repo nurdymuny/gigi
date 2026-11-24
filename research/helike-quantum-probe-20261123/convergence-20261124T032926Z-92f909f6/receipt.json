@@ -1,0 +1,114 @@
+{
+  "status": "FAILED",
+  "run_id": "20261124T032926Z-92f909f6",
+  "device": "cuda",
+  "source_revision": "d521bb1b3ed76b0cb9e97d78cb34ba6c4b142a3c",
+  "source_hashes": {
+    "scripts/ym_helike_quantum.py": "84c1604a4d9c252e0642f6e1b691e0a632e21a13da9f0d649b40b3018eedf6a6",
+    "scripts/run_ym_helike_convergence.py": "daf0f02724719e6d709f68eb0d42ca1480bd5235a6d069b2cf8e46082aafd442",
+    "scripts/test_ym_helike_convergence.py": "f4055eb62d586a4f910e15bf13fc1c2584f1791c9f78228a600ce7839b7b1353",
+    "scripts/check_ym_helike_convergence_mutations.py": "32634896048e71d6f1dab61014e98a75d87cc5d01a63479f6570594ee2f6c6a4",
+    "scripts/verify_ym_helike_evidence.py": "b602928c5702495b1964e426911354eb43c1f32f060198ccf5892c6ddd28bd1d",
+    "docs/research/helike-quantum-probe-preregistration-2026-11-23.md": "ccb37f20ce6d0df3694eade5ed828e134b84cfe4ec85bf70d3ac0519eb653da1",
+    "docs/research/helike-quantum-gpu-amendment-2026-11-23.md": "6735097f296e692a024f5f8e2cb84f368a4cb92e4fce7a9d88098f30da448ec5",
+    "docs/research/helike-quantum-convergence-amendment-2026-11-23.md": "ba32ba76c26cadd3959e028aedac4870b4f9e5d6249bbeafba12552da17a03a9"
+  },
+  "alphas": [
+    0.8,
+    0.9,
+    1.0,
+    1.1,
+    1.2,
+    1.35,
+    1.5,
+    1.7,
+    2.0
+  ],
+  "n_select": 10,
+  "cutoffs": [
+    8,
+    10,
+    12,
+    14,
+    16
+  ],
+  "gates": {
+    "HP11_width": true,
+    "HP12_spin": true,
+    "HP13_enclosure": true,
+    "runner_tests": true,
+    "mutations": true
+  },
+  "results": {
+    "g2=1,alpha=1": {
+      "history": [],
+      "converged": false
+    }
+  },
+  "scientific_status": {},
+  "HP09_utility": "NOT_RUN",
+  "certified_spectral_enclosure": false,
+  "budgets": {
+    "host_bytes": 8589934592,
+    "gpu_bytes": 4294967296,
+    "seconds": 2700
+  },
+  "environment": {
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "numpy": "2.4.0"
+  },
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 5070 Laptop GPU",
+    "torch": "2.11.0.dev20260108+cu128",
+    "cuda": "12.8"
+  },
+  "alpha_selection": {
+    "1.0": {
+      "alpha_star": 1.7,
+      "E0_by_alpha": {
+        "0.8": 5.468423083075604,
+        "0.9": 5.4468355347343405,
+        "1.0": 5.438057477940821,
+        "1.1": 5.43460086504861,
+        "1.2": 5.433130005917189,
+        "1.35": 5.432026040145076,
+        "1.5": 5.4312685045644375,
+        "1.7": 5.430741656341482,
+        "2.0": 5.431005360512517
+      },
+      "interior": true
+    },
+    "0.5": {
+      "alpha_star": 1.35,
+      "E0_by_alpha": {
+        "0.8": 4.904089349003868,
+        "0.9": 4.897402781362114,
+        "1.0": 4.894746237051316,
+        "1.1": 4.893289152358284,
+        "1.2": 4.892262928908394,
+        "1.35": 4.891493868416905,
+        "1.5": 4.891689598549043,
+        "1.7": 4.893117176010348,
+        "2.0": 4.899197522901703
+      },
+      "interior": true
+    },
+    "2.0": {
+      "alpha_star": 2.0,
+      "E0_by_alpha": {
+        "0.8": 6.366807085900665,
+        "0.9": 6.310045429191431,
+        "1.0": 6.278686763064746,
+        "1.1": 6.263014658598636,
+        "1.2": 6.255858281295585,
+        "1.35": 6.2517168390122855,
+        "1.5": 6.250119987133692,
+        "1.7": 6.249123623680302,
+        "2.0": 6.248433493249991
+      },
+      "interior": false
+    }
+  },
+  "error": "worker exited 1 without verified completion",
+  "peak_host_rss_bytes": 1256017920
+}

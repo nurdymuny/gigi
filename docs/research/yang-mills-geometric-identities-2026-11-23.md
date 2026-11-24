@@ -1012,7 +1012,11 @@ is the reason to stay open here, and it is Yang–Mills, which is no reason to c
 
 1. **The field of the lowest excitation on the ladders** (amended after the review: the ring adds winding
    sectors that local probes cannot reach, and the profile is a spatial response, not the whole field; see
-   the pre-registration's Amendment 1). Already the gaps resist the simplest picture: a single
+   the pre-registration's Amendment 1). The analysis is written and its planted failures are caught
+   (`scripts/ym_ladder_excitation.py`: a planted band, a planted edge, a hidden lower winding state, zero
+   overlap, the kernel formulas, a rotated doublet); it also reproduces the review's ring control
+   independently (8 + 8 states, no plaquette element between sectors, least electric energies \(9g^2/8\)
+   and \(3g^2/2\)). No registered configuration has been measured; the run waits for Test G. Already the gaps resist the simplest picture: a single
    excitation hopping between neighbouring plaquettes fits one and two plaquettes exactly, then predicts gaps
    0.007 to 0.008 too high at three to five. Whether the excitation is a band, an edge, or a band whose ends are
    their own is pre-registered, with its measurements, scoring and planted failures, in

@@ -140,3 +140,10 @@ classical tangent fields to quantum observables) before any comparison of charge
   real spectra have no degeneracy.
 - **G10, gaps converged too**: G5's cutoff check applies to the gaps compared (open, ring, absolute and
   probe-accessible), not only to profiles; a stable profile can coexist with a poorly converged energy.
+
+**Clarification to Amendment 1 (23 November 2026, before any measurement).** Two numbers the registration left open,
+fixed now. (i) G10's threshold: the gaps compared (open, ring, absolute, probe-accessible) count as converged if they
+change by at most 10⁻³ (relative) between the two cutoffs used. (ii) State counts, computed without any physics: rings
+of 3 and 4 plaquettes are under 200,000 states at link spins ≤ 2 (the 4-ring has 148,678), so their cutoff pair is
+(3/2, 2); the 5-ring has 137,815 states at ≤ 3/2 and 2,451,080 at ≤ 2, so it is kept (it is under the cap at 3/2) with
+cutoff pair (1, 3/2). The open ladders use (2, 5/2) for p ≤ 4 and (3/2, 2) for p = 5, as in Section 12 of the note.

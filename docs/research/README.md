@@ -123,6 +123,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 24 Nov | [Contact sets the frame: the Bevel razor observation](helike-contact-frame-motivation-2026-11-24.md): the lived origin, direction versus contact guidance, approach versus sharpening angle, and the distinction between orbit placement and a proposed locally guided construction; retrospective motivation, no new experiment |
 | 24 Nov | [Dome projected-tail review](helike-dome-review-2026-11-24.md): finite-reference exterior sensitivity, the single-function versus joint-span distinction, and requirements for the next truncation gate |
 | 24 Nov | [Second-vacuum weak-coupling candidate](helike-second-vacuum-weak-coupling-2026-11-24.md): exact local Hessian decomposition, colour-space locking, harmonic energy count and a conditional global prediction |
+| 24 Nov | [Two-grain scope](helike-two-grain-scope-2026-11-24.md): proposed left-and-right eighteen-mode extension; oriented Chern-Simons versus auxiliary-function distinction, symmetry and domain gates; no spectral run |
 | 24 Nov | [Local geometry and projected-tail audit](dome-local-review-protocol-2026-11-24.md): refusal fixes, independent Gaussian control, rotated geometric checks and a bounded 32-row existing-control replication; no new physical couplings |
 | 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 

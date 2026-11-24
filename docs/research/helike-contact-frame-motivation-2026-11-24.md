@@ -261,26 +261,29 @@ model does not forget it.
   H = ½A†A + 9/2,  A = ∇ + ∇W,
   H = ½A′†A′ − 9/2,  A′ = ∇ − ∇W.
 
-Both are exact. Sweeping with W gives the floor 9/2. Sweeping against it gives −9/2, which is weaker than the
-trivial H ≥ 0. Same Hamiltonian, opposite sweep, and the guard is gone.
+Both are exact on the stated flat-coordinate operator domain. Factoring with W exposes the floor 9/2.
+Factoring with -W gives only -9/2, weaker than H >= 0. The stronger bound remains true of the same Hamiltonian;
+changing the factorization hides it rather than physically removing it. This is the precise part of the sweep
+observation that the algebra captures.
 
-**S³ has exactly two grains.** A face needs whorls, because a two-dimensional sphere cannot carry a nowhere-vanishing
-direction field. The three-sphere can, and it has two global grains: the left-invariant frame and the
-right-invariant frame. Their flow lines are the two Hopf fibrations, which twist with opposite handedness. Their
+**S³ supplies two canonical Lie-group framings.** These are the left-invariant and right-invariant framings,
+not the only possible global frames or direction fields on S³. Choosing a fixed unit Lie-algebra direction in
+each gives opposite-handed Hopf circles. A face patch is not a closed two-sphere, so the hairy-ball theorem
+does not force facial-hair whorls. The framings'
 Maurer–Cartan equations differ by a sign: dθ + θ∧θ = 0 for θ = g⁻¹dg, and dθ̄ − θ̄∧θ̄ = 0 for θ̄ = dg g⁻¹. That
 sign reaches the cubic term. The opposite grain alone is the same model with g → −g, its second vacuum on the
 det < 0 orbit: V(−p; g) = V(p; −g).
 
-**Our model shaves with one grain.** The nine homogeneous modes use the left-invariant frame only. That is why its
-second vacuum is not equivalent to the first, even though the two are gauge copies in the full theory, and why the
-model has no parity: parity exchanges the two grains. The "night and day" I feel between sweeps may be the same
-one-sidedness we have been measuring.
+**Our model shaves with one grain.** The nine homogeneous modes use the left-invariant frame only. Its two local
+vacuum Hessians differ, and the truncation is not closed under parity exchanging the mode families. Implementing large-gauge
+equivalence requires a quantum domain and boundary conditions, not merely adding the other family. The experiential
+contrast motivates testing the larger model; it does not identify its mechanism in advance.
 
 **Patches on a grid.** Each patch has its own local frame. Neighbouring frames are related by how the grain turns
 between them, and the cut depends on the sweep relative to the local frame. That is a bundle with a connection, and
-on a grid it is lattice gauge theory: frames at sites, transport on links, curvature in plaquettes. Patches where
-against the grain cuts too close would be where the frame turns fastest. The analogy stops at the whorls: the face
-needs them, S³ does not.
+on a grid it suggests frames at sites, transport on links and curvature around plaquettes. A literal lattice gauge
+model additionally needs a specified group, link variables, action and transformation rules. Cutting too close
+does not establish that a frame turns fastest there; that causal step is not measured by the analogy.
 
 Tests: `scripts/test_ym_helike_second_vacuum.py` (`SweepDirection`) checks both factorizations against finite
 differences and the grain-reversal identity. The model that keeps both grains is scoped in

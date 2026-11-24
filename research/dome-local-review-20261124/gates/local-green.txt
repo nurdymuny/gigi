@@ -8,8 +8,11 @@ test_second_vacuum_hessian_is_colour_space_coupling (test_ym_helike_second_vacuu
 test_square_identity_is_not_claimed_away_from_critical_points (test_ym_helike_second_vacuum.SecondVacuum.test_square_identity_is_not_claimed_away_from_critical_points) ... ok
 test_witten_local_energy_count (test_ym_helike_second_vacuum.SecondVacuum.test_witten_local_energy_count)
 1/2 sum(|mu| - mu): 0 at the origin, 1 at the second vacuum. ... ok
+test_both_factorizations (test_ym_helike_second_vacuum.SweepDirection.test_both_factorizations) ... ok
+test_opposite_grain_is_g_reversed (test_ym_helike_second_vacuum.SweepDirection.test_opposite_grain_is_g_reversed)
+The right-invariant grain flips the cubic term: V(-p; g) = V(p; -g). ... ok
 
 ----------------------------------------------------------------------
-Ran 9 tests in 0.054s
+Ran 11 tests in 0.075s
 
 OK

@@ -5,20 +5,21 @@ marked *expected* are derivation sketches to be verified in Phase 1.**
 
 ## Why
 
-The razor's last lesson was the sweep direction. In the model the sweep is the grain of S³. There are two: the
-left-invariant frame e and the right-invariant frame ē, with opposite-handed Hopf fibrations and Maurer–Cartan
+The razor's last lesson was the sweep direction. The model offers two canonical Lie-group framings on S³:
+the left-invariant frame e and the right-invariant frame ē, with opposite-handed Hopf families and Maurer–Cartan
 equations of opposite sign. Every result so far uses nine modes on one grain:
 
   A = q_{ai} eⁱ T_a.
 
-That truncation has no parity, because parity exchanges the grains. It also makes the second vacuum inequivalent to
-the first: the Hessians are all 1 at the origin and −1, 0, +2 at the second vacuum, although the two are gauge
-copies in the full theory. The two-grain model keeps eighteen modes:
+The nine-mode truncation is not closed under the parity exchanging these families. Its two local Hessians differ,
+while large-gauge equivalence in the full theory requires boundary identifications not specified by this finite
+Hamiltonian alone. The two-grain model keeps eighteen modes:
 
   A = q_{ai} eⁱ T_a + p_{ai} ēⁱ T_a.
 
-It is the direct test of whether the scalar–tensor crossing, the second-vacuum scalar and the 9/2 floor survive
-with both bevels on the blade.
+It can test how the scalar-tensor crossing and the proposed second-vacuum scalar change when the missing family is
+restored. Absolute zero-point offsets change with the number of modes; compare excitation gaps using a matched
+normalization, not an unchanged 9/2 offset.
 
 ## What is already exact
 
@@ -33,7 +34,8 @@ with both bevels on the blade.
 3. **The two grains carry opposite winding.** The left Maurer–Cartan form g⁻¹dg is the pure gauge of the
    identity map. −dg g⁻¹ = (g⁻¹)⁻¹d(g⁻¹) is the pure gauge of the inverse map, of opposite winding. So the left
    grain's second vacuum and the right grain's are the ±1 winding vacua (the overall sign depends on convention).
-   With the grain and against it are the two instanton directions. Parity maps one to the other.
+   The corresponding field-theory paths are candidates for opposite topological transitions. The two algebraic
+   factorizations of one Hamiltonian alone do not construct those paths or prove tunnelling rates.
 
 ## What two grains should change (expected; Phase 1 verifies or refutes)
 
@@ -43,22 +45,30 @@ energy over S³ is a Haar average over SU(2), the same quaternion machinery as t
 - **E1. No quadratic or cubic mixing.** Every quadratic or cubic cross term in ∫|F|² should reduce to a single
   D(x) after the ε-contractions, and the Haar average of a single adjoint D is zero. Quartic cross terms carry two
   D's and survive.
-- **E2. The superpotential splits.** By the same count, the Chern–Simons cross terms vanish, so
-  W₁₈ = W(q; g) + W(p; −g).
-- **E3. The floor survives as an inequality.** The eighteen-mode space is not the fixed set of any symmetry, so
-  symmetric criticality no longer applies:
+- **E2. Distinguish the oriented Chern-Simons functional from a positive auxiliary function.** With left and right
+  curl signs opposite, the proposed restriction is CS₁₈ = W(q; g) - W(p; -g), up to a common overall convention.
+  Its Laplacian is 9 - 9 = 0. The earlier sum was not the oriented Chern-Simons functional. Independently define
+  U₁₈ = W(q; g) + W(p; -g). The block-separated sum and difference have the same squared gradient norm, but
+  different Laplacians. Phase 1 must match the frames, kinetic metric and normalization explicitly.
+- **E3. A conditional floor, using the auxiliary function.** Closure of the magnetic gradient inside the sum of
+  the two mode families must be tested; one-family symmetric criticality does not establish that closure:
 
-    V₁₈ = ½|∇W₁₈|² + C(q,p),  C = ½|(1 − P)*F|² ≥ 0,
+    V₁₈ = ½|∇CS₁₈|² + C(q,p) = ½|∇U₁₈|² + C(q,p),
+    C = ½|(1 - P)*F|² >= 0,
 
-  where P projects onto the eighteen-mode space. Then H₁₈ = ½A†A + 9 + C ≥ 9 (ΔW₁₈ = 9 + 9). The protection holds
-  with both bevels, but the exact factorization becomes an inequality, and the gap between them is exactly the
-  part of the curvature that leaves the truncation.
-- **E4. Vacua.** Zero energy needs ∇W₁₈ = 0 and C = 0. Candidates: (0,0), (R/g, 0), (0, −R/g). Whether
+  where P is the orthogonal L² projection. If E2 and the flat orthonormal kinetic metric hold, factoring with
+  U₁₈ gives H₁₈ = ½A†A + 9 + C >= 9 on a domain where integration by parts has no boundary contribution.
+  This is a possible auxiliary-function bound, not a deduction from Lap CS₁₈. Large-gauge boundary conditions
+  must be checked before using it for a physical quotient. The positive remainder measures omitted magnetic
+  components, not an excitation gap.
+- **E4. Vacua.** Zero classical potential needs ∇CS₁₈ = 0 and C = 0. Candidates: (0,0), (R/g, 0), (0, −R/g). Whether
   (R/g, −R′/g) has C = 0 is open.
 - **E5. Symmetry.** SO(4) = SU(2)_L × SU(2)_R / Z₂ acts with q carrying one factor and p the other. States carry
   (j_L, j_R). Today's J = 2 tensor is a one-sided multiplet, and in the full model it gets a mirror partner.
-  Parity exchanges the two; the physical 2⁺ and 2⁻ are their sum and difference, and the splitting comes only
-  from C.
+  Parity exchanges (2,0) and (0,2). If exact SO(4) and parity are retained, these inequivalent SO(4) irreducible
+  sectors are degenerate partners: an SO(4)-invariant C cannot mix them to split their sum and difference.
+  Relating these labels to physical diagonal-spin glueball sectors requires the full representation and boundary
+  analysis; opposite parity does not by itself predict a nonzero splitting.
 
 ## Phases
 
@@ -70,7 +80,12 @@ conventions matched before any comparison. Questions for the literature:
 - What did they find for the 0⁺ and 2⁺ levels as the volume grows?
 - Do they report a scalar–tensor crossing?
 
-**Phase 1: the potential.** Derive V₁₈ and W₁₈ exactly, with the cross term C written in invariants, then test:
+Verified starting reference: van Baal and Hari Dass, [Nuclear Physics B 385 (1992), 185-226](https://www.ilorentz.org/research/vanbaal/DECEASED/HOME/JOUR/NPB385_185.pdf).
+Equation (92) gives the two-family potential; equation (101) has the Chern-Simons difference, not a sum.
+The surrounding boundary analysis warns that generic large-gauge images leave the retained mode space.
+These are checks to reproduce after translating conventions, not permission to transplant coefficients.
+
+**Phase 1: the potential.** Derive V₁₈, CS₁₈ and U₁₈ exactly, with C written in invariants, then test:
 - a Monte Carlo or quadrature integral of |F|² over S³ at random (q,p) against the formula;
 - p = 0 reproduces V(q; g), and q = 0 reproduces V(p; −g);
 - invariance under colour and SO(4), and the parity swap;
@@ -84,8 +99,10 @@ the note on it must say so.
 
 **Phase 3: sector solvers.** The (0,0) sector consists of colour invariants of the pair (q,p) with separate
 left and right rotations. Its invariants include those of q alone (T_q, P_q, det q), those of p alone, and the mixed
-invariants of M = qᵀp with the Gram matrices qᵀq and pᵀp. That ring is not free, so the basis must be built degree
-by degree (exact rank at random rational points), and its size counted from the Molien series. Gaussian moments
+contractions of M = qᵀp with qᵀq and pᵀp. These matrices are covariants under the separate spatial rotations;
+only appropriately contracted expressions are scalar invariants. A rank found by evaluation at rational points
+is a lower bound on generic rank, not a completeness proof. Use symbolic identities and independent dimension
+counts, for example a verified Molien series, to establish the full basis and its relations. Gaussian moments
 need new integration-by-parts tables. The tensor sectors (2,0) and (0,2) give the parity pair. Budget the size
 before building; Phase 3 starts only after Phases 1 and 2 are reviewed.
 

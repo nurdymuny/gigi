@@ -12,13 +12,13 @@ unresolved exterior denominators, negative projected squared norms and
 missing provenance. A later evidence-replay test also caught an unchecked
 cancellation disclosure. RED logs are retained, not replaced by GREEN logs.
 
-The final focused suite contains 7 truncation tests, 9 local-geometry tests
+The final focused suite contains 7 truncation tests, 11 local-geometry and factorization tests
 and 12 evidence/runner tests. Eight mechanism-removal checks must each fail
 by assertion, not by an import error or unrelated exception. The small
 pipeline fixture is an engineering test, not a measurement of the held-out
 physical couplings.
 
-The 11 existing dome-mathematics tests also pass unchanged: 39 focused tests
+The 11 existing dome-mathematics tests also pass unchanged: 41 focused tests
 in total. All nine sources frozen by the earlier registered dome run retain
 their recorded SHA-256 hashes.
 

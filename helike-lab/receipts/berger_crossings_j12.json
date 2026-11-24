@@ -1,0 +1,35 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795560454,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "1d6593c21ca07bb688cb4d545f62decc3a91d8cd",
+    "git_dirty": true,
+    "source_sha256": "9e81f3107d600668e91840d38bb8e76eb587c2ae6ed17206e8948c81100b4484",
+    "platform": "windows-x86_64",
+    "threads": 16
+  },
+  "command": [
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-lab\\helike-lab\\target\\release\\helike.exe",
+    "--out",
+    "receipts/berger_crossings_j12.json",
+    "berger"
+  ],
+  "status": "COMPUTED",
+  "params": {
+    "bracket_A": [
+      2.7,
+      2.76
+    ],
+    "bracket_S": [
+      2.68,
+      2.72
+    ],
+    "jmax": 12
+  },
+  "results": {
+    "t_A": 2.7311222782381157,
+    "t_star": 2.6980269405211317
+  }
+}

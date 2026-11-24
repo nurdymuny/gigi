@@ -1,0 +1,7 @@
+{
+ "status": "PASS",
+ "replayed_solves": 80,
+ "decision": "UNRESOLVED_TRUNCATION",
+ "certified": false,
+ "replay": "saved matrices, not fresh physical assembly"
+}

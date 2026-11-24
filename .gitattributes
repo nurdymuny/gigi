@@ -28,6 +28,7 @@
 /research/quantum-order-controls-20261123/**/*.txt whitespace=cr-at-eol,-blank-at-eol
 /docs/research/quantum-order-controls-*.md -text whitespace=cr-at-eol
 /docs/research/helike-quantum-*.md -text whitespace=cr-at-eol,-blank-at-eol
+/docs/research/helike-dome-*.md -text whitespace=cr-at-eol,-blank-at-eol
 /docs/papers/helike-quantum-probe/** -text whitespace=cr-at-eol
 # Retain exporter whitespace and the historical Markdown hard line breaks.
 /docs/papers/helike-quantum-probe/figures/*.svg whitespace=cr-at-eol,-blank-at-eol

@@ -29,3 +29,18 @@ source. Each solve is archived and logged immediately. A source snapshot,
 resource log, terminal receipt and saved-matrix verification accompany it.
 The resource ceiling is 45 minutes and 8 GiB, one BLAS thread, CPU only.
 Do not infer a scientific conclusion from a partial run or a width-grid refusal.
+
+The completed run is `registered-74ec0677/`, pinned to source
+`74ec06775770aaea5e08b8c9eaf71a3c16f27fa3`. All 80 solves are retained and
+replay successfully. The scientific verdict is **UNRESOLVED_TRUNCATION**:
+D00, D01, D02, D03 and D05 pass; D04 fails in the one-function N=18, g^2=1
+comparison. The terminal status INVALID and nonzero process exit reflect that
+registered refusal, not a crash. The separate verification PASS means saved
+evidence is consistent; it does not close the scientific gate.
+
+See [the complete measured-results note](../../docs/research/helike-dome-envelope-results-2026-11-24.md)
+for all eight primary cases, all 24 dome configurations, the truncation
+reversal, projection geometry, limits and replay commands. No follow-up physical
+experiment was launched. `check_report.py` rechecks the four main numerical
+tables and rejects four deliberately altered displayed values; it is not a
+physical-model verifier.

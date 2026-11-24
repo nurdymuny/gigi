@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "measurement_rows": 48,
+  "altered_number_checks": 4,
+  "report_sha256": "600c6f713b7ef64cb741cab3238b392598b9ace6d36897533428724e9a4a98f7",
+  "receipt_sha256": "7f3b2679085ab8850cba303bc48e323687396ff393b3508feea002f0c736bbce",
+  "scope": "four measurement tables; not a scientific acceptance gate"
+}

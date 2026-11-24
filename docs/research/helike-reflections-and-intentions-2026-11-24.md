@@ -106,6 +106,28 @@ record it here with its table so it can be checked, not so it can be quoted.
   for observables even under the dropped reflection. That is checkable on the two-grain model before anything is
   written up. Working name: *the orientation principle (conjecture)*.
 
+**Review amendment, same day: the universal version above is false; I retain it as the original prediction.**
+Let reflection R exchange two basis vectors and H = I - R/2. H commutes with R, so its orientation-odd part
+(H - RHR)/2 is zero. The full ground energy is 1/2; retaining just the first basis vector gives energy 1.
+Energy is reflection-even, yet truncation changes it. The missing partner can matter through an even coupling.
+
+The narrower question I intend to test is about the **actual two-grain operator and a declared retained space P**:
+which omitted couplings PHQ (Q = I-P) explain the measured change? When E - QHQ is invertible, eliminating Q
+gives H_eff(E) = PHP + PHQ(E-QHQ)^(-1)QHP. This is an exact block identity in its domain, not a new universal
+orientation law. Classify the omitted blocks under the stated reflection before measuring their contribution;
+do not call the entire correction orientation-odd. In the two-state example at E = 1/2, the correction is -1/2
+and accounts for the difference exactly. A resolvent pole requires refusal or a larger retained space.
+
+**Testable hypothesis, not a result:** for the matched two-grain controls, the identified omitted blocks explain
+the observed energy displacement with the model and registered thresholds unchanged. Publish the blocks, sector
+and reflection conventions, separation checks, and a control removing those couplings. Do not promise that
+even observables have zero error or extrapolate this hypothesis to every orientation truncation. No new
+two-grain computation accompanies this correction.
+
+Evaluating the exact block identity at an already measured E is an explanation, not an independent prediction.
+Before a predictive run I must freeze the retained/omitted blocks and the reference energy used for an
+approximate correction, then compare against the untouched full controls. That experiment is still unregistered.
+
 ## Where the theorem stands, and its working name
 
 **Working name: the Helike Ladder Theorem.** Helike is the top rung of a curl ladder whose eigenvalues are

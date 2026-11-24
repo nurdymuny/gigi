@@ -70,7 +70,7 @@ class FluxReview(unittest.TestCase):
             conv, cert = Path(tmp)/'conv.json', Path(tmp)/'cert.json'
             conv.write_text(json.dumps({'decision': 'CONVERGED'}))
             cert.write_text(json.dumps({'status': 'PASS_CERTIFIED'}))
-            self.assertEqual(run.unmet_release_conditions(conv, cert), ['method_amendment'])
+            self.assertEqual(run.unmet_release_conditions(conv, cert), ['convergence', 'certificate', 'method_amendment'])
             self.assertEqual(run.unmet_release_conditions(), ['convergence', 'certificate', 'method_amendment'])
             conv.write_text(json.dumps({'decision': 'NOT_CONVERGED'}))
             self.assertIn('convergence', run.unmet_release_conditions(conv, cert))
@@ -84,7 +84,7 @@ class FluxReview(unittest.TestCase):
             self.assertFalse(solver.called)
             rec = json.loads((out/'receipt.json').read_text())
             self.assertEqual(rec['status'], 'HOLD_DOMAIN')
-            self.assertEqual(set(rec['hold_conditions']), {'convergence', 'method_amendment'})
+            self.assertEqual(set(rec['hold_conditions']), {'convergence', 'certificate', 'method_amendment'})
 
     def test_partial_rung_is_retained_on_failure(self):
         design = copy.deepcopy(run.SMOKE)

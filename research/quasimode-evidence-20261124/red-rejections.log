@@ -1,0 +1,213 @@
+test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) ... 
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='s') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='t') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='g2') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='ladder') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='gap_tol') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='weight_min') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='schema') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='scope') ... FAIL
+test_forged_provenance_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_forged_provenance_rejects) ... FAIL
+test_integrity_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_integrity_change_rejects) ... FAIL
+test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) ... 
+  test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C322837880>) ... FAIL
+  test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C3228379C0>) ... FAIL
+  test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C3228377E0>) ... FAIL
+  test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C322837920>) ... FAIL
+test_resealed_forged_changes_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_changes_reject) ... FAIL
+test_resealed_forged_decision_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_decision_reject) ... FAIL
+test_snapshot_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_snapshot_change_rejects) ... FAIL
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='s')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='t')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='g2')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='ladder')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='gap_tol')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='weight_min')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='schema')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='scope')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 159, in test_changed_parameters_reject
+    self.reject_edit(lambda r: r.update({key: value}))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_forged_provenance_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_forged_provenance_rejects)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 162, in test_forged_provenance_rejects
+    self.reject_edit(lambda r: r.update(revision='0'*40))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_integrity_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_integrity_change_rejects)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 179, in test_integrity_change_rejects
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C322837880>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 146, in test_resealed_empty_and_partial_reject
+    self.reject_edit(edit)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C3228379C0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 146, in test_resealed_empty_and_partial_reject
+    self.reject_edit(edit)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C3228377E0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 146, in test_resealed_empty_and_partial_reject
+    self.reject_edit(edit)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 140, in reject_edit
+    self.assertEqual(json.loads((out/'verification.json').read_text())['status'], 'FAIL')
+AssertionError: 'PASS' != 'FAIL'
+- PASS
++ FAIL
+
+
+======================================================================
+FAIL: test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) (edit=<function ConvergenceEvidence.test_resealed_empty_and_partial_reject.<locals>.<lambda> at 0x000002C322837920>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 146, in test_resealed_empty_and_partial_reject
+    self.reject_edit(edit)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_resealed_forged_changes_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_changes_reject)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 149, in test_resealed_forged_changes_reject
+    self.reject_edit(lambda r: r['changes']['0.004'].update(helike=0.))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 139, in reject_edit
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_resealed_forged_decision_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_decision_reject)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 152, in test_resealed_forged_decision_reject
+    self.reject_edit(lambda r: r.update(decision='NOT_CONVERGED'))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 140, in reject_edit
+    self.assertEqual(json.loads((out/'verification.json').read_text())['status'], 'FAIL')
+AssertionError: 'PASS' != 'FAIL'
+- PASS
++ FAIL
+
+
+======================================================================
+FAIL: test_snapshot_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_snapshot_change_rejects)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 171, in test_snapshot_change_rejects
+    self.assertEqual(self.invoke(out, '--verify'), 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.424s
+
+FAILED (failures=17)
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY MISMATCH UNRESOLVED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY MISMATCH CONVERGED
+VERIFY OK CONVERGED

@@ -193,7 +193,7 @@ def verify_receipt(out):
 
 RELEASE_CONDITIONS = (
     ("convergence", "positive-cone controls CONVERGED at Mq 6->8 under 0.003 (run_helike_cone_convergence.py receipt)"),
-    ("certificate", "quasimode certificate PASS_CERTIFIED at the controls (helike-quasimode-certification-spec)"),
+    ("certificate", "validated interval quasimode certificate at the controls; verifier not implemented, condition held"),
     ("method_amendment", "registered method amended from LocalFock to the certified cone method; LocalFock is "
                          "not semibounded and cannot be released for the grid under any receipt"),
 )
@@ -203,17 +203,15 @@ def unmet_release_conditions(convergence=None, certificate=None):
     """Names of release conditions not met. The method amendment is never met by this runner."""
     unmet = []
     try:
-        ok = json.loads(Path(convergence).read_text()).get("decision") == "CONVERGED" if convergence else False
-    except (OSError, ValueError):
+        from run_helike_cone_convergence import read_valid_receipt
+        rec = read_valid_receipt(Path(convergence)) if convergence else None
+        ok = rec is not None and rec["decision"] == "CONVERGED" and rec["source_dirty"] is False
+    except (OSError, ValueError, TypeError, KeyError, OverflowError, subprocess.SubprocessError):
         ok = False
     if not ok:
         unmet.append("convergence")
-    try:
-        ok = json.loads(Path(certificate).read_text()).get("status") == "PASS_CERTIFIED" if certificate else False
-    except (OSError, ValueError):
-        ok = False
-    if not ok:
-        unmet.append("certificate")
+    # No implemented certificate verifier: even a plausible status string proves nothing.
+    unmet.append("certificate")
     unmet.append("method_amendment")
     return unmet
 

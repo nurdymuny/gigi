@@ -1,0 +1,26 @@
+{
+  "scope": "focused software review, not a physical certificate",
+  "base_revision": "f5c93266920418ee6633f2a38f71e46348e3fa61",
+  "branch": "feat/helike-quantum-convergence-20261123",
+  "source_dirty": true,
+  "hash_policy": "sha256-file-bytes",
+  "files": {
+    "scripts/run_helike_cone_convergence.py": "031edb4bef89762bdba9d02e4c4ff7aa3e8128318fa72f5b6dbb459b1bb96d41",
+    "scripts/run_helike_flux_background.py": "853ef495040e1eac17804eeeca5978e4690ded046d7e36231b4c1acfef950a16",
+    "scripts/test_helike_cone_convergence.py": "d8e96706df783968cf0267afef185c66b4410671168d4519a5b0abbda99d0ff8",
+    "scripts/test_helike_quasimode_math_controls.py": "a236feae0a77040093403e0be8d02f34319493bf10d68169845e01b4ddead018",
+    "scripts/test_flux_review.py": "f78d90e260a42e414f02de495404a505a5ee8d5194a89476082ca7245ba804d5",
+    "scripts/check_helike_convergence_mutations.py": "c75b09c8786e272286b8200204f64b02ef6992ee98ad11508157f943f3fb1599",
+    "scripts/helike_positive_cone.py": "9eb17f27e7349e3b5ffb824722d950c720b032a8af383065216042550a9fc47b",
+    "scripts/helike_qspace_boundary.py": "12d6e55aacd4da3195de8df55ff7c100c10b0fbbd5e96e1f0e0b9554fc043202",
+    "scripts/helike_condensate_fock.py": "ef0ce68fd30418675575acf0b95f825c47aa865e6e3480cf9211ec06881742d9",
+    "scripts/helike_condensate_pt.py": "bd2eaf2bb2948327e5afcc6c46199ff3a327e7c19551f5f7e282fff331d517f0",
+    "scripts/helike_berger_model.py": "7db47e58f6e5940f4e09c1616d75323cc97bb3cc2732f67f9117cf392741eb0a",
+    "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+    "scripts/test_helike_positive_cone.py": "8103d52f42d0b9f9500f1183ce507d7d10100b0e38ace79f9024fcbc883dc780",
+    "scripts/test_helike_qspace_boundary.py": "a0da0b9fc6e99c840905ec32a86417d07bac16b0d2e0841aaf14ee890d4bdd41",
+    "docs/research/helike-quasimode-certification-spec-2026-11-24.md": "29623590cca1989e2b6bbc3f9f3626416555f7a84ff0de2e7c98f19b5f5492c5",
+    "docs/research/helike-quasimode-evidence-amendment-2026-11-24.md": "c90fa3e3cb45b005dc046271e4a873318406882876eb6240c96a6d41042a3ddd",
+    "docs/research/helike-reflections-and-intentions-2026-11-24.md": "b849e6523fbb3d726c1bbc3832a22bb3f445c8f8e4b4cfc224f39b0413d6efd1"
+  }
+}

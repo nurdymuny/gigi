@@ -1,0 +1,13 @@
+test_complex_norm_requires_conjugation (test_helike_quasimode_math_controls.QuasimodeMathControls.test_complex_norm_requires_conjugation) ... ok
+test_covariants_have_the_declared_charge (test_helike_quasimode_math_controls.QuasimodeMathControls.test_covariants_have_the_declared_charge) ... ok
+test_even_energy_changes_when_partner_dropped (test_helike_quasimode_math_controls.QuasimodeMathControls.test_even_energy_changes_when_partner_dropped) ... ok
+test_galerkin_square_discards_true_residual (test_helike_quasimode_math_controls.QuasimodeMathControls.test_galerkin_square_discards_true_residual) ... ok
+test_n_and_2n_agreement_can_be_exact_aliasing (test_helike_quasimode_math_controls.QuasimodeMathControls.test_n_and_2n_agreement_can_be_exact_aliasing) ... ok
+test_schur_correction_is_even_and_requires_resolvent (test_helike_quasimode_math_controls.QuasimodeMathControls.test_schur_correction_is_even_and_requires_resolvent) ... ok
+test_temple_bound_and_lower_level_admixture (test_helike_quasimode_math_controls.QuasimodeMathControls.test_temple_bound_and_lower_level_admixture) ... ok
+test_temple_without_positive_denominator_can_lie (test_helike_quasimode_math_controls.QuasimodeMathControls.test_temple_without_positive_denominator_can_lie) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.012s
+
+OK

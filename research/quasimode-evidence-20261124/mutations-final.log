@@ -1,0 +1,15 @@
+extra-control-coverage CAUGHT
+extra-rung-coverage CAUGHT
+finite-number-guards CAUGHT
+gap-threshold CAUGHT
+weight-threshold CAUGHT
+overlap-error-gate CAUGHT
+contract-check CAUGHT
+provenance-check CAUGHT
+snapshot-hash CAUGHT
+receipt-hash CAUGHT
+change-recomputation CAUGHT
+decision-recomputation CAUGHT
+stale-pass-invalidation CAUGHT
+convergence-release-validation CAUGHT
+certificate-release-hold CAUGHT

@@ -1,0 +1,108 @@
+test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) ... 
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='s') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='t') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='g2') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='ladder') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='gap_tol') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='weight_min') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='schema') ... FAIL
+  test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) (key='scope') ... FAIL
+test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) ... 
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='dimension') ... FAIL
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='dimension') ... FAIL
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='seconds') ... FAIL
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='E0') ... FAIL
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='asymmetry') ... FAIL
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='reference_weight_error') ... FAIL
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='overlap_orders') ... FAIL
+  test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) (key='boundary_status') ... FAIL
+test_empty_controls_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_empty_controls_refuse) ... FAIL
+test_extra_control_or_rung_refuses (test_helike_cone_convergence.ConvergenceEvidence.test_extra_control_or_rung_refuses) ... 
+  test_extra_control_or_rung_refuses (test_helike_cone_convergence.ConvergenceEvidence.test_extra_control_or_rung_refuses) (data=dict_keys([0.004, 0.002, 0.01])) ... FAIL
+  test_extra_control_or_rung_refuses (test_helike_cone_convergence.ConvergenceEvidence.test_extra_control_or_rung_refuses) (data=dict_keys([0.004, 0.002])) ... FAIL
+test_forged_provenance_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_forged_provenance_rejects) ... FAIL
+test_forged_statuses_never_release (test_helike_cone_convergence.ConvergenceEvidence.test_forged_statuses_never_release) ... FAIL
+test_gap_threshold_boundary (test_helike_cone_convergence.ConvergenceEvidence.test_gap_threshold_boundary) ... ok
+test_initial_failure_retains_receipt (test_helike_cone_convergence.ConvergenceEvidence.test_initial_failure_retains_receipt) ... FAIL
+test_integrity_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_integrity_change_rejects) ... FAIL
+test_interrupted_verification_invalidates_pass_first (test_helike_cone_convergence.ConvergenceEvidence.test_interrupted_verification_invalidates_pass_first) ... FAIL
+test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) ... 
+  test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) (data='{') ... FAIL
+  test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) (data='[]') ... FAIL
+  test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) (data='{"decision":"CONVERGED","rows":{}}') ... FAIL
+  test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) (data='{"rows":{},"rows":{}}') ... FAIL
+  test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) (data='{"gap":NaN}') ... FAIL
+  test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) (data='{"gap":1e999}') ... FAIL
+test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) ... 
+  test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) (ch='helike', key='gap', value=nan) ... FAIL
+  test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) (ch='helike', key='gap', value=inf) ... FAIL
+  test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) (ch='competitor', key='gap', value=-1.0) ... FAIL
+  test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) (ch='competitor', key='weight', value=nan) ... FAIL
+  test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) (ch='helike', key='weight', value=1.1) ... FAIL
+  test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) (ch='helike', key='gap', value=True) ... FAIL
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+VERIFY OK CONVERGED
+g2=0.004 Mq=6: helike 1.0000000000 competitor 1.2000000000 (0.0s)
+test_later_interrupt_retains_completed_rung (test_helike_cone_convergence.ConvergenceEvidence.test_later_interrupt_retains_completed_rung) ... Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\__main__.py", line 18, in <module>
+    main(module=None)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\main.py", line 105, in __init__
+    self.runTests()
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\main.py", line 281, in runTests
+    self.result = testRunner.run(self.test)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\runner.py", line 240, in run
+    test(result)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\suite.py", line 122, in run
+    test(result)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\suite.py", line 122, in run
+    test(result)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\suite.py", line 122, in run
+    test(result)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\case.py", line 690, in __call__
+    return self.run(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\case.py", line 634, in run
+    self._callTestMethod(testMethod)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\case.py", line 589, in _callTestMethod
+    if method() is not None:
+       ^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 232, in test_later_interrupt_retains_completed_rung
+    self.assertEqual(self.invoke(out), 2)
+                     ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 60, in invoke
+    return run.main()
+           ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_cone_convergence.py", line 79, in main
+    R = pc.ConeRitz(S, T, math.sqrt(g2), Mq=Mq, max_Mq=max(LADDER))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py", line 1202, in _execute_mock_call
+    raise result
+KeyboardInterrupt

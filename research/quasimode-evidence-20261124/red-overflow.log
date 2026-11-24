@@ -1,0 +1,35 @@
+test_unrepresentable_measurement_cannot_escape_release_hold (test_helike_cone_convergence.ConvergenceEvidence.test_unrepresentable_measurement_cannot_escape_release_hold) ... FAIL
+
+======================================================================
+FAIL: test_unrepresentable_measurement_cannot_escape_release_hold (test_helike_cone_convergence.ConvergenceEvidence.test_unrepresentable_measurement_cannot_escape_release_hold)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 307, in test_unrepresentable_measurement_cannot_escape_release_hold
+    unmet = flux.unmet_release_conditions(out/'receipt.json')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_flux_background.py", line 207, in unmet_release_conditions
+    rec = read_valid_receipt(Path(convergence)) if convergence else None
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_cone_convergence.py", line 161, in read_valid_receipt
+    check_rows(rows)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_cone_convergence.py", line 103, in check_rows
+    check_rung(by[m], m)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_cone_convergence.py", line 86, in check_rung
+    if number(entry["gap"]) < 0:
+       ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_cone_convergence.py", line 36, in number
+    if type(value) not in (int, float) or not math.isfinite(value):
+                                              ^^^^^^^^^^^^^^^^^^^^
+OverflowError: int too large to convert to float
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cone_convergence.py", line 309, in test_unrepresentable_measurement_cannot_escape_release_hold
+    self.fail(f'invalid evidence must retain the hold, not raise {type(exc).__name__}')
+AssertionError: invalid evidence must retain the hold, not raise OverflowError
+
+----------------------------------------------------------------------
+Ran 1 test in 0.247s
+
+FAILED (failures=1)

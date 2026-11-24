@@ -133,6 +133,9 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 
 | date | note |
 | --- | --- |
+| 24 Nov | [Quasimode certification spec](helike-quasimode-certification-spec-2026-11-24.md): full residual, bounded charge projection, explicit separation and numerical versus interval evidence; implementation still held |
+| 24 Nov | [Quasimode evidence amendment](helike-quasimode-evidence-amendment-2026-11-24.md): fixed cases, thresholds, provenance, stale-PASS and adversarial release gates before repair |
+| 24 Nov | [Quasimode evidence results](helike-quasimode-evidence-results-2026-11-24.md): four review corrections, focused tests and caught verifier mutations; no larger run or new spectral certificate |
 | 24 Nov | [Positive-cone basis specification](helike-positive-cone-basis-spec-2026-11-24.md): exact energy form, fixed harmonic reference, same-control refinement; boundary realization still unresolved |
 | 24 Nov | [Positive-cone basis results](helike-positive-cone-basis-results-2026-11-24.md): valid-domain repair and unchanged weak-coupling controls pass; boundary, sector and full gap convergence remain open |
 | 24 Nov | [Cartesian boundary specification](helike-qspace-boundary-spec-2026-11-24.md): signed rank-two chart and inherited value/flux matching; no invented positive-sheet wall |

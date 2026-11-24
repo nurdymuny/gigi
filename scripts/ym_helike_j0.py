@@ -163,9 +163,7 @@ def _mpf(fr):
 def solve(N, g2, alpha, dps=60, nlev=None):
     """Solve the J=0 sector at cutoff N. Returns energies and full-space residual norms for all levels."""
     with mp.workdps(dps):
-        g = mp.sqrt(_mpf(F(g2).limit_denominator(10 ** 12)) if not isinstance(g2, mp.mpf) else g2)
-        al = _mpf(F(alpha).limit_denominator(10 ** 12)) if not isinstance(alpha, mp.mpf) else alpha
-        coef = (al, 1 / (2 * al), -3 * g * al ** mp.mpf(-1.5), g ** 2 / (4 * al ** 2))
+        coef = coefficients(g2, alpha)
         ms = basis(N)
         n = len(ms)
         hs = []
@@ -199,26 +197,43 @@ def solve(N, g2, alpha, dps=60, nlev=None):
                         raise ArithmeticError(f"H not symmetric at {ms[i]},{ms[j]}: {asym}")
                 K[i, j] = K[j, i] = mp.fsum(ci * cj * M(mono_mul(mi, mj))
                                             for mi, ci in hs[i].items() for mj, cj in hs[j].items())
-        L = mp.cholesky(S)
-        pivots = [L[i, i] ** 2 / S[i, i] for i in range(n)]
-        digits_lost = float(-mp.log10(min(pivots)))
-        if digits_lost > dps - 25:
-            raise ArithmeticError(f"Gram conditioning loses {digits_lost:.1f} digits at dps={dps}")
-        Li = mp.inverse(L)
-        Ht = Li * H * Li.T
-        Kt = Li * K * Li.T
-        X = Kt - Ht * Ht
-        Hf = np.array(Ht.tolist(), dtype=float)
-        Xf = np.array(X.tolist(), dtype=float)
+        out = finish(S, H, K, dps, nlev)
+    out.update({"cutoff": N, "g2": float(g2), "alpha": float(alpha), "basis": ms})
+    return out
+
+
+def coefficients(g2, alpha):
+    """(alpha, 1/(2 alpha), -3 g alpha^{-3/2}, g^2/(4 alpha^2)) at the current mp precision."""
+    g = mp.sqrt(_mpf(F(g2).limit_denominator(10 ** 12)))
+    al = _mpf(F(alpha).limit_denominator(10 ** 12))
+    return (al, 1 / (2 * al), -3 * g * al ** mp.mpf(-1.5), g ** 2 / (4 * al ** 2))
+
+
+def finish(S, H, K, dps, nlev=None):
+    """Orthonormalise by Cholesky at the current precision; return energies and full-space residual norms.
+
+    S = <m_i, m_j>, H = <m_i, H m_j>, K = <H m_i, H m_j>. The exterior Gram X = K~ - H~^2 is formed before
+    leaving high precision, so a small residual is not lost to cancellation."""
+    n = S.rows
+    L = mp.cholesky(S)
+    pivots = [L[i, i] ** 2 / S[i, i] for i in range(n)]
+    digits_lost = float(-mp.log10(min(pivots)))
+    if digits_lost > dps - 25:
+        raise ArithmeticError(f"Gram conditioning loses {digits_lost:.1f} digits at dps={dps}")
+    Li = mp.inverse(L)
+    Ht = Li * H * Li.T
+    Kt = Li * K * Li.T
+    X = Kt - Ht * Ht
+    Hf = np.array(Ht.tolist(), dtype=float)
+    Xf = np.array(X.tolist(), dtype=float)
     Hf = (Hf + Hf.T) / 2
     Xf = (Xf + Xf.T) / 2
     E, V = np.linalg.eigh(Hf)
-    res2 = np.einsum("ik,ij,jk->k", V, Xf, V)
-    res = np.sqrt(np.clip(res2, 0, None))
+    res = np.sqrt(np.clip(np.einsum("ik,ij,jk->k", V, Xf, V), 0, None))
     k = n if nlev is None else min(nlev, n)
-    return {"cutoff": N, "g2": float(g2), "alpha": float(alpha), "dimension": n, "dps": dps,
-            "gram_digits_lost": digits_lost, "energies": E[:k].tolist(), "residuals": res[:k].tolist(),
-            "min_exterior_eig": float(np.linalg.eigvalsh(Xf).min()), "vectors": V[:, :k], "basis": ms}
+    return {"dimension": n, "dps": dps, "gram_digits_lost": digits_lost, "energies": E[:k].tolist(),
+            "residuals": res[:k].tolist(), "min_exterior_eig": float(np.linalg.eigvalsh(Xf).min()),
+            "vectors": V[:, :k]}
 
 
 def ordering_inputs(sol):
@@ -237,3 +252,10 @@ def ordering_inputs(sol):
         out[f"temple_lower_{name}"] = rho - eps ** 2 / (b - rho) if usable else None
         out[f"tau_{name}"] = eps ** 2 / (b - rho) if usable else None
     return out
+
+
+def branch(sol, index=1):
+    """Branch dict in the shape quantum_ordering.ordering expects (index 1 = lowest excited scalar)."""
+    E, R = sol["energies"], sol["residuals"]
+    return {"low": E[index], "high": E[index], "residual": R[index],
+            "next_low": E[index + 1], "next_residual": R[index + 1], "spin_error": 0.0}

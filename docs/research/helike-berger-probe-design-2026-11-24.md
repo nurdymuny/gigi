@@ -1,6 +1,6 @@
 # Design: Helike as a probe-blade on the Berger-deformed matrix model
 
-24 November 2026. **DESIGN ON REVIEW HOLD. Not registered, not run.** Model identities are checked
+24 November 2026. **DESIGN ON REVIEW HOLD. Step 1, the mappings and the solver are done. Ready for registration review. Not run.** Model identities are checked
 (`scripts/helike_berger_model.py`, `scripts/test_helike_berger_model.py`, 9 passing). Spectra are for the other machine
 after registration. The literature check found no glueball or low-lying-spectrum study on a Berger or squashed S³
 (see [the literature check](helike-literature-check-2026-11-24.md)).
@@ -66,12 +66,74 @@ That is a helicity effect.
 **The flux effect** is the splitting of the degenerate pair (m = ±2 against the m = 0 scalar) at order g². It comes
 from the cubic (the flux coupling, at second order) and the quartic (first order).
 
-## Step 1 (done here, analytically, before registration)
+## Step 1: done (exact perturbation theory, validated)
 
-Compute that splitting, Δ₂₀(t, g) = E(m = ±2) − E(m = 0 pair scalar), by degenerate perturbation theory. Separate it
-into the cubic (flux) contribution and the quartic contribution. This is light analytic work (oscillator and Wick
-algebra), not a spectrum run. The sign and size of the flux contribution become the registered prediction. The flux
-theory leads me to expect the cubic to lower Helike's doublet for t > 1. That expectation is not yet a prediction.
+Code: `scripts/helike_berger_pert.py`. V₃ and V₄ are finite polynomials in ladder operators, so the second-order sums
+are exact finite sums, not a spectrum run. It is validated against the verified round solver: the J = 0 two-quantum
+scalar's gap coefficient is −12 from perturbation theory, and the solver slope tends to −11.98 as g → 0. It also
+agrees with the new Berger sector solver at t = 2 (below).
+
+**Results, for every t > 1 tested (1.5 to 10), in closed form:**
+
+| State | Gap to order g² | Quartic share | Cubic (flux) share |
+| --- | --- | --- | --- |
+| Helike's channel, m = ±2 | 2/√t exactly (no g² term) | +(t + 2)/2 | −(t + 2)/2 |
+| Pair scalar, m = 0 | 2/√t − g²(4 + 4/t) | | |
+| Split Δ₂₀ = E(±2) − E(0) | **+g²(4 + 4/t)** | −t | 4 + 4/t + t |
+
+**This is against my expectation, and I register it as found.** In the quantum vacuum the flux cubic does not favour
+Helike's channel. It lowers the pair scalar, so at weak coupling the pair scalar is the lowest excitation and Helike's
+channel is second. The reason is that the vacuum has no background flux along her circle. Her classical discount (−B)
+needs one, and the cubic acts only through virtual fluctuations, which favour the transverse-size scalar.
+
+**Theorem (Helike's quantum channel is protected).** Let f = Σ_a(q₁ₐ + iq₂ₐ)². Then f·e^(−W_t) is an exact formal
+eigenfunction of H_t with eigenvalue floor + 2/√t, to all orders in perturbation theory.
+
+*Proof.* Write u = q₁ + iq₂ (a colour vector), so f = u·u. Then:
+- Δf = Σ_a(2 + 2i²) = 0;
+- the oscillator part of ∇W·∇f gives (2/√t)f;
+- the cubic part is −2g·u·(cof₁ + i·cof₂) = −2g·u·(i q₀ × u) = 0.
+
+The same holds at t = 1 for f_n = Σ_a(n·q_a)² with any null vector n (n·n = 0), so the whole round J = 2 multiplet is
+protected. ∎
+
+Like e^(−W) itself (E₀ = 9/2 to all orders), these states are not normalisable. Every correction to the protected gap
+is therefore non-perturbative. The source is the twist's null structure: τ₁ + iτ₂ has zero self-bracket. That is
+what made her exact classically, and it is what protects her quantum channel. Test
+`test_protected_channel_is_a_formal_eigenfunction` checks H(f e^(−W)) = (floor + 2/√t) f e^(−W) pointwise.
+
+**What this means for the probe.** At weak coupling Helike's channel is a clean reference line, fixed by helicity
+alone (2ω⊥ = 2/√t), with no perturbative correction. Anything the probe sees move it is non-perturbative. The flux
+mechanism of the classical floor is not available in the vacuum. A quantum test of it needs a background with flux
+along the circle, for example an excited or field-polarised sector, or a θ/Chern–Simons term. That is a new design
+question, recorded and not assumed.
+
+## Mapping to van den Heuvel's crossing (estimate; verify)
+
+With the standard normalisation tr(T_aT_b) = −½δ_ab, our frame sphere has radius 2 (orthonormal τ under −2 tr), so
+vol = 16π². Then g_model² = g_YM²/(8π²), and with f = g_YM²/(2π²) (unit radius), **f ≈ 4 g_model²**. Before use, this
+must be checked against the normalisation in Balachandran–Vaidya–de Queiroz. If it holds, our one-grain crossing at
+g² ≈ 1.76 sits at f ≈ 7, against their 0⁺/2⁺ crossing at f ≈ 0.3 (g² ≈ 0.075). That is a very different regime, where
+a homogeneous truncation cannot claim to represent Yang–Mills. So it is not evidently the same phenomenon, and it
+carries no physical claim either way.
+
+## Curl spectrum
+
+Our homogeneous curl eigenvalues at the trivial connection are −2√t (fibre, ×3) and −2/√t (horizontal, ×6), so
+ω_k = |helicity|/2 in model units. Matching to Capoferri–Vassiliev Theorem D.1 still needs their appendix (the HTML
+version stops before it). Hypothesis: their squashing parameter corresponds to √t.
+
+## The sector solver: built and validated
+
+Code: `scripts/helike_berger_sector.py`. Exact moments for the colour SO(3) × SO(2) ring R[G] ⊕ d·R[G] with
+anisotropic widths, sectors (m, parity), and full-operator residuals through the shared `finish()`.
+- **Dimensions** equal the Molien counts at N = 6, 8 and 10 (for m = 0 the two parities sum to it).
+- **At t = 1** it reproduces the verified round J = 0 and J = 2 solvers exactly (10⁻¹⁴ in energy, identical
+  residuals).
+- **At t = 2, small g,** it reproduces Step 1: Helike's channel slope 0.0001 (zero up to O(g⁴)), pair scalar −6.085
+  against −6.
+- Tests: `scripts/test_helike_berger_sector.py` (8) and `test_helike_berger_model.py` (9), all passing. Mutation
+  check `scripts/check_helike_berger_mutations.py`: 4 of 4 caught by assertion.
 
 ## The experiment (on the other machine, after registration)
 
@@ -92,7 +154,9 @@ theory leads me to expect the cubic to lower Helike's doublet for t > 1. That ex
 
 1. **(Harmonic, exact)** For t > 1 at small g, the lowest excitations are the m = ±2 doublet and the m = 0 pair scalar.
    For t < 1, the m = 0 scalar G₀₀ is alone at the bottom.
-2. **(Flux, from Step 1)** The sign and leading size of Δ₂₀(t, g), with the cubic's share.
+2. **(Step 1, fixed)** Δ₂₀ = +g²(4 + 4/t) + O(g⁴): the pair scalar is lowest at weak coupling for t > 1. Helike's
+   channel gap is 2/√t with no perturbative correction. Its cubic share and the no-cubic counterfactual
+   (split −t) are registered.
 3. **(Crossing)** How the round model's scalar–tensor crossing moves with t. A direction is to be fixed from Step 1
    and the round results, after mapping van den Heuvel's crossing (hep-lat/9604017), which they read as a one-loop
    artefact, to this model.

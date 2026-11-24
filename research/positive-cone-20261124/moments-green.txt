@@ -1,0 +1,9 @@
+test_completed_square_against_unshifted_quadrature (test_helike_positive_cone.Moments.test_completed_square_against_unshifted_quadrature) ... ok
+test_harmonic_single_and_double_controls (test_helike_positive_cone.Moments.test_harmonic_single_and_double_controls) ... ok
+test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) ... ok
+test_reference_amplitudes_against_direct_pullback (test_helike_positive_cone.Moments.test_reference_amplitudes_against_direct_pullback) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.421s
+
+OK

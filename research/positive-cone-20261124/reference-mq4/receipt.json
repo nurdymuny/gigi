@@ -1,0 +1,112 @@
+{
+ "status": "FAIL_CONTROLS",
+ "scope": "interior trial controls, no physical boundary certificate",
+ "source_revision": "9c17cc334e0704da9f15a6203b6d7ade407be7b9",
+ "source_hash_policy": "sha256-universal-newline-v1",
+ "sources": {
+  "scripts/helike_positive_cone.py": "6f405a26a565b9cef56865b26bfdd96b0a40a9fe63c8bdf7f57a378b5eb45bd7",
+  "scripts/helike_condensate_pt.py": "cf3f0392bc87479e797193455d8b5e9b431ab356adfefe7bc79be4f80d00db20",
+  "scripts/helike_condensate_fock.py": "49b93abceef77ca3a4d920c5463d9f628407e7844f3b357897db6ccd9e674094",
+  "scripts/helike_berger_model.py": "3e78cc9e168b8ac9b8791fc587a2f46ab9c6664c5c6daec7cb4badcfa33ae0ce",
+  "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+  "scripts/run_helike_flux_background.py": "3293a081513fe6d2d793e0b247741a1e00d83fb54f46bbc89feb058a23baf130",
+  "scripts/run_helike_positive_cone_controls.py": "0302e8c7327953dda08dc6f284c8bd573c1e0f758e70d69a2b4038e4ab58e808",
+  "scripts/test_helike_positive_cone.py": "43fed6a83ce28824c2225de4d23dee42ecba16f1d4164829804f5bf8b20e31f3",
+  "docs/research/helike-positive-cone-basis-spec-2026-11-24.md": "66ef3c165f92b64fac60b55d2224dcf0f1766095b21c90367b4df90f788d4bb4"
+ },
+ "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "controls": [
+  {
+   "g2": 0.004,
+   "s": 1.15,
+   "t": 3.0,
+   "Mq": 4,
+   "dimension": 210,
+   "result": {
+    "E0": 5.406526973523818,
+    "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+    "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+    "energy_shift": -47.52734374999997,
+    "reference_weight_error": 1.6973863314895254e-07,
+    "overlap_orders": [
+     10,
+     12
+    ],
+    "helike": {
+     "gap": 1.0890863004497708,
+     "weight": 0.9884060238069833,
+     "log_basis_weight": 0.9780844705639344
+    },
+    "competitor": {
+     "gap": 1.0997001035504397,
+     "weight": 0.9812470188159994,
+     "log_basis_weight": 0.9475285878608114
+    }
+   },
+   "coefficients": [
+    -0.2551819836877911,
+    -1.739124122895952
+   ],
+   "seconds": 2.438000000009197,
+   "mass_error": 1.5543122344752192e-15,
+   "kinetic_min": 1.3535847652335735,
+   "asymmetry": 9.237055564881302e-14,
+   "matrix_file": "control-0.004.npz",
+   "matrix_sha256": "59cfaf68f2d8538d03eda8910e76e6f76df618747ab95036fde88acb2e00cc76"
+  },
+  {
+   "g2": 0.002,
+   "s": 1.15,
+   "t": 3.0,
+   "Mq": 4,
+   "dimension": 210,
+   "result": {
+    "E0": 5.40921591973518,
+    "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+    "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+    "energy_shift": -95.05468749999991,
+    "reference_weight_error": 2.368032536725906e-08,
+    "overlap_orders": [
+     10,
+     12
+    ],
+    "helike": {
+     "gap": 1.0893305385823941,
+     "weight": 0.994309862699828,
+     "log_basis_weight": 0.9886490604281882
+    },
+    "competitor": {
+     "gap": 1.1022209429611651,
+     "weight": 0.9907385654309985,
+     "log_basis_weight": 0.9723970076130957
+    }
+   },
+   "coefficients": [
+    -0.3882449010639277,
+    -2.2178285404290676
+   ],
+   "seconds": 2.1560000000026776,
+   "mass_error": 1.5543122344752192e-15,
+   "kinetic_min": 1.3546453599897166,
+   "asymmetry": 1.136590821460004e-13,
+   "matrix_file": "control-0.002.npz",
+   "matrix_sha256": "e7a6b78d49cead2bb9159148b71cc3232b8fbd0bb25bb15ad16f1766fdefe787"
+  }
+ ],
+ "thresholds": {
+  "coefficient_error": 0.03,
+  "weight_min": 0.95
+ },
+ "certified": false,
+ "extrapolated_coefficients": [
+  -0.5213078184400644,
+  -2.6965329579621833
+ ],
+ "coefficient_errors": [
+  0.008692181559935674,
+  0.04136704203781649
+ ],
+ "coefficient_pass": false,
+ "weight_pass": true
+}

@@ -1,0 +1,30 @@
+test_jacobian_and_measure_gradient_finite_difference (test_helike_positive_cone.Geometry.test_jacobian_and_measure_gradient_finite_difference) ... ok
+test_metric_and_potential_match_independent_q_space (test_helike_positive_cone.Geometry.test_metric_and_potential_match_independent_q_space) ... ok
+test_old_negative_continuation_point_stays_inside (test_helike_positive_cone.Geometry.test_old_negative_continuation_point_stays_inside) ... ok
+test_old_negative_kinetic_directions_are_positive (test_helike_positive_cone.Geometry.test_old_negative_kinetic_directions_are_positive) ... ok
+test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) ... ok
+test_roundtrip_metric_and_measure (test_helike_positive_cone.Geometry.test_roundtrip_metric_and_measure) ... ok
+test_completed_square_against_unshifted_quadrature (test_helike_positive_cone.Moments.test_completed_square_against_unshifted_quadrature) ... ok
+test_harmonic_single_and_double_controls (test_helike_positive_cone.Moments.test_harmonic_single_and_double_controls) ... ok
+test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) ... ok
+test_reference_amplitudes_against_direct_pullback (test_helike_positive_cone.Moments.test_reference_amplitudes_against_direct_pullback) ... ok
+test_mass_and_kinetic_form (test_helike_positive_cone.PhysicalControls.test_mass_and_kinetic_form) ... ok
+test_nested_ritz_values (test_helike_positive_cone.PhysicalControls.test_nested_ritz_values) ... ok
+test_same_weak_coupling_coefficients (test_helike_positive_cone.PhysicalControls.test_same_weak_coupling_coefficients) ... ERROR
+test_scope_and_resource_refusal (test_helike_positive_cone.PhysicalControls.test_scope_and_resource_refusal) ... ok
+
+======================================================================
+ERROR: test_same_weak_coupling_coefficients (test_helike_positive_cone.PhysicalControls.test_same_weak_coupling_coefficients)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 122, in test_same_weak_coupling_coefficients
+    r=L.helike_and_competitor()
+      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_positive_cone.py", line 337, in helike_and_competitor
+    raise ArithmeticError(f"reference weights unresolved at frozen overlap tolerance: {error}")
+ArithmeticError: reference weights unresolved at frozen overlap tolerance: 1.3595329132476408e-06
+
+----------------------------------------------------------------------
+Ran 14 tests in 3.485s
+
+FAILED (errors=1)

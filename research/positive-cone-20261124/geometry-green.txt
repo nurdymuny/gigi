@@ -1,0 +1,11 @@
+test_jacobian_and_measure_gradient_finite_difference (test_helike_positive_cone.Geometry.test_jacobian_and_measure_gradient_finite_difference) ... ok
+test_metric_and_potential_match_independent_q_space (test_helike_positive_cone.Geometry.test_metric_and_potential_match_independent_q_space) ... ok
+test_old_negative_continuation_point_stays_inside (test_helike_positive_cone.Geometry.test_old_negative_continuation_point_stays_inside) ... ok
+test_old_negative_kinetic_directions_are_positive (test_helike_positive_cone.Geometry.test_old_negative_kinetic_directions_are_positive) ... ok
+test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) ... ok
+test_roundtrip_metric_and_measure (test_helike_positive_cone.Geometry.test_roundtrip_metric_and_measure) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.321s
+
+OK

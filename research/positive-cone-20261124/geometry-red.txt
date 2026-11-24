@@ -1,0 +1,23 @@
+test_old_negative_continuation_point_stays_inside (test_helike_positive_cone.Geometry.test_old_negative_continuation_point_stays_inside) ... FAIL
+test_old_negative_kinetic_directions_are_positive (test_helike_positive_cone.Geometry.test_old_negative_kinetic_directions_are_positive) ... FAIL
+
+======================================================================
+FAIL: test_old_negative_continuation_point_stays_inside (test_helike_positive_cone.Geometry.test_old_negative_continuation_point_stays_inside)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 17, in test_old_negative_continuation_point_stays_inside
+    self.assertGreater(np.linalg.eigvalsh(self.chart.gram(z)).min(), 0.)
+AssertionError: np.float64(-4.0) not greater than 0.0
+
+======================================================================
+FAIL: test_old_negative_kinetic_directions_are_positive (test_helike_positive_cone.Geometry.test_old_negative_kinetic_directions_are_positive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 21, in test_old_negative_kinetic_directions_are_positive
+    self.assertGreater(np.linalg.eigvalsh(self.chart.metric(z)).min(), 0.)
+AssertionError: np.float64(-1.0000000000000002) not greater than 0.0
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+FAILED (failures=2)

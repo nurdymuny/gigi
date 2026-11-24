@@ -1,0 +1,167 @@
+test_jacobian_and_measure_gradient_finite_difference (test_helike_positive_cone.Geometry.test_jacobian_and_measure_gradient_finite_difference) ... ERROR
+test_metric_and_potential_match_independent_q_space (test_helike_positive_cone.Geometry.test_metric_and_potential_match_independent_q_space) ... ERROR
+test_old_negative_continuation_point_stays_inside (test_helike_positive_cone.Geometry.test_old_negative_continuation_point_stays_inside) ... FAIL
+test_old_negative_kinetic_directions_are_positive (test_helike_positive_cone.Geometry.test_old_negative_kinetic_directions_are_positive) ... FAIL
+test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) ... 
+  test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) (G=array([[-2., -0., -0.],
+       [-0., -3., -0.],
+       [-0., -0., -4.]])) ... ERROR
+  test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) (G=array([[0., 0., 0.],
+       [0., 0., 0.],
+       [0., 0., 0.]])) ... ERROR
+  test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) (G=array([[1., 2., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]])) ... ERROR
+test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) ... FAIL
+test_roundtrip_metric_and_measure (test_helike_positive_cone.Geometry.test_roundtrip_metric_and_measure) ... ERROR
+test_completed_square_against_unshifted_quadrature (test_helike_positive_cone.Moments.test_completed_square_against_unshifted_quadrature) ... ERROR
+test_harmonic_single_and_double_controls (test_helike_positive_cone.Moments.test_harmonic_single_and_double_controls) ... ERROR
+test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) ... 
+  test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) (args=(0.0, 0.1, 0, 2)) ... ERROR
+  test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) (args=(1.0, nan, 0, 2)) ... ERROR
+  test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) (args=(1.0, 0.1, -1, 2)) ... ERROR
+setUpClass (test_helike_positive_cone.PhysicalControls) ... ERROR
+
+======================================================================
+ERROR: test_jacobian_and_measure_gradient_finite_difference (test_helike_positive_cone.Geometry.test_jacobian_and_measure_gradient_finite_difference)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 45, in test_jacobian_and_measure_gradient_finite_difference
+    ell[j] = (self.chart.log_measure(z+d)-self.chart.log_measure(z-d))/(2*eps)
+              ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'ConeChart' object has no attribute 'log_measure'
+
+======================================================================
+ERROR: test_metric_and_potential_match_independent_q_space (test_helike_positive_cone.Geometry.test_metric_and_potential_match_independent_q_space)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 58, in test_metric_and_potential_match_independent_q_space
+    metric, potential = pc.laurent_model(s,t,g)
+                        ^^^^^^^^^^^^^^^^
+AttributeError: module 'helike_positive_cone' has no attribute 'laurent_model'
+
+======================================================================
+ERROR: test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) (G=array([[-2., -0., -0.],
+       [-0., -3., -0.],
+       [-0., -0., -4.]]))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 51, in test_refuses_bad_geometry_instead_of_projecting
+    with self.subTest(G=G), self.assertRaises(ValueError): self.chart.inverse(G)
+                                                           ^^^^^^^^^^^^^^^^^^
+AttributeError: 'ConeChart' object has no attribute 'inverse'
+
+======================================================================
+ERROR: test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) (G=array([[0., 0., 0.],
+       [0., 0., 0.],
+       [0., 0., 0.]]))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 51, in test_refuses_bad_geometry_instead_of_projecting
+    with self.subTest(G=G), self.assertRaises(ValueError): self.chart.inverse(G)
+                                                           ^^^^^^^^^^^^^^^^^^
+AttributeError: 'ConeChart' object has no attribute 'inverse'
+
+======================================================================
+ERROR: test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting) (G=array([[1., 2., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 51, in test_refuses_bad_geometry_instead_of_projecting
+    with self.subTest(G=G), self.assertRaises(ValueError): self.chart.inverse(G)
+                                                           ^^^^^^^^^^^^^^^^^^
+AttributeError: 'ConeChart' object has no attribute 'inverse'
+
+======================================================================
+ERROR: test_roundtrip_metric_and_measure (test_helike_positive_cone.Geometry.test_roundtrip_metric_and_measure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 28, in test_roundtrip_metric_and_measure
+    np.testing.assert_allclose(self.chart.inverse(G), z, atol=1e-10)
+                               ^^^^^^^^^^^^^^^^^^
+AttributeError: 'ConeChart' object has no attribute 'inverse'
+
+======================================================================
+ERROR: test_completed_square_against_unshifted_quadrature (test_helike_positive_cone.Moments.test_completed_square_against_unshifted_quadrature)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 81, in test_completed_square_against_unshifted_quadrature
+    np.testing.assert_allclose(pc.one_dimensional_moments(w,a,p,3),want,rtol=1e-11,atol=1e-11)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'helike_positive_cone' has no attribute 'one_dimensional_moments'
+
+======================================================================
+ERROR: test_harmonic_single_and_double_controls (test_helike_positive_cone.Moments.test_harmonic_single_and_double_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 85, in test_harmonic_single_and_double_controls
+    H=pc.harmonic_matrix(w,2)
+      ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'helike_positive_cone' has no attribute 'harmonic_matrix'
+
+======================================================================
+ERROR: test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) (args=(0.0, 0.1, 0, 2))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 92, in test_nonfinite_and_bad_order_refuse
+    with self.subTest(args=args), self.assertRaises(ValueError): pc.one_dimensional_moments(*args)
+                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'helike_positive_cone' has no attribute 'one_dimensional_moments'
+
+======================================================================
+ERROR: test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) (args=(1.0, nan, 0, 2))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 92, in test_nonfinite_and_bad_order_refuse
+    with self.subTest(args=args), self.assertRaises(ValueError): pc.one_dimensional_moments(*args)
+                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'helike_positive_cone' has no attribute 'one_dimensional_moments'
+
+======================================================================
+ERROR: test_nonfinite_and_bad_order_refuse (test_helike_positive_cone.Moments.test_nonfinite_and_bad_order_refuse) (args=(1.0, 0.1, -1, 2))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 92, in test_nonfinite_and_bad_order_refuse
+    with self.subTest(args=args), self.assertRaises(ValueError): pc.one_dimensional_moments(*args)
+                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'helike_positive_cone' has no attribute 'one_dimensional_moments'
+
+======================================================================
+ERROR: setUpClass (test_helike_positive_cone.PhysicalControls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 98, in setUpClass
+    cls.controls={g2:pc.ConeRitz(1.15,3.,np.sqrt(g2),Mq=4) for g2 in (.004,.002)}
+                     ^^^^^^^^^^^
+AttributeError: module 'helike_positive_cone' has no attribute 'ConeRitz'
+
+======================================================================
+FAIL: test_old_negative_continuation_point_stays_inside (test_helike_positive_cone.Geometry.test_old_negative_continuation_point_stays_inside)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 19, in test_old_negative_continuation_point_stays_inside
+    self.assertGreater(np.linalg.eigvalsh(self.chart.gram(z)).min(), 0.)
+AssertionError: np.float64(-4.0) not greater than 0.0
+
+======================================================================
+FAIL: test_old_negative_kinetic_directions_are_positive (test_helike_positive_cone.Geometry.test_old_negative_kinetic_directions_are_positive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 23, in test_old_negative_kinetic_directions_are_positive
+    self.assertGreater(np.linalg.eigvalsh(self.chart.metric(z)).min(), 0.)
+AssertionError: np.float64(-1.0000000000000002) not greater than 0.0
+
+======================================================================
+FAIL: test_refuses_bad_geometry_instead_of_projecting (test_helike_positive_cone.Geometry.test_refuses_bad_geometry_instead_of_projecting)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_positive_cone.py", line 52, in test_refuses_bad_geometry_instead_of_projecting
+    with self.assertRaises(ValueError): self.chart.gram(np.full(6, np.nan))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.010s
+
+FAILED (failures=3, errors=12)

@@ -1,0 +1,25 @@
+{"g2": 0.004, "s": 1.15, "t": 3.0, "Mq": 4, "dimension": 210, "result": {"E0": 5.406526973523818, "scope": "positive-cone interior trial values; no boundary or sector convergence certificate", "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION", "energy_shift": -47.52734374999997, "reference_weight_error": 1.6973863314895254e-07, "overlap_orders": [10, 12], "helike": {"gap": 1.0890863004497708, "weight": 0.9884060238069833, "log_basis_weight": 0.9780844705639344}, "competitor": {"gap": 1.0997001035504397, "weight": 0.9812470188159994, "log_basis_weight": 0.9475285878608114}}, "coefficients": [-0.2551819836877911, -1.739124122895952], "seconds": 2.438000000009197, "mass_error": 1.5543122344752192e-15, "kinetic_min": 1.3535847652335735, "asymmetry": 9.237055564881302e-14, "matrix_file": "control-0.004.npz", "matrix_sha256": "59cfaf68f2d8538d03eda8910e76e6f76df618747ab95036fde88acb2e00cc76"}
+{"g2": 0.002, "s": 1.15, "t": 3.0, "Mq": 4, "dimension": 210, "result": {"E0": 5.40921591973518, "scope": "positive-cone interior trial values; no boundary or sector convergence certificate", "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION", "energy_shift": -95.05468749999991, "reference_weight_error": 2.368032536725906e-08, "overlap_orders": [10, 12], "helike": {"gap": 1.0893305385823941, "weight": 0.994309862699828, "log_basis_weight": 0.9886490604281882}, "competitor": {"gap": 1.1022209429611651, "weight": 0.9907385654309985, "log_basis_weight": 0.9723970076130957}}, "coefficients": [-0.3882449010639277, -2.2178285404290676], "seconds": 2.1560000000026776, "mass_error": 1.5543122344752192e-15, "kinetic_min": 1.3546453599897166, "asymmetry": 1.136590821460004e-13, "matrix_file": "control-0.002.npz", "matrix_sha256": "e7a6b78d49cead2bb9159148b71cc3232b8fbd0bb25bb15ad16f1766fdefe787"}
+{
+  "status": "FAIL_CONTROLS",
+  "scope": "interior trial controls, no physical boundary certificate",
+  "source_revision": "9c17cc334e0704da9f15a6203b6d7ade407be7b9",
+  "source_hash_policy": "sha256-universal-newline-v1",
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "thresholds": {
+    "coefficient_error": 0.03,
+    "weight_min": 0.95
+  },
+  "certified": false,
+  "extrapolated_coefficients": [
+    -0.5213078184400644,
+    -2.6965329579621833
+  ],
+  "coefficient_errors": [
+    0.008692181559935674,
+    0.04136704203781649
+  ],
+  "coefficient_pass": false,
+  "weight_pass": true
+}

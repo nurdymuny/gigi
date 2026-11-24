@@ -1,0 +1,18 @@
+{
+ "kinetic_cubic_dropped": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "quartic_sign": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "kinetic_metric_entry": {
+  "failures": 3,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "all_caught": true
+}

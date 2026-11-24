@@ -1,0 +1,5 @@
+grad_G_dot_grad_d {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+laplacian_G {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+pert_cubic_halved {'failures': 2, 'errors': 0, 'caught_by_assertion': True}
+d_squared_relation_dropped {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+ALL MUTANTS CAUGHT

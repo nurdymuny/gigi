@@ -1,0 +1,27 @@
+{
+ "baseline": {
+  "failures": 0,
+  "errors": 0
+ },
+ "grad_G_dot_grad_d": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "laplacian_G": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "pert_cubic_halved": {
+  "failures": 2,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "d_squared_relation_dropped": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "all_caught": true
+}

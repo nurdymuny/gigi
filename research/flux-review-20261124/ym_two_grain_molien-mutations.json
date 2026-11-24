@@ -1,0 +1,27 @@
+{
+ "baseline": {
+  "failures": 0,
+  "errors": 0
+ },
+ "weyl_weight_sign": {
+  "failures": 5,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "character_missing_zero_weight": {
+  "failures": 2,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "generator_det_dropped": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "generator_X21_wrong": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "all_caught": true
+}

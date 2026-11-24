@@ -1,0 +1,7 @@
+curl_orientation {'failures': 4, 'errors': 0, 'caught_by_assertion': True}
+flux_sign {'failures': 8, 'errors': 0, 'caught_by_assertion': True}
+twist_formula_shift {'failures': 6, 'errors': 0, 'caught_by_assertion': True}
+fibre_field_sign {'failures': 11, 'errors': 0, 'caught_by_assertion': True}
+g2_bound_halved {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+sufficient_without_gauge_factor {'failures': 2, 'errors': 0, 'caught_by_assertion': True}
+ALL MUTANTS CAUGHT

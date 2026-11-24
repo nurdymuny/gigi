@@ -99,7 +99,7 @@ def V_sourced(q, g, t, a, b):
 
 
 def bounded(g, t, a, b):
-    """Flat (commuting) directions are bounded below iff omega_0^2 - a > 0 and omega_perp^2 - b > 0."""
+    """Strict positive quadratic confinement on commuting rays; equality is not decided by this predicate."""
     om = omega(t)
     return om[0] ** 2 - a > 0 and om[1] ** 2 - b > 0
 

@@ -1,0 +1,40 @@
+test_accidental_harmonic_degeneracy_refuses_labels (test_flux_review.FluxReview.test_accidental_harmonic_degeneracy_refuses_labels) ... ok
+t=3.0 g2=0.05 s=1.15 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.15 P=6 Mq=8: helike 1.50000 competitor 1.70000 (0.0s)
+t=3.0 g2=0.05 s=1.15 P=8 Mq=8: helike 1.50100 competitor 1.70100 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=6 Mq=8: helike 1.50000 competitor 1.70000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=8 Mq=8: helike 1.50100 competitor 1.70100 (0.0s)
+test_basis_refinement_cannot_hide_behind_stable_taylor_step (test_flux_review.FluxReview.test_basis_refinement_cannot_hide_behind_stable_taylor_step) ... ok
+COMPLETE SOFTWARE_SMOKE_ONLY
+t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+test_changed_receipt_clears_stale_pass (test_flux_review.FluxReview.test_changed_receipt_clears_stale_pass) ... ok
+test_continued_kinetic_matrix_has_negative_region (test_flux_review.FluxReview.test_continued_kinetic_matrix_has_negative_region) ... ok
+test_empty_primary_is_not_support (test_flux_review.FluxReview.test_empty_primary_is_not_support) ... ok
+test_full_grid_is_held_before_any_solver (test_flux_review.FluxReview.test_full_grid_is_held_before_any_solver) ... ok
+test_materially_asymmetric_spectrum_refuses (test_flux_review.FluxReview.test_materially_asymmetric_spectrum_refuses) ... ok
+test_molien_rejects_aliasing_even_when_answers_are_integer (test_flux_review.FluxReview.test_molien_rejects_aliasing_even_when_answers_are_integer) ... ok
+test_multiple_crossings_are_not_silently_selected (test_flux_review.FluxReview.test_multiple_crossings_are_not_silently_selected) ... ok
+COMPLETE SOFTWARE_SMOKE_ONLY
+FAIL receipt consistency only, not matrix replay or physical certification
+HOLD_DOMAIN NOT_EVALUATED
+t=3.0 g2=0.05 s=1.15 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)
+test_partial_rung_is_retained_on_failure (test_flux_review.FluxReview.test_partial_rung_is_retained_on_failure) ... ok
+test_selection_uses_available_eigenpairs (test_flux_review.FluxReview.test_selection_uses_available_eigenpairs) ... ok
+t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+test_smoke_cannot_emit_scientific_verdict (test_flux_review.FluxReview.test_smoke_cannot_emit_scientific_verdict) ... ok
+test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) ... ok
+test_switch_rejects_reversed_grid (test_flux_review.FluxReview.test_switch_rejects_reversed_grid) ... ok
+COMPLETE SOFTWARE_SMOKE_ONLY
+t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+test_valid_receipt_replays_without_solver (test_flux_review.FluxReview.test_valid_receipt_replays_without_solver) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 1.452s
+
+OK
+COMPLETE SOFTWARE_SMOKE_ONLY
+PASS receipt consistency only, not matrix replay or physical certification

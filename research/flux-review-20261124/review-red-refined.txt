@@ -1,0 +1,157 @@
+test_accidental_harmonic_degeneracy_refuses_labels (test_flux_review.FluxReview.test_accidental_harmonic_degeneracy_refuses_labels) ... FAIL
+t=3.0 g2=0.05 s=1.15 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.15 P=6 Mq=8: helike 1.50000 competitor 1.70000 (0.0s)
+t=3.0 g2=0.05 s=1.15 P=8 Mq=8: helike 1.50100 competitor 1.70100 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=6 Mq=8: helike 1.50000 competitor 1.70000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=8 Mq=8: helike 1.50100 competitor 1.70100 (0.0s)
+test_basis_refinement_cannot_hide_behind_stable_taylor_step (test_flux_review.FluxReview.test_basis_refinement_cannot_hide_behind_stable_taylor_step) ... FAIL
+test_continued_kinetic_matrix_has_negative_region (test_flux_review.FluxReview.test_continued_kinetic_matrix_has_negative_region) ... ok
+test_full_grid_is_held_before_any_solver (test_flux_review.FluxReview.test_full_grid_is_held_before_any_solver) ... FAIL
+test_materially_asymmetric_spectrum_refuses (test_flux_review.FluxReview.test_materially_asymmetric_spectrum_refuses) ... FAIL
+test_molien_rejects_aliasing_even_when_answers_are_integer (test_flux_review.FluxReview.test_molien_rejects_aliasing_even_when_answers_are_integer) ... FAIL
+test_multiple_crossings_are_not_silently_selected (test_flux_review.FluxReview.test_multiple_crossings_are_not_silently_selected) ... FAIL
+COMPLETE NOT_SUPPORTED
+t=3.0 g2=0.05 s=1.15 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)
+test_partial_rung_is_retained_on_failure (test_flux_review.FluxReview.test_partial_rung_is_retained_on_failure) ... FAIL
+test_selection_uses_available_eigenpairs (test_flux_review.FluxReview.test_selection_uses_available_eigenpairs) ... FAIL
+test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) ... 
+  test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) (ss=[1.0, 2.0], dd=[nan, 1.0]) ... FAIL
+  test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) (ss=[1.0, 2.0], dd=[-1.0]) ... ERROR
+  test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) (ss=[], dd=[]) ... FAIL
+test_switch_rejects_reversed_grid (test_flux_review.FluxReview.test_switch_rejects_reversed_grid) ... FAIL
+
+======================================================================
+ERROR: test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) (ss=[1.0, 2.0], dd=[-1.0])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 47, in test_switch_rejects_nonfinite_or_incomplete_evidence
+    run.switch_point(ss, dd)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_flux_background.py", line 55, in switch_point
+    if diffs[i] < 0 <= diffs[i + 1]:
+                       ~~~~~^^^^^^^
+IndexError: list index out of range
+
+======================================================================
+FAIL: test_accidental_harmonic_degeneracy_refuses_labels (test_flux_review.FluxReview.test_accidental_harmonic_degeneracy_refuses_labels)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 127, in test_accidental_harmonic_degeneracy_refuses_labels
+    with self.assertRaises(ArithmeticError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ArithmeticError not raised
+
+======================================================================
+FAIL: test_basis_refinement_cannot_hide_behind_stable_taylor_step (test_flux_review.FluxReview.test_basis_refinement_cannot_hide_behind_stable_taylor_step)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 98, in test_basis_refinement_cannot_hide_behind_stable_taylor_step
+    self.assertFalse(rec['cases'][0]['points'][0]['converged'])
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_full_grid_is_held_before_any_solver (test_flux_review.FluxReview.test_full_grid_is_held_before_any_solver)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 58, in test_full_grid_is_held_before_any_solver
+    run.main()
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_flux_background.py", line 99, in main
+    print(f"t={t} g2={g2} s={s} P={P} Mq={Mq}: helike {r['helike']['gap']:.5f} "
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: unsupported format string passed to MagicMock.__format__
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 62, in test_full_grid_is_held_before_any_solver
+    self.fail(f'expected a recorded domain hold, not {type(exc).__name__}: {exc}')
+AssertionError: expected a recorded domain hold, not TypeError: unsupported format string passed to MagicMock.__format__
+
+======================================================================
+FAIL: test_materially_asymmetric_spectrum_refuses (test_flux_review.FluxReview.test_materially_asymmetric_spectrum_refuses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 133, in test_materially_asymmetric_spectrum_refuses
+    with self.assertRaises(ArithmeticError): L.spectrum()
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ArithmeticError not raised
+
+======================================================================
+FAIL: test_molien_rejects_aliasing_even_when_answers_are_integer (test_flux_review.FluxReview.test_molien_rejects_aliasing_even_when_answers_are_integer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 37, in test_molien_rejects_aliasing_even_when_answers_are_integer
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_multiple_crossings_are_not_silently_selected (test_flux_review.FluxReview.test_multiple_crossings_are_not_silently_selected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 50, in test_multiple_crossings_are_not_silently_selected
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_partial_rung_is_retained_on_failure (test_flux_review.FluxReview.test_partial_rung_is_retained_on_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 85, in test_partial_rung_is_retained_on_failure
+    self.assertEqual(len(rec['cases'][0]['points']), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_selection_uses_available_eigenpairs (test_flux_review.FluxReview.test_selection_uses_available_eigenpairs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 120, in test_selection_uses_available_eigenpairs
+    r = self.local_stub().helike_and_competitor(nlev=12)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_condensate_fock.py", line 143, in helike_and_competitor
+    best = max(range(1, nlev), key=lambda k: self.classify(v[:, k])[modes].sum())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_condensate_fock.py", line 143, in <lambda>
+    best = max(range(1, nlev), key=lambda k: self.classify(v[:, k])[modes].sum())
+                                                           ~^^^^^^
+IndexError: index 7 is out of bounds for axis 1 with size 7
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 122, in test_selection_uses_available_eigenpairs
+    self.fail(f'small valid spectrum crashed: {exc}')
+AssertionError: small valid spectrum crashed: index 7 is out of bounds for axis 1 with size 7
+
+======================================================================
+FAIL: test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) (ss=[1.0, 2.0], dd=[nan, 1.0])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 46, in test_switch_rejects_nonfinite_or_incomplete_evidence
+    with self.subTest(ss=ss, dd=dd), self.assertRaises(ValueError):
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_switch_rejects_nonfinite_or_incomplete_evidence (test_flux_review.FluxReview.test_switch_rejects_nonfinite_or_incomplete_evidence) (ss=[], dd=[])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 46, in test_switch_rejects_nonfinite_or_incomplete_evidence
+    with self.subTest(ss=ss, dd=dd), self.assertRaises(ValueError):
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_switch_rejects_reversed_grid (test_flux_review.FluxReview.test_switch_rejects_reversed_grid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 41, in test_switch_rejects_reversed_grid
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.071s
+
+FAILED (failures=11, errors=1)

@@ -129,7 +129,7 @@ def floors_on_berger(t, jmax):
 
 
 def window_report(ts, jmax, tol=1e-9):
-    """For each t: is the twist the H floor of every sector; is her mu^2 the curl^2 floor of every sector."""
+    """Compare minima pooled over j <= jmax. Use per_sector_status for the stronger every-sector question."""
     out = []
     for t in ts:
         rows = floors_on_berger(t, jmax)

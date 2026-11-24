@@ -1,0 +1,4 @@
+kinetic_cubic_dropped {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+kinetic_cubic_flipped {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+taylor_truncated_at_2 {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+ALL MUTANTS CAUGHT

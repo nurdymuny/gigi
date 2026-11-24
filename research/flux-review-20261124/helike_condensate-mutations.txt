@@ -1,0 +1,4 @@
+moment_normalisation {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+dome_scale {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+sources_dropped {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+ALL MUTANTS CAUGHT

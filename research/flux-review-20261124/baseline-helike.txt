@@ -1,0 +1,67 @@
+test_mixed_width_overlap (test_helike_berger_condensate.Condensate.test_mixed_width_overlap)
+Normalised overlap of exp(-|q|^2 a/2) and exp(-|q|^2 b/2) per row is (2 sqrt(ab)/(a+b))^{3/2} per row. ... ok
+test_orbit_envelope_is_the_haar_average (test_helike_berger_condensate.Condensate.test_orbit_envelope_is_the_haar_average) ... ok
+test_orbit_envelope_never_raises_ritz_values (test_helike_berger_condensate.Condensate.test_orbit_envelope_never_raises_ritz_values) ... ok
+test_single_width_items_reproduce_sector_solver (test_helike_berger_condensate.Condensate.test_single_width_items_reproduce_sector_solver) ... ok
+test_sources_enter_exactly (test_helike_berger_condensate.Condensate.test_sources_enter_exactly)
+Single Gaussian: switching on the sources shifts the energy by -3/4 (a/alpha_0 + 2 b/alpha_perp). ... ok
+test_degree_two_content (test_helike_berger_model.Budget.test_degree_two_content) ... ok
+test_round_marginal_contains_the_one_grain_count (test_helike_berger_model.Budget.test_round_marginal_contains_the_one_grain_count)
+SO(2) sectors refine the round J sectors: m = 0 at cutoff N must be at least the round J=0 count. ... ok
+test_helike_frequency_and_flat_limit (test_helike_berger_model.ClosedForms.test_helike_frequency_and_flat_limit) ... ok
+test_sourced_crossing_inside_window (test_helike_berger_model.ClosedForms.test_sourced_crossing_inside_window)
+Helike (|Q| = 2) overtakes the Q = 0 competitor at s*_src(t) < s_max. ... ok
+test_sources_depth_and_window (test_helike_berger_model.ClosedForms.test_sources_depth_and_window) ... ok
+test_boundedness_limit (test_helike_berger_model.FluxBackground.test_boundedness_limit)
+Numerically s_max = 1 + 1/(t + 1) (derivation owed). ... ok
+test_helike_becomes_sector_zero_floor_inside_the_window (test_helike_berger_model.FluxBackground.test_helike_becomes_sector_zero_floor_inside_the_window) ... ok
+test_vibrations_are_a_quarter_of_the_edge_sector_zero_hessian (test_helike_berger_model.FluxBackground.test_vibrations_are_a_quarter_of_the_edge_sector_zero_hessian) ... ok
+test_window_global_minimum_and_orbit_zero_modes (test_helike_berger_model.FluxBackground.test_window_global_minimum_and_orbit_zero_modes) ... ok
+test_channels_carry_their_long_axis_charge (test_helike_berger_model.Model.test_channels_carry_their_long_axis_charge) ... ok
+test_floor_and_round_value (test_helike_berger_model.Model.test_floor_and_round_value)
+(3/2)(sqrt t + 2/sqrt t): 4.5 at t = 1 and t = 4, smallest at t = 2 (3 sqrt 2). ... ok
+test_round_limit_is_the_existing_model (test_helike_berger_model.Model.test_round_limit_is_the_existing_model) ... ok
+test_superpotential_matches_edge_paper_curvature (test_helike_berger_model.Model.test_superpotential_matches_edge_paper_curvature) ... ok
+test_three_term_decomposition (test_helike_berger_model.Model.test_three_term_decomposition) ... ok
+test_berger_splitting_closed_form (test_helike_berger_sector.Perturbation.test_berger_splitting_closed_form) ... ok
+test_protected_channel_is_a_formal_eigenfunction (test_helike_berger_sector.Perturbation.test_protected_channel_is_a_formal_eigenfunction)
+H (f e^{-W}) = (floor + 2/sqrt t) f e^{-W} pointwise, f = sum_a (q_1a + i q_2a)^2. ... ok
+test_round_scalar_coefficient (test_helike_berger_sector.Perturbation.test_round_scalar_coefficient) ... ok
+test_dimensions_match_molien (test_helike_berger_sector.SectorSolver.test_dimensions_match_molien) ... ok
+test_round_limit_reproduces_verified_solvers (test_helike_berger_sector.SectorSolver.test_round_limit_reproduces_verified_solvers) ... ok
+test_step1_slopes (test_helike_berger_sector.SectorSolver.test_step1_slopes) ... ok
+test_harmonic_limit_is_exact (test_helike_condensate_fock.LocalFockSolver.test_harmonic_limit_is_exact)
+Potential cut at order 2, no curvature term, no kinetic cubic: exactly the six oscillators. ... ok
+test_small_g_reproduces_perturbation_theory (test_helike_condensate_fock.LocalFockSolver.test_small_g_reproduces_perturbation_theory)
+(gap - omega)/g^2 extrapolated linearly in g^2 to 0 equals the exact O(g^2) coefficients. ... ok
+test_switch_point_interpolation (test_helike_condensate_fock.LocalFockSolver.test_switch_point_interpolation) ... ok
+test_g_squared_scaling_and_degeneracy (test_helike_condensate_pt.Corrections.test_g_squared_scaling_and_degeneracy) ... ok
+test_one_dimensional_validation (test_helike_condensate_pt.Engine.test_one_dimensional_validation) ... ok
+test_harmonic_frequencies_equal_q_space_vibrations (test_helike_condensate_pt.Reduction.test_harmonic_frequencies_equal_q_space_vibrations) ... ok
+test_measure_identity (test_helike_condensate_pt.Reduction.test_measure_identity) ... ok
+test_vector_identities_both_branches (test_helike_curl_spectrum.CauchyRiemann.test_vector_identities_both_branches) ... ok
+test_flux_boundary_lies_right_of_the_published_edge (test_helike_curl_spectrum.FloorTheorem.test_flux_boundary_lies_right_of_the_published_edge)
+By Enough, Table 2 (x*_A, y = 0.5 and 1.5): the flux boundary is never the edge. ... ok
+test_g2_bound_dominates_the_gauge_norm (test_helike_curl_spectrum.FloorTheorem.test_g2_bound_dominates_the_gauge_norm) ... ok
+test_gauge_factor_is_needed (test_helike_curl_spectrum.FloorTheorem.test_gauge_factor_is_needed)
+Delta >= mu^2 alone is false: at this family member sector 1 has a state below the twist. ... ok
+test_sector_zero_threshold (test_helike_curl_spectrum.FloorTheorem.test_sector_zero_threshold)
+On the Berger path, sector 0 is proved exactly for t >= 2 sqrt 5 - 2. ... ok
+test_sufficient_condition_implies_floor (test_helike_curl_spectrum.FloorTheorem.test_sufficient_condition_implies_floor) ... ok
+test_theorem_condition_never_violated_on_random_family (test_helike_curl_spectrum.FloorTheorem.test_theorem_condition_never_violated_on_random_family) ... ok
+test_cauchy_riemann_leak_equals_gauge_component (test_helike_curl_spectrum.FluxTheorem.test_cauchy_riemann_leak_equals_gauge_component) ... ok
+test_flux_bound_holds_exactly_from_t_equals_two_on_berger (test_helike_curl_spectrum.FluxTheorem.test_flux_bound_holds_exactly_from_t_equals_two_on_berger) ... ok
+test_spectrum_formula_and_sector_independence (test_helike_curl_spectrum.FluxTheorem.test_spectrum_formula_and_sector_independence) ... ok
+test_berger_point_is_the_levi_civita_field (test_helike_curl_spectrum.Operators.test_berger_point_is_the_levi_civita_field) ... ok
+test_curl_is_hermitian_and_squares_to_the_derivative_term (test_helike_curl_spectrum.Operators.test_curl_is_hermitian_and_squares_to_the_derivative_term) ... ok
+test_helicity_minus_flux (test_helike_curl_spectrum.Twist.test_helicity_minus_flux)
+The twist is an exact curl eigenvector, mu = -(x + (j+2)/sqrt t), and lambda = mu^2 - B. ... ok
+test_flux_bound_fails_for_positive_x (test_helike_curl_spectrum.Windows.test_flux_bound_fails_for_positive_x) ... ok
+test_reproduces_the_published_lower_edge (test_helike_curl_spectrum.Windows.test_reproduces_the_published_lower_edge) ... ok
+test_twist_is_not_the_curl_floor_inside_the_window (test_helike_curl_spectrum.Windows.test_twist_is_not_the_curl_floor_inside_the_window) ... ok
+test_twist_minimises_the_flux_term_on_the_berger_path (test_helike_curl_spectrum.Windows.test_twist_minimises_the_flux_term_on_the_berger_path) ... ok
+
+----------------------------------------------------------------------
+Ran 49 tests in 124.246s
+
+OK

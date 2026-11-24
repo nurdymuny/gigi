@@ -1,0 +1,5 @@
+weyl_weight_sign {'failures': 5, 'errors': 0, 'caught_by_assertion': True}
+character_missing_zero_weight {'failures': 2, 'errors': 0, 'caught_by_assertion': True}
+generator_det_dropped {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+generator_X21_wrong {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+ALL MUTANTS CAUGHT

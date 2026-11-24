@@ -1,0 +1,42 @@
+{
+ "baseline": {
+  "failures": 0,
+  "errors": 0
+ },
+ "frame_derivative_sign": {
+  "failures": 4,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "bracket_sign": {
+  "failures": 4,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "right_frame_transposed": {
+  "failures": 2,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "projection_unrotated": {
+  "failures": 2,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "degree_guard_ignored": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "plane_cross_coefficient": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "chern_simons_as_sum": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "all_caught": true
+}

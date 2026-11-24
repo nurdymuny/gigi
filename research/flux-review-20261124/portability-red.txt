@@ -1,0 +1,20 @@
+t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+t=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)
+test_line_endings_do_not_break_receipt_replay (test_flux_review.FluxReview.test_line_endings_do_not_break_receipt_replay) ... FAIL
+COMPLETE SOFTWARE_SMOKE_ONLY
+FAIL receipt consistency only, not matrix replay or physical certification
+
+======================================================================
+FAIL: test_line_endings_do_not_break_receipt_replay (test_flux_review.FluxReview.test_line_endings_do_not_break_receipt_replay)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 242, in test_line_endings_do_not_break_receipt_replay
+    self.verify(out, 0)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_flux_review.py", line 144, in verify
+    self.assertEqual(ex.exception.code, code)
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 1 test in 0.320s
+
+FAILED (failures=1)

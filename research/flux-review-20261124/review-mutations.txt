@@ -1,0 +1,13 @@
+newline_portability_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+molien_alias_guard_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+basis_drift_ignored {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+domain_hold_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+point_saved_too_late {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+multiple_crossings_accepted {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+smoke_misreported_as_support {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+snapshot_check_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+coverage_check_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+failed_replay_leaves_old_pass {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+small_spectrum_bounds_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+ambiguous_label_guard_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}
+symmetry_guard_removed {'caught_by_assertion': True, 'failures': 1, 'errors': 0}

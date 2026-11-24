@@ -1,13 +1,13 @@
-"""Local Fock diagonalisation of the sourced condensate in the reduced G-space (non-perturbative in g).
+"""Local Taylor/Fock diagnostic of the sourced condensate, not a physical-domain spectral solver.
 
 Colour singlets reduce exactly to G = q q^T; after the similarity rho^{1/2} (rho = det G^{-1/2}):
     H_s = -1/2 d_i A_ij(G) d_j + V_src(G) + U(G),   U = 1/2 rho^{-1/2} d_i (A_ij d_j rho^{1/2})   (flat measure dG).
 In the normal coordinates z of the harmonic problem (eta = G - G_bg = M z, with M M^T = A0):
     H_s = -1/2 sum_np d_n B_np(z) d_p + V(z) + U(z),   B(z) = M^{-1} A(G_bg + M z) M^{-T} = I + linear in z (exact).
-V + U are Taylor-expanded to order P in z (convergent: the positive-definite boundary is several sigma away at the
-registered depths). The spectrum is computed in the 6-mode oscillator basis with total quanta <= Mq, using sparse
+V + U are Taylor-expanded to order P in z. The matrix is computed in the 6-mode oscillator basis with total quanta <= Mq, using sparse
 ladder matrices on the space of quanta <= Mq + P + 2. Approximate (Taylor order P, basis Mq, sheet d = +sqrt det G),
-convergence-controlled, not residual-certified. Validated against the exact O(g^2) perturbation theory at small g.
+not domain- or residual-certified. The unrestricted continuation has B=-I at G=-G_bg: basis stability alone cannot
+certify physical spectral convergence. Local coefficients are tested against O(g^2) perturbation theory at small g.
 """
 from __future__ import annotations
 
@@ -116,11 +116,13 @@ class LocalFock:
         keep = [i for i, s in enumerate(big) if sum(s) <= self.Mq]
         self.basis = [big[i] for i in keep]
         Hk = H[keep][:, keep]
-        self.H = ((Hk + Hk.T) / 2).toarray()
         self.asym = float(np.abs(Hk - Hk.T).max())
+        self.H = checked_symmetric(Hk.toarray())
 
     def spectrum(self, nlev=12):
-        e, v = np.linalg.eigh(self.H)
+        if isinstance(nlev, bool) or not isinstance(nlev, (int, np.integer)) or nlev < 1:
+            raise ValueError("nlev must be a positive integer")
+        e, v = np.linalg.eigh(checked_symmetric(self.H))
         return e[:nlev], v[:, :nlev]
 
     def classify(self, vec):
@@ -132,14 +134,29 @@ class LocalFock:
         return w
 
     def helike_and_competitor(self, nlev=12):
-        """Gaps of the lowest states dominated by Helike's doublet and by the Q=0 competitor mode."""
+        """Gaps of the strongest single-quantum matches in the returned window; not certified lowest sector states."""
         e, v = self.spectrum(nlev)
         wH = math.sqrt(bm.mc_helike_freq2(self.s, self.t))
         hel = [n for n in range(6) if abs(self.w[n] - wH) < 1e-6]
+        if len(hel) != 2:
+            raise ArithmeticError("Helike harmonic label is ambiguous: expected exactly two matching modes")
         single = [n for n in range(6) if n not in hel and sum(abs(self.w[n] - self.w[m]) < 1e-6 for m in range(6)) == 1]
+        if not single or len(e) < 2:
+            raise ArithmeticError("insufficient isolated competitor modes or excited eigenpairs")
         comp = min(single, key=lambda n: self.w[n])
-        out = {"E0": float(e[0])}
+        out = {"E0": float(e[0]), "scope": "local Taylor/Fock diagnostic; physical domain not enforced"}
         for name, modes in (("helike", hel), ("competitor", [comp])):
-            best = max(range(1, nlev), key=lambda k: self.classify(v[:, k])[modes].sum())
+            best = max(range(1, len(e)), key=lambda k: self.classify(v[:, k])[modes].sum())
             out[name] = {"gap": float(e[best] - e[0]), "weight": float(self.classify(v[:, best])[modes].sum())}
         return out
+
+
+def checked_symmetric(H):
+    """Remove only roundoff asymmetry, never silently fix a defective operator."""
+    H = np.asarray(H)
+    if H.ndim != 2 or H.shape[0] != H.shape[1] or not H.size or not np.isfinite(H).all():
+        raise ArithmeticError("Hamiltonian must be a finite nonempty square matrix")
+    scale = max(1., float(np.max(np.abs(H))))
+    if np.max(np.abs(H - H.T)) > 1e-10 * scale:
+        raise ArithmeticError("Hamiltonian has material asymmetry before diagonalisation")
+    return .5 * H + .5 * H.T

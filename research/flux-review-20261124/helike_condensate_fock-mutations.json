@@ -1,0 +1,18 @@
+{
+ "kinetic_cubic_dropped": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "kinetic_cubic_flipped": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "taylor_truncated_at_2": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "all_caught": true
+}

@@ -129,6 +129,22 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 24 Nov | [Local geometry and projected-tail results](dome-local-review-results-2026-11-24.md): 32 rows replay; the 13.8% exterior change reproduces despite a tiny total-norm change; higher reference and precision checks, 41 focused tests and eight mechanism removals; old physical gate remains open |
 | 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 
+## Latest Flux And Two-Grain Work
+
+| date | note |
+| --- | --- |
+| 24 Nov | [Two-grain sphalerons and barriers](helike-two-grain-phase2-2026-11-24.md) |
+| 24 Nov | [Two-grain invariant basis budget](helike-two-grain-phase3-budget-2026-11-24.md) |
+| 24 Nov | [Reflections and intentions](helike-reflections-and-intentions-2026-11-24.md) |
+| 24 Nov | [Curl spectrum](helike-curl-spectrum-2026-11-24.md) |
+| 24 Nov | [Flux analysis](helike-flux-analysis-2026-11-24.md) |
+| 24 Nov | [Literature check](helike-literature-check-2026-11-24.md) |
+| 24 Nov | [Berger probe design](helike-berger-probe-design-2026-11-24.md) |
+| 24 Nov | [Flux-background design](helike-flux-background-design-2026-11-24.md) |
+| 24 Nov | [Original flux registration](helike-flux-background-registration-2026-11-24.md): historical frozen design; full execution held by the review amendment |
+| 24 Nov | [Flux review amendment](helike-flux-review-amendment-2026-11-24.md): physical-domain hold, independent refinement checks and fail-closed evidence |
+| 24 Nov | [Flux review results](helike-flux-review-results-2026-11-24.md): domain witness, corrected safeguards, focused test evidence and the exact remaining mathematical question |
+
 ## Where we were: status and strategy
 
 | date | note |

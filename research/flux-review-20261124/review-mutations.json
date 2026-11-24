@@ -1,0 +1,81 @@
+{
+  "newline_portability_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nCOMPLETE SOFTWARE_SMOKE_ONLY\nFAIL receipt consistency only, not matrix replay or physical certification\nF\n======================================================================\nFAIL: test_line_endings_do_not_break_receipt_replay (test_flux_review.FluxReview.test_line_endings_do_not_break_receipt_replay)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 242, in test_line_endings_do_not_break_receipt_replay\n    self.verify(out, 0)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 144, in verify\n    self.assertEqual(ex.exception.code, code)\nAssertionError: 1 != 0\n\n----------------------------------------------------------------------\nRan 1 test in 0.299s\n\nFAILED (failures=1)\n"
+  },
+  "molien_alias_guard_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "F\n======================================================================\nFAIL: test_molien_rejects_aliasing_even_when_answers_are_integer (test_flux_review.FluxReview.test_molien_rejects_aliasing_even_when_answers_are_integer)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 37, in test_molien_rejects_aliasing_even_when_answers_are_integer\n    with self.assertRaises(ValueError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  "basis_drift_ignored": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "t=3.0 g2=0.05 s=1.15 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)\nt=3.0 g2=0.05 s=1.15 P=6 Mq=8: helike 1.50000 competitor 1.70000 (0.0s)\nt=3.0 g2=0.05 s=1.15 P=8 Mq=8: helike 1.50100 competitor 1.70100 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=6 Mq=8: helike 1.50000 competitor 1.70000 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=8 Mq=8: helike 1.50100 competitor 1.70100 (0.0s)\nCOMPLETE SOFTWARE_SMOKE_ONLY\nF\n======================================================================\nFAIL: test_basis_refinement_cannot_hide_behind_stable_taylor_step (test_flux_review.FluxReview.test_basis_refinement_cannot_hide_behind_stable_taylor_step)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 98, in test_basis_refinement_cannot_hide_behind_stable_taylor_step\n    self.assertFalse(rec['cases'][0]['points'][0]['converged'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.290s\n\nFAILED (failures=1)\n"
+  },
+  "domain_hold_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "F\n======================================================================\nFAIL: test_full_grid_is_held_before_any_solver (test_flux_review.FluxReview.test_full_grid_is_held_before_any_solver)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 58, in test_full_grid_is_held_before_any_solver\n    self.assertEqual(run.main(), 2)\n                     ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\run_helike_flux_background.py\", line 250, in main\n    check_rung(r)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\run_helike_flux_background.py\", line 102, in check_rung\n    if gap < 0 or not 0 <= weight <= 1 + 1e-10:\n       ^^^^^^^\nTypeError: '<' not supported between instances of 'MagicMock' and 'int'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 62, in test_full_grid_is_held_before_any_solver\n    self.fail(f'expected a recorded domain hold, not {type(exc).__name__}: {exc}')\nAssertionError: expected a recorded domain hold, not TypeError: '<' not supported between instances of 'MagicMock' and 'int'\n\n----------------------------------------------------------------------\nRan 1 test in 0.144s\n\nFAILED (failures=1)\n"
+  },
+  "point_saved_too_late": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "t=3.0 g2=0.05 s=1.15 P=6 Mq=6: helike 1.00000 competitor 1.20000 (0.0s)\nF\n======================================================================\nFAIL: test_partial_rung_is_retained_on_failure (test_flux_review.FluxReview.test_partial_rung_is_retained_on_failure)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 85, in test_partial_rung_is_retained_on_failure\n    self.assertEqual(len(rec['cases'][0]['points']), 1)\nAssertionError: 0 != 1\n\n----------------------------------------------------------------------\nRan 1 test in 0.147s\n\nFAILED (failures=1)\n"
+  },
+  "multiple_crossings_accepted": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "F\n======================================================================\nFAIL: test_multiple_crossings_are_not_silently_selected (test_flux_review.FluxReview.test_multiple_crossings_are_not_silently_selected)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 50, in test_multiple_crossings_are_not_silently_selected\n    with self.assertRaises(ValueError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  "smoke_misreported_as_support": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nCOMPLETE SUPPORTED\nF\n======================================================================\nFAIL: test_smoke_cannot_emit_scientific_verdict (test_flux_review.FluxReview.test_smoke_cannot_emit_scientific_verdict)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 151, in test_smoke_cannot_emit_scientific_verdict\n    self.assertEqual(rec['decision'], 'SOFTWARE_SMOKE_ONLY')\nAssertionError: 'SUPPORTED' != 'SOFTWARE_SMOKE_ONLY'\n- SUPPORTED\n+ SOFTWARE_SMOKE_ONLY\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.227s\n\nFAILED (failures=1)\n"
+  },
+  "snapshot_check_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nCOMPLETE SOFTWARE_SMOKE_ONLY\nPASS receipt consistency only, not matrix replay or physical certification\nF\n======================================================================\nFAIL: test_changed_snapshot_cannot_pass (test_flux_review.FluxReview.test_changed_snapshot_cannot_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 232, in test_changed_snapshot_cannot_pass\n    self.verify(out, 1)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 144, in verify\n    self.assertEqual(ex.exception.code, code)\nAssertionError: 0 != 1\n\n----------------------------------------------------------------------\nRan 1 test in 0.213s\n\nFAILED (failures=1)\n"
+  },
+  "coverage_check_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nCOMPLETE SOFTWARE_SMOKE_ONLY\nPASS receipt consistency only, not matrix replay or physical certification\nF\n======================================================================\nFAIL: test_resealed_incomplete_evidence_cannot_pass (test_flux_review.FluxReview.test_resealed_incomplete_evidence_cannot_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 215, in test_resealed_incomplete_evidence_cannot_pass\n    self.verify(out, 1)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 144, in verify\n    self.assertEqual(ex.exception.code, code)\nAssertionError: 0 != 1\n\n----------------------------------------------------------------------\nRan 1 test in 0.227s\n\nFAILED (failures=1)\n"
+  },
+  "failed_replay_leaves_old_pass": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nt=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.00000 competitor 1.20000 (0.0s)\nCOMPLETE SOFTWARE_SMOKE_ONLY\nFAIL receipt consistency only, not matrix replay or physical certification\nF\n======================================================================\nFAIL: test_changed_receipt_clears_stale_pass (test_flux_review.FluxReview.test_changed_receipt_clears_stale_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 173, in test_changed_receipt_clears_stale_pass\n    self.assertEqual(json.loads((out/'verification.json').read_text())['status'], 'FAIL')\nAssertionError: 'PASS' != 'FAIL'\n- PASS\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.186s\n\nFAILED (failures=1)\n"
+  },
+  "small_spectrum_bounds_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "F\n======================================================================\nFAIL: test_selection_uses_available_eigenpairs (test_flux_review.FluxReview.test_selection_uses_available_eigenpairs)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 120, in test_selection_uses_available_eigenpairs\n    r = self.local_stub().helike_and_competitor(nlev=12)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\helike_condensate_fock.py\", line 149, in helike_and_competitor\n    best = max(range(1, len(e)), key=lambda k: self.classify(v[:, k])[modes].sum())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\helike_condensate_fock.py\", line 149, in <lambda>\n    best = max(range(1, len(e)), key=lambda k: self.classify(v[:, k])[modes].sum())\n                                                           ^^^^^^^\nIndexError: index 7 is out of bounds for axis 1 with size 7\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 122, in test_selection_uses_available_eigenpairs\n    self.fail(f'small valid spectrum crashed: {exc}')\nAssertionError: small valid spectrum crashed: index 7 is out of bounds for axis 1 with size 7\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  "ambiguous_label_guard_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "F\n======================================================================\nFAIL: test_accidental_harmonic_degeneracy_refuses_labels (test_flux_review.FluxReview.test_accidental_harmonic_degeneracy_refuses_labels)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 127, in test_accidental_harmonic_degeneracy_refuses_labels\n    with self.assertRaises(ArithmeticError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ArithmeticError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  "symmetry_guard_removed": {
+    "caught_by_assertion": true,
+    "failures": 1,
+    "errors": 0,
+    "log": "F\n======================================================================\nFAIL: test_materially_asymmetric_spectrum_refuses (test_flux_review.FluxReview.test_materially_asymmetric_spectrum_refuses)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_flux_review.py\", line 133, in test_materially_asymmetric_spectrum_refuses\n    with self.assertRaises(ArithmeticError): L.spectrum()\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ArithmeticError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  "all_caught": true
+}

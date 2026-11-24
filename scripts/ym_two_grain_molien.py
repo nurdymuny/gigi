@@ -9,11 +9,11 @@ under SO(3)_L and j_R under SO(3)_R, colour singlets. Its bigraded Hilbert serie
 with Weyl averages <f>_{SO(3)} = (1/2pi) int f(theta) (1 - cos theta) d theta over the maximal-torus angle (f even).
 The eigenvalues of rho_q at angles (a, b) are e^{i(x+y)} with x in {a, 0, -a} and y in {b, 0, -b}. The series
 coefficients are h_k (complete homogeneous symmetric polynomials of the eigenvalues), from Newton's identities.
-The coefficient of s^k t^l is a trigonometric polynomial in each angle of degree <= max(k, l) + 1 + 2 max(j), so
-the uniform M-point rule is exact once M exceeds twice that degree. The q-part depends on (a, b) and the p-part on
+The colour Fourier degree is <= k+l+1; the two spatial degrees are <= k+j_L+1 and l+j_R+1, including Weyl weights.
+The uniform M-point integral is exact in exact arithmetic when M exceeds every degree. The q-part depends on (a, b) and the p-part on
 (a, c), so the triple average factorises.
 
-Counts returned are exact integers after rounding (the test checks the rounding error is tiny). The cutoff-N basis
+Counts are floating-point evaluations rounded to integers, with an integrality check, not interval certificates. The cutoff-N basis
 size of a sector is the number of multiplets with total degree k + l <= N.
 """
 from __future__ import annotations
@@ -42,7 +42,12 @@ def complete_homogeneous(eigs, D):
 def hilbert_bigraded(D, sector=(0, 0), M=None):
     """Integer array H[k, l] (k, l <= D): number of sector multiplets of bidegree (k, l) in (q, p)."""
     jL, jR = sector
-    M = M or 2 * (D + 2 + 2 * max(jL, jR)) + 3
+    if any(isinstance(v, bool) or not isinstance(v, (int, np.integer)) or v < 0 for v in (D, jL, jR)):
+        raise ValueError("degree and sector spins must be nonnegative integers")
+    M = 2 * (D + 2 + 2 * max(jL, jR)) + 3 if M is None else M
+    max_frequency = max(2 * D + 1, D + max(jL, jR) + 1)
+    if isinstance(M, bool) or not isinstance(M, (int, np.integer)) or M <= max_frequency:
+        raise ValueError(f"Molien grid M must exceed Fourier degree {max_frequency}; integer rounding cannot detect aliasing")
     th, w = weyl_grid(M)
     a, b = np.meshgrid(th, th, indexing="ij")
     shifts = lambda x: np.stack([x, 0 * x, -x], -1)

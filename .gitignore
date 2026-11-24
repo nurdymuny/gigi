@@ -89,3 +89,6 @@ theory/gigi/TDD-GAUGE_market_bundle_instrument.md
 
 # Real production data used by encode_real_cfs_incident.rs — never commit.
 tests/fixtures_cfs_psp_incident.json
+
+# run history kept by scripts/_receipt_status.py (start_run)
+*.previous.json

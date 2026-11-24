@@ -1,0 +1,312 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=0.72in,headheight=15pt,headsep=18pt,footskip=25pt]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+% Font settings from ../dgstyle.tex; retain this report's author-free layout.
+\usepackage{newpxtext}
+\usepackage[slantedGreek]{newpxmath}
+\renewcommand{\ttdefault}{lmtt}
+\linespread{1.06}
+\usepackage{graphicx,xcolor,booktabs,array,caption,fancyhdr,enumitem}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\definecolor{ink}{HTML}{25343D}
+\definecolor{teal}{HTML}{176F78}
+\definecolor{gold}{HTML}{A16623}
+\definecolor{muted}{HTML}{65767D}
+\hypersetup{pdftitle={Helike as a Probe of a Quantum Yang-Mills Model},pdfauthor={},pdfsubject={Verified finite-cutoff GPU survey; convergence unresolved}}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\sffamily\scriptsize\color{muted} GIGI / COMPUTATIONAL RESEARCH}
+\fancyhead[R]{\sffamily\scriptsize\color{muted} 23 NOVEMBER 2026}
+\fancyfoot[L]{\sffamily\scriptsize\color{muted} HELIKE QUANTUM PROBE / FINITE-CUTOFF REPORT}
+\fancyfoot[R]{\sffamily\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\setlength{\parindent}{0pt}\setlength{\parskip}{7pt}
+\setlist[itemize]{leftmargin=15pt,itemsep=3pt,topsep=4pt}
+\captionsetup{font=small,labelfont=bf,justification=raggedright,singlelinecheck=false,skip=6pt,hypcap=false}
+\newcommand{\eyebrow}[1]{{\sffamily\small\color{teal}#1}\par}
+\newcommand{\pagetitle}[2]{\eyebrow{#1}\vspace{3pt}{\LARGE #2}\par\vspace{5pt}}
+\newcommand{\fig}[2]{\begin{center}\includegraphics[width=\linewidth]{figures/#1.pdf}\captionof{figure}{#2}\end{center}}
+\newcommand{\Htwo}{\mathrm{H2}}\newcommand{\Hzero}{\mathrm{H0}}
+\newcommand{\runid}{\texttt{20261124T021903Z-c326a3c5}}
+\begin{document}
+\color{ink}
+\eyebrow{EXPERIMENTAL REPORT / REGISTERED MODEL, PROBES AND THRESHOLDS}
+{\fontsize{28}{31}\selectfont Helike as a Probe of a\\Quantum Yang--Mills Model\par}
+\vspace{6pt}
+{\large A geometric response measured on the GPU, with its convergence limits retained.}
+
+\textbf{Abstract.} A gauge-invariant probe derived from Helike's homogeneous
+geometry is evaluated in a published SU(2) Yang--Mills matrix model on the round
+three-sphere. An unrestricted colour-singlet calculation within each finite
+basis supplies the reference spectrum. At the largest registered cutoff,
+the directional channel places 99.154\% of its excited response in the lowest
+computed level at $g^2=2$. At $g^2=1$ and $0.5$, a separately registered scalar
+composite reaches the lowest level instead. Fifteen cases pass finite-matrix
+validation and evidence replay. Cutoff drift and exterior residuals remain too
+large for a converged model-level conclusion.
+
+\fig{01-lowest-level-response}{Response carried by the lowest complete excited
+level at $N=12$ (1,134 physical basis states). Each channel is normalized by its
+own finite-basis excited norm after vacuum subtraction. Tiny opposite-channel
+weights are below $10^{-25}$ as fractions; they are not asserted to be exact zeros.
+All three cases remain \textbf{UNRESOLVED} under the convergence contract.}
+
+\textbf{What this establishes.} The mapped observables produce a reproducible,
+shape-selective response in an external quantum model. They are compared against
+the whole physical finite spectrum, not a spectrum restricted to look like the probe.
+
+\textbf{What remains open.} The identity and energy of the true lowest excitation
+have not settled under basis growth. The matched-control efficiency comparison
+was therefore not run. This report makes no claim of a continuum mass gap,
+computational advantage, or a result for the full four-dimensional theory.
+
+\newpage
+\pagetitle{01 / EXACT GEOMETRY}{The probe preserves a direction, not just a number}
+The model coordinate $M\in\mathbb{R}^{3\times3}$ has spatial rows and colour
+columns. Colour rotations act on the right. Thus $S=MM^T$ is gauge invariant.
+The two real quadratures of the homogeneous member of Helike are
+\[
+ B_c=\frac1{\sqrt2}\begin{pmatrix}0&0&0\\0&1&0\\0&0&-1\end{pmatrix},\qquad
+ B_s=\frac1{\sqrt2}\begin{pmatrix}0&0&0\\0&0&1\\0&1&0\end{pmatrix}.
+\]
+\fig{02-probe-geometry}{Exact directional signatures of the two declared tensors.
+Colour is $n^TBn$ on $\|n\|=1$, with the same camera and colour scale in both
+panels. These are calculated quadratic forms, not simulated vacuum shapes or
+quantum eigenfunctions. The sphere's radius is constant; only its colour changes.
+Coordinates use the registered spatial order $(0,1,2)$.}
+
+Define $O_a(M)=\operatorname{tr}(B_aMM^T)$. At the mapped classical reference
+connection $M_*=I/2$,
+\[
+ \nabla_M O_a\big|_{M_*}=2B_aM_*=B_a.
+\]
+This is the exact geometric link: the observable's first response is the original
+direction. $M_*$ is a classical saddle used for calibration, not the assumed
+quantum vacuum. The latter is independently solved across the declared domain.
+
+Rotating these tensors spans all five symmetric trace-free spatial directions.
+Their observables $O_A$ form the \textbf{directional spin-2 channel, H2}.
+A separate scalar channel is their squared strength:
+\[
+ O_0=\sum_{A=1}^5 O_A^2
+     =\operatorname{tr}(S^2)-\tfrac13(\operatorname{tr}S)^2.
+\]
+\textbf{H0 is a quartic composite, not the original linear eigenfield.}
+From a spin-0 vacuum, H2 couples to spin 2 and H0 to spin 0. Neither observable
+is expected to detect every symmetry sector. Only the homogeneous classical
+member is translated here; the Berger floor theorem is not imported as a
+quantum conclusion on the round sphere.
+
+\newpage
+\pagetitle{02 / MEASURED RESPONSE}{Where the geometry lands in the spectrum}
+For the computed vacuum $\Omega$, let $Q$ remove its component and let $P_n$
+project onto a complete excited energy level. The measured response is
+\[
+ \phi_A=QO_A\Omega,\qquad
+ W_n=\frac{\sum_A\|P_n\phi_A\|^2}{\sum_A\|\phi_A\|^2}.
+\]
+Degenerate levels are scored as whole subspaces, not by choosing one eigenvector.
+The full complex transition kernels are retained in the evidence.
+
+\fig{03-spectral-response}{Finite-basis spectral fingerprints at $N=12$.
+All complete levels with excitation energy at most $10/R$ are shown; weights
+are normalized over \emph{all} finite levels, including those beyond the plotted
+window. H2 (top) is concentrated in its first accessible spin-2 level at all
+three couplings. H0 (bottom) spreads over several scalar levels. Dashed lines
+mark the independently computed absolute gap, which need not be the probe's
+first accessible gap.}
+
+\begin{center}\small
+\setlength{\tabcolsep}{5pt}
+\input{generated/final-levels.tex}
+\end{center}
+At $g^2=1$ and $0.5$, the strong directional response is \emph{above} the absolute
+lowest level. At $g^2=2$, it coincides with the lowest five-state level at this
+cutoff. ``Accessible'' uses the registered weight threshold $10^{-4}$; smaller
+weights remain in the evidence. Nine displayed decimals describe the finite
+matrix computation, not nine-digit accuracy for the untruncated model.
+
+\newpage
+\pagetitle{03 / REFINEMENT HISTORY}{The answer must survive a larger space of states}
+The reference basis includes every colour-invariant polynomial through degree
+$N$, multiplied by a Gaussian. It retains all spatial spin sectors and the
+determinant-odd states. Increasing $N$ adds possibilities; it does not steer
+the solver toward Helike.
+
+\fig{04-cutoff-history}{Registered cutoff history. (A) Absolute gaps at all
+three couplings. (B) The first robustly accessible scalar and directional levels
+at the strongest coupling. At $N=8$ the scalar is lower, whereas the directional
+level is lower at $N=10$ and $12$. Lines connect computed cutoffs only; they are
+neither interpolated eigenstates nor an extrapolation to infinite cutoff.}
+
+\begin{center}\small
+\setlength{\tabcolsep}{6pt}
+\input{generated/cutoffs.tex}
+\end{center}
+
+\textbf{The strongest-looking result has a necessary qualification.}
+The 99.154\% directional weight at $N=12$ cannot be detached from the change in
+level ordering at $N=8$. This is unresolved truncation dependence, not evidence
+of a physical phase transition.
+
+The registration requires two successive increments for which $E_0$, $E_1$
+and each quoted gap change by no more than $10^{-3}\max(1,|\text{quantity}|)$,
+and channel weights by no more than $0.01$. The survey does not meet these rules.
+A difference of variational energy estimates is also not automatically an upper
+or lower bound on the true gap.
+
+\textbf{Boundary of this run.} $N=12$ was the only authorized extension beyond
+$4,6,8,10$. The survey stopped there. No coupling, probe, Hamiltonian or acceptance
+threshold was changed after inspecting the results.
+
+\newpage
+\pagetitle{04 / ACCEPTANCE}{Accurate finite matrices; unresolved model convergence}
+Finite-matrix agreement answers whether the included problem was solved
+accurately. Exterior checks ask whether too much of the full operator's action
+still falls outside that included space. These are different questions.
+
+\fig{05-convergence-gates}{Final-cutoff diagnostics divided by their fixed
+acceptance limits. Ratios at or below the dashed line pass that individual test.
+(A) Worst full Hamiltonian residual among the vacuum, lowest level and first
+accessible probe levels, divided by $0.01\max(1,\Delta_{\rm abs})$.
+(B) Discarded squared probe response divided by $0.001$.
+The shaded region is the passing range. Every coupling fails the residual test;
+the scalar tail fails in all three.}
+
+\begin{center}\small
+\begin{tabular}{@{}p{3.1in}p{3.05in}@{}}\toprule
+\textbf{Verified in this experiment} & \textbf{Not established by this experiment}\\\midrule
+20 focused tests; 15 exact symbolic identities & A cutoff-converged model gap\\
+8 mechanism-removal checks rejected defects & The lowest level's eventual ordering\\
+Independent physical-space construction at $N=4$ & A Helike efficiency advantage\\
+CPU/GPU spectra and low-level projectors agree & A cross-model universality result\\
+Matrix-exponential and spectral kernels agree & A four-dimensional continuum mass gap\\
+All 15 cases replay from stored evidence & All HP00--HP10 research gates closed\\\bottomrule
+\end{tabular}
+\end{center}
+
+The maximum scaled CPU/GPU spectral difference was $1.161\times10^{-15}$;
+the maximum low-level projector difference was $1.646\times10^{-12}$, both below
+the registered $10^{-10}$ limit. This high numerical precision does not erase
+the exterior residuals shown above.
+
+\textbf{Verdict: UNRESOLVED, with reproducible finite-cutoff observations.}
+The random-seed and scalar-trace utility comparisons remain \texttt{NOT\_RUN}
+because their convergence prerequisite failed. There is no hidden failed
+comparator from which an advantage is inferred. A new approximation strategy
+or a larger run requires a separate dated amendment.
+
+\newpage
+\pagetitle{05 / METHODS AND EVIDENCE}{A published Hamiltonian and a replayable calculation}
+The external model is the pure SU(2) sphere reduction in Ref.~[1], with the
+radius convention checked against Ref.~[2]. On the registered regular Cartesian
+colour-singlet domain, setting $q=M/g$ gives
+\[
+ H=\frac1R\left[-\frac12\Delta_q+\frac12\operatorname{tr}(qq^T)
+ -3g\det q+\frac{g^2}{4}
+ \left\{(\operatorname{tr}(qq^T))^2-\operatorname{tr}((qq^T)^2)\right\}\right].
+\]
+The runs use $R=\hbar=1$, positive $g$, no added mass or fitted energy offset,
+and no extra boundary extension. The two classical wells remain in the
+Cartesian domain. The signed cubic determinant is not replaced by its absolute value.
+
+\textbf{Basis and independent reference.}
+The physical polynomial basis is generated by the six entries of $qq^T$ and
+$\det q$, with determinant powers zero or one. The special orthogonal invariant
+theorem and $(\det q)^2=\det(qq^T)$ justify this spanning construction [3].
+Exact Wick ordering is a triangular change of this basis, not a dropped direction.
+The overlap matrix is retained in the generalized eigenproblem. An independent
+$N=4$ oscillator construction imposes the three Gauss generators and assembles
+the Hamiltonian before projection. Direct quartic projection is used for H0;
+squaring already projected quadratic probes would give a different operator.
+
+\textbf{Computation.}
+Double-precision CUDA solves and matrix exponentials ran on an NVIDIA GeForce
+RTX 5070 Laptop GPU, with independent CPU comparisons. CUDA requests could not
+fall back to CPU. The worker survey took 72.817 seconds including construction
+checks, excluding the separate evidence replay. Peak sampled host memory was
+2.4165 GiB; peak PyTorch GPU allocation was 157.992 MiB and reservation 226 MiB.
+These device figures exclude driver/context allocations and other applications.
+They are resource measurements, not a speedup benchmark.
+
+\textbf{Provenance.}
+Run \runid{} retains matrices, normalized eigenvectors, metric, angular
+Casimir, observables, complete-level kernels, cutoffs, residuals and source hashes.
+The source snapshot is included, because the computation predates the publishing
+commit. Evidence replay returned \texttt{VERIFIED}, 15 cases,
+\texttt{scientific\_acceptance: false}. The base source revision is:\\
+{\small\texttt{ed5d3cf5209bb8cecd6d97c4f0df3065af90363e}}. Per-file hashes identify
+the actual experimental implementation. No server endpoint was changed or deployed.
+
+\textbf{Reuse.}
+Every figure is supplied as PDF, SVG and PNG. The captions and equations are
+editable LaTeX. CSV and JSON exports retain the plotted values, including tiny
+weights. The accompanying README gives one-command figure/report generation
+and the evidence-replay command. Numerical tables are generated from the receipt.
+
+\vspace{5pt}
+{\small\raggedright
+\textbf{References}\par
+[1] A.~P. Balachandran, S. Vaidya and A.~R. de Queiroz,
+\emph{A Matrix Model for QCD}, arXiv:1412.7900v1,
+\href{https://doi.org/10.1142/S0217732315500807}{doi:10.1142/S0217732315500807}.
+\par [2] N. Acharyya and A.~P. Balachandran,
+\emph{Matrix Model of QCD: Edge Localized Glue Balls and Phase Transitions},
+\href{https://arxiv.org/abs/1702.06430v2}{arXiv:1702.06430v2}, Eq.~2.14.
+\par [3] H. Kraft and C. Procesi, \emph{Classical Invariant Theory},
+\href{https://dmi.unibas.ch/fileadmin/user_upload/dmi/Personen/Kraft_Hanspeter/Classical_Invariant_Theory.pdf}{Theorem 10.2}.
+}
+
+\newpage
+\pagetitle{06 / NEXT EXPERIMENTAL LAYER}{Use GIGI to connect evidence across models}
+\textbf{Plan, not a deployed capability.}
+The model supplies observations. GIGI can organize those observations into
+versioned bundles, compare compatible geometric signatures and expose which
+features survive refinement. The goal is to follow a physical pattern through
+changing approximations, not merely line up similarly sized gap numbers.
+
+\begin{center}\small
+\begin{tabular}{@{}p{1.35in}p{4.85in}@{}}\toprule
+\textbf{Evidence layer} & \textbf{What must be retained}\\\midrule
+Model contract & Hamiltonian, domain, gauge group, geometry, units, boundary conditions and normalization.\\[4pt]
+Run and cutoff & Coupling, basis/mesh size, source and array hashes, resource data, status and all failed gates.\\[4pt]
+Complete level & Energy, multiplicity, symmetry sector, projector identity and residual; not an arbitrary eigenvector label.\\[4pt]
+Probe response & Full transition kernel, normalized spectral weights, vacuum-subtracted norm and discarded response.\\[4pt]
+Comparison map & The explicit bridge between models or cutoffs, its preserved quantities, errors and validity domain.\\\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{First deliverable: the present 15 cases.}
+Import the verified receipt and immutable array references into isolated GIGI
+bundles. Recover every gap and weight exactly. Follow the scalar and tensor
+branches separately, so the $N=8$ ordering change cannot be hidden by sorting
+each run and calling its first row the same state.
+
+\textbf{Second deliverable: a measured geometric through-line.}
+Within a common configuration space, embed successive cutoff subspaces into a
+common metric and compare complete-level projectors. Across genuinely different
+models, require a declared map or compare a common set of physical observables.
+The shared signature can include dimensionless energies, spin labels, spectral
+weight distributions and correlation kernels at fixed dimensionless times.
+An apparent match must survive normalization, uncertainty and adversarial controls.
+
+\textbf{Third deliverable: refinement before universality.}
+Test convergence within each model separately. Then test whether the retained
+patterns agree across compatible models, on held-out cases. Raising this
+polynomial cutoff approaches the selected matrix model; it does not restore
+the spatial field modes omitted by that model. A continuum claim requires its
+own refinement parameters and limits.
+
+The detailed plan is in
+\texttt{docs/research/ym-evidence-continuum-gigi-plan-2026-11-23.md}.
+It separates current source-backed GIGI operations from the missing adapters
+and scientific gates. No graph spectral gap, PCA variance, or generic database
+curvature is relabelled as a Yang--Mills excitation energy.
+
+\textbf{Success criterion.}
+GIGI should let a researcher ask: \emph{Is this the same geometric excitation
+surviving a change of approximation, or only a similar number?} The answer must
+identify the retained pattern, its comparison map and the evidence that could
+falsify the match. It may also correctly return \emph{not yet comparable}.
+\end{document}

@@ -30,6 +30,12 @@
 # scripts/shape_verbs_to_tex.py -- never hand-edit it.
 !docs/generated/shape_verbs.tex
 
+# Published Helike quantum report and reusable paper figures.
+!docs/papers/helike-quantum-probe/report.tex
+!docs/papers/helike-quantum-probe/report.pdf
+!docs/papers/helike-quantum-probe/generated/*.tex
+!docs/papers/helike-quantum-probe/figures/*.pdf
+
 # Test output
 test_output*.txt
 # Build/compile logs that aren't .log extension
@@ -40,6 +46,8 @@ check_errors*.txt
 # Local images / scratch
 *.jpg
 *.png
+# Keep this exception after the generic image rule too.
+!docs/papers/helike-quantum-probe/figures/*.png
 # Site assets (published on davisgeometric.com) — exempt from the global image ignore
 !site/**/*.jpg
 !site/**/*.png

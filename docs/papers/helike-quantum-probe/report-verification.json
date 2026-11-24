@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "source_run": "20261124T021903Z-c326a3c5",
+  "scientific_status": "UNRESOLVED",
+  "tested_cases": 6,
+  "rejected_mutations": [
+    {
+      "name": "stale_verification",
+      "rejected": true,
+      "test_output": "F\n======================================================================\nFAIL: test_stale_verification_and_forged_pass_are_refused (test_ym_helike_report.ReportTests.test_stale_verification_and_forged_pass_are_refused)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-quantum-spec-20261123\\scripts\\test_ym_helike_report.py\", line 32, in test_stale_verification_and_forged_pass_are_refused\n    with self.assertRaisesRegex(ValueError, \"verification\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.020s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "name": "lost_weight",
+      "rejected": true,
+      "test_output": "F\n======================================================================\nFAIL: test_missing_case_and_changed_level_weight_are_refused (test_ym_helike_report.ReportTests.test_missing_case_and_changed_level_weight_are_refused)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-quantum-spec-20261123\\scripts\\test_ym_helike_report.py\", line 55, in test_missing_case_and_changed_level_weight_are_refused\n    with self.assertRaisesRegex(ValueError, \"weight\"):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.056s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "name": "flipped_quadrature",
+      "rejected": true,
+      "test_output": "F\n======================================================================\nFAIL: test_geometry_is_the_declared_tensor_not_artwork (test_ym_helike_report.ReportTests.test_geometry_is_the_declared_tensor_not_artwork)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-quantum-spec-20261123\\scripts\\test_ym_helike_report.py\", line 75, in test_geometry_is_the_declared_tensor_not_artwork\n    self.assertAlmostEqual(diagonal@bs@diagonal, 1/np.sqrt(2))\nAssertionError: np.float64(-0.7071067811865474) != np.float64(0.7071067811865475) within 7 places (np.float64(1.414213562373095) difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.020s\n\nFAILED (failures=1)\n"
+    }
+  ],
+  "pages": 7,
+  "figures": 5,
+  "empty_author_metadata": true,
+  "artifact_manifest_sha256": "ca9945997fee08a3e450ff15db99c856115e69ce0a61a02319c578c4e5f20dee",
+  "verifier_sha256": "9412fbf5065d73e4070597e1383da56428329ec96555283e245987aad9685a98",
+  "test_output": "test_altered_gap_and_nan_weight_are_refused (test_ym_helike_report.ReportTests.test_altered_gap_and_nan_weight_are_refused) ... ok\ntest_gate_ratios_use_registered_thresholds (test_ym_helike_report.ReportTests.test_gate_ratios_use_registered_thresholds) ... ok\ntest_geometry_is_the_declared_tensor_not_artwork (test_ym_helike_report.ReportTests.test_geometry_is_the_declared_tensor_not_artwork) ... ok\ntest_missing_case_and_changed_level_weight_are_refused (test_ym_helike_report.ReportTests.test_missing_case_and_changed_level_weight_are_refused) ... ok\ntest_plot_rows_are_the_recorded_results (test_ym_helike_report.ReportTests.test_plot_rows_are_the_recorded_results) ... ok\ntest_stale_verification_and_forged_pass_are_refused (test_ym_helike_report.ReportTests.test_stale_verification_and_forged_pass_are_refused) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.120s\n\nOK\n",
+  "disclosure": "Report integrity PASS is not scientific convergence PASS; visual review is separate."
+}

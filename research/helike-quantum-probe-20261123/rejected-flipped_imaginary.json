@@ -1,0 +1,27 @@
+{
+  "status": "FAIL",
+  "scope": "preliminary_exact_algebra_only",
+  "quantum_spectrum_status": "NOT_RUN",
+  "created_utc": "2026-11-24T01:56:16.876977+00:00",
+  "injected_defect": "flipped_imaginary",
+  "script_sha256": "f9ce6e228e30f76a381218218a167910a714b32a84795b8afa2c2f463bfc5c16",
+  "spec_sha256": "ccb37f20ce6d0df3694eade5ed828e134b84cfe4ec85bf70d3ac0519eb653da1",
+  "sympy_version": "1.14.0",
+  "checks": {
+    "all_entry_energy_map": true,
+    "published_potential_as_curvature_square": true,
+    "paper_complex_orientation": false,
+    "orthonormal_tensor_basis": true,
+    "classical_hessian_cosine": true,
+    "observable_gradient_cosine": true,
+    "gauss_cosine_0": true,
+    "gauss_cosine_1": true,
+    "gauss_cosine_2": true,
+    "classical_hessian_sine": true,
+    "observable_gradient_sine": true,
+    "gauss_sine_0": true,
+    "gauss_sine_1": true,
+    "gauss_sine_2": true,
+    "scalar_orbit_identity": true
+  }
+}

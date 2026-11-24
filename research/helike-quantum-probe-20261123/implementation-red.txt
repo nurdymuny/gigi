@@ -1,0 +1,111 @@
+test_all_invariants_and_determinant_sector (__main__.BasisTests.test_all_invariants_and_determinant_sector) ... ERROR
+test_independent_gauss_kernel_and_operator (__main__.BasisTests.test_independent_gauss_kernel_and_operator) ... ERROR
+test_oscillator_physical_gap_and_degeneracy (__main__.BasisTests.test_oscillator_physical_gap_and_degeneracy) ... ERROR
+test_constant_probe_does_not_normalize_vacuum (__main__.ProbeTests.test_constant_probe_does_not_normalize_vacuum) ... ERROR
+test_degenerate_level_uses_whole_projector (__main__.ProbeTests.test_degenerate_level_uses_whole_projector) ... ERROR
+test_lower_invisible_level_is_not_relabelled (__main__.ProbeTests.test_lower_invisible_level_is_not_relabelled) ... ERROR
+test_generalized_nonidentity_metric_cuda (__main__.SolverTests.test_generalized_nonidentity_metric_cuda) ... ERROR
+test_nonhermitian_and_nonfinite_refused (__main__.SolverTests.test_nonhermitian_and_nonfinite_refused) ... ERROR
+test_precision_and_bad_metric_refused (__main__.SolverTests.test_precision_and_bad_metric_refused) ... ERROR
+
+======================================================================
+ERROR: test_all_invariants_and_determinant_sector (__main__.BasisTests.test_all_invariants_and_determinant_sector)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 11, in test_all_invariants_and_determinant_sector
+    b = q.build_basis(4)
+        ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 5, in build_basis
+    raise NotImplementedError("physical basis pending")
+NotImplementedError: physical basis pending
+
+======================================================================
+ERROR: test_independent_gauss_kernel_and_operator (__main__.BasisTests.test_independent_gauss_kernel_and_operator)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 30, in test_independent_gauss_kernel_and_operator
+    b = q.build_basis(4)
+        ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 5, in build_basis
+    raise NotImplementedError("physical basis pending")
+NotImplementedError: physical basis pending
+
+======================================================================
+ERROR: test_oscillator_physical_gap_and_degeneracy (__main__.BasisTests.test_oscillator_physical_gap_and_degeneracy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 19, in test_oscillator_physical_gap_and_degeneracy
+    b = q.build_basis(4)
+        ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 5, in build_basis
+    raise NotImplementedError("physical basis pending")
+NotImplementedError: physical basis pending
+
+======================================================================
+ERROR: test_constant_probe_does_not_normalize_vacuum (__main__.ProbeTests.test_constant_probe_does_not_normalize_vacuum)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 74, in test_constant_probe_does_not_normalize_vacuum
+    report = q.probe_report(np.array([0., 1., 3.]), np.eye(3), [np.eye(3)])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 21, in probe_report
+    raise NotImplementedError("projector analysis pending")
+NotImplementedError: projector analysis pending
+
+======================================================================
+ERROR: test_degenerate_level_uses_whole_projector (__main__.ProbeTests.test_degenerate_level_uses_whole_projector)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 83, in test_degenerate_level_uses_whole_projector
+    first = q.probe_report(e, np.eye(3), [o])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 21, in probe_report
+    raise NotImplementedError("projector analysis pending")
+NotImplementedError: projector analysis pending
+
+======================================================================
+ERROR: test_lower_invisible_level_is_not_relabelled (__main__.ProbeTests.test_lower_invisible_level_is_not_relabelled)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 67, in test_lower_invisible_level_is_not_relabelled
+    report = q.probe_report(np.array([0., 1., 3.]), np.eye(3), [o])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 21, in probe_report
+    raise NotImplementedError("projector analysis pending")
+NotImplementedError: projector analysis pending
+
+======================================================================
+ERROR: test_generalized_nonidentity_metric_cuda (__main__.SolverTests.test_generalized_nonidentity_metric_cuda)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 45, in test_generalized_nonidentity_metric_cuda
+    e, v, diag = q.solve_generalized(h, s, "cuda")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 13, in solve_generalized
+    raise NotImplementedError("generalized solver pending")
+NotImplementedError: generalized solver pending
+
+======================================================================
+ERROR: test_nonhermitian_and_nonfinite_refused (__main__.SolverTests.test_nonhermitian_and_nonfinite_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 59, in test_nonhermitian_and_nonfinite_refused
+    q.solve_generalized(np.array([[1., 2.], [0., 1.]]), np.eye(2), "cuda")
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 13, in solve_generalized
+    raise NotImplementedError("generalized solver pending")
+NotImplementedError: generalized solver pending
+
+======================================================================
+ERROR: test_precision_and_bad_metric_refused (__main__.SolverTests.test_precision_and_bad_metric_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 53, in test_precision_and_bad_metric_refused
+    q.solve_generalized(np.eye(2, dtype=np.float32), np.eye(2), "cuda")
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\ym_helike_quantum.py", line 13, in solve_generalized
+    raise NotImplementedError("generalized solver pending")
+NotImplementedError: generalized solver pending
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.010s
+
+FAILED (errors=9)

@@ -104,6 +104,12 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 23 Nov | [Yang-Mills Requirements as Geometric Objects](yang-mills-geometric-identities-2026-11-23.md) |
 | 23 Nov | [Adversarial review of the Yang Mills geometric identities](yang-mills-geometric-identities-adversarial-review-2026-11-23.md): reproduced finite results, acceptance failures, and amendments needed before the excitation study |
 | 23 Nov | [Pre-registration: the lowest excitation on SU(2) ladders](../../research/ym-ladder-20261123/prereg_lowest_excitation.md) |
+| 23 Nov | [Helike as a probe of a published quantum Yang-Mills model](helike-quantum-probe-preregistration-2026-11-23.md): exact sphere-model translation, gauge-invariant probes, independent excitation comparison and gated experiment |
+| 23 Nov | [Helike quantum probe GPU amendment](helike-quantum-gpu-amendment-2026-11-23.md): RTX 5070 Laptop implementation, double precision, CPU agreement and resource gates; physics unchanged |
+| 23 Nov | [Helike quantum probe implementation record](helike-quantum-implementation-2026-11-23.md): complete invariant polynomial basis, exact Gaussian preconditioning and independently constructed oscillator reference |
+| 23 Nov | [Helike in a published quantum Yang-Mills model: first GPU survey](helike-quantum-probe-results-2026-11-23.md): 15 finite-cutoff cases replayed; directional/scalar responses separated; convergence and usefulness gate remains UNRESOLVED |
+| 23 Nov | [Illustrated Helike quantum report](../papers/helike-quantum-probe/README.md): paper-ready PDF, five reusable figures, editable LaTeX, source data and reproduction commands |
+| 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 
 ## Where we were: status and strategy
 

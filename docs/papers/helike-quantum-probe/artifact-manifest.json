@@ -1,0 +1,31 @@
+{
+  "source_run": "20261124T021903Z-c326a3c5",
+  "source_status": "UNRESOLVED",
+  "source_receipt_sha256": "48d0e7994b0babf799a37507f6d9eb86140ff32f221e696d41a9813b1edebc68",
+  "source_verification_sha256": "ff3d0b00f00e068bcf38a614a2114ac81aa91a7a947a056700173c4515130385",
+  "builder_sha256": "03fb396f808000afc94c7d6c8c935a6338457ca625922d7d0cd493552b021e3d",
+  "latex_sha256": "55a02519e6ffc07f30c3a28e42d28d75533a09cdb9be29420835c62f305057c6",
+  "outputs": {
+    "figures/01-lowest-level-response.pdf": "9dae28a9305a5ab49cc91e4cafad85ec0a229ac4df8b0d2b4230c089d4b7272d",
+    "figures/01-lowest-level-response.png": "26545bfdca1f8791194aa963c6a5f34e5e4f22b6b4a50132b5f36d4556a52871",
+    "figures/01-lowest-level-response.svg": "27fea8003ec843eb594ca52cb5e893c87c49bada6054ad976d0cbb9d8a8ffd1e",
+    "figures/02-probe-geometry.pdf": "0dfcd39d4b38c93865cc35bc8327dc228d0d696797238e98551c99cd2428e13d",
+    "figures/02-probe-geometry.png": "c3cc43a3086a49a136edf613613db27430946db8efc69b5f7b5d9de84443da69",
+    "figures/02-probe-geometry.svg": "fef640364c9bf35a957b8fe50b67a8ba7541c53663ef21d121cde8d6f95252ca",
+    "figures/03-spectral-response.pdf": "5e86431b002d5a1181d40b29f0727588f1574330f5586b12cf44ff5507b8a39c",
+    "figures/03-spectral-response.png": "cf3deb7e7211e803d4a370594ce518ecaf42d2b59ad9d5b1717964be97c32e50",
+    "figures/03-spectral-response.svg": "e717b35bec0228d5e74e0e25d8d16a9056302b43695742bb126506654afcce24",
+    "figures/04-cutoff-history.pdf": "f46c95caca62361638969f6c2b61ab68a484ab06dbd6309b7beb86396bc1b68d",
+    "figures/04-cutoff-history.png": "53f6625821e80a2c5d5f14a3f7d3c0c8b0370125067a89a5d8924a287193cc2e",
+    "figures/04-cutoff-history.svg": "002a3d4c6a7019c59c7292cdeee54e05cf7eaa7df2289f88dd3cfe5a5b3ad400",
+    "figures/05-convergence-gates.pdf": "6124b13e00cc02c8a644c3f6e664ee92f68ac1a28aacb729299de1f6cfc5e02a",
+    "figures/05-convergence-gates.png": "daa318f0e10f82915c5bc45d30671b5818e2836af41e58373b8dda52de87e2b7",
+    "figures/05-convergence-gates.svg": "9557b6c6e4da0a400ef49a54251e200a4e4ce0a4f06321a7af0598494779cf5c",
+    "generated/cutoffs.tex": "2a6f40664992aa6228a241d3a2879617edb3a76994cb4b3873f34170fc08e689",
+    "generated/final-levels.tex": "a530f06a228e0fc4e842bee9ec69c6c3c32adce4ce3bfff304ec7772623a53d2",
+    "plot-data.json": "eee8aae171c478de742dbc34e1f36b1139db4eb82a5a1490245eca48b4dc7b46",
+    "case-summary.csv": "55934b6e860777ca7b427ce0c2f9d614c33d1ad5679d4d589e3d3d351b5f3b14",
+    "level-weights.csv": "9a7ad25a78856badd74cdb918ffd7e7dabc28cf5028d99ebe731f45458243f37",
+    "report.pdf": "38c3d4c4952027727c2940cf237aae67412b481fd84a011ee7e9ba80f78c5233"
+  }
+}

@@ -1,0 +1,68 @@
+EEEEEE
+======================================================================
+ERROR: test_altered_gap_and_nan_weight_are_refused (test_ym_helike_report.ReportTests.test_altered_gap_and_nan_weight_are_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_report.py", line 42, in test_altered_gap_and_nan_weight_are_refused
+    report.make_payload(bad, self.verification)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\build_ym_helike_report.py", line 4, in make_payload
+    raise NotImplementedError
+NotImplementedError
+
+======================================================================
+ERROR: test_gate_ratios_use_registered_thresholds (test_ym_helike_report.ReportTests.test_gate_ratios_use_registered_thresholds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_report.py", line 59, in test_gate_ratios_use_registered_thresholds
+    row = report.make_payload(self.receipt, self.verification)["final"][0]
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\build_ym_helike_report.py", line 4, in make_payload
+    raise NotImplementedError
+NotImplementedError
+
+======================================================================
+ERROR: test_geometry_is_the_declared_tensor_not_artwork (test_ym_helike_report.ReportTests.test_geometry_is_the_declared_tensor_not_artwork)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_report.py", line 65, in test_geometry_is_the_declared_tensor_not_artwork
+    bc, bs = report.quadratures()
+             ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\build_ym_helike_report.py", line 7, in quadratures
+    raise NotImplementedError
+NotImplementedError
+
+======================================================================
+ERROR: test_missing_case_and_changed_level_weight_are_refused (test_ym_helike_report.ReportTests.test_missing_case_and_changed_level_weight_are_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_report.py", line 52, in test_missing_case_and_changed_level_weight_are_refused
+    report.make_payload(bad, self.verification)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\build_ym_helike_report.py", line 4, in make_payload
+    raise NotImplementedError
+NotImplementedError
+
+======================================================================
+ERROR: test_plot_rows_are_the_recorded_results (test_ym_helike_report.ReportTests.test_plot_rows_are_the_recorded_results)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_report.py", line 22, in test_plot_rows_are_the_recorded_results
+    payload = report.make_payload(self.receipt, self.verification)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\build_ym_helike_report.py", line 4, in make_payload
+    raise NotImplementedError
+NotImplementedError
+
+======================================================================
+ERROR: test_stale_verification_and_forged_pass_are_refused (test_ym_helike_report.ReportTests.test_stale_verification_and_forged_pass_are_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_report.py", line 33, in test_stale_verification_and_forged_pass_are_refused
+    report.make_payload(self.receipt, bad)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\build_ym_helike_report.py", line 4, in make_payload
+    raise NotImplementedError
+NotImplementedError
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.072s
+
+FAILED (errors=6)

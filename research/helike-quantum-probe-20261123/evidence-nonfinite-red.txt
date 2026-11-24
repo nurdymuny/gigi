@@ -1,0 +1,14 @@
+F
+======================================================================
+FAIL: test_evidence_replay_rejects_nonfinite_claims (test_ym_helike_quantum.ReceiptTests.test_evidence_replay_rejects_nonfinite_claims)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-quantum-spec-20261123\scripts\test_ym_helike_quantum.py", line 166, in test_evidence_replay_rejects_nonfinite_claims
+    with self.assertRaisesRegex(ValueError, "finite"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.010s
+
+FAILED (failures=1)

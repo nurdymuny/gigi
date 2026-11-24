@@ -1,0 +1,132 @@
+{
+  "status": "PASS",
+  "scope": "synthetic_gpu_preflight_only",
+  "quantum_spectrum_status": "NOT_RUN",
+  "created_utc": "2026-11-24T01:59:28.108181+00:00",
+  "injected_defect": null,
+  "tolerance": 1e-10,
+  "script_sha256": "54a3088130fb0a5522b3e07b012b5100960206fc71e5e39d304816e0df986743",
+  "amendment_sha256": "6735097f296e692a024f5f8e2cb84f368a4cb92e4fce7a9d88098f30da448ec5",
+  "environment": {
+    "torch": "2.11.0.dev20260108+cu128",
+    "cuda_runtime": "12.8",
+    "numpy": "2.4.0",
+    "scipy": "1.16.3",
+    "gpu": "NVIDIA GeForce RTX 5070 Laptop GPU",
+    "capability": [
+      12,
+      0
+    ],
+    "architectures": [
+      "sm_70",
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90",
+      "sm_100",
+      "sm_120"
+    ],
+    "device_total_bytes": 8546484224,
+    "device_free_before_bytes": 7338983424,
+    "blas_thread_environment": {
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null
+    }
+  },
+  "cases": [
+    {
+      "dimension": 29,
+      "dtype": "torch.float64",
+      "device": "cuda:0",
+      "level_multiplicity": 6,
+      "errors": {
+        "planted_spectrum_scaled": 2.4868995751603505e-15,
+        "cpu_spectrum_scaled": 3.552713678800501e-16,
+        "residual_max_column_scaled": 6.32059728367607e-16,
+        "orthogonality_frobenius": 5.075203419193128e-15,
+        "planted_projector_frobenius": 2.013297110664998e-14,
+        "cpu_projector_frobenius": 1.0091917784852513e-14
+      },
+      "status": "PASS"
+    },
+    {
+      "dimension": 91,
+      "dtype": "torch.float64",
+      "device": "cuda:0",
+      "level_multiplicity": 6,
+      "errors": {
+        "planted_spectrum_scaled": 3.3750779948604757e-15,
+        "cpu_spectrum_scaled": 7.105427357601002e-16,
+        "residual_max_column_scaled": 1.0226751392201707e-15,
+        "orthogonality_frobenius": 1.4110292134628605e-14,
+        "planted_projector_frobenius": 5.060110608904949e-14,
+        "cpu_projector_frobenius": 1.1836361808126858e-14
+      },
+      "status": "PASS"
+    },
+    {
+      "dimension": 238,
+      "dtype": "torch.float64",
+      "device": "cuda:0",
+      "level_multiplicity": 6,
+      "errors": {
+        "planted_spectrum_scaled": 8.881784197001252e-15,
+        "cpu_spectrum_scaled": 4.884981308350689e-16,
+        "residual_max_column_scaled": 1.2835015837912026e-15,
+        "orthogonality_frobenius": 4.9634411399145796e-14,
+        "planted_projector_frobenius": 1.1537356767440005e-13,
+        "cpu_projector_frobenius": 1.3574473221246531e-14
+      },
+      "status": "PASS"
+    },
+    {
+      "dimension": 546,
+      "dtype": "torch.float64",
+      "device": "cuda:0",
+      "level_multiplicity": 6,
+      "errors": {
+        "planted_spectrum_scaled": 2.5757174171303632e-14,
+        "cpu_spectrum_scaled": 4.440892098500626e-16,
+        "residual_max_column_scaled": 1.7091721512288095e-15,
+        "orthogonality_frobenius": 1.0247774602334843e-13,
+        "planted_projector_frobenius": 3.0424839568189993e-13,
+        "cpu_projector_frobenius": 1.786628354336887e-14
+      },
+      "status": "PASS"
+    },
+    {
+      "dimension": 1134,
+      "dtype": "torch.float64",
+      "device": "cuda:0",
+      "level_multiplicity": 6,
+      "errors": {
+        "planted_spectrum_scaled": 4.4231285301066234e-14,
+        "cpu_spectrum_scaled": 7.549516567451064e-16,
+        "residual_max_column_scaled": 1.9231128067189805e-15,
+        "orthogonality_frobenius": 1.8779176317875446e-13,
+        "planted_projector_frobenius": 5.883996471737393e-13,
+        "cpu_projector_frobenius": 1.680843204477349e-14
+      },
+      "status": "PASS"
+    },
+    {
+      "dimension": 91,
+      "dtype": "torch.complex128",
+      "device": "cuda:0",
+      "level_multiplicity": 6,
+      "errors": {
+        "planted_spectrum_scaled": 3.552713678800501e-15,
+        "cpu_spectrum_scaled": 6.217248937900876e-16,
+        "residual_max_column_scaled": 1.1348084449873765e-15,
+        "orthogonality_frobenius": 1.4188040123956205e-14,
+        "planted_projector_frobenius": 5.0586791424236394e-14,
+        "cpu_projector_frobenius": 1.5467409589169986e-14
+      },
+      "status": "PASS"
+    }
+  ],
+  "peak_torch_allocated_bytes": 63547904,
+  "peak_torch_reserved_bytes": 88080384,
+  "memory_scope": "PyTorch allocator only; excludes some library/context allocations"
+}

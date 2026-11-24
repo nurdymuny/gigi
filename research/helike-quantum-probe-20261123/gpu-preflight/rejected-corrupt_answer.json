@@ -1,0 +1,55 @@
+{
+  "status": "FAIL",
+  "scope": "synthetic_gpu_preflight_only",
+  "quantum_spectrum_status": "NOT_RUN",
+  "created_utc": "2026-11-24T01:59:52.716342+00:00",
+  "injected_defect": "corrupt_answer",
+  "tolerance": 1e-10,
+  "script_sha256": "54a3088130fb0a5522b3e07b012b5100960206fc71e5e39d304816e0df986743",
+  "amendment_sha256": "6735097f296e692a024f5f8e2cb84f368a4cb92e4fce7a9d88098f30da448ec5",
+  "environment": {
+    "torch": "2.11.0.dev20260108+cu128",
+    "cuda_runtime": "12.8",
+    "numpy": "2.4.0",
+    "scipy": "1.16.3",
+    "gpu": "NVIDIA GeForce RTX 5070 Laptop GPU",
+    "capability": [
+      12,
+      0
+    ],
+    "architectures": [
+      "sm_70",
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90",
+      "sm_100",
+      "sm_120"
+    ],
+    "device_total_bytes": 8546484224,
+    "device_free_before_bytes": 7338983424,
+    "blas_thread_environment": {
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null
+    }
+  },
+  "cases": [
+    {
+      "dimension": 29,
+      "dtype": "torch.float64",
+      "device": "cuda:0",
+      "level_multiplicity": 6,
+      "errors": {
+        "planted_spectrum_scaled": 0.0005000000000002114,
+        "cpu_spectrum_scaled": 0.0005000000000002114,
+        "residual_max_column_scaled": 0.0005000000000002667,
+        "orthogonality_frobenius": 5.075203419193128e-15,
+        "planted_projector_frobenius": 2.013297110664998e-14,
+        "cpu_projector_frobenius": 1.0091917784852513e-14
+      },
+      "status": "FAIL"
+    }
+  ],
+  "error": "RuntimeError: Planted numerical fixture failed: dimension 29"
+}

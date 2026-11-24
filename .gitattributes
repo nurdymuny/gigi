@@ -14,3 +14,12 @@
 /docs/RICCI*.md -text
 /docs/MONODROMY*.md -text
 /docs/RICCI_HANDOFF_2026_11_17.md -text
+
+# Hash-pinned Helike quantum evidence and reproducible paper assets.
+/research/helike-quantum-probe-20261123/** -text whitespace=cr-at-eol
+/scripts/*ym_helike*.py -text
+/docs/research/helike-quantum-*.md -text whitespace=cr-at-eol,-blank-at-eol
+/docs/papers/helike-quantum-probe/** -text whitespace=cr-at-eol
+# Retain exporter whitespace and the historical Markdown hard line breaks.
+/docs/papers/helike-quantum-probe/figures/*.svg whitespace=cr-at-eol,-blank-at-eol
+/research/helike-quantum-probe-20261123/**/source/docs/research/*.md whitespace=cr-at-eol,-blank-at-eol

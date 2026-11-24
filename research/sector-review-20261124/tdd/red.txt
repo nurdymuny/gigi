@@ -1,0 +1,209 @@
+test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) ... 
+  test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) (g=-1, a=1) ... FAIL
+  test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) (g=1, a=0) ... FAIL
+  test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) (g=1, a=inf) ... FAIL
+test_negative_exterior_cannot_turn_into_zero (test_sector_review.ResidualTests.test_negative_exterior_cannot_turn_into_zero) ... FAIL
+test_projected_eigensolver_error_is_part_of_full_residual (test_sector_review.ResidualTests.test_projected_eigensolver_error_is_part_of_full_residual) ... FAIL
+test_small_residual_is_not_lost_in_float_cancellation (test_sector_review.ResidualTests.test_small_residual_is_not_lost_in_float_cancellation) ... ok
+test_common_allowance_catches_false_channel_pass (test_sector_review.RunnerTests.test_common_allowance_catches_false_channel_pass) ... FAIL
+test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) ... 
+  test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1.60:1.7'], cutoffs=[10, 12, 14]) ... FAIL
+  test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1:2', '2:2.3'], cutoffs=[10, 12, 14]) ... FAIL
+  test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1:1.7', '2:2.3'], cutoffs=[14, 10]) ... FAIL
+  test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1:1.7', '2:2.3'], cutoffs=[10, 10]) ... FAIL
+test_existing_evidence_cannot_be_overwritten (test_sector_review.RunnerTests.test_existing_evidence_cannot_be_overwritten) ... FAIL
+test_failed_receipt_replaces_old_pass (test_sector_review.RunnerTests.test_failed_receipt_replaces_old_pass) ... FAIL
+test_finite_json_refuses_nan (test_sector_review.RunnerTests.test_finite_json_refuses_nan) ... FAIL
+test_missing_precision_values_refused (test_sector_review.RunnerTests.test_missing_precision_values_refused) ... FAIL
+
+======================================================================
+FAIL: test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) (g=-1, a=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 39, in test_bad_physical_inputs_refused
+    j.solve(4,g,a)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_j0.py", line 200, in solve
+    out = finish(S, H, K, dps, nlev)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_j0.py", line 227, in finish
+    Hf = np.array(Ht.tolist(), dtype=float)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: float() argument must be a string or a real number, not 'mpc'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 41, in test_bad_physical_inputs_refused
+    self.assertIsInstance(exc,ValueError)
+AssertionError: TypeError("float() argument must be a string or a real number, not 'mpc'") is not an instance of <class 'ValueError'>
+
+======================================================================
+FAIL: test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) (g=1, a=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 39, in test_bad_physical_inputs_refused
+    j.solve(4,g,a)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_j0.py", line 166, in solve
+    coef = coefficients(g2, alpha)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_j0.py", line 209, in coefficients
+    return (al, 1 / (2 * al), -3 * g * al ** mp.mpf(-1.5), g ** 2 / (4 * al ** 2))
+                ~~^~~~~~~~~~
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\mpmath\ctx_mp_python.py", line 205, in __rdiv__
+    v._mpf_ = mpf_rdiv_int(t, s._mpf_, prec, rounding)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\mpmath\libmp\libmpf.py", line 991, in mpf_rdiv_int
+    return mpf_div(from_int(n), t, prec, rnd)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\mpmath\libmp\libmpf.py", line 960, in mpf_div
+    raise ZeroDivisionError
+ZeroDivisionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 41, in test_bad_physical_inputs_refused
+    self.assertIsInstance(exc,ValueError)
+AssertionError: ZeroDivisionError() is not an instance of <class 'ValueError'>
+
+======================================================================
+FAIL: test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) (g=1, a=inf)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 39, in test_bad_physical_inputs_refused
+    j.solve(4,g,a)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_j0.py", line 166, in solve
+    coef = coefficients(g2, alpha)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_j0.py", line 208, in coefficients
+    al = _mpf(F(alpha).limit_denominator(10 ** 12))
+              ^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\fractions.py", line 232, in __new__
+    self._numerator, self._denominator = numerator.as_integer_ratio()
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OverflowError: cannot convert Infinity to integer ratio
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 41, in test_bad_physical_inputs_refused
+    self.assertIsInstance(exc,ValueError)
+AssertionError: OverflowError('cannot convert Infinity to integer ratio') is not an instance of <class 'ValueError'>
+
+======================================================================
+FAIL: test_negative_exterior_cannot_turn_into_zero (test_sector_review.ResidualTests.test_negative_exterior_cannot_turn_into_zero)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 26, in test_negative_exterior_cannot_turn_into_zero
+    with mp.workdps(60), self.assertRaisesRegex(ArithmeticError,'negative|exterior'):
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ArithmeticError not raised
+
+======================================================================
+FAIL: test_projected_eigensolver_error_is_part_of_full_residual (test_sector_review.ResidualTests.test_projected_eigensolver_error_is_part_of_full_residual)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 23, in test_projected_eigensolver_error_is_part_of_full_residual
+    np.testing.assert_allclose(got['residuals'],[2*np.sin(angle)]*2,rtol=1e-12)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\testing\_private\utils.py", line 1768, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\testing\_private\utils.py", line 983, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-12, atol=0
+
+Mismatched elements: 2 / 2 (100%)
+Mismatch at indices:
+ [0]: 0.0 (ACTUAL), 0.01999966666833333 (DESIRED)
+ [1]: 0.0 (ACTUAL), 0.01999966666833333 (DESIRED)
+Max absolute difference among violations: 0.01999967
+Max relative difference among violations: 1.
+ ACTUAL: array([0., 0.])
+ DESIRED: array([0.02, 0.02])
+
+======================================================================
+FAIL: test_common_allowance_catches_false_channel_pass (test_sector_review.RunnerTests.test_common_allowance_catches_false_channel_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 56, in test_common_allowance_catches_false_channel_pass
+    self.assertEqual(row['allowance'],.01)
+AssertionError: 0.02 != 0.01
+
+======================================================================
+FAIL: test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1.60:1.7'], cutoffs=[10, 12, 14])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 69, in test_cutoffs_and_controls_are_frozen
+    with self.subTest(cases=cases,cutoffs=cutoffs),self.assertRaises(ValueError):
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1:2', '2:2.3'], cutoffs=[10, 12, 14])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 69, in test_cutoffs_and_controls_are_frozen
+    with self.subTest(cases=cases,cutoffs=cutoffs),self.assertRaises(ValueError):
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1:1.7', '2:2.3'], cutoffs=[14, 10])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 69, in test_cutoffs_and_controls_are_frozen
+    with self.subTest(cases=cases,cutoffs=cutoffs),self.assertRaises(ValueError):
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) (cases=['1:1.7', '2:2.3'], cutoffs=[10, 10])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 69, in test_cutoffs_and_controls_are_frozen
+    with self.subTest(cases=cases,cutoffs=cutoffs),self.assertRaises(ValueError):
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_existing_evidence_cannot_be_overwritten (test_sector_review.RunnerTests.test_existing_evidence_cannot_be_overwritten)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 73, in test_existing_evidence_cannot_be_overwritten
+    with tempfile.TemporaryDirectory() as tmp, self.assertRaises(FileExistsError):
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: FileExistsError not raised
+
+======================================================================
+FAIL: test_failed_receipt_replaces_old_pass (test_sector_review.RunnerTests.test_failed_receipt_replaces_old_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 83, in test_failed_receipt_replaces_old_pass
+    self.assertEqual(json.loads((p/'verification.json').read_text())['status'],'FAIL')
+AssertionError: 'PASS' != 'FAIL'
+- PASS
++ FAIL
+
+
+======================================================================
+FAIL: test_finite_json_refuses_nan (test_sector_review.RunnerTests.test_finite_json_refuses_nan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 48, in test_finite_json_refuses_nan
+    with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_missing_precision_values_refused (test_sector_review.RunnerTests.test_missing_precision_values_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_sector_review.py", line 62, in test_missing_precision_values_refused
+    with self.assertRaisesRegex(ValueError,'six|length'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.054s
+
+FAILED (failures=14)

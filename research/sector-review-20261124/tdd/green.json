@@ -1,0 +1,31 @@
+{
+  "gates": {
+    "test_ym_helike_j0": true,
+    "test_ym_helike_j2": true,
+    "test_sector_review": true,
+    "test_quantum_ordering": true,
+    "test_quantum_order_controls": true,
+    "mutations": true
+  },
+  "hashes": {
+    "scripts/ym_helike_j0.py": "22bd95bca1699215a06f0f0260d8f6b758a15bedeaacd45aa9f109f7e9de2873",
+    "scripts/ym_helike_j2.py": "bf23c18e35b9cd365c67c4858756c0e607a9156ab61bedb86294dcc09ff4354f",
+    "scripts/quantum_ordering.py": "43b49b4fb663262ff41bee9d49a1cc6cfcedd1f3da31f2b236bb8a4eacd6d4e9",
+    "scripts/run_ym_helike_sectors.py": "b9578abae6675a3b6161755af7ae2faaa637b553f91c6634e2fbc0e53a30804d",
+    "scripts/run_ym_helike_j0.py": "c23b2874bed9b9c8944aa02288858625340f441ae52029daf0ffda6afcf492bb",
+    "scripts/test_ym_helike_j0.py": "0091a164b3751a7b141a8690b3cd7c41ec89fa993c6249c58eb3eb0a3dd04f0b",
+    "scripts/test_ym_helike_j2.py": "7c658dbd90f14905735a88d6d2f4a1294aed49206fbdf606e203436546b699e0",
+    "scripts/test_sector_review.py": "e6b26919c4309f967ff259bb01f1ec17c629d5c89e7420c8702247cb93d1bef8",
+    "scripts/check_ym_helike_j0_mutations.py": "e722cde44075b58d3c83ea4727f94123e6dc03f6411635a2667293fa04064a9d",
+    "scripts/check_ym_helike_j2_mutations.py": "43c7c1b1e24917976f3909e546b7d029e635886294b7114c42d2bc7b69376e8b",
+    "scripts/check_sector_review_mutations.py": "373371d6250f1f570e03ef577c3cb1ecc08ce296c396ee17d4b1d308c714ea82",
+    "scripts/test_quantum_ordering.py": "6e97cf175949da6c9a986f1b7c8515ec62089a27dfcee8be8d21b0603af37b16",
+    "scripts/test_quantum_order_controls.py": "b8e114916a0d8a9e4d6a12aaca5f5821f8d4ef7ea03d56693264f0511bfef09a",
+    "scripts/ym_helike_quantum.py": "6899b9694b513d17cfb4fd37f780da1e741fe3badb73bb1c1d223c808e4eb613",
+    "scripts/run_ym_helike_convergence.py": "31752fd3052966a24a8af08b7273be7dc2222e441e4da284dc4536fc0503782e",
+    "scripts/run_quantum_order_controls.py": "081248bb124b2dd7f9718655d83bddc61101c4d03f54a4c4abf9efef68edcd77",
+    "docs/research/sector-review-protocol-2026-11-24.md": "f7692ab87bc32f2a2efc96d55d7f71d49594d657b775efdf14de2bfae1fe1f8b",
+    "docs/research/helike-j0-sector-solver-2026-11-24.md": "81c051f4e601e61ab9dff23fcb6b8195eb5357420201ac8337bb644a0b94243a"
+  },
+  "note": "Documentation test count and registration tense corrected after green; tested code unchanged."
+}

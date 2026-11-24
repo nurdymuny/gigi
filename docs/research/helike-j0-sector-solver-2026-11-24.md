@@ -1,7 +1,11 @@
 # The scalar and tensor sectors on their own: solvers that converge tighter
 
-24 November 2026. **Software built and tested. Registered runs NOT YET DONE.** The numbers in the last section come
+24 November 2026. **At registration: software built and tested; runs NOT YET DONE.** The numbers in the last section come
 from a development check on the review laptop. They are not receipts.
+
+**Review amendment:** [bounded execution and numerical corrections](sector-review-protocol-2026-11-24.md).
+The first authorized run is both sectors through cutoff 24, with 60-digit assembly and residual contractions,
+a float64 eigensolve, and 100-digit reassembly of the top cutoff. Examples below use this reviewed scope.
 
 ## Why
 
@@ -32,9 +36,10 @@ The parts are exact:
 - **Gradient table.** The gradient inner products and Laplacians of T, P and d, written back in T, P and d.
   For example, ∇P·∇P = 16 tr(Q³) = −8T³ + 24TP + 48d², and ΔP = 28T.
 - **Moments.** Gaussian moments are exact rationals, from integration by parts along ∇T, ∇P and ∇d.
-- **Precision.** Linear algebra runs in mpmath at 60 digits, because the monomial Gram matrix is ill-conditioned:
+- **Precision.** Assembly and orthonormalization run in mpmath at 60 digits; the eigensolve uses float64:
   it loses about 6 digits at cutoff 14 and 13 at 28. The residual is read from the exterior Gram K̃ − H̃², so a
-  small residual is not lost to cancellation.
+  small residual is not lost to cancellation. The reviewed calculation adds the returned eigenpair's projected
+  error and contracts both terms in mpmath; it refuses materially negative values instead of clipping them to zero.
 
 ## An exact structure found on the way
 
@@ -43,10 +48,13 @@ The potential is a perfect square:
   V = ½|∇W|²,  W = ½T − g det q.
 
 det q is harmonic and ΔW = 9, so H = ½A†A + 9/2 with A = ∇ + ∇W. Three consequences:
-- **An exact floor.** Every eigenvalue exceeds 9/2 when g ≠ 0, because e^(−W) cannot be normalised. This is a
+- **An exact floor for this domain and energy origin.** H >= 9/2; a normalizable eigenfunction cannot attain
+  equality when g != 0, because e^(-W) is not normalizable. This is not a vacuum-to-excitation gap, and strict
+  non-attainment alone does not establish a strict bound on the spectral infimum. This is a
   new exact gate, and every computed ground energy passes it. E₀ − 9/2 is 0.9304 at g² = 1 and 1.7480 at g² = 2.
 - **Exact vacua.** Both vacua are the critical points of W: q = 0 and the orbit q = R/g with R ∈ SO(3).
-  W differs between them by exactly 1/(2g²), the Bogomolny action of a tunnelling path.
+  W differs between them by exactly 1/(2g²). This is the action bound associated with the superpotential;
+  identifying a tunnelling action also requires a path saturating that bound, not just the endpoint difference.
 - **Known structure.** This is the Chern–Simons gradient structure of Yang–Mills on the three-sphere, here in
   the homogeneous sector.
 
@@ -81,9 +89,9 @@ Each one fails a test assertion. None produces an unexpected error.
 ## How to run it
 
 ```
-python -m unittest scripts/test_ym_helike_j0.py
+python -m unittest discover -s scripts -p test_ym_helike_j0.py
 python scripts/check_ym_helike_j0_mutations.py OUT/mutations.json
-python scripts/run_ym_helike_j0.py OUT --cases 1:1.7 2:2.3 --cutoffs 10 12 14 16 18 20 22 24 26 28 30 32 36 40
+python scripts/run_ym_helike_j0.py OUT --cases 1:1.7 2:2.3 --cutoffs 10 12 14 16 18 20 22 24
 ```
 
 The runner needs only the CPU, with no GPU and little memory. The widths are the pilot's frozen widths.
@@ -100,6 +108,10 @@ Cutoff 28 took about 140 seconds on the laptop. Cutoff 40 will take several time
 
 ## Development check, g² = 1, α = 1.7 (laptop; not a receipt)
 
+**Unverified historical table:** the N=14 scalar energy below is inconsistent with the saved control
+7.7004303148103945 and the listed N=16 value. The text's first-pass claim at N=24 is also inconsistent with
+its own N=20 residual 0.0116 < 0.0227. Retained as development history, not accepted numerical evidence.
+
 | Cutoff | n | E_s | ε_s | ε_s′ (next scalar) | Temple τ_s |
 | --- | --- | --- | --- | --- | --- |
 | 14 | 47 | 7.70004 | 1.11×10⁻¹ | 1.65×10⁻¹ | — |
@@ -108,7 +120,7 @@ Cutoff 28 took about 140 seconds on the laptop. Cutoff 40 will take several time
 | 24 | 169 | 7.69998797 | 2.77×10⁻³ | 7.85×10⁻³ | 4.4×10⁻⁶ |
 | 28 | 249 | 7.69998786 | 7.28×10⁻⁴ | 2.26×10⁻³ | 3.0×10⁻⁷ |
 
-The allowance is 0.0227. The scalar passes the inherited residual gate from cutoff 24 on. The decay is about
+The stated allowance is 0.0227; the table would already satisfy that scalar-only test at N=20, if verified. The decay is about
 four times per four degrees, so the slowdown seen at cutoff 14 did not persist. E₀ settles to 5.43038142, with
 ε₀ = 1.5×10⁻⁴ at cutoff 28. The Temple width of the scalar is now far below any expected |D|. A tensor-lower
 verdict therefore depends almost entirely on the tensor's upper value.
@@ -136,7 +148,7 @@ The exact tables:
 Inner products sum the Frobenius contraction over the five members. By Schur's lemma the residual is then the
 per-member full-space residual, the operator norm of the 5×5 residual Gram.
 
-Tests: `scripts/test_ym_helike_j2.py`, 13 tests.
+Tests: `scripts/test_ym_helike_j2.py`, 12 tests.
 - Every table entry against finite differences.
 - The free oscillator is exact.
 - Every level is above 9/2.
@@ -156,15 +168,16 @@ contractions, a zeroed tensor residual). Each fails by assertion. The six scalar
 ## Both sectors together
 
 ```
-python -m unittest scripts/test_ym_helike_j0.py scripts/test_ym_helike_j2.py
+python -m unittest discover -s scripts -p test_ym_helike_j0.py
+python -m unittest discover -s scripts -p test_ym_helike_j2.py
 python scripts/check_ym_helike_j0_mutations.py OUT/mutations_j0.json
 python scripts/check_ym_helike_j2_mutations.py OUT/mutations_j2.json
-python scripts/run_ym_helike_sectors.py OUT --cases 1:1.7 2:2.3 --cutoffs 10 12 14 16 18 20 22 24 26 28 30 32
+python scripts/run_ym_helike_sectors.py OUT --cases 1:1.7 2:2.3 --cutoffs 10 12 14 16 18 20 22 24
 ```
 
 The runner is CPU only and uses little memory. It records, per cutoff:
 - both sectors' levels and residuals;
-- the inherited residual gate for the scalar and the tensor;
+- a shared J=0/J=2 residual allowance, not a verified full-spectrum convergence gate; the vacuum is included;
 - D = E_t − E_s;
 - the full `quantum_ordering.ordering` output (conditional order and reason, beta and beta_half, the Weinstein
   secondary order, `certified: false`, `separation_verified: false`, unconditional `ORDER_UNRESOLVED`);

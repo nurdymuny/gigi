@@ -116,6 +116,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 23 Nov | [Confirmatory crossing and state geometry](helike-quantum-crossing-preregistration-2026-11-23.md): six held-out couplings, complete spin projectors, state geometry and 15 gates; v3 preserves conditional separation, full survey not implemented or run |
 | 23 Nov | [Existing-control ordering pilot](quantum-order-controls-protocol-2026-11-23.md): tested conditional ordering, next distinct same-spin residuals, separate spin validation and corrected width baselines; no held-out measurements |
 | 23 Nov | [Next-level control results](quantum-order-controls-results-2026-11-23.md): six GPU cases and saved-state replay pass; next-level error prevents an overstatement at N=12; conditional tensor-lower at N=14, original convergence gate still open |
+| 24 Nov | [Sector-solver review and bounded execution](sector-review-protocol-2026-11-24.md): corrected full residuals, common sector allowance, mixed-precision disclosure and supervised evidence; existing controls only, through N=24 |
 | 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 
 ## Where we were: status and strategy

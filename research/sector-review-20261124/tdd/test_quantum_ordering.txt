@@ -1,0 +1,27 @@
+test_both_conditional_directions (test_quantum_ordering.BoundTests.test_both_conditional_directions) ... ok
+test_equal_levels_are_unresolved (test_quantum_ordering.BoundTests.test_equal_levels_are_unresolved) ... ok
+test_half_separation_can_change_the_order (test_quantum_ordering.BoundTests.test_half_separation_can_change_the_order) ... ok
+test_half_separation_guard_cannot_be_skipped (test_quantum_ordering.BoundTests.test_half_separation_guard_cannot_be_skipped) ... ok
+test_invalid_numbers_refused (test_quantum_ordering.BoundTests.test_invalid_numbers_refused) ... ok
+test_known_separation_formula (test_quantum_ordering.BoundTests.test_known_separation_formula) ... ok
+test_missing_exact_level_never_becomes_verified (test_quantum_ordering.BoundTests.test_missing_exact_level_never_becomes_verified) ... ok
+test_next_residual_is_in_denominator (test_quantum_ordering.BoundTests.test_next_residual_is_in_denominator) ... ok
+test_separation_guard_is_strict (test_quantum_ordering.BoundTests.test_separation_guard_is_strict) ... ok
+test_spin_failure_refuses_instead_of_padding_energy (test_quantum_ordering.BoundTests.test_spin_failure_refuses_instead_of_padding_energy) ... ok
+test_spin_tolerance_does_not_change_energy_residual (test_quantum_ordering.BoundTests.test_spin_tolerance_does_not_change_energy_residual) ... ok
+test_unused_unavailable_bound_does_not_block_order (test_quantum_ordering.BoundTests.test_unused_unavailable_bound_does_not_block_order) ... ok
+test_existing_residuals_agree_on_identical_subspaces (test_quantum_ordering.ResidualTests.test_existing_residuals_agree_on_identical_subspaces) ... ok
+test_full_action_matches_independent_ladders (test_quantum_ordering.ResidualTests.test_full_action_matches_independent_ladders) ... ok
+test_operator_norm_and_batch_invariance (test_quantum_ordering.ResidualTests.test_operator_norm_and_batch_invariance) ... ok
+test_incomplete_multiplet_refused (test_quantum_ordering.SectorTests.test_incomplete_multiplet_refused) ... ok
+test_invalid_spin_refused (test_quantum_ordering.SectorTests.test_invalid_spin_refused) ... ok
+test_missing_neighbor_refused (test_quantum_ordering.SectorTests.test_missing_neighbor_refused) ... ok
+test_mixed_block_complex_rotation_and_metric (test_quantum_ordering.SectorTests.test_mixed_block_complex_rotation_and_metric) ... ok
+test_next_means_distinct_complete_multiplet (test_quantum_ordering.SectorTests.test_next_means_distinct_complete_multiplet) ... ok
+test_repeated_same_spin_copies_refused (test_quantum_ordering.SectorTests.test_repeated_same_spin_copies_refused) ... ok
+test_saved_width_baselines_are_distinct (test_quantum_ordering.WidthTests.test_saved_width_baselines_are_distinct) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.739s
+
+OK

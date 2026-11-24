@@ -1,0 +1,33 @@
+test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products) ... ok
+test_laplacians (test_ym_helike_j0.GeneratorIdentities.test_laplacians) ... ok
+test_superpotential (test_ym_helike_j0.GeneratorIdentities.test_superpotential)
+V = 1/2 |grad W|^2 with W = T/2 - g det q. ... ok
+test_against_nine_variable_expansion (test_ym_helike_j0.Moments.test_against_nine_variable_expansion) ... ok
+test_temple_quantities_and_labels (test_ym_helike_j0.OrderingInputs.test_temple_quantities_and_labels) ... ok
+test_unusable_separation_is_refused (test_ym_helike_j0.OrderingInputs.test_unusable_separation_is_refused) ... ok
+test_free_oscillator_is_exact (test_ym_helike_j0.Spectrum.test_free_oscillator_is_exact)
+g = 0, alpha = 1: H is the 9D oscillator, closed on each degree; levels 9/2 + degree, zero residual. ... ok
+test_ground_energy_above_superpotential_floor (test_ym_helike_j0.Spectrum.test_ground_energy_above_superpotential_floor) ... ok
+test_matches_nine_variable_gpu_controls (test_ym_helike_j0.Spectrum.test_matches_nine_variable_gpu_controls) ... ok
+test_operator_is_symmetric_and_refusal_is_explicit (test_ym_helike_j0.Spectrum.test_operator_is_symmetric_and_refusal_is_explicit) ... ok
+test_precision_is_sufficient (test_ym_helike_j0.Spectrum.test_precision_is_sufficient) ... ok
+test_ritz_values_do_not_increase_with_cutoff (test_ym_helike_j0.Spectrum.test_ritz_values_do_not_increase_with_cutoff) ... ok
+test_matches_gpu_tensor_levels (test_ym_helike_j2.NineVariableControls.test_matches_gpu_tensor_levels) ... ok
+test_module_is_complete (test_ym_helike_j2.NineVariableControls.test_module_is_complete)
+Module dimension equals the number of spin-2 multiplets in the 9-variable basis. ... ok
+test_reproduces_pilot_conditional_orders (test_ym_helike_j2.NineVariableControls.test_reproduces_pilot_conditional_orders)
+Feeding both sector solvers into quantum_ordering reproduces the six-control pilot's verdicts. ... ok
+test_all_levels_above_superpotential_floor (test_ym_helike_j2.Spectrum.test_all_levels_above_superpotential_floor) ... ok
+test_branch_carries_measured_tensor_residual (test_ym_helike_j2.Spectrum.test_branch_carries_measured_tensor_residual) ... ok
+test_free_oscillator_is_exact (test_ym_helike_j2.Spectrum.test_free_oscillator_is_exact) ... ok
+test_operator_is_symmetric_and_refusal_is_explicit (test_ym_helike_j2.Spectrum.test_operator_is_symmetric_and_refusal_is_explicit) ... ok
+test_precision_is_sufficient (test_ym_helike_j2.Spectrum.test_precision_is_sufficient) ... ok
+test_ritz_values_do_not_increase_with_cutoff (test_ym_helike_j2.Spectrum.test_ritz_values_do_not_increase_with_cutoff) ... ok
+test_contractions (test_ym_helike_j2.Tables.test_contractions) ... ok
+test_directional_derivatives (test_ym_helike_j2.Tables.test_directional_derivatives) ... ok
+test_laplacians (test_ym_helike_j2.Tables.test_laplacians) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 25.886s
+
+OK

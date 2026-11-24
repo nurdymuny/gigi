@@ -1,142 +1,294 @@
-"""Solve the spin-0 and spin-2 sectors separately over cutoffs, and apply the registered conditional ordering.
-
-Both sector solvers are CPU-only (mpmath) with small memory. Sizes: scalar 47 / 249 / 632 and tensor 57 / 374 / 869
-basis functions at cutoff 14 / 28 / 40. The tensor dominates the run time.
-
-usage:
-  python scripts/run_ym_helike_sectors.py OUT_DIR [--cases 1:1.7 2:2.3] [--cutoffs 10 12 ... 32] [--dps 60]
-                                          [--check-dps 100]
-
-The defaults are the six-control pilot's couplings and frozen widths. This runner does NOT choose widths and does not
-run the held-out couplings; the crossing registration governs those. The receipt (OUT_DIR/receipt.json) is
-RUNNING after every case and ends COMPLETE, FAILED_GATE or FAILED. Per cutoff it records:
-  - both sectors' levels and full-space residuals, and the inherited residual gate for scalar and tensor;
-  - quantum_ordering.ordering(scalar, tensor): conditional order and reason under beta and beta_half, the
-    Weinstein secondary order, with certified=false, separation_verified=false, unconditional ORDER_UNRESOLVED;
-  - the superpotential floor (every level > 9/2) and non-increasing Ritz values across cutoffs.
-The top cutoff is recomputed at --check-dps and must agree.
-"""
+"""Source-pinned, supervised existing-control sector pilot. No held-out couplings."""
 import argparse
-import hashlib
+import gc
+import importlib
 import json
 import os
-import platform
+import shutil
+import subprocess
 import sys
 import time
-import traceback
+import unittest
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE))
-import quantum_ordering as qo  # noqa: E402
-import ym_helike_j0 as j0  # noqa: E402
-import ym_helike_j2 as j2  # noqa: E402
+import numpy as np
+from threadpoolctl import threadpool_limits
+import quantum_ordering as qo
+import ym_helike_j0 as j0
+import ym_helike_j2 as j2
+import run_quantum_order_controls as control
+import run_ym_helike_convergence as base
 
-DEFAULT_CUTOFFS = (10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32)
-NLEV = 6
-SOURCES = ("ym_helike_j0.py", "ym_helike_j2.py", "quantum_ordering.py", "run_ym_helike_sectors.py",
-           "test_ym_helike_j0.py", "test_ym_helike_j2.py")
+ROOT=Path(__file__).resolve().parents[1]
+DEFAULT_CUTOFFS=tuple(range(10,25,2))
+NLEV=6
+SOURCES=(
+    'scripts/ym_helike_j0.py','scripts/ym_helike_j2.py','scripts/quantum_ordering.py',
+    'scripts/run_ym_helike_sectors.py','scripts/run_ym_helike_j0.py',
+    'scripts/test_ym_helike_j0.py','scripts/test_ym_helike_j2.py','scripts/test_sector_review.py',
+    'scripts/check_ym_helike_j0_mutations.py','scripts/check_ym_helike_j2_mutations.py',
+    'scripts/check_sector_review_mutations.py','scripts/test_quantum_ordering.py','scripts/test_quantum_order_controls.py',
+    'scripts/ym_helike_quantum.py','scripts/run_ym_helike_convergence.py','scripts/run_quantum_order_controls.py',
+    'docs/research/sector-review-protocol-2026-11-24.md','docs/research/helike-j0-sector-solver-2026-11-24.md')
+GATES=('test_ym_helike_j0','test_ym_helike_j2','test_sector_review','test_quantum_ordering','test_quantum_order_controls','mutations')
+write=base.atomic
+sha=base.digest
 
 
-def sha(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
-def write(path, obj):
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(obj, indent=1, default=float))
-    os.replace(tmp, path)
+def hashes():
+    return {p:sha(ROOT/p) for p in SOURCES}
 
 
 def sector_row(sol):
-    return {"dimension": sol["dimension"], "gram_digits_lost": sol["gram_digits_lost"],
-            "min_exterior_eig": sol["min_exterior_eig"], "energies": sol["energies"][:NLEV],
-            "residuals": sol["residuals"][:NLEV]}
+    if len(sol['energies'])<NLEV or len(sol['residuals'])<NLEV:
+        raise ValueError('six levels required')
+    if not np.isfinite(sol['energies']+sol['residuals']).all():
+        raise ValueError('nonfinite sector output')
+    if min(sol['residuals'])<0 or np.any(np.diff(sol['energies'])<0):
+        raise ValueError('invalid sector spectrum or residual')
+    return {k:sol[k] for k in ('dimension','gram_digits_lost','min_exterior_eig','energies','residuals')}
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("out_dir")
-    ap.add_argument("--cases", nargs="+", default=["1:1.7", "2:2.3"], help="g2:alpha pairs (alpha frozen per g2)")
-    ap.add_argument("--cutoffs", type=int, nargs="+", default=list(DEFAULT_CUTOFFS))
-    ap.add_argument("--dps", type=int, default=60)
-    ap.add_argument("--check-dps", type=int, default=100)
-    args = ap.parse_args()
-    out = Path(args.out_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    path = out / "receipt.json"
-    rec = {"status": "RUNNING", "label": "sector solvers (J=0, J=2); floating point, not certified",
-           "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "args": vars(args),
-           "sources_sha256": {p: sha(HERE / p) for p in SOURCES}, "python": sys.version,
-           "platform": platform.platform(), "mpmath_backend": j0.mp.libmp.BACKEND, "cases": []}
-    write(path, rec)
+def make_row(N,scalar,tensor):
+    s,t=sector_row(scalar),sector_row(tensor)
+    e0=s['energies'][0]; gs=s['energies'][1]-e0; gt=t['energies'][0]-e0
+    if min(gs,gt)<=0:
+        raise ValueError('positive excitation gaps required')
+    allowance=.01*max(1.,min(gs,gt))
+    residuals={'vacuum':s['residuals'][0],'scalar':s['residuals'][1],'tensor':t['residuals'][0]}
+    return dict(cutoff=N,scalar_sector=s,tensor_sector=t,E0=e0,eps0=s['residuals'][0],
+                gap_scalar=gs,gap_tensor=gt,D=t['energies'][0]-s['energies'][1],allowance=allowance,
+                allowance_scope='J0_J2_ONLY',global_gap_verified=False,scientific_status='UNRESOLVED',
+                residual_gate={k:v<=allowance for k,v in residuals.items()},
+                conservative_residual_gate={k:v<=.01 for k,v in residuals.items()},
+                ordering=qo.ordering(j0.branch(scalar),j2.branch(tensor)),
+                superpotential_floor_ok=min(e0,t['energies'][0])>4.5)
+
+
+def make_scalar_row(N,scalar):
+    s=sector_row(scalar)
+    return dict(cutoff=N,scalar_sector=s,quantities=j0.ordering_inputs(scalar),
+                allowance_scope='J0_ONLY',global_gap_verified=False,scientific_status='UNRESOLVED',
+                superpotential_floor_ok=s['energies'][0]>4.5)
+
+
+def precision_check(low,high,dps):
+    for obj in (low,high):
+        for key in ('energies','residuals'):
+            if len(obj[key])!=NLEV or not np.isfinite(obj[key]).all():
+                raise ValueError('precision comparison requires six finite values of equal length')
+    de=max(abs(a-b) for a,b in zip(low['energies'],high['energies']))
+    dr=max(abs(a-b)/max(abs(a),1e-300) for a,b in zip(low['residuals'],high['residuals']))
+    return dict(dps=dps,max_abs_dE=de,max_rel_dR=dr,passed=de<1e-11 and dr<1e-6)
+
+
+def validate_request(cases,cutoffs,dps,check_dps):
+    if cases!=['1:1.7','2:2.3']:
+        raise ValueError('only frozen existing controls 1:1.7 and 2:2.3 are registered')
+    if len(cutoffs)<3 or tuple(cutoffs)!=DEFAULT_CUTOFFS[:len(cutoffs)]:
+        raise ValueError('registered increasing cutoff prefix 10,12,...,24 required')
+    if (dps,check_dps)!=(60,100):
+        raise ValueError('registered assembly precisions are 60 and 100')
+    return True
+
+
+def initialize(folder,cases,cutoffs,dps,check_dps,scalar_only=False):
+    validate_request(cases,cutoffs,dps,check_dps)
+    folder.mkdir(parents=True,exist_ok=False)
+    rec=dict(status='RUNNING',mode='J0_ONLY' if scalar_only else 'J0_J2',scientific_status='UNRESOLVED',cases=[],
+             request=dict(cases=cases,cutoffs=cutoffs,dps=dps,check_dps=check_dps),
+             source_revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
+             source_hashes=hashes(),gates={},budgets=dict(host_bytes=base.HOST_BUDGET_BYTES,seconds=base.TIME_BUDGET_SECONDS))
+    write(folder/'receipt.json',rec)
     try:
-        for spec in args.cases:
-            g2, alpha = (float(x) for x in spec.split(":"))
-            case = {"g2": g2, "alpha": alpha, "cutoffs": []}
-            rec["cases"].append(case)
-            prev = None
-            for N in args.cutoffs:
-                t0 = time.time()
-                s0 = j0.solve(N, g2, alpha, dps=args.dps)
-                t1 = time.time()
-                s2 = j2.solve(N, g2, alpha, dps=args.dps)
-                t2 = time.time()
-                E0 = s0["energies"][0]
-                order = qo.ordering(j0.branch(s0), j2.branch(s2))
-                gap_s, gap_t = s0["energies"][1] - E0, s2["energies"][0] - E0
-                row = {"cutoff": N, "seconds_scalar": round(t1 - t0, 2), "seconds_tensor": round(t2 - t1, 2),
-                       "scalar_sector": sector_row(s0), "tensor_sector": sector_row(s2),
-                       "E0": E0, "eps0": s0["residuals"][0], "gap_scalar": gap_s, "gap_tensor": gap_t,
-                       "D": s2["energies"][0] - s0["energies"][1],
-                       "residual_gate": {
-                           "scalar": s0["residuals"][1] <= 0.01 * max(1., abs(gap_s)),
-                           "tensor": s2["residuals"][0] <= 0.01 * max(1., abs(gap_t))},
-                       "ordering": order,
-                       "superpotential_floor_ok": min(s0["energies"][0], s2["energies"][0]) > 4.5}
-                if prev is not None:
-                    row["variational_monotone"] = (
-                        all(a <= b + 1e-12 for a, b in zip(s0["energies"][:3], prev["scalar_sector"]["energies"]))
-                        and all(a <= b + 1e-12 for a, b in zip(s2["energies"][:3],
-                                                               prev["tensor_sector"]["energies"])))
-                    for key in ("E0", "gap_scalar", "gap_tensor", "D"):
-                        row[f"delta_{key}"] = row[key] - prev[key]
-                case["cutoffs"].append(row)
-                prev = row
-                write(path, rec)
-                print(f"g2={g2} a={alpha} N={N} D={row['D']:+.10f} eps_s={s0['residuals'][1]:.3e} "
-                      f"eps_t={s2['residuals'][0]:.3e} order={order['conditional_order']} ({order['reason']}) "
-                      f"gates={row['residual_gate']} {t2 - t0:.0f}s", flush=True)
-            top = args.cutoffs[-1]
-            hi0 = j0.solve(top, g2, alpha, dps=args.check_dps)
-            hi2 = j2.solve(top, g2, alpha, dps=args.check_dps)
-            dE = max(max(abs(a - b) for a, b in zip(hi0["energies"][:NLEV], prev["scalar_sector"]["energies"])),
-                     max(abs(a - b) for a, b in zip(hi2["energies"][:NLEV], prev["tensor_sector"]["energies"])))
-            dR = max(max(abs(a - b) / max(b, 1e-300) for a, b in zip(hi0["residuals"][:NLEV],
-                                                                     prev["scalar_sector"]["residuals"])),
-                     max(abs(a - b) / max(b, 1e-300) for a, b in zip(hi2["residuals"][:NLEV],
-                                                                     prev["tensor_sector"]["residuals"])))
-            case["precision_check"] = {"cutoff": top, "dps": args.check_dps, "max_abs_dE": dE, "max_rel_dR": dR,
-                                       "pass": dE < 1e-11 and dR < 1e-6}
-            write(path, rec)
-        rows = [r for c in rec["cases"] for r in c["cutoffs"]]
-        rec["gates"] = {
-            "precision": all(c["precision_check"]["pass"] for c in rec["cases"]),
-            "superpotential_floor": all(r["superpotential_floor_ok"] for r in rows),
-            "variational_monotone": all(r.get("variational_monotone", True) for r in rows),
-            "exterior_gram_psd": all(min(r["scalar_sector"]["min_exterior_eig"],
-                                         r["tensor_sector"]["min_exterior_eig"]) > -1e-12 for r in rows),
-        }
-        rec["status"] = "COMPLETE" if all(rec["gates"].values()) else "FAILED_GATE"
+        for name,h in rec['source_hashes'].items():
+            target=folder/'source'/name; target.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copyfile(ROOT/name,target)
+            if sha(target)!=h:
+                raise ValueError('source drift while snapshotting')
     except BaseException as exc:
-        rec["status"] = "FAILED"
-        rec["error"] = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-        write(path, rec)
-        raise
-    rec["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    write(path, rec)
-    print(rec["status"], rec["gates"])
+        control.failure(folder,'FAILED',str(exc)); raise
+    return rec
 
 
-if __name__ == "__main__":
-    main()
+def save_solution(folder,name,sol):
+    path=folder/(name+'.npz'); tmp=path.with_suffix('.pending')
+    with tmp.open('wb') as f:
+        np.savez_compressed(f,H=np.array(sol['matrix_H']),X=np.array(sol['matrix_X']),V=sol['vectors'],
+                            E=sol['energies'],R=sol['residuals'],dps=sol['dps'],
+                            basis=json.dumps(sol['basis']),roundoff=sol['residual_square_roundoff'])
+        f.flush(); os.fsync(f.fileno())
+    tmp.replace(path)
+    return dict(file=path.name,sha256=sha(path),dimension=sol['dimension'],dps=sol['dps'],
+                gram_digits_lost=sol['gram_digits_lost'],min_exterior_eig=sol['min_exterior_eig'])
+
+
+def replay_solution(folder,info,expected):
+    if info['file']!=expected or sha(folder/expected)!=info['sha256']:
+        raise ValueError('array identity or integrity failure')
+    with np.load(folder/expected,allow_pickle=False) as a, j0.mp.workdps(info['dps']):
+        H=j0.mp.matrix(a['H'].tolist()); X=j0.mp.matrix(a['X'].tolist()); E=a['E']; V=a['V']
+        n=info['dimension']
+        if H.rows!=n or H.cols!=n or X.rows!=n or X.cols!=n or V.shape!=(n,NLEV) or len(E)!=NLEV:
+            raise ValueError('array dimensions invalid')
+        np.testing.assert_allclose(V.T@V,np.eye(NLEV),atol=1e-10,rtol=0)
+        Hf=np.array(H.tolist(),dtype=float); Xf=np.array(X.tolist(),dtype=float)
+        if np.linalg.norm(Hf-Hf.T)>1e-10 or np.linalg.norm(Xf-Xf.T)>1e-10:
+            raise ValueError('saved matrices not symmetric')
+        np.testing.assert_allclose(np.linalg.eigvalsh(Hf)[:NLEV],E,atol=1e-11,rtol=0)
+        residual,tol=j0.residuals_from_matrices(H,X,E,V,info['dps'])
+        np.testing.assert_allclose(residual,a['R'],atol=1e-14,rtol=1e-10)
+        np.testing.assert_allclose(tol,a['roundoff'],rtol=1e-10,atol=0)
+        minimum=float(np.linalg.eigvalsh(Xf).min())
+        if minimum < -1e-12:
+            raise ValueError('exterior Gram failed')
+        base.compare_report(minimum,info['min_exterior_eig'],'exterior minimum')
+        return dict(dimension=n,gram_digits_lost=info['gram_digits_lost'],min_exterior_eig=minimum,
+                    energies=E.tolist(),residuals=residual)
+
+
+def verify_run(folder,candidate=None):
+    write(folder/'verification.json',dict(status='RUNNING',scientific_status='UNRESOLVED'))
+    try:
+        rec=base.read_json(folder/'receipt.json') if candidate is None else candidate
+        if rec.get('status')!='COMPLETE':
+            raise ValueError('incomplete or failed run')
+        if rec.get('scientific_status')!='UNRESOLVED' or rec.get('mode') not in ('J0_ONLY','J0_J2'):
+            raise ValueError('unsupported scientific claim or mode')
+        validate_request(**rec['request'])
+        if rec['source_hashes']!=hashes():
+            raise ValueError('source drift')
+        for name,h in rec['source_hashes'].items():
+            if sha(folder/'source'/name)!=h:
+                raise ValueError('source snapshot corrupt')
+        if rec.get('gates')!={g:True for g in GATES}:
+            raise ValueError('missing prerequisites')
+        expected=[(g,a,n) for g,a in ((1.,1.7),(2.,2.3)) for n in rec['request']['cutoffs']]
+        if [(c['g2'],c['alpha'],c['cutoff']) for c in rec['cases']]!=expected:
+            raise ValueError('missing, duplicated or reordered cases')
+        previous={}; sectors=(0,) if rec['mode']=='J0_ONLY' else (0,2)
+        for case in rec['cases']:
+            solved={}
+            for spin in sectors:
+                name=f"g{case['g2']:g}-N{case['cutoff']}-J{spin}.npz"
+                solved[spin]=replay_solution(folder,case['arrays'][str(spin)],name)
+            row=make_scalar_row(case['cutoff'],solved[0]) if len(sectors)==1 else make_row(case['cutoff'],solved[0],solved[2])
+            base.compare_report(case['measurements'],row,'measurements')
+            if not row['superpotential_floor_ok']:
+                raise ValueError('superpotential floor failed')
+            for spin,s in solved.items():
+                key=(case['g2'],spin)
+                if key in previous and np.any(np.array(s['energies'][:3])>np.array(previous[key])+1e-12):
+                    raise ValueError('variational monotonicity failed')
+                previous[key]=s['energies'][:3]
+            if case['cutoff']==rec['request']['cutoffs'][-1]:
+                for spin in sectors:
+                    name=f"g{case['g2']:g}-N{case['cutoff']}-J{spin}-high.npz"
+                    hi=replay_solution(folder,case['high_arrays'][str(spin)],name)
+                    check=precision_check(solved[spin],hi,rec['request']['check_dps'])
+                    base.compare_report(check,case['precision'][str(spin)],'precision')
+                    if not check['passed']:
+                        raise ValueError('precision check failed')
+        result=dict(status='PASS',cases=len(expected),replay='saved high-precision matrices; not fresh assembly',
+                    certified=False,separation_verified=False,scientific_status='UNRESOLVED')
+        write(folder/'verification.json',result); return result
+    except BaseException as exc:
+        write(folder/'verification.json',dict(status='FAIL',error=str(exc),scientific_status='UNRESOLVED')); raise
+
+
+def prerequisites(folder):
+    from test_ym_helike_j0 import CONTROLS
+    old=base.read_json(CONTROLS/'receipt.json')
+    if len(old['cases'])!=6:
+        raise ValueError('all six previous control archives required')
+    for c in old['cases']:
+        if sha(CONTROLS/c['arrays'])!=c['arrays_sha256']:
+            raise ValueError('previous controls corrupt')
+    gates={}
+    for name in GATES[:-1]:
+        control.event(folder,'test_gate',gate=name)
+        with (folder/(name+'.txt')).open('w',encoding='utf-8') as f:
+            result=unittest.TextTestRunner(stream=f,verbosity=2).run(
+                unittest.defaultTestLoader.loadTestsFromModule(importlib.import_module(name)))
+        if not result.wasSuccessful() or result.skipped or result.testsRun==0:
+            raise ValueError('prerequisite failed or skipped: '+name)
+        gates[name]=True
+    import check_sector_review_mutations as mutations
+    results=mutations.run(); write(folder/'mutations.json',results)
+    if not results or not all(x['assertion_rejected'] for x in results):
+        raise ValueError('mutation gate failed')
+    gates['mutations']=True
+    return gates
+
+
+def worker(folder):
+    rec=base.read_json(folder/'receipt.json')
+    try:
+        if hashes()!=rec['source_hashes']:
+            raise ValueError('source drift before execution')
+        control.event(folder,'startup',backend=j0.mp.libmp.BACKEND,eigensolver='float64')
+        with threadpool_limits(limits=1):
+            rec['gates']=prerequisites(folder); write(folder/'receipt.json',rec)
+            solvers={0:j0.solve} if rec['mode']=='J0_ONLY' else {0:j0.solve,2:j2.solve}
+            for spec in rec['request']['cases']:
+                g,a=map(float,spec.split(':'))
+                for n in rec['request']['cutoffs']:
+                    case=dict(g2=g,alpha=a,cutoff=n,arrays={},precision={},high_arrays={}); solved={}
+                    for spin,solve in solvers.items():
+                        control.event(folder,'solve',g2=g,cutoff=n,spin=spin,dps=60)
+                        start=time.monotonic(); sol=solve(n,g,a,dps=60,nlev=NLEV)
+                        case['arrays'][str(spin)]=save_solution(folder,f'g{g:g}-N{n}-J{spin}',sol)
+                        solved[spin]=sector_row(sol)
+                        control.event(folder,'sector_complete',g2=g,cutoff=n,spin=spin,seconds=time.monotonic()-start,
+                                      energies=sol['energies'][:3],residuals=sol['residuals'][:3])
+                        del sol; gc.collect()
+                    case['measurements']=make_scalar_row(n,solved[0]) if rec['mode']=='J0_ONLY' else make_row(n,solved[0],solved[2])
+                    rec['cases'].append(case); write(folder/'receipt.json',rec)
+                    control.event(folder,'case_complete',g2=g,cutoff=n,measurements=case['measurements'])
+                    if n==rec['request']['cutoffs'][-1]:
+                        for spin,solve in solvers.items():
+                            control.event(folder,'precision_reassembly',g2=g,cutoff=n,spin=spin,dps=100)
+                            hi=solve(n,g,a,dps=100,nlev=NLEV)
+                            case['high_arrays'][str(spin)]=save_solution(folder,f'g{g:g}-N{n}-J{spin}-high',hi)
+                            case['precision'][str(spin)]=precision_check(solved[spin],sector_row(hi),100)
+                            write(folder/'receipt.json',rec)
+                            if not case['precision'][str(spin)]['passed']:
+                                raise ValueError('precision reassembly failed')
+                            del hi; gc.collect()
+            rec['status']='COMPLETE'; control.event(folder,'final_replay'); verify_run(folder,candidate=rec)
+        if hashes()!=rec['source_hashes']:
+            raise ValueError('source drift during execution')
+        write(folder/'receipt.json',rec); control.event(folder,'complete',scientific_status='UNRESOLVED')
+        return 0
+    except BaseException as exc:
+        control.failure(folder,'FAILED',f'{type(exc).__name__}: {exc}'); raise
+
+
+def main(scalar_only=False):
+    ap=argparse.ArgumentParser(description=__doc__); ap.add_argument('out_dir',type=Path)
+    ap.add_argument('--cases',nargs='+',default=['1:1.7','2:2.3'])
+    ap.add_argument('--cutoffs',nargs='+',type=int,default=list(DEFAULT_CUTOFFS))
+    ap.add_argument('--dps',type=int,default=60); ap.add_argument('--check-dps',type=int,default=100)
+    ap.add_argument('--worker',action='store_true'); ap.add_argument('--verify',action='store_true')
+    args=ap.parse_args(); folder=args.out_dir.resolve()
+    if args.worker:
+        return worker(folder)
+    if args.verify:
+        with threadpool_limits(limits=1):
+            print(verify_run(folder))
+        return 0
+    if subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip():
+        raise ValueError('commit and push before the registered run')
+    initialize(folder,args.cases,args.cutoffs,args.dps,args.check_dps,scalar_only)
+    env=dict(os.environ,OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1')
+    try:
+        with (folder/'worker.log').open('w',encoding='utf-8') as f:
+            p=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),str(folder),'--worker'],
+                               cwd=ROOT,env=env,stdout=f,stderr=subprocess.STDOUT)
+            return control.supervise(p,folder)
+    except BaseException as exc:
+        control.failure(folder,'FAILED',str(exc)); raise
+
+
+if __name__=='__main__':
+    raise SystemExit(main())

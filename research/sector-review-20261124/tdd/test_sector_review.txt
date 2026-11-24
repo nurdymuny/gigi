@@ -1,0 +1,18 @@
+test_bad_physical_inputs_refused (test_sector_review.ResidualTests.test_bad_physical_inputs_refused) ... ok
+test_invalid_unreported_direction_refused (test_sector_review.ResidualTests.test_invalid_unreported_direction_refused) ... ok
+test_negative_exterior_cannot_turn_into_zero (test_sector_review.ResidualTests.test_negative_exterior_cannot_turn_into_zero) ... ok
+test_projected_eigensolver_error_is_part_of_full_residual (test_sector_review.ResidualTests.test_projected_eigensolver_error_is_part_of_full_residual) ... ok
+test_small_residual_is_not_lost_in_float_cancellation (test_sector_review.ResidualTests.test_small_residual_is_not_lost_in_float_cancellation) ... ok
+test_common_allowance_catches_false_channel_pass (test_sector_review.RunnerTests.test_common_allowance_catches_false_channel_pass) ... ok
+test_cutoffs_and_controls_are_frozen (test_sector_review.RunnerTests.test_cutoffs_and_controls_are_frozen) ... ok
+test_existing_evidence_cannot_be_overwritten (test_sector_review.RunnerTests.test_existing_evidence_cannot_be_overwritten) ... ok
+test_failed_receipt_replaces_old_pass (test_sector_review.RunnerTests.test_failed_receipt_replaces_old_pass) ... ok
+test_finite_json_refuses_nan (test_sector_review.RunnerTests.test_finite_json_refuses_nan) ... ok
+test_missing_precision_values_refused (test_sector_review.RunnerTests.test_missing_precision_values_refused) ... ok
+test_saved_matrices_reject_forged_residuals (test_sector_review.RunnerTests.test_saved_matrices_reject_forged_residuals) ... ok
+test_source_and_missing_case_cannot_leave_pass (test_sector_review.RunnerTests.test_source_and_missing_case_cannot_leave_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.105s
+
+OK

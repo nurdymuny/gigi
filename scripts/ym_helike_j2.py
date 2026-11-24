@@ -99,6 +99,9 @@ def contracted_moment(m, k, l):
 
 
 def solve(N, g2, alpha, dps=60, nlev=None):
+    j0.validate_inputs(N,g2,alpha,dps,nlev)
+    if N<2:
+        raise ValueError('tensor sector requires cutoff >=2')
     with mp.workdps(dps):
         coef = j0.coefficients(g2, alpha)
         items = basis(N)

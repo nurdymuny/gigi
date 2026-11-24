@@ -1,0 +1,19 @@
+test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products) ... ok
+test_laplacians (test_ym_helike_j0.GeneratorIdentities.test_laplacians) ... ok
+test_superpotential (test_ym_helike_j0.GeneratorIdentities.test_superpotential)
+V = 1/2 |grad W|^2 with W = T/2 - g det q. ... ok
+test_against_nine_variable_expansion (test_ym_helike_j0.Moments.test_against_nine_variable_expansion) ... ok
+test_temple_quantities_and_labels (test_ym_helike_j0.OrderingInputs.test_temple_quantities_and_labels) ... ok
+test_unusable_separation_is_refused (test_ym_helike_j0.OrderingInputs.test_unusable_separation_is_refused) ... ok
+test_free_oscillator_is_exact (test_ym_helike_j0.Spectrum.test_free_oscillator_is_exact)
+g = 0, alpha = 1: H is the 9D oscillator, closed on each degree; levels 9/2 + degree, zero residual. ... ok
+test_ground_energy_above_superpotential_floor (test_ym_helike_j0.Spectrum.test_ground_energy_above_superpotential_floor) ... ok
+test_matches_nine_variable_gpu_controls (test_ym_helike_j0.Spectrum.test_matches_nine_variable_gpu_controls) ... ok
+test_operator_is_symmetric_and_refusal_is_explicit (test_ym_helike_j0.Spectrum.test_operator_is_symmetric_and_refusal_is_explicit) ... ok
+test_precision_is_sufficient (test_ym_helike_j0.Spectrum.test_precision_is_sufficient) ... ok
+test_ritz_values_do_not_increase_with_cutoff (test_ym_helike_j0.Spectrum.test_ritz_values_do_not_increase_with_cutoff) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 10.313s
+
+OK

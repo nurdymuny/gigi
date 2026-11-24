@@ -25,9 +25,9 @@ Exact pieces:
   * Superpotential: V = 1/2 |grad W|^2 with W = T/2 - g d, so H = 1/2 A^dagger A + 9/2 with A = grad + grad W.
     Every exact eigenvalue exceeds 9/2 for g != 0. That is an exact gate on the ground energy.
 
-Linear algebra runs in mpmath at `dps` digits, because the monomial Gram matrix is ill-conditioned. Residuals use the
-exterior Gram X = K~ - H~^2 in the orthonormalised basis, where K = <H m_i, H m_j>, so a small residual is not lost
-to cancellation. These are high-precision floating-point results, not interval-certified enclosures.
+Assembly, Cholesky and residual contractions use mpmath at `dps` digits. The eigensolve uses float64. Residuals
+include both the exterior Gram and the returned eigenpair's projected error. These are mixed-precision
+floating-point results, not interval-certified enclosures.
 """
 from __future__ import annotations
 
@@ -162,6 +162,7 @@ def _mpf(fr):
 
 def solve(N, g2, alpha, dps=60, nlev=None):
     """Solve the J=0 sector at cutoff N. Returns energies and full-space residual norms for all levels."""
+    validate_inputs(N, g2, alpha, dps, nlev)
     with mp.workdps(dps):
         coef = coefficients(g2, alpha)
         ms = basis(N)
@@ -209,6 +210,36 @@ def coefficients(g2, alpha):
     return (al, 1 / (2 * al), -3 * g * al ** mp.mpf(-1.5), g ** 2 / (4 * al ** 2))
 
 
+def validate_inputs(N,g2,alpha,dps,nlev):
+    if (type(N) is not int or N<0 or type(dps) is not int or dps<30
+            or not np.isfinite([g2,alpha]).all() or g2<0 or alpha<=0
+            or (nlev is not None and (type(nlev) is not int or nlev<1))):
+        raise ValueError('finite nonnegative coupling, positive width, integer cutoff and adequate precision required')
+
+
+def residuals_from_matrices(Ht,X,E,V,dps):
+    """Full residual of each supplied approximate eigenpair, contracted before conversion to float64."""
+    with mp.workdps(dps):
+        if any(not mp.isfinite(x) for x in Ht) or any(not mp.isfinite(x) for x in X):
+            raise ArithmeticError('nonfinite residual matrices')
+        scale=max(mp.mpf(1),mp.norm(Ht,mp.inf)**2,mp.norm(X,mp.inf))
+        tolerance=mp.power(10,-(dps-15))*scale
+        values=[]
+        for k,e in enumerate(E):
+            v=mp.matrix(V[:,k].tolist()); norm=(v.T*v)[0]
+            if not mp.isfinite(norm) or abs(norm-1)>mp.mpf('1e-10'):
+                raise ArithmeticError('invalid eigenvector normalization')
+            projected=Ht*v-mp.mpf(float(e))*v
+            exterior=(v.T*X*v)[0]
+            if exterior < -tolerance:
+                raise ArithmeticError('negative exterior residual square')
+            square=(max(mp.mpf(0),exterior)+(projected.T*projected)[0])/norm
+            values.append(float(mp.sqrt(square)))
+        if not np.isfinite(values).all():
+            raise ArithmeticError('nonfinite residual')
+        return values,float(tolerance)
+
+
 def finish(S, H, K, dps, nlev=None):
     """Orthonormalise by Cholesky at the current precision; return energies and full-space residual norms.
 
@@ -229,11 +260,16 @@ def finish(S, H, K, dps, nlev=None):
     Hf = (Hf + Hf.T) / 2
     Xf = (Xf + Xf.T) / 2
     E, V = np.linalg.eigh(Hf)
-    res = np.sqrt(np.clip(np.einsum("ik,ij,jk->k", V, Xf, V), 0, None))
     k = n if nlev is None else min(nlev, n)
+    exterior_min=float(np.linalg.eigvalsh(Xf).min())
+    if not math.isfinite(exterior_min) or exterior_min < -1e-12:
+        raise ArithmeticError('negative exterior Gram beyond registered tolerance')
+    res,tol=residuals_from_matrices(Ht,X,E[:k],V[:,:k],dps)
     return {"dimension": n, "dps": dps, "gram_digits_lost": digits_lost, "energies": E[:k].tolist(),
-            "residuals": res[:k].tolist(), "min_exterior_eig": float(np.linalg.eigvalsh(Xf).min()),
-            "vectors": V[:, :k]}
+            "residuals": res, "min_exterior_eig": exterior_min, "residual_square_roundoff":tol,
+            "eigensolver_precision":"float64", "vectors": V[:, :k],
+            "matrix_H":[[mp.nstr(Ht[i,j],dps) for j in range(n)] for i in range(n)],
+            "matrix_X":[[mp.nstr(X[i,j],dps) for j in range(n)] for i in range(n)]}
 
 
 def ordering_inputs(sol):

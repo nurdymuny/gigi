@@ -132,3 +132,63 @@ def bidegree_parts(M, N, Ds=None, maxdeg=4):
 def cross_invariants(M, N):
     """The two (2,2) invariants of colour x SU(2)_L x SU(2)_R: T_M T_N and tr(M M^T N N^T)."""
     return np.array([np.trace(M @ M.T) * np.trace(N @ N.T), np.trace(M @ M.T @ N @ N.T)])
+
+
+# ---------------------------------------------------------------- closed form and Phase 2 (vacuum plane)
+
+def potential(q, p, g):
+    """V18 in model units: V(q; g) + V(p; -g) + (g^2/3) sum_ij |q_i x p_j|^2 (Phase 1)."""
+    Qq, Qp = q @ q.T, p @ p.T
+    return (one_grain(g * q) / g ** 2 + one_grain(g * p, -1.) / g ** 2
+            + g * g / 3 * (np.trace(Qq) * np.trace(Qp) - np.trace(Qq @ Qp)))
+
+
+def embed(u, v, g):
+    """Van Baal's sphaleron plane, eq. (88): c = -u delta, d = -v delta  <->  q = u I/(2g), p = -v I/(2g)."""
+    return u * np.eye(3) / (2 * g), -v * np.eye(3) / (2 * g)
+
+
+def plane_potential(u, v):
+    """32 pi^2 g^2 V18 on the plane = 3 pi^2 [u^2 (2-u)^2 + v^2 (2-v)^2] + 4 pi^2 u^2 v^2 (van Baal-Hari Dass eq. (92))."""
+    return 3 * np.pi ** 2 * (u ** 2 * (2 - u) ** 2 + v ** 2 * (2 - v) ** 2) + 4 * np.pi ** 2 * u ** 2 * v ** 2
+
+
+def chern_simons(q, p, g):
+    """Q = 2 g^2 (W_L(q) - W_R(p)), normalised so the left vacuum has Q = 1 (van Baal-Hari Dass eq. (101))."""
+    WL = .5 * np.sum(q * q) - g * np.linalg.det(q)
+    WR = .5 * np.sum(p * p) + g * np.linalg.det(p)
+    return 2 * g * g * (WL - WR)
+
+
+def plane_critical_points():
+    """All critical points of the plane potential, by Newton's method from a grid, deduplicated."""
+    f = plane_potential
+
+    def grad(x, h=1e-6):
+        return np.array([(f(x[0] + h, x[1]) - f(x[0] - h, x[1])) / (2 * h),
+                         (f(x[0], x[1] + h) - f(x[0], x[1] - h)) / (2 * h)])
+
+    def hess(x, h=1e-4):
+        H = np.zeros((2, 2))
+        for a in range(2):
+            for b in range(2):
+                ea, eb = np.eye(2)[a] * h, np.eye(2)[b] * h
+                H[a, b] = (f(*(x + ea + eb)) - f(*(x + ea - eb)) - f(*(x - ea + eb)) + f(*(x - ea - eb))) / (4 * h * h)
+        return H
+
+    found = []
+    for u0 in np.linspace(-1.5, 3, 19):
+        for v0 in np.linspace(-1.5, 3, 19):
+            x = np.array([u0, v0])
+            for _ in range(60):
+                try:
+                    step = np.linalg.solve(hess(x), grad(x))
+                except np.linalg.LinAlgError:
+                    break
+                x = x - step
+                if np.linalg.norm(step) < 1e-12:
+                    break
+            if np.linalg.norm(grad(x)) < 1e-6 and np.all(np.abs(x) < 10):
+                if not any(np.linalg.norm(x - y) < 1e-6 for y in found):
+                    found.append(x)
+    return sorted(found, key=lambda x: (f(*x), x[0], x[1]))

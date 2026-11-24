@@ -46,6 +46,16 @@ def projection_without_rotation(M, N, Ds=None):
     return cM / len(Ds), cN / len(Ds)
 
 
+def plane_cross_3(u, v):                     # wrong cross coefficient in the plane formula
+    return 3 * np.pi ** 2 * (u ** 2 * (2 - u) ** 2 + v ** 2 * (2 - v) ** 2) + 3 * np.pi ** 2 * u ** 2 * v ** 2
+
+
+def chern_simons_sum(q, p, g):               # oriented difference replaced by the auxiliary sum
+    WL = .5 * np.sum(q * q) - g * np.linalg.det(q)
+    WR = .5 * np.sum(p * p) + g * np.linalg.det(p)
+    return 2 * g * g * (WL + WR)
+
+
 ORIG = tg.curvature
 ORIG_BIDEGREE = tg.bidegree_parts
 
@@ -60,6 +70,8 @@ MUTANTS = {
     "right_frame_transposed": ("curvature", curvature_transposed_frame),
     "projection_unrotated": ("projected_gradient", projection_without_rotation),
     "degree_guard_ignored": ("bidegree_parts", bidegree_ignores_degree_guard),
+    "plane_cross_coefficient": ("plane_potential", plane_cross_3),
+    "chern_simons_as_sum": ("chern_simons", chern_simons_sum),
 }
 
 

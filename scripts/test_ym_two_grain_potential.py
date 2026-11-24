@@ -166,5 +166,45 @@ class Vacua(unittest.TestCase):
             self.assertAlmostEqual(zp - 9., 4.5 * np.sqrt(7 / 3) - 3.5, places=4)
 
 
+class Phase2(unittest.TestCase):
+    """Sphaleron plane (van Baal-Hari Dass eq. (88)): normalization, critical points, Chern-Simons values."""
+
+    def test_plane_is_the_18_mode_potential_and_matches_eq_92(self):
+        rng = np.random.default_rng(71)
+        for g in (.6, 1.3):
+            for u, v in rng.normal(size=(4, 2)):
+                self.assertAlmostEqual(tg.plane_potential(u, v), 32 * np.pi ** 2 * g * g * tg.potential(*tg.embed(u, v, g), g),
+                                       delta=1e-9 * max(1, tg.plane_potential(u, v)))
+        for a in (-.4, .3, .9):                       # eq. (54) at eps = 0, u = a + 1
+            self.assertAlmostEqual(tg.plane_potential(a + 1, 0.), 3 * np.pi ** 2 * (1 - a * a) ** 2, places=10)
+        u, v = .7, 1.3                                 # eq. (92) cross term with c = -u delta, d = -v delta
+        cross = tg.plane_potential(u, v) - tg.plane_potential(u, 0) - tg.plane_potential(0, v)
+        self.assertAlmostEqual(cross, 2 * np.pi ** 2 / 3 * (9 * u * u * v * v - 3 * u * u * v * v), places=9)
+
+    def test_critical_points_and_chern_simons(self):
+        pts = tg.plane_critical_points()
+        want = {(0, 0): (0., 0.), (2, 0): (0., 1.), (0, 2): (0., -1.), (1, 0): (1., .5), (0, 1): (1., -.5)}
+        self.assertEqual(len(pts), 5)
+        g = .9
+        for x in pts:
+            key = (int(round(x[0])), int(round(x[1])))
+            self.assertIn(key, want)
+            np.testing.assert_allclose(x, key, atol=1e-8)
+            e, Q = want[key]
+            self.assertAlmostEqual(tg.plane_potential(*x) / (3 * np.pi ** 2), e, places=8)
+            self.assertAlmostEqual(tg.chern_simons(*tg.embed(*x, g), g), Q, places=8)
+        for t in (.2, 1., 1.8):                        # "Q vanishes along the line c = d" (p. 213)
+            self.assertAlmostEqual(tg.chern_simons(*tg.embed(t, t, g), g), 0., places=12)
+
+    def test_sphaleron_spectrum_is_coupling_independent(self):
+        want = np.sort([-.5] + [0.] * 3 + [4 / 3] * 9 + [2.5] * 5)
+        for g in (.6, 1.1):
+            f = lambda y: tg.potential(y[:9].reshape(3, 3), y[9:].reshape(3, 3), g)
+            for u, v in ((1, 0), (0, 1)):
+                q, p = tg.embed(u, v, g)
+                ev = np.linalg.eigvalsh(hessian(f, np.concatenate([q.ravel(), p.ravel()])))
+                np.testing.assert_allclose(ev, want, atol=2e-5)
+
+
 if __name__ == "__main__":
     unittest.main()

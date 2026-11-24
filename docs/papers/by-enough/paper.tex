@@ -32,7 +32,7 @@
 \title{By Enough, But Not Too Much\\[4pt] \large Where the Twist Is the Floor of the Yang--Mills Hessian on Berger Spheres}
 \author{Bee Rosa Davis\\[1pt] {\normalsize\upshape\itshape Davis Geometric}\\[1pt]
 {\footnotesize\upshape ORCID \href{https://orcid.org/0009-0009-8034-4308}{0009-0009-8034-4308}}}
-\date{November 2026 (version 1.1)}
+\date{November 2026 (version 2, draft)}
 
 \begin{document}
 \maketitle
@@ -42,7 +42,10 @@ On the Berger spheres $(t,1,1)$, every left-invariant $SU(2)$ field that is inva
 the long circle, lifted by a constant gauge circle, is, up to constant gauge, $M_0=x\,\tau_0$, $M_1=y\,\tau_1$,
 $M_2=y\,\tau_2$: a strength $x$ along the long circle and a strength $y$ across it. At every such field the twist
 $f\,(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$ is an exact gauge-orthogonal eigenvector of the Yang--Mills
-Hessian in the sector of spin $j/2$, with eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$. An exact symbolic
+Hessian in the sector of spin $j/2$, with eigenvalue $(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$. That value is helicity squared minus the field along her
+circle: the Hessian is the square of the curl plus a flux term, and she is the top rung of the flux-aligned states, the
+only one that neither leaks nor has a gauge part. A sufficient condition, the flux gap against her helicity, proves her
+the floor of the sector $0$ on the Berger field for every $t\ge2\sqrt5-2$, with no upper limit. An exact symbolic
 Weitzenb\"ock identity, proved for the whole family, gives the charge blocks of $H+GG^*$ in closed form. The set of $x$
 where the twist is the floor of every sector is bounded on both sides. In both spectra it lies in
 $[r_{\mathrm{lo}},r_{\mathrm{hi}}]$, set by a state of the sector $j=0$ (proved). For $H+GG^*$ it also lies in
@@ -155,6 +158,12 @@ that is checked in double precision (Section~\ref{subsec:standing}).
     $0$ to sector $j\ge1$ carries a discount $2xj/\sqrt t$, negative if and only if $x<0$ (Corollary~\ref{cor:lift}).
     Its anatomy is exact: fibre momentum squared, a lowest-Landau-level transverse term, and a curvature term
     (Proposition~\ref{prop:anatomy}).
+  \item \emph{The ladder} (Section~\ref{sec:ladder}; \PROVED): $H=\mathrm{curl}^2+\Phi$, and the flux $\Phi$ has the
+    same closed-form spectrum in every sector (Theorem~\ref{thm:flux}). The twist is the top rung of the flux-aligned
+    states: the only one that neither leaks nor has a gauge part, with $\lambda=h_l^2-B$, helicity squared minus the
+    field along her circle (Proposition~\ref{prop:ladder}, Corollary~\ref{cor:toprung}). A sufficient condition, the flux
+    gap against her helicity, makes her the floor of a sector (Theorem~\ref{thm:ladderfloor}); on the Berger field it
+    proves the sector $0$ for every $t\ge2\sqrt5-2$ (Corollary~\ref{cor:sector0}).
   \item \emph{The edge polynomial} (Section~\ref{sec:edge}): the determinant for the charge-$0$ block of sector $4$
     factors as $-16384\,P_1P_2$ (Proposition~\ref{prop:edgepoly}; \PROVED), and on the Berger path
     $P_2=-32(s-1)(s+1)Q_{16}(s)$ with $Q_{16}$ the polynomial of $t_A$ (Proposition~\ref{prop:bergerrestriction};
@@ -521,6 +530,276 @@ are; \path{research/su2-floor-family-20261119/gyromagnetic_split.txt}). Read thr
 Proposition~\ref{prop:anatomy}, on the squashed meron the field strength is opposed to the twist's spin.
 Section~\ref{sec:decide} shows that this alone does not decide the floor.
 \end{remark}
+
+% ---------------------------------------------------------------------------------------------------
+\section{The twist as the top rung: helicity minus flux}\label{sec:ladder}
+
+Section~\ref{sec:twist} reads the twist's eigenvalue off its charge block. This section says why it has that value,
+and when that is enough to make her the floor. In three dimensions the Hessian is the square of the curl plus a flux
+term. The twist takes the whole flux discount along the long circle and pays only her own helicity. Among the states
+that take that discount she is the one that leaks nothing. I call this structure \emph{the ladder}. It gives a second
+derivation of Proposition~\ref{prop:closed}, a sufficient condition for the floor (Theorem~\ref{thm:ladderfloor}), and a
+reading of why the simpler readings of Section~\ref{sec:decide} failed.
+
+\subsection{Curl and flux}\label{subsec:curlflux}
+
+Define the curl of $b=(b_0,b_1,b_2)$ by $(\mathrm{curl}\,b)_k=D_{ij}b$ for $(i,j,k)$ a cyclic permutation of
+$(0,1,2)$, with $D_{ij}$ as in Section~\ref{subsec:conventions}. Let $\Phi$ be the operator of the form
+$2\sum_{i<j}\langle F_{ij},[b_i,b_j]\rangle$ against the $L^2$ mass, and write
+\begin{equation}\label{eq:theta}
+  \Theta=y\Bigl(x-\frac2{\sqrt t}\Bigr),
+\end{equation}
+so that $F_{01}=\Theta\,\tau_2$ and $F_{20}=\Theta\,\tau_1$ by \eqref{eq:B}: $\Theta$ is the field across the long circle,
+as $B$ is the field along it.
+
+\begin{lemma}[Curl form; \PROVED]\label{lem:curlform}
+In every sector, $\mathrm{curl}$ is symmetric and $H=\mathrm{curl}^2+\Phi$.
+\end{lemma}
+\begin{proof}
+The three pairs $i<j$ are the three cyclic triples, so $\sum_{i<j}\norm{D_{ij}b}^2=\norm{\mathrm{curl}\,b}^2$ and
+$Q(b)=\norm{\mathrm{curl}\,b}^2+\langle b,\Phi b\rangle$. In the orthonormal coframe, $\mathrm{curl}=\ast d_A$ on
+$\su$-valued $1$-forms, with the orientation of $e_0,e_1,e_2$. For $1$-forms $a,b$ the invariance of the inner product
+gives $d\langle a\wedge b\rangle=\langle d_Aa\wedge b\rangle-\langle a\wedge d_Ab\rangle$. Integrating over the closed
+manifold gives $\langle\mathrm{curl}\,a,b\rangle=\langle a,\mathrm{curl}\,b\rangle$, so $\mathrm{curl}^*\mathrm{curl}=\mathrm{curl}^2$.
+\end{proof}
+
+This is the familiar three-dimensional form of the second variation~\cite{bl1981}: $\mathrm{curl}$ is the Hessian of
+the Chern--Simons functional and $\ast F$ its gradient. I re-derive it only to fix the signs and factors used here. As a
+code check (computed), at $12$ random members and sectors $j\le6$ the curl matrix is Hermitian exactly, $H$ equals
+$\mathrm{curl}^2+\Phi$ to $7.1\times10^{-15}$, and $H$ and $G$ equal those of the general builder, which is built from
+$Q$ with no curl, to $7.1\times10^{-15}$ and exactly (\path{scripts/helike_ladder_receipt.py}, receipt
+\path{research/helike-ladder-20261124/ladder.json}).
+
+\begin{theorem}[The flux; \PROVED]\label{thm:flux}
+For every member of the family, $\Phi=\varphi\otimes I_{V_j}$: the flux does not act on $V_j$, and its spectrum is the
+same in every sector. The $9\times9$ form $\varphi$ on (frame, Lie) indices has spectrum
+\[
+  \Bigl\{-B,\,-B,\,B,\,\Theta,\,\Theta,\,-\Theta,\,-\Theta,\,\tfrac12\bigl(B+\sqrt{B^2+8\Theta^2}\bigr),\,
+  \tfrac12\bigl(B-\sqrt{B^2+8\Theta^2}\bigr)\Bigr\}.
+\]
+For all $x,y,t$ the vectors $w_\pm=(\hat\theta^1\pm i\hat\theta^2)\otimes(\tau_1\pm i\tau_2)$ are eigenvectors of
+$\varphi$ with eigenvalue $-B$.
+\end{theorem}
+\begin{proof}
+$\Phi$ involves no derivative, so it acts on (frame, Lie) indices only. Write $F_{ij}=\epsilon_{ijk}\mathcal F_k$. By
+\eqref{eq:B}, $\mathcal F=\mathrm{diag}(B,\Theta,\Theta)$ in (frame, Lie) indices. Since $[b_i,b_j]=b_i\times b_j$ is
+row $k$ of the cofactor matrix of $b=(b_{ia})$, the form is
+$2\,\mathrm{tr}(\mathcal F^T\mathrm{cof}\,b)=2[B\,\mathrm{cof}_{00}+\Theta\,\mathrm{cof}_{11}+\Theta\,\mathrm{cof}_{22}]$.
+It splits into three off-diagonal pairs. The pair $(b_{12},b_{21})$ carries $-2Bb_{12}b_{21}$, with eigenvalues $\pm B$.
+The pairs $(b_{02},b_{20})$ and $(b_{01},b_{10})$ give $\pm\Theta$ each. On $(b_{00},b_{11},b_{22})$ the matrix is
+$\bigl(\begin{smallmatrix}0&\Theta&\Theta\\ \Theta&0&B\\ \Theta&B&0\end{smallmatrix}\bigr)$. Its eigenvalues are $-B$, on
+$(0,1,-1)$, and the roots of $\lambda^2-B\lambda-2\Theta^2=0$. The vector $w_\pm$ has $b_{11}=-b_{22}=1$ and
+$b_{12}=b_{21}=\pm i$, which lies in the $-B$ eigenspaces of the pair $(b_{12},b_{21})$ and of the block.
+\end{proof}
+
+The formula agrees with the assembled $\Phi$ at $12$ random members in the sectors $0$ and $3$, with multiplicity $j+1$,
+to $3.9\times10^{-14}$ (computed; receipt \path{ladder.json}).
+
+\begin{corollary}[When the twist minimises the flux]\label{cor:fluxmin}
+$\min\operatorname{spec}\varphi=-B$ if and only if $B\ge|\Theta|$. Then $H\ge\mathrm{curl}^2-B$ in every sector. If
+$B>|\Theta|$, the $-B$ eigenspace of $\varphi$ is exactly $\mathrm{span}\{w_+,w_-\}$, and every other eigenvalue is at
+least $-|\Theta|$. On the Berger path $B=3t-4$ and $\Theta=-t$, so this holds if and only if $t\ge2$, and the
+\emph{flux gap} $\Delta=B-|\Theta|$ is $2t-4$.
+\end{corollary}
+\begin{proof}
+$\tfrac12(B-\sqrt{B^2+8\Theta^2})\ge-|\Theta|$ is equivalent to $B+2|\Theta|\ge\sqrt{B^2+8\Theta^2}$. When the left
+side is non-negative, this is equivalent to $4|\Theta|(B-|\Theta|)\ge0$. So if $B\ge|\Theta|$ the eigenvalues other than
+$-B$ are at least $-|\Theta|\ge-B$, with $-|\Theta|>-B$ when $B>|\Theta|$. If $B<|\Theta|$, then $-|\Theta|<-B$ is an
+eigenvalue. Lemma~\ref{lem:curlform} gives $H=\mathrm{curl}^2+\Phi\ge\mathrm{curl}^2-B$. On the Berger path,
+$x=(2-t)/\sqrt t$ and $y=\sqrt t$ give $\Theta=-t$.
+\end{proof}
+
+The threshold $t=2$ is the stretch at which the Berger $x$ changes sign, where the discount of
+Corollary~\ref{cor:lift} begins.
+
+\subsection{The ladder}\label{subsec:ladder}
+
+Let $E=V_j\otimes\mathrm{span}\{w_+,w_-\}$, the flux-aligned states, and $P$ the orthogonal projection on $E$. Write
+$u=\tau_1+i\tau_2$ and
+\[
+  h_m=-\Bigl(x+\frac{2m+2}{\sqrt t}\Bigr)
+\]
+for the \emph{helicity} of weight $m$.
+
+\begin{proposition}[The ladder; \PROVED]\label{prop:ladder}
+Let $f\in V_j$ with $J_zf=mf$, and $\psi=f\otimes w_+$. Then, for all $x,y,t$,
+\[
+  \mathrm{curl}\,\psi=h_m\,\psi+\chi,\qquad \chi=\bigl(2(J_+f)\otimes u,\,0,\,0\bigr)=-i\,(G^*\psi,0,0),
+\]
+with $\chi$ in the frame-$0$ slot only. Hence $P\,\mathrm{curl}\,\psi=h_m\psi$, $(1-P)\,\mathrm{curl}\,\psi=\chi$, and
+\[
+  \norm{(1-P)\,\mathrm{curl}\,\psi}^2=\norm{G^*\psi}^2=2\bigl[l(l+1)-m(m+1)\bigr]\norm\psi^2 ,
+\]
+independent of $x$, $y$ and $t$. For the mirror $\psi=f\otimes w_-$, the same holds with $h_{-m}$, $J_-$, $\bar u$ and
+$m(m-1)$. The compression $P\,\mathrm{curl}\,P$ has eigenvalues $h_m$, $m=-l,\dots,l$, each twice.
+\end{proposition}
+\begin{proof}
+On $V_j$, $\hat e_1\pm i\hat e_2=\rho_1\pm i\rho_2=-2iJ_\pm$ and $\hat e_0=\rho_0/\sqrt t=-2iJ_z/\sqrt t$. In the
+orthonormal frame $c_{12}^{\,0}=2\sqrt t$ and $c_{20}^{\,1}=c_{01}^{\,2}=2/\sqrt t$. With the cross product,
+$\tau_0\times u=-iu$, $\tau_1\times u=i\tau_0$ and $\tau_2\times u=-\tau_0$. In components $\psi$ is $b_0=0$, $b_1=fu$,
+$b_2=ifu$.
+\begin{itemize}
+  \item $(\mathrm{curl}\,\psi)_0=D_{12}\psi=i(\hat e_1+i\hat e_2)f\,u+yf\,(\tau_1\times iu-\tau_2\times u)=2(J_+f)\otimes u$,
+    since the field terms give $yf(-\tau_0+\tau_0)=0$.
+  \item $(\mathrm{curl}\,\psi)_1=D_{20}\psi=-\hat e_0(if)u-x\,\tau_0\times(ifu)-\tfrac2{\sqrt t}fu
+    =\bigl(-\tfrac{2m}{\sqrt t}-x-\tfrac2{\sqrt t}\bigr)fu=h_m\,b_1$.
+  \item $(\mathrm{curl}\,\psi)_2=D_{01}\psi=(\hat e_0f)u+x\,\tau_0\times(fu)-\tfrac2{\sqrt t}\,ifu
+    =-i\bigl(x+\tfrac{2m+2}{\sqrt t}\bigr)fu=h_m\,b_2$.
+  \item $G^*\psi=-\sum_i(\hat e_i+M_i\times)b_i=-\bigl[(\hat e_1+i\hat e_2)f\,u+yf(\tau_1\times u+i\,\tau_2\times u)\bigr]
+    =2i(J_+f)\otimes u$, because $\hat e_i^*=-\hat e_i$ and $(M_i\times)^T=-M_i\times$.
+\end{itemize}
+So $\chi=-i(G^*\psi,0,0)$. Every vector of $E$ has zero frame-$0$ slot, so $P\chi=0$. Then
+$\norm\chi^2=4\norm{J_+f}^2\norm u^2$ and $\norm\psi^2=2\norm f^2\norm u^2$, and $\norm{J_+f}^2=[l(l+1)-m(m+1)]\norm f^2$.
+The mirror is the same computation with $\tau_0\times\bar u=i\bar u$ and $\tau_1\times\bar u=-i\tau_0$, which gives
+$\mathrm{curl}\,\psi=h_{-m}\psi+(-2(J_-f)\otimes\bar u,0,0)$ and $G^*\psi=2i(J_-f)\otimes\bar u$. The states $f\otimes w_\pm$
+over a weight basis of $V_j$ are an orthogonal basis of $E$, and $P\,\mathrm{curl}$ is diagonal on it.
+\end{proof}
+
+Along $\hat\theta^1+i\hat\theta^2$, the transverse curl and the divergence are both the single operator
+$\hat e_1+i\hat e_2=-2iJ_+$. That is why the leak equals the gauge component, with every field term cancelled. It is a
+Cauchy--Riemann identity: an adjoint-valued analogue of the scalar Cauchy--Riemann structure along the Hopf fibration.
+At six members, including $x>0$, $t<2$ and the round sphere, every line holds as a vector identity for both branches and
+all weights, to $3.6\times10^{-15}$ (computed; receipt \path{ladder.json}).
+
+\begin{corollary}[The top rung; \PROVED]\label{cor:toprung}
+At the top weight $m=l$, $J_+f=0$. So the twist is an exact curl eigenvector with helicity
+$h_l=-(x+(j+2)/\sqrt t)$, it is gauge-orthogonal, and $\Phi$ acts on it as $-B$. Therefore
+\[
+  \lambda=h_l^2-B=\Bigl(x+\frac{j+2}{\sqrt t}\Bigr)^2+2\sqrt t\,x-y^2 ,
+\]
+which is Proposition~\ref{prop:closed}, derived without the charge-block counting. Up to the mirror, the twist is the
+only gauge-orthogonal state of $E$.
+\end{corollary}
+\begin{proof}
+The first part is Proposition~\ref{prop:ladder} with $\chi=0$, together with Theorem~\ref{thm:flux} and
+Lemma~\ref{lem:curlform}. For $\psi=\sum_m(c_m^+f_m\otimes w_++c_m^-f_m\otimes w_-)\in E$, the images $G^*(f_m\otimes w_+)$
+lie in distinct weights $m+1$ times $u$, and the images of the mirror branch lie in weights $m-1$ times $\bar u$. Since
+$\langle\bar u,u\rangle=0$, these are mutually orthogonal, so
+$\norm{G^*\psi}^2=\sum_m2[l(l+1)-m(m+1)]|c_m^+|^2\norm{f_m\otimes w_+}^2$ plus the mirror sum. This vanishes only if
+$c_m^\pm=0$ for every $m$ below the top.
+\end{proof}
+
+The anatomy of Proposition~\ref{prop:anatomy} is the same eigenvalue in another bookkeeping. Its fibre momentum is
+$\kappa=h_l+\sqrt t$, and $\kappa^2+(2j+t+y^2)+(\mathrm{Ric}_\perp-2B)$ collapses to $h_l^2-B$ because $y^2-2\sqrt t\,x=B$
+(checked to $6.7\times10^{-16}$; receipt \path{ladder.json}).
+
+\begin{remark}[In plain words]\label{rem:ladderwords}
+A disturbance pays for how much it twists against its own grain (helicity squared) and is paid for lining up with the
+field along the long circle (at best $-B$). The flux-aligned disturbances form a lane, organised like a ladder by their
+weight $m$. Every rung but the top leaks sideways into the long direction, and that leak is exactly its gauge part.
+The top rung has nowhere higher to go, so it cannot leak: that is Helike. She takes the full flux payment, pays only
+her own helicity, and loses nothing to leakage or gauge.
+\end{remark}
+
+\subsection{A sufficient condition for the floor}\label{subsec:ladderfloor}
+
+\begin{theorem}[The ladder floor; \PROVED]\label{thm:ladderfloor}
+Let $B>|\Theta|$ and $\Delta=B-|\Theta|$, and put
+\[
+  \gamma_j^2=\Bigl(\frac j{\sqrt t}+|x|\Bigr)^2+2\bigl(j+|y|\bigr)^2 .
+\]
+Suppose either $j=0$ and $\Delta\ge h_0^2$, or $j\ge1$ and $\Delta\ge h_l^2\bigl(1+\gamma_j^2/(2j)\bigr)$. Then
+$\lambda_j$ is the lowest gauge-orthogonal eigenvalue in the sector $j$: the twist is the floor of that sector.
+\end{theorem}
+\begin{proof}
+Let $K=\ker G^*$.
+\begin{enumerate}
+  \item \emph{Reduce to the complement of the twist.} By Corollary~\ref{cor:toprung} the twist $\psi_+$ and its mirror
+    $\psi_-$ lie in $K$, with $H\psi_\pm=\lambda\psi_\pm$. For $\psi\in K$ write $\psi=a\psi_++b\psi_-+\psi'$ with
+    $\psi'\perp\psi_\pm$. Then $\psi'\in K$, and since $H$ is symmetric,
+    $\langle\psi,H\psi\rangle=(|a|^2+|b|^2)\lambda+\langle\psi',H\psi'\rangle$. It suffices to show
+    $\langle\psi',H\psi'\rangle\ge\lambda\norm{\psi'}^2$.
+  \item \emph{Split by flux.} Write $\psi'=\psi_E+\psi_\perp$ along $E$ and $E^\perp$. Both are invariant under $\Phi$,
+    and by Corollary~\ref{cor:fluxmin}, $\Phi=-B$ on $E$ and $\Phi\ge-|\Theta|$ on $E^\perp$. So
+    $\langle\psi',\Phi\psi'\rangle\ge-B\norm{\psi'}^2+\Delta\norm{\psi_\perp}^2$.
+  \item \emph{Bound the gauge part.} Since $\psi'\perp\psi_\pm\in E$ and $\psi_\perp\perp E$, $\psi_E\perp\psi_\pm$: it has
+    no top-weight component. By the proof of Corollary~\ref{cor:toprung}, $\norm{G^*\psi_E}^2\ge4l\norm{\psi_E}^2=2j\norm{\psi_E}^2$,
+    the minimum of $2[l(l+1)-m(m+1)]$ over $m\le l-1$ (and of its mirror). Since $G^*\psi'=0$,
+    $G^*\psi_E=-G^*\psi_\perp$, so $2j\norm{\psi_E}^2\le\norm G^2\norm{\psi_\perp}^2$. Finally
+    $\norm{G\xi}^2=\sum_i\norm{(\hat e_i+M_i\times)\xi}^2\le\sum_i(\norm{\hat e_i}+|M_i|)^2\norm\xi^2=\gamma_j^2\norm\xi^2$,
+    with $\norm{\hat e_0}=j/\sqrt t$ and $\norm{\hat e_{1,2}}=j$ on $V_j$.
+  \item \emph{Combine.} With $\langle\psi',\mathrm{curl}^2\psi'\rangle=\norm{\mathrm{curl}\,\psi'}^2\ge0$ and $\lambda=h_l^2-B$,
+    \[
+      \langle\psi',H\psi'\rangle-\lambda\norm{\psi'}^2\ge\Delta\norm{\psi_\perp}^2-h_l^2\bigl(\norm{\psi_E}^2+\norm{\psi_\perp}^2\bigr)
+      \ge\norm{\psi_\perp}^2\Bigl[\Delta-h_l^2\Bigl(1+\frac{\gamma_j^2}{2j}\Bigr)\Bigr]\ge0 .
+    \]
+    For $j=0$, $E=\mathrm{span}\{\psi_\pm\}$, so $\psi_E=0$ and the bracket is $\Delta-h_0^2$. \qedhere
+\end{enumerate}
+\end{proof}
+
+\begin{corollary}[Sector $0$ on the Berger path; \PROVED]\label{cor:sector0}
+On the Berger field the twist is the gauge-orthogonal floor of the sector $j=0$ for every $t\ge2\sqrt5-2\approx2.472$,
+with no upper limit.
+\end{corollary}
+\begin{proof}
+On the Berger path $h_0=(t-4)/\sqrt t$ and $\Delta=2t-4$ for $t>2$, so $\Delta\ge h_0^2$ is $t^2+4t-16\ge0$.
+\end{proof}
+
+On the Berger path $h_l=(t-4-j)/\sqrt t$, so the twist's helicity vanishes in the sector $j=t-4$. Away from $j=0$ the
+theorem covers a band of sectors around $j\approx t-4$ that moves with the stretch. Evaluating the condition in double
+precision gives these sectors (computed):
+\begin{itemize}
+  \item at $t=4$, $j\in\{0,1\}$;
+  \item at $t=6$, $j\le3$;
+  \item at $t=10$, $j=0$ and $3\le j\le8$;
+  \item at $t=20$, $j=0$ and $11\le j\le20$, of $j\le40$;
+  \item at $t=40$, $j=0$ and $28\le j\le43$, of $j\le60$.
+\end{itemize}
+As a check (computed), wherever the condition holds the twist is the floor. That covers $28$ Berger cases with
+$t\in[2.48,40]$, $j\le20$, and $805$ random pairs (member, sector) with $x\in[-3,1]$, $y\in[0.1,3]$, $t\in[1.5,12]$, $j\le6$,
+with the smallest margin $-6.8\times10^{-13}$ (double precision). The gauge factor cannot be dropped. At
+$(x,y,t)=(0.0674,2.6596,3.5715)$ the condition $\Delta\ge h_1^2$ holds, yet the sector $j=1$ has a gauge-orthogonal state
+$0.691$ below the twist. Theorem~\ref{thm:ladderfloor} does not apply there.
+
+The theorem does not prove the floor of every sector. It discards $\norm{\mathrm{curl}\,\psi'}^2$ and bounds the gauge
+coupling by the global $\gamma_j$, which grows like $j$. So sectors far from $j\approx t-4$, where the twist's own
+helicity is large, are not covered. There the interval certificates of Section~\ref{sec:domain} remain the proof, on
+$D$. Corollary~\ref{cor:sector0} is consistent with the Berger crossing $t^*\approx2.698$. That is an all-sector
+threshold, and the sector $0$ already holds from $2.472$, below it, so the crossing is set by another sector. Two routes would sharpen the bound: keep the curl term on
+$E^\perp$, and use the exact $G^*$ coupling inside each charge block of at most nine states instead of the global norm.
+
+\subsection{What the ladder explains, and what it does not}\label{subsec:ladderreading}
+
+\paragraph{The edge in $x$ is a helicity competition.} For $0<y<2\sqrt t$ the largest $x$ with $B\ge|\Theta|$ is
+\[
+  x_{\mathrm{flux}}(y,t)=\min\Bigl\{\frac{y(y+2/\sqrt t)}{2\sqrt t+y},\ \frac{y(y-2/\sqrt t)}{2\sqrt t-y}\Bigr\}.
+\]
+In all $15$ cells of Table~\ref{tab:edge}, $x_{\mathrm{flux}}$ lies to the right of both edges $x^*_A$ and $x^*_S$. The
+smallest margin is $0.011$, at $t=8$, $y=0.5$ (computed; receipt \path{ladder.json}). So the twist loses the floor while
+she still minimises the flux. The upper edge in $x$ is not where flux alignment fails. It is where a competitor
+outside $E$, paying the flux gap, saves more in helicity than the gap costs. That agrees with Section~\ref{sec:decide}:
+whichever block reaches her first, bent by its own dependence on $x$.
+
+\paragraph{The failed readings, re-read.} This is observed after Tests~2, 4 and~5, not pre-registered, and it is a
+reading of their data, not a proof.
+\begin{itemize}
+  \item \emph{Test~4 (round sphere).} On $A=s\theta$ at $t=1$, $x=y=2s$, so $\Theta=4s(s-1)=B$. The flux gap vanishes
+    identically. Aligned field strength gives her the full discount but no margin over the states outside $E$, and in
+    no sector $j\ge1$ is she the floor.
+  \item \emph{Test~2 (squashed meron).} The positive field-strength share of Remark~\ref{rem:split} is $-2B>0$, so
+    $B<0$. She is not the flux minimiser at all, and she is the floor of no sector.
+  \item \emph{Test~5.} On $A=s\theta$ over $(t,1,1)$ the gap is $\Delta=4s(s-1)(1-1/\sqrt t)$. It is positive for $t>1$
+    but small against her helicity in the sectors $j\ge1$ tested. The theorem does not decide those points, and the
+    data (floor of $j=0$ only) does not contradict it.
+\end{itemize}
+Symmetry, alignment and the curvature term each name one ingredient. The ladder names the quantity that decides,
+at least sufficiently: the flux gap $\Delta$ against her helicity $h_l^2$, with the gauge factor. Helicity alone does not
+decide either. On the Berger field at $t=10,12,15,20$ she is not the smallest gauge-orthogonal value of $\mathrm{curl}^2$
+in the sector $0$ (by $3.6$ to $12.8$), yet she is the floor of $H$ there.
+
+\begin{conjecture}[No upper edge on the Berger path]\label{conj:noupper}
+On the Berger field the twist is the gauge-orthogonal floor of every sector for every $t\ge t^*$.
+\end{conjecture}
+The evidence is computed, not proved. She is the floor of every sector $j\le12$ at $t=10$, $12$, $15$ and $20$,
+with smallest margins between $-2\times10^{-13}$ and $-4\times10^{-14}$, at double precision (receipt
+\path{ladder.json}). The flux gap $2t-4$ grows with the stretch, and her helicity can be made small in the sector
+$j\approx t-4$. The upper limit $t\le10$ of Section~\ref{sec:domain} is the certificates' domain, not an observed edge.
+
+\paragraph{The literature.} The decomposition of Lemma~\ref{lem:curlform} is classical~\cite{bl1981}. In the
+literature I checked I did not find the twist stated as an exact curl eigenvector with eigenvalue $h_l^2-B$, the flux
+spectrum of Theorem~\ref{thm:flux}, the top-rung identity of Proposition~\ref{prop:ladder}, or the sufficient condition of
+Theorem~\ref{thm:ladderfloor}. As in Section~\ref{sec:decide}, this is a statement about the search, not a priority
+claim.
 
 % ---------------------------------------------------------------------------------------------------
 \section{The edge}\label{sec:edge}
@@ -1144,7 +1423,8 @@ The competitor's depends on which block it is: $B_{4,0}$ is nearly flat at the t
 Section~\ref{subsec:competitor}, but the charged competitors of Test~B have slope ratios mostly above $0.5$ (median
 $0.74$, against $0.35$ for the neutral ones; the neutral ones are below the threshold $0.5$ in most sampled cases, but
 not all: $5$ of $61$ exceed it). So the edge is where the twist's value, bent by the field along her circle,
-meets whichever block reaches her first. An exploratory map, not pre-registered, agrees on the side: over
+meets whichever block reaches her first. Section~\ref{sec:ladder} gives the mechanism behind that value, helicity
+squared minus flux, and a sufficient condition for the floor; it also re-reads Tests~2, 4 and~5. An exploratory map, not pre-registered, agrees on the side: over
 $t=1,2,3,4,6$, $x\in[-3,3]$ ($49$ values), $y\in[0,3]$ ($37$ values) and $j\le8$, all $3{,}294$ cells where the twist is
 the floor of all nine sectors have $x\le0$, and $3{,}286$ have $x<0$ (\path{scripts/ricci_su2_twist_family_map.py},
 receipt \path{twist_family_map.json}). This is consistent with Theorem~\ref{thm:xpos}.
@@ -1396,8 +1676,13 @@ and~\ref{prop:lowblock}.
   \item \emph{Competitors in closed form.} The block $(3,1/2)$ has one edge factor of degrees $(11,14,26)$, irreducible
   over $\mathbb{Q}$. The polynomials of the small-$y$ blocks are known, but no two-dimensional region theorem at small $y$ is.
   \item \emph{A reading.} The decomposition of $\lambda$ invites reading the edge as the point where the field along the
-  long circle turns against the twist's charge by enough, but not too much, as the shape of space sets. That is a
-  hypothesis, not a result, and Test~C shows that it does not hold in every family I have tested.
+  long circle turns against the twist's charge by enough, but not too much, as the shape of space sets. Section~\ref{sec:ladder}
+  makes one half of this a theorem: the flux gap against her helicity is sufficient, sector by sector
+  (Theorem~\ref{thm:ladderfloor}). The rest is a hypothesis, not a result, and Test~C shows that it does not hold in every
+  family I have tested.
+  \item \emph{The ladder floor in every sector.} Sharpen Theorem~\ref{thm:ladderfloor} by keeping the curl term on
+  $E^\perp$ and the exact gauge coupling inside each charge block, to cover the sectors far from $j\approx t-4$; and
+  prove or refute Conjecture~\ref{conj:noupper}, that the Berger field has no upper edge in $t$.
 \end{enumerate}
 
 % ===================================================================================================
@@ -1406,7 +1691,7 @@ and~\ref{prop:lowblock}.
 Every claim of this paper has a script that produces it and a receipt that records its output. Scripts are in
 \path{scripts/}. Receipt directories are abbreviated: \texttt{F} is \path{research/su2-floor-family-20261119/},
 \texttt{E} is \path{research/edge-theorem-20261121/}, \texttt{P} is \path{research/edge-theorem-20261122-proofs/},
-\texttt{G} is \path{research/edge-paper-figures-20261122/} \texttt{D} is \path{research/edge-theorem-20261122-d/}, \texttt{H} is \path{research/edge-theorem-20261122-e/} and \texttt{W} is \path{research/edge-theorem-20261122-f/}. The
+\texttt{G} is \path{research/edge-paper-figures-20261122/} \texttt{D} is \path{research/edge-theorem-20261122-d/}, \texttt{H} is \path{research/edge-theorem-20261122-e/}, \texttt{W} is \path{research/edge-theorem-20261122-f/} and \texttt{L} is \path{research/helike-ladder-20261124/}. The
 status column uses the labels of Section~\ref{sec:intro}: \PROVED, \COMPUTED, \PROVEDT. The scripts run with Python,
 NumPy, \textsc{SymPy}~\cite{sympy2017} and \textsc{mpmath}~\cite{mpmath}, one thread
 (\texttt{OMP\_NUM\_THREADS=1}).
@@ -1427,6 +1712,10 @@ Condition (T) (near-end and slice objects) & \path{ricci_su2_weitzenbock_family_
 Prop.~\ref{prop:exact} (twist exact) & --- (counting) & --- & \PROVED\\
 Prop.~\ref{prop:closed} (closed form) & \path{ricci_su2_twist_family_closed_form.py}, \path{ricci_su2_direct_rayleigh.py} & \texttt{F}/\path{twist_family_closed_form.txt}, \texttt{P}/\path{direct_rayleigh.json} & \PROVED\\
 Prop.~\ref{prop:anatomy} (anatomy) & \path{ricci_su2_twist_anatomy.py}; Lean \path{Price.lean} & \texttt{F}/\path{twist_anatomy.json} & \PROVED\\
+Lemma~\ref{lem:curlform}, Thm.~\ref{thm:flux} (curl form, flux spectrum) & proof; \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \PROVED; checks \COMPUTED\\
+Prop.~\ref{prop:ladder}, Cor.~\ref{cor:toprung} (ladder, top rung) & proof; \path{helike_ladder_receipt.py}, \path{test_helike_curl_spectrum.py} & \texttt{L}/\path{ladder.json} & \PROVED; checks \COMPUTED\\
+Thm.~\ref{thm:ladderfloor}, Cor.~\ref{cor:sector0} (ladder floor) & proof; \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \PROVED; bands and counterexample \COMPUTED\\
+Conj.~\ref{conj:noupper}, $x_{\mathrm{flux}}$ against Table~\ref{tab:edge} & \path{helike_ladder_receipt.py} & \texttt{L}/\path{ladder.json} & \COMPUTED\\
 Rem.~\ref{rem:split} (shares on the meron) & \path{ricci_su2_gyromagnetic_split.py} & \texttt{F}/\path{gyromagnetic_split.txt} & \COMPUTED\\
 Edge table, Berger crossings & \path{ricci_su2_exact_edge.py} & \texttt{F}/\path{exact_edge.json} & \COMPUTED\\
 Competitor slopes, monotone grid & \path{ricci_su2_twist_anatomy.py} & \texttt{F}/\path{twist_anatomy.json} & \COMPUTED\\

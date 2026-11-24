@@ -120,6 +120,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 24 Nov | [Sector-solver results](sector-review-results-2026-11-24.md): both controls pass the shared target-state residual check at N=20 and the stricter 0.01 check at N=22; 16 cases, four precision repeats and 36 matrix replays pass; wider scientific gates remain open |
 | 24 Nov | [Dome-envelope experiment](helike-dome-envelope-preregistration-2026-11-24.md): orbit-centered second envelope, frozen per-function comparisons and reviewed execution gates; measurement receipts in research/dome-controls-20261124 |
 | 24 Nov | [Dome-envelope results](helike-dome-envelope-results-2026-11-24.md): all 80 solves replay; five functions improve scalar residuals at all eight primary points but win per function at only three; one secondary truncation reversal leaves the scientific gate UNRESOLVED_TRUNCATION |
+| 24 Nov | [Contact sets the frame: the Bevel razor observation](helike-contact-frame-motivation-2026-11-24.md): the lived origin, direction versus contact guidance, approach versus sharpening angle, and the distinction between orbit placement and a proposed locally guided construction; retrospective motivation, no new experiment |
 | 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 
 ## Where we were: status and strategy

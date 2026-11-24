@@ -14,6 +14,7 @@ DELTA, R_FACTOR, CHUNK = .01, 4., 32768
 ORDERS = (10,12)
 
 def point_action(q,chart,basis,w,coeff,s,t,g,cutoff=True):
+    if outside_support(q,chart,cutoff): return 0j
     z=torch.tensor(chart.inverse(np.asarray(q)@np.asarray(q).T),dtype=torch.float64,requires_grad=True)
     value=physical_z(z,chart,basis,w,coeff)
     gradients=[]; hessians=[]
@@ -57,6 +58,17 @@ def cutoff_q(q,chart):
     G=q@q.T
     D=torch.linalg.det(G); N=torch.linalg.matrix_norm(G)
     return torch_step(D/(DELTA*np.linalg.det(chart.G0)))*(1-torch_step(N/(R_FACTOR*np.linalg.norm(chart.G0))))
+
+
+def outside_support(q,chart,cutoff):
+    q=finite(q).astype(float)
+    if q.shape!=(3,3): raise ValueError('Cartesian point must be 3 by 3')
+    det=np.linalg.det(q)
+    if not cutoff:
+        if det<=0: raise ValueError('uncut oracle is defined only on the positive chart')
+        return False
+    return (det<=0 or det*det<=DELTA*np.linalg.det(chart.G0)
+            or np.linalg.norm(q@q.T)>=2*R_FACTOR*np.linalg.norm(chart.G0))
 
 
 def term(key,x):
@@ -253,6 +265,7 @@ def physical_z(z,chart,basis,w,coeff):
 
 
 def cartesian_action(q,chart,basis,w,coeff,s,t,g,cutoff=True):
+    if outside_support(q,chart,cutoff): return 0j
     q=torch.tensor(q,dtype=torch.float64,requires_grad=True)
     value=physical_q(q,chart,basis,w,coeff)
     if cutoff: value=value*cutoff_q(q,chart)

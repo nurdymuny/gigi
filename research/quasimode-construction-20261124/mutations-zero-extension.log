@@ -1,0 +1,9 @@
+zero_extension CAUGHT
+mixed_shell CAUGHT
+gradient_commutator CAUGHT
+laplacian_commutator CAUGHT
+measure_drift CAUGHT
+charge_sign CAUGHT
+complex_square CAUGHT
+false_certificate CAUGHT
+projector_defect CAUGHT

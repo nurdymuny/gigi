@@ -13,6 +13,9 @@ from run_helike_flux_background import write
 
 def main():
     mutations=[
+        ('zero_extension','outside_support','return (det<=0 or det*det<=DELTA*np.linalg.det(chart.G0)',
+         'return (False or det*det<=DELTA*np.linalg.det(chart.G0)',
+         'test_cutoff_state_has_zero_action_off_positive_support'),
         ('mixed_shell','geometry','-2*dh*dk*mixed','','test_overlapping_shells_keep_mixed_laplacian_term'),
         ('gradient_commutator','cutoff_action','-gradient_contraction','','test_commutator_keeps_both_contributions'),
         ('laplacian_commutator','cutoff_action','-.5*lap_eta*P','','test_commutator_keeps_both_contributions'),

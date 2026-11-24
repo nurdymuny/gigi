@@ -1,0 +1,158 @@
+{
+ "status": "PASS_RECEIPT_AND_POINT_REPLAY",
+ "physical_status": "UNRESOLVED_INTEGRATION",
+ "full_grid_released": false,
+ "source_revision": "e21087a144b5ca9dc7fb8ecad3acdebce9e3f699",
+ "replay_module_sha256": "cfd39191a61ad0c41c90ac4bf2fc0fa30ddf379d7ea1019f32bba2a8c1b41d7e",
+ "receipt_sha256": "e922d6bfffea50907d1c28d7cf7cdae622bb8eda0da5e4f97fdc1c13807045ab",
+ "point_checks": 160,
+ "largest_absolute_oracle_error": 2.3592239273284576e-16,
+ "numerical_disagreements": 12,
+ "total_state_controls": 16,
+ "summary": [
+  {
+   "g2": 0.004,
+   "Mq": 6,
+   "state": "ground",
+   "residual_norm_estimate": 0.015147274227058178,
+   "charge_defect_estimate": 0.0015908146528314877,
+   "residual_square_quadrature_difference": 1.756560347981992e-08,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.004,
+   "Mq": 6,
+   "state": "helike_plus",
+   "residual_norm_estimate": 0.04872486300880343,
+   "charge_defect_estimate": 0.008233477447683045,
+   "residual_square_quadrature_difference": 2.9648389212461046e-11,
+   "agreement": "NUMERICAL_AGREEMENT"
+  },
+  {
+   "g2": 0.004,
+   "Mq": 6,
+   "state": "helike_minus",
+   "residual_norm_estimate": 0.04872486300880343,
+   "charge_defect_estimate": 0.008233477447683045,
+   "residual_square_quadrature_difference": 2.9648389212461046e-11,
+   "agreement": "NUMERICAL_AGREEMENT"
+  },
+  {
+   "g2": 0.004,
+   "Mq": 6,
+   "state": "competitor",
+   "residual_norm_estimate": 0.08012329728749454,
+   "charge_defect_estimate": 0.009699202124632864,
+   "residual_square_quadrature_difference": 4.7645799899215246e-08,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "state": "ground",
+   "residual_norm_estimate": 0.006468392449548227,
+   "charge_defect_estimate": 0.0005745531947054796,
+   "residual_square_quadrature_difference": 3.391362238617989e-07,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "state": "helike_plus",
+   "residual_norm_estimate": 0.00882145188694959,
+   "charge_defect_estimate": 0.0011798503371698616,
+   "residual_square_quadrature_difference": 2.1679214247768324e-07,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "state": "helike_minus",
+   "residual_norm_estimate": 0.00882145188694959,
+   "charge_defect_estimate": 0.0011798503371698616,
+   "residual_square_quadrature_difference": 2.1679214247768324e-07,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "state": "competitor",
+   "residual_norm_estimate": 0.017695448042536005,
+   "charge_defect_estimate": 0.0017281313646819588,
+   "residual_square_quadrature_difference": 2.0329583147306622e-05,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 6,
+   "state": "ground",
+   "residual_norm_estimate": 0.005394513359767122,
+   "charge_defect_estimate": 0.0005597441710970259,
+   "residual_square_quadrature_difference": 1.0661425623054459e-09,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 6,
+   "state": "helike_plus",
+   "residual_norm_estimate": 0.02389407751130776,
+   "charge_defect_estimate": 0.003932649476120593,
+   "residual_square_quadrature_difference": 5.285674242044847e-13,
+   "agreement": "NUMERICAL_AGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 6,
+   "state": "helike_minus",
+   "residual_norm_estimate": 0.02389407751130776,
+   "charge_defect_estimate": 0.003932649476120593,
+   "residual_square_quadrature_difference": 5.285674242044847e-13,
+   "agreement": "NUMERICAL_AGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 6,
+   "state": "competitor",
+   "residual_norm_estimate": 0.03901862046673382,
+   "charge_defect_estimate": 0.004569189368705392,
+   "residual_square_quadrature_difference": 1.590670698024127e-09,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "state": "ground",
+   "residual_norm_estimate": 0.0021918497325898595,
+   "charge_defect_estimate": 0.00018951018747636266,
+   "residual_square_quadrature_difference": 2.086473529898205e-08,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "state": "helike_plus",
+   "residual_norm_estimate": 0.0028098269816484527,
+   "charge_defect_estimate": 0.00036445846816058605,
+   "residual_square_quadrature_difference": 1.3290241365393929e-08,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "state": "helike_minus",
+   "residual_norm_estimate": 0.0028098269816484527,
+   "charge_defect_estimate": 0.00036445846816058605,
+   "residual_square_quadrature_difference": 1.3290241365393929e-08,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  },
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "state": "competitor",
+   "residual_norm_estimate": 0.005525860032883624,
+   "charge_defect_estimate": 0.0005152254261264213,
+   "residual_square_quadrature_difference": 1.7952645993065213e-06,
+   "agreement": "NUMERICAL_DISAGREEMENT"
+  }
+ ]
+}

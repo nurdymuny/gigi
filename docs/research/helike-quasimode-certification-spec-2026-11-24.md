@@ -1,5 +1,11 @@
 # Quasimode certification for the sourced condensate: spec
 
+**24 November implementation update:** the later
+[construction registration](helike-quasimode-construction-registration-2026-11-24.md) freezes the choices
+left open below. The [four-control audit](helike-quasimode-construction-results-2026-11-24.md) is complete,
+but validated integration is not implemented and its compact-box/global-tail gap is explicitly identified
+there. No physical certificate or full-grid release has passed. The original specification follows.
+
 24 November 2026. **SPEC, before implementation. No certificate has been computed.** It answers the open item in
 the [boundary results](helike-qspace-boundary-results-2026-11-24.md): how to get statements about the *physical*
 operator (the regular Cartesian Friedrichs realization, colour singlets, both determinant signs matched at rank

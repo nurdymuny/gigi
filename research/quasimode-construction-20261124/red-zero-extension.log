@@ -1,0 +1,14 @@
+test_cutoff_state_has_zero_action_off_positive_support (test_helike_quasimode.Construction.test_cutoff_state_has_zero_action_off_positive_support) ... FAIL
+
+======================================================================
+FAIL: test_cutoff_state_has_zero_action_off_positive_support (test_helike_quasimode.Construction.test_cutoff_state_has_zero_action_off_positive_support)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 98, in test_cutoff_state_has_zero_action_off_positive_support
+    self.assertEqual(value,0j)
+AssertionError: (0.0816111796497744+0j) != 0j
+
+----------------------------------------------------------------------
+Ran 1 test in 0.353s
+
+FAILED (failures=1)

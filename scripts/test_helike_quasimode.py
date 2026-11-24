@@ -88,6 +88,15 @@ class Construction(unittest.TestCase):
             f=np.exp(.25*np.log(w/np.pi).sum()-.5*np.sum(w*z[i]**2)-.5*chart.log_measure(z[i]))
             np.testing.assert_allclose(samples['HP'][i,0]*f,value,atol=1e-10,rtol=1e-9)
 
+    def test_cutoff_state_has_zero_action_off_positive_support(self):
+        chart=self.chart(); basis=pc.states_up_to(6,1); coeff=np.zeros(len(basis)); coeff[0]=1.
+        q=np.linalg.cholesky(chart.G0); q[:,2]*=-1
+        for point in (q,np.zeros((3,3)),np.diag([1.,1.,0.])):
+            for action in (qm.point_action,qm.cartesian_action):
+                try: value=action(point,chart,basis,np.ones(6),coeff,1.15,3.,np.sqrt(.004),True)
+                except Exception as exc: self.fail(f'zero extension must not enter singular chart: {exc}')
+                self.assertEqual(value,0j)
+
     def test_generator_sign_and_metric_on_known_covariant(self):
         chart=self.chart(); z=np.array([[.1,-.1,.05,.07,-.09,.04]])
         geom=self.call('geometry',chart,z,1.15,3.,np.sqrt(.004))

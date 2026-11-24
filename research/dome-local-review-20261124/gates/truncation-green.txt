@@ -1,0 +1,13 @@
+test_equal_orders_are_exactly_zero (test_ym_helike_dome_truncation.TruncationDiagnostic.test_equal_orders_are_exactly_zero) ... ok
+test_gaussian_moment_oracle (test_ym_helike_dome_truncation.TruncationDiagnostic.test_gaussian_moment_oracle) ... ok
+test_negative_projected_tail_refuses (test_ym_helike_dome_truncation.TruncationDiagnostic.test_negative_projected_tail_refuses) ... ok
+test_outside_ratio_exceeds_total_ratio_and_shrinks_with_K (test_ym_helike_dome_truncation.TruncationDiagnostic.test_outside_ratio_exceeds_total_ratio_and_shrinks_with_K)
+The tail is high degree, so it lies mostly outside the origin basis: outside >> total. ... ok
+test_provenance_is_complete (test_ym_helike_dome_truncation.TruncationDiagnostic.test_provenance_is_complete) ... ok
+test_reversed_orders_refuse (test_ym_helike_dome_truncation.TruncationDiagnostic.test_reversed_orders_refuse) ... ok
+test_unresolved_reference_refuses (test_ym_helike_dome_truncation.TruncationDiagnostic.test_unresolved_reference_refuses) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.242s
+
+OK

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "negative_tail",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_negative_projected_tail_refuses (test_ym_helike_dome_truncation.TruncationDiagnostic.test_negative_projected_tail_refuses)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_dome_truncation.py\", line 26, in test_negative_projected_tail_refuses\n    with self.assertRaisesRegex(ArithmeticError, 'negative'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ArithmeticError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "order_direction",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_reversed_orders_refuse (test_ym_helike_dome_truncation.TruncationDiagnostic.test_reversed_orders_refuse)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_dome_truncation.py\", line 12, in test_reversed_orders_refuse\n    with self.assertRaisesRegex(ValueError, 'K'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "absolute_roundoff",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_tiny_negative_is_disclosed_and_zero_not_absolute (test_dome_local_review.AuditTests.test_tiny_negative_is_disclosed_and_zero_not_absolute)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_local_review.py\", line 37, in test_tiny_negative_is_disclosed_and_zero_not_absolute\n    self.assertEqual(v,0)\nAssertionError: mpf('9.99999999999999984105197967281081158855561304757307985100273324e-46') != 0\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "drop_exterior_projection",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_gaussian_moment_oracle (test_ym_helike_dome_truncation.TruncationDiagnostic.test_gaussian_moment_oracle)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_dome_truncation.py\", line 32, in test_gaussian_moment_oracle\n    self.assertAlmostEqual(a['outside_fraction_of_dome'], 2/27, places=13)\nAssertionError: 1.0 != 0.07407407407407407 within 13 places (0.9259259259259259 difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "locking_sign",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_second_vacuum_hessian_is_colour_space_coupling (test_ym_helike_second_vacuum.SecondVacuum.test_second_vacuum_hessian_is_colour_space_coupling)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_second_vacuum.py\", line 69, in test_second_vacuum_hessian_is_colour_space_coupling\n    np.testing.assert_allclose(H, np.eye(9) + LL, atol=1e-6)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-06\n\nMismatched elements: 12 / 81 (14.8%)\nFirst 5 mismatches are at indices:\n [0, 4]: -1.000000127149292 (ACTUAL), 1.0 (DESIRED)\n [0, 8]: -1.000000127149292 (ACTUAL), 1.0 (DESIRED)\n [1, 3]: 1.000000082740371 (ACTUAL), -1.0 (DESIRED)\n [2, 6]: 1.000000082740371 (ACTUAL), -1.0 (DESIRED)\n [3, 1]: 1.000000082740371 (ACTUAL), -1.0 (DESIRED)\nMax absolute difference among violations: 2.00000013\nMax relative difference among violations: 2.00000013\n ACTUAL: array([[ 1.,  0.,  0.,  0., -1.,  0.,  0.,  0., -1.],\n       [ 0.,  1.,  0.,  1.,  0.,  0.,  0.,  0.,  0.],\n       [ 0.,  0.,  1.,  0.,  0.,  0.,  1.,  0.,  0.],...\n DESIRED: array([[ 1.,  0.,  0.,  0.,  1.,  0.,  0.,  0.,  1.],\n       [ 0.,  1.,  0., -1.,  0.,  0.,  0.,  0.,  0.],\n       [ 0.,  0.,  1.,  0.,  0.,  0., -1.,  0.,  0.],...\n\n----------------------------------------------------------------------\nRan 1 test in 0.011s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "failure_receipt",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_empty_complete_receipt_clears_stale_pass (test_dome_local_review.AuditTests.test_empty_complete_receipt_clears_stale_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_local_review.py\", line 71, in test_empty_complete_receipt_clears_stale_pass\n    self.assertEqual(json.loads((out/'verification.json').read_text())['status'],'FAIL')\nAssertionError: 'RUNNING' != 'FAIL'\n- RUNNING\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.163s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "cancellation_disclosure",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_changed_cancellation_disclosure_rejected (test_dome_local_review.AuditTests.test_changed_cancellation_disclosure_rejected)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_local_review.py\", line 32, in test_changed_cancellation_disclosure_rejected\n    with self.assertRaises(ValueError):dm.replay_batch(b)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "relative_precision",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_precision_checks_small_fractions_relatively (test_dome_local_review.AuditTests.test_precision_checks_small_fractions_relatively)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_local_review.py\", line 62, in test_precision_checks_small_fractions_relatively\n    self.assertFalse(run.precision(low,hi)['passed'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  }
+]

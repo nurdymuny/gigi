@@ -1,0 +1,52 @@
+test_equal_orders_are_exactly_zero (test_ym_helike_dome_truncation.TruncationDiagnostic.test_equal_orders_are_exactly_zero) ... ok
+test_gaussian_moment_oracle (test_ym_helike_dome_truncation.TruncationDiagnostic.test_gaussian_moment_oracle) ... ok
+test_negative_projected_tail_refuses (test_ym_helike_dome_truncation.TruncationDiagnostic.test_negative_projected_tail_refuses) ... FAIL
+test_outside_ratio_exceeds_total_ratio_and_shrinks_with_K (test_ym_helike_dome_truncation.TruncationDiagnostic.test_outside_ratio_exceeds_total_ratio_and_shrinks_with_K)
+The tail is high degree, so it lies mostly outside the origin basis: outside >> total. ... ok
+test_provenance_is_complete (test_ym_helike_dome_truncation.TruncationDiagnostic.test_provenance_is_complete) ... FAIL
+test_reversed_orders_refuse (test_ym_helike_dome_truncation.TruncationDiagnostic.test_reversed_orders_refuse) ... FAIL
+test_unresolved_reference_refuses (test_ym_helike_dome_truncation.TruncationDiagnostic.test_unresolved_reference_refuses) ... FAIL
+
+======================================================================
+FAIL: test_negative_projected_tail_refuses (test_ym_helike_dome_truncation.TruncationDiagnostic.test_negative_projected_tail_refuses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_dome_truncation.py", line 26, in test_negative_projected_tail_refuses
+    with self.assertRaisesRegex(ArithmeticError, 'negative'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ArithmeticError not raised
+
+======================================================================
+FAIL: test_provenance_is_complete (test_ym_helike_dome_truncation.TruncationDiagnostic.test_provenance_is_complete)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_dome_truncation.py", line 44, in test_provenance_is_complete
+    self.assertIn(key, a)
+AssertionError: 'alpha' not found in {'N': 0, 'g2': 1.0, 'beta': 2.0, 'K': 0, 'K_ref': 2, 'outside_fraction_of_dome': 0.07407407407407407, 'total': 0.6382847385042254, 'outside': 1.0}
+
+======================================================================
+FAIL: test_reversed_orders_refuse (test_ym_helike_dome_truncation.TruncationDiagnostic.test_reversed_orders_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_dome_truncation.py", line 12, in test_reversed_orders_refuse
+    with self.assertRaisesRegex(ValueError, 'K'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_unresolved_reference_refuses (test_ym_helike_dome_truncation.TruncationDiagnostic.test_unresolved_reference_refuses)
+----------------------------------------------------------------------
+ZeroDivisionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_dome_truncation.py", line 16, in test_unresolved_reference_refuses
+    with self.assertRaisesRegex(ArithmeticError, 'outside|exterior'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "outside|exterior" does not match ""
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.404s
+
+FAILED (failures=4)

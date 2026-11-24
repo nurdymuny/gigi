@@ -1,4 +1,4 @@
-# Review of the dome result: why the truncation gate failed, and where the dome belongs
+# Review of the dome result: a projected-tail diagnosis and a candidate regime
 
 24 November 2026. **POST HOC REVIEW. It does not change the registered verdict, which stays
 `UNRESOLVED_TRUNCATION`.** The measurements below use only overlaps of trial functions: no Hamiltonian, no
@@ -13,12 +13,13 @@ finite-space improvement from per-function efficiency. I agree with the verdict.
 
 ## Why K = 30 → 36 could flip a verdict
 
-The total truncation error of a dome function is tiny. A per-term bound on the Haar series (the dropped terms are
-homogeneous, so the triangle inequality applies) gives a relative norm change of at most 6×10⁻⁸ at K = 30 for
-g² = 1, β = 2, and 1×10⁻⁹ for g² = 2, β = 3. Judged by its total norm, K = 30 looks converged.
+The total-norm change can look tiny while the part outside the origin basis changes appreciably. The diagnostic
+below compares two finite Haar polynomials; it does not bound the infinite series. The earlier draft quoted
+per-term upper bounds without a retained derivation or certificate. Those bounds are withdrawn pending that
+calculation. Small total-norm change alone cannot close the truncation gate.
 
 But a dome function lies almost entirely inside the origin basis. What it adds is the small component outside
-that span, and the truncated terms (degree 31 and up) live mostly out there. Measured against that component,
+that span. A tail can therefore matter disproportionately outside it. Measured against that component,
 for m = 1 with the selected widths and the reference K_ref = 48:
 
 | g² | N | Outside fraction of the dome function (norm²) | K = 24 | K = 30 | K = 36 | K = 42 |
@@ -33,28 +34,35 @@ verdict changed with K. At g² = 1 it is 14%, and the one reversal happened ther
 
 The last four columns are ‖P⊥(Φ_K_ref − Φ_K)‖ / ‖P⊥Φ_K_ref‖.
 
-At N = 18, K = 30 changes 14% of everything the dome adds. A verdict comparing that addition with ordinary
-expansion can then depend on K, and it did. The right truncation criterion is the outside-origin ratio at the
-largest cutoff used, not the total-norm ratio. A future protocol should freeze K by that ratio (for example, below
-10⁻⁶ at the top cutoff) before any comparison is computed.
+At g² = 1, N = 18, the K = 30 change is about 14% of the finite-reference exterior norm of this one function.
+That is a plausible sensitivity mechanism, not an attribution of the entire residual discrepancy. The five-function
+enriched span can contain nearly dependent combinations, and L² agreement alone does not control Hamiltonian
+residuals. A future gate needs reference-order stability, a joint-span check and Hamiltonian graph-norm control,
+not just this single-function ratio. The [bounded review protocol](dome-local-review-protocol-2026-11-24.md)
+repeats these measurements with raw-overlap replay, a higher reference and higher precision; it does not silently
+turn a finite reference into an infinite-tail certificate.
 
 ## Where the dome belongs
 
 The weak-coupling note ([helike-second-vacuum-weak-coupling](helike-second-vacuum-weak-coupling-2026-11-24.md))
-shows why the controls were the hard case.
+suggests why the controls were a hard case.
 - At g² = 1 and 2 the second vacuum sits at |q| = √3 and √1.5. That is well inside the origin basis's reach, and
-  the barriers are 3/32 and 3/64. By N = 18 a dome function's new content is 10⁻¹⁵ of its norm².
+  the barriers are 3/32 and 3/64. At N = 18 the quoted exterior fractions for m = 1 are approximately
+  2.9×10⁻¹⁵ and 1.3×10⁻¹⁴ of the finite-reference function's norm², respectively.
 - At weak coupling the second vacuum moves out to √3/g, and the barrier 3/(32g²) separates the vacua.
-- An exact local count at the second vacuum predicts the scalar gap → 1 there. The saved scan already shows the
-  scalar's ⟨det q⟩ at 85% of the orbit value at g² = 0.5.
+- An exact local count gives a candidate energy difference of 1; identifying it with the global scalar gap still
+  requires a spectral calculation. The saved scan shows the scalar's ⟨det q⟩ at about 85% of the orbit value at
+  g² = 0.5. That moment ratio is not an 85% localization probability.
 
-That is the regime in which a seated envelope should carry the state instead of adding a sliver to it.
+That is a candidate regime in which a seated envelope may carry more of the state instead of adding a sliver.
 
 ## Recommendations
 
 1. Keep the dome verdict as registered.
-2. For any further dome comparison, freeze K by the outside-origin truncation ratio at the top cutoff.
-3. Make the next dome test the weak-coupling one, with the matched widths from Hess W: 1 for breathing, 2 for shape,
-   none along the orbit. Register it with held-out couplings and the predicted limits.
+2. Before another physical comparison, freeze a truncation rule covering exterior norm, joint span, Hamiltonian
+   graph norm and the infinite tail; the present diagnostic covers only the first and finite-reference sensitivity.
+3. First define a globally normalizable envelope with the normal harmonic inverse-width coefficients from Hess W:
+   1 for breathing and 2 for shape. Zero tangent stiffness does not license a degenerate ambient Gaussian.
+   Preserve the orbit symmetry and all kinetic derivatives. Then register held-out couplings and acceptance rules.
 4. Check the literature on glueballs on the three-sphere with a sphaleron barrier (van Baal and collaborators)
    before any novelty claim.

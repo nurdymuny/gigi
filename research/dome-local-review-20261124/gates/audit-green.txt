@@ -1,0 +1,27 @@
+test_changed_cancellation_disclosure_rejected (test_dome_local_review.AuditTests.test_changed_cancellation_disclosure_rejected) ... ok
+test_changed_ratio_rejected (test_dome_local_review.AuditTests.test_changed_ratio_rejected) ... ok
+test_empty_complete_receipt_clears_stale_pass (test_dome_local_review.AuditTests.test_empty_complete_receipt_clears_stale_pass) ... ok
+test_invalid_parameters_refuse (test_dome_local_review.AuditTests.test_invalid_parameters_refuse) ... ok
+test_job_scope_is_frozen (test_dome_local_review.AuditTests.test_job_scope_is_frozen) ... ok
+test_missing_row_rejected (test_dome_local_review.AuditTests.test_missing_row_rejected) ... ok
+test_nonempty_output_refuses (test_dome_local_review.AuditTests.test_nonempty_output_refuses) ... ok
+test_overlap_evidence_replays (test_dome_local_review.AuditTests.test_overlap_evidence_replays) ... ok
+test_precision_checks_small_fractions_relatively (test_dome_local_review.AuditTests.test_precision_checks_small_fractions_relatively) ... ok
+test_precision_requires_relative_and_absolute_agreement (test_dome_local_review.AuditTests.test_precision_requires_relative_and_absolute_agreement) ... ok
+{"utc": "2026-11-24T16:42:08Z", "phase": "batch_start", "index": 0, "job": {"N": 0, "g2": 1.0, "alpha": 2.0, "beta": 2.0, "orders": [0, 2], "K_ref": 4, "dps": 80}}
+{"utc": "2026-11-24T16:42:08Z", "phase": "reference_ready", "index": 0, "K": null}
+{"utc": "2026-11-24T16:42:08Z", "phase": "tail_ready", "index": 0, "K": 0}
+{"utc": "2026-11-24T16:42:08Z", "phase": "tail_ready", "index": 0, "K": 2}
+{"utc": "2026-11-24T16:42:08Z", "phase": "batch_complete", "index": 0, "seconds": 0.03200000000651926, "rows": [{"N": 0, "g2": 1.0, "alpha": 2.0, "beta": 2.0, "K_ref": 4, "m": [0, 0, 0], "dps": 80, "K": 0, "reference_is_finite": true, "outside_fraction_of_dome": 0.20635419943378422, "total": 0.7890011444312418, "outside": 1.0, "projection_diagnostics": {"reference": {"raw": "0.15099676056587733593976363982447297193061600752722622656313507619171883233579791", "tolerance": "1.0e-60", "roundoff_clipped": false}, "tail": {"raw": "0.15099676056587733593976363982447297193061600752722622656313507619171883233579788", "tolerance": "1.0e-60", "roundoff_clipped": false}}}, {"N": 0, "g2": 1.0, "alpha": 2.0, "beta": 2.0, "K_ref": 4, "m": [0, 0, 0], "dps": 80, "K": 2, "reference_is_finite": true, "outside_fraction_of_dome": 0.20635419943378422, "total": 0.4024930174905607, "outside": 0.6439209162167847, "projection_diagnostics": {"reference": {"raw": "0.15099676056587733593976363982447297193061600752722622656313507619171883233579791", "tolerance": "1.0e-60", "roundoff_clipped": false}, "tail": {"raw": "0.062608412917558895389658094561366842020011515316166971989592592567298052431916197", "tolerance": "1.0e-60", "roundoff_clipped": false}}}]}
+{"utc": "2026-11-24T16:42:08Z", "phase": "batch_start", "index": 1, "job": {"N": 0, "g2": 1.0, "alpha": 2.0, "beta": 2.0, "orders": [0, 2], "K_ref": 4, "dps": 120}}
+{"utc": "2026-11-24T16:42:08Z", "phase": "reference_ready", "index": 1, "K": null}
+{"utc": "2026-11-24T16:42:08Z", "phase": "tail_ready", "index": 1, "K": 0}
+{"utc": "2026-11-24T16:42:08Z", "phase": "tail_ready", "index": 1, "K": 2}
+{"utc": "2026-11-24T16:42:08Z", "phase": "batch_complete", "index": 1, "seconds": 0.01600000000325963, "rows": [{"N": 0, "g2": 1.0, "alpha": 2.0, "beta": 2.0, "K_ref": 4, "m": [0, 0, 0], "dps": 120, "K": 0, "reference_is_finite": true, "outside_fraction_of_dome": 0.20635419943378422, "total": 0.7890011444312418, "outside": 1.0, "projection_diagnostics": {"reference": {"raw": "0.15099676056587733593976363982447297193061600752722622656313507619171883233579788696058825236310756375556137420694636505", "tolerance": "1.0e-100", "roundoff_clipped": false}, "tail": {"raw": "0.150996760565877335939763639824472971930616007527226226563135076191718832335797886960588252363107563755561374206946365049", "tolerance": "1.0e-100", "roundoff_clipped": false}}}, {"N": 0, "g2": 1.0, "alpha": 2.0, "beta": 2.0, "K_ref": 4, "m": [0, 0, 0], "dps": 120, "K": 2, "reference_is_finite": true, "outside_fraction_of_dome": 0.20635419943378422, "total": 0.4024930174905607, "outside": 0.6439209162167847, "projection_diagnostics": {"reference": {"raw": "0.15099676056587733593976363982447297193061600752722622656313507619171883233579788696058825236310756375556137420694636505", "tolerance": "1.0e-100", "roundoff_clipped": false}, "tail": {"raw": "0.0626084129175588953896580945613668420200115153161669719895925925672980524319161970324390314676299654596230088175143464824", "tolerance": "1.0e-100", "roundoff_clipped": false}}}]}
+test_small_pipeline_and_tampered_archive (test_dome_local_review.AuditTests.test_small_pipeline_and_tampered_archive) ... ok
+test_tiny_negative_is_disclosed_and_zero_not_absolute (test_dome_local_review.AuditTests.test_tiny_negative_is_disclosed_and_zero_not_absolute) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.445s
+
+OK

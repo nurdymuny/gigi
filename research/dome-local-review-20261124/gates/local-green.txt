@@ -1,0 +1,15 @@
+test_barrier_and_action_endpoint_difference (test_ym_helike_second_vacuum.SecondVacuum.test_barrier_and_action_endpoint_difference) ... ok
+test_direct_eigenspaces_not_only_eigenvalues (test_ym_helike_second_vacuum.SecondVacuum.test_direct_eigenspaces_not_only_eigenvalues) ... ok
+test_eigenvalues_follow_total_spin (test_ym_helike_second_vacuum.SecondVacuum.test_eigenvalues_follow_total_spin) ... ok
+test_frame_transports_around_the_same_orbit (test_ym_helike_second_vacuum.SecondVacuum.test_frame_transports_around_the_same_orbit) ... ok
+test_origin_hessian_is_identity (test_ym_helike_second_vacuum.SecondVacuum.test_origin_hessian_is_identity) ... ok
+test_potential_hessian_is_square (test_ym_helike_second_vacuum.SecondVacuum.test_potential_hessian_is_square) ... ok
+test_second_vacuum_hessian_is_colour_space_coupling (test_ym_helike_second_vacuum.SecondVacuum.test_second_vacuum_hessian_is_colour_space_coupling) ... ok
+test_square_identity_is_not_claimed_away_from_critical_points (test_ym_helike_second_vacuum.SecondVacuum.test_square_identity_is_not_claimed_away_from_critical_points) ... ok
+test_witten_local_energy_count (test_ym_helike_second_vacuum.SecondVacuum.test_witten_local_energy_count)
+1/2 sum(|mu| - mu): 0 at the origin, 1 at the second vacuum. ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.054s
+
+OK

@@ -1,0 +1,17 @@
+test_D00_reproduces_scalar_sector_solver (test_ym_helike_dome.Gates.test_D00_reproduces_scalar_sector_solver) ... ok
+test_D01_dome_never_raises_ritz_values_and_D05_fractions (test_ym_helike_dome.Gates.test_D01_dome_never_raises_ritz_values_and_D05_fractions) ... ok
+test_dome_count (test_ym_helike_dome.Gates.test_dome_count) ... ok
+test_dome_function_against_haar_average (test_ym_helike_dome.HaarSeries.test_dome_function_against_haar_average) ... ok
+test_lambda_polynomial_identity (test_ym_helike_dome.HaarSeries.test_lambda_polynomial_identity) ... ok
+test_low_order_coefficients (test_ym_helike_dome.HaarSeries.test_low_order_coefficients) ... ok
+test_moments_against_haar_monte_carlo (test_ym_helike_dome.HaarSeries.test_moments_against_haar_monte_carlo) ... ok
+test_truncation_converges (test_ym_helike_dome.HaarSeries.test_truncation_converges) ... ok
+test_cross_width_overlap (test_ym_helike_dome.Operators.test_cross_width_overlap)
+Normalised overlap of two centred Gaussians of widths a, b is (2 sqrt(ab)/(a+b))^(9/2). ... ok
+test_hamiltonian_action_by_finite_differences (test_ym_helike_dome.Operators.test_hamiltonian_action_by_finite_differences) ... ok
+test_mixed_width_moments (test_ym_helike_dome.Operators.test_mixed_width_moments) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 22.718s
+
+OK

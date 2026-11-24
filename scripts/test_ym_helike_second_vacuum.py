@@ -95,6 +95,42 @@ class SecondVacuum(unittest.TestCase):
         self.assertAlmostEqual(.5 * np.sum(np.abs(mu0) - mu0), 0.)
         self.assertAlmostEqual(.5 * np.sum(np.abs(mu1) - mu1), 1.)
 
+    def test_direct_eigenspaces_not_only_eigenvalues(self):
+        H = np.eye(9) + colour_space_coupling()
+        D = np.array([[2., 3., 5.], [7., 11., 13.], [17., 19., 23.]])
+        breathing = np.trace(D) * np.eye(3) / 3
+        orbit = (D - D.T) / 2
+        shape = (D + D.T) / 2 - breathing
+        for part, value in ((breathing, -1), (orbit, 0), (shape, 2)):
+            np.testing.assert_allclose((H @ part.ravel()).reshape(3, 3), value * part, atol=1e-12)
+        np.testing.assert_allclose(breathing+orbit+shape, D, atol=1e-12)
+        for a,b in ((breathing,orbit),(breathing,shape),(orbit,shape)):
+            self.assertAlmostEqual(np.sum(a*b), 0.)
+
+    def test_frame_transports_around_the_same_orbit(self):
+        H0 = np.eye(9) + colour_space_coupling()
+        for angle in (.37, 1.2):
+            c,s = np.cos(angle),np.sin(angle)
+            R = np.array([[c,-s,0],[s,c,0],[0,0,1.]])
+            U = np.kron(R,np.eye(3))
+            for g in (1.,np.sqrt(2.)):
+                H = hessian(lambda q: W(q,g), R/g)
+                np.testing.assert_allclose(H, U @ H0 @ U.T, atol=1e-6)
+                np.testing.assert_allclose(hessian(lambda q: V(q,g),R/g),H @ H,atol=1e-5)
+
+    def test_square_identity_is_not_claimed_away_from_critical_points(self):
+        q = np.diag([.2,.3,.4])
+        HW = hessian(lambda x: W(x,1.),q)
+        HV = hessian(lambda x: V(x,1.),q)
+        self.assertGreater(np.linalg.norm(HV-HW@HW), .1)
+
+    def test_barrier_and_action_endpoint_difference(self):
+        for g in (1.,np.sqrt(2.)):
+            for a in (0.,.25,.5,.75,1.):
+                self.assertAlmostEqual(V(a*np.eye(3)/g,g),1.5*a*a*(1-a)**2/(g*g))
+            self.assertAlmostEqual(V(.5*np.eye(3)/g,g),3/(32*g*g))
+            self.assertAlmostEqual(W(np.eye(3)/g,g)-W(np.zeros((3,3)),g),1/(2*g*g))
+
 
 if __name__ == "__main__":
     unittest.main()

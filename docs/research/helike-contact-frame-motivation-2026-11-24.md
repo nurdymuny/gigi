@@ -225,8 +225,9 @@ square of the Hessian of W:
 
   Hess V = (Hess W)².
 
-So in this model the two Hessians I was careful to keep apart are tied together at the vacua. The eigenvectors of
-Hess W give the frame, and the absolute eigenvalues give the widths. At q₀ = I/g:
+So in this model the two Hessians I was careful to keep apart are tied together at the vacua. The eigenspaces of
+Hess W give the local decomposition, and the absolute eigenvalues give harmonic inverse-width coefficients.
+Degenerate eigenspaces do not select a unique basis. At q₀ = I/g:
 - the breathing direction (δ ∝ I) has μ = −1;
 - the five symmetric traceless shape directions have μ = +2;
 - the three orbit directions have μ = 0.
@@ -234,11 +235,13 @@ Hess W give the frame, and the absolute eigenvalues give the widths. At q₀ = I
 None of this depends on g.
 
 The orbit directions are exactly the ones my note warned should not get a confinement width for convenience, and
-the model agrees: μ = 0 there. The admissible treatment is the one the dome already used, a uniform spread along
-the orbit by Haar averaging. So a contact-matched envelope means: frame and widths from Hess W in the six normal
-directions, Haar-averaged along the orbit, with every overlap and kinetic term kept.
+the model agrees: μ = 0 there. Haar averaging can preserve the orbit symmetry, as it does for the existing dome.
+But zero tangent stiffness is not permission to use a nonnormalizable degenerate Gaussian in ambient coordinates.
+A contact-matched candidate needs a global extension with the six normal harmonic inverse-width coefficients,
+finite norm, correct symmetry and every overlap and frame-dependent kinetic term retained. The local calculation
+supplies the normal geometry; it does not complete that global construction.
 
-The same Hessian gives a local energy count. Because ΔW = 9, H = H_W + 9/2, where H_W is the 0-form part of
+The same Hessian gives a local energy count. Because the Euclidean Laplacian of W is 9, H = H_W + 9/2, where H_W is the 0-form part of
 Witten's supersymmetric Hamiltonian. Its harmonic ground energy at a critical point is ½Σ(|μ| − μ): 0 at the origin
 and 1 at the second vacuum. That leads to a weak-coupling prediction and a candidate mechanism for the crossing,
 recorded in [the weak-coupling note](helike-second-vacuum-weak-coupling-2026-11-24.md). It is a candidate, not a

@@ -1,0 +1,1 @@
+8 deliberate defects rejected by assertions

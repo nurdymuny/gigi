@@ -1,0 +1,11 @@
+test_eigenvalues_follow_total_spin (test_ym_helike_second_vacuum.SecondVacuum.test_eigenvalues_follow_total_spin) ... ok
+test_origin_hessian_is_identity (test_ym_helike_second_vacuum.SecondVacuum.test_origin_hessian_is_identity) ... ok
+test_potential_hessian_is_square (test_ym_helike_second_vacuum.SecondVacuum.test_potential_hessian_is_square) ... ok
+test_second_vacuum_hessian_is_colour_space_coupling (test_ym_helike_second_vacuum.SecondVacuum.test_second_vacuum_hessian_is_colour_space_coupling) ... ok
+test_witten_local_energy_count (test_ym_helike_second_vacuum.SecondVacuum.test_witten_local_energy_count)
+1/2 sum(|mu| - mu): 0 at the origin, 1 at the second vacuum. ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.032s
+
+OK

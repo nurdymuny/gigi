@@ -1,0 +1,1 @@
+PASS receipt consistency only, not matrix replay or physical certification

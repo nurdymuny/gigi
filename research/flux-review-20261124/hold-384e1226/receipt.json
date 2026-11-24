@@ -1,0 +1,88 @@
+{
+ "status": "HOLD_DOMAIN",
+ "smoke": false,
+ "design": {
+  "primary": {
+   "t": 3.0,
+   "g2": [
+    0.03,
+    0.05,
+    0.07
+   ],
+   "s": [
+    1.12,
+    1.15,
+    1.165,
+    1.18,
+    1.195,
+    1.22,
+    1.24
+   ]
+  },
+  "secondary": {
+   "t": 4.0,
+   "g2": [
+    0.03,
+    0.05
+   ],
+   "s": [
+    1.09,
+    1.12,
+    1.14,
+    1.16,
+    1.18
+   ]
+  },
+  "ladder": [
+   [
+    6,
+    6
+   ],
+   [
+    6,
+    8
+   ],
+   [
+    8,
+    8
+   ]
+  ],
+  "convergence_tol": 0.003,
+  "weight_min": 0.9,
+  "s_tolerance": 0.015,
+  "predicted_s_star": {
+   "3.0": {
+    "0.03": 1.1674,
+    "0.05": 1.1809,
+    "0.07": 1.1931
+   },
+   "4.0": {
+    "0.03": 1.126,
+    "0.05": 1.1413
+   }
+  }
+ },
+ "hash_policy": "sha256-universal-newline-v1",
+ "registration": "docs/research/helike-flux-background-registration-2026-11-24.md",
+ "amendment": "docs/research/helike-flux-review-amendment-2026-11-24.md",
+ "sources_sha256": {
+  "scripts/helike_condensate_fock.py": "49b93abceef77ca3a4d920c5463d9f628407e7844f3b357897db6ccd9e674094",
+  "scripts/helike_condensate_pt.py": "cf3f0392bc87479e797193455d8b5e9b431ab356adfefe7bc79be4f80d00db20",
+  "scripts/helike_berger_model.py": "3e78cc9e168b8ac9b8791fc587a2f46ab9c6664c5c6daec7cb4badcfa33ae0ce",
+  "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+  "scripts/run_helike_flux_background.py": "3293a081513fe6d2d793e0b247741a1e00d83fb54f46bbc89feb058a23baf130",
+  "scripts/test_helike_condensate_fock.py": "4678e9a7d9847d3f4b47175606c04a9dd74e4de6c618e564ce5968b75f191102",
+  "scripts/test_flux_review.py": "3ec7d5ba72c65d308226cb39de568d2ec7741e2e6a92e13c32f6768d84b12dcd",
+  "docs/research/helike-flux-background-registration-2026-11-24.md": "4c279176cca8f1b79cc696782e0a3fb398e6d91e1e88a964eec05896ba7556e0",
+  "docs/research/helike-flux-review-amendment-2026-11-24.md": "b85d6d0809054945be1e4a9e757f89c9516a0fd21b0e38a4a8700f83b9cae3b5"
+ },
+ "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "started_utc": "2026-11-24T20:02:33Z",
+ "certified": false,
+ "decision": "NOT_EVALUATED",
+ "cases": [],
+ "revision": "384e1226f48102eab9880c20387e65435b7dac9a",
+ "source_dirty": false,
+ "reason": "positive-cone domain not enforced; see review amendment"
+}

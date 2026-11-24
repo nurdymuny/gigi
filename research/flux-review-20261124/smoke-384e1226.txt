@@ -1,0 +1,3 @@
+t=3.0 g2=0.05 s=1.15 P=4 Mq=4: helike 1.13855 competitor 1.06683 (41.2s)
+t=3.0 g2=0.05 s=1.2 P=4 Mq=4: helike 1.10115 competitor 1.16106 (37.5s)
+COMPLETE SOFTWARE_SMOKE_ONLY

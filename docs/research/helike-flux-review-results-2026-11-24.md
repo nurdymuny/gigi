@@ -120,6 +120,37 @@ Fock 3, Molien 4, two-grain 7). Their JSON receipts are retained. No full
 Rust suite, GPU survey, new continuum run, or registered-order flux grid
 is claimed.
 
+## Two-point runner check after publication of the fixes
+
+Source `384e1226f48102eab9880c20387e65435b7dac9a` was committed and pushed
+before this check. Its recorded source-dirty flag is false. Only the two
+previously exposed smoke points were used: t=3, g^2=0.05, P=Mq=4,
+dimension 210. No registered-order computation was performed.
+
+| s | selected Helike gap | selected competitor gap | Helike weight | competitor weight |
+| --- | --- | --- | --- | --- |
+| 1.15 | 1.1385485969924334 | 1.066829324390432 | 0.9039660097189148 | 0.7982782839680251 |
+| 1.20 | 1.1011458375646415 | 1.1610586962138427 | 0.9156837025268787 | 0.8436539260059432 |
+
+The selected levels reverse order. Straight-line interpolation of these
+two low-order differences gives s=1.17724231231398. That is a **diagnostic
+readout**, not confirmation of the registered prediction 1.1809: the
+competitor weights are below the registered 0.9 identification threshold,
+there is only one approximation rung, and the physical-domain requirement
+remains open. Both points explicitly report `converged: false`.
+
+The two solves took 41.2 and 37.5 seconds. The raw matrix asymmetry was
+4.440892098500626e-16 at each point. The run ended
+`COMPLETE / SOFTWARE_SMOKE_ONLY`; the
+[receipt-consistency replay passed](../../research/flux-review-20261124/smoke-384e1226/verification.json).
+The [complete receipt](../../research/flux-review-20261124/smoke-384e1226/receipt.json)
+retains unrounded values and source snapshots.
+
+A separate actual invocation of the default command returned exit 2,
+`HOLD_DOMAIN / NOT_EVALUATED`, with no cases or solver results. Its
+[receipt](../../research/flux-review-20261124/hold-384e1226/receipt.json) and
+the independent command-line assertion are retained.
+
 ## Exact next mathematical question
 
 Can we construct a semibounded approximation on the positive Gram cone,

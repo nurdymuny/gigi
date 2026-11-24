@@ -58,3 +58,23 @@ Final focused result: **98 tests pass; 43 of 43 deliberate mechanism
 removals are caught by assertions, with zero incidental test errors.**
 This is a software/mathematical-control result, not closure of the physical
 flux-background gate.
+
+## Actual runner check
+
+After source `384e1226` was committed and pushed:
+
+```powershell
+python scripts/run_helike_flux_background.py OUT/smoke --smoke
+python scripts/run_helike_flux_background.py OUT/smoke --verify
+python scripts/run_helike_flux_background.py OUT/hold
+```
+
+The first two commands returned 0. The final command intentionally returned
+2 with HOLD_DOMAIN and zero cases. Saved folders `smoke-384e1226/` and
+`hold-384e1226/` include the exact text snapshots and the declared portable
+hash policy. The smoke is one-rung, low-order and uncertified; competitor
+weights do not meet the registered 0.9 threshold. Its local ordering change
+does not close the physical gate. Replay checks receipt consistency only.
+
+The original failing unittest logs retain their emitted whitespace,
+including three trailing-space lines flagged by `git diff --check`.

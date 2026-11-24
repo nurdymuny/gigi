@@ -1,0 +1,1 @@
+PASS: full-grid command exited before any case or solver; clean source 384e1226

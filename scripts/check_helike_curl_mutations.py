@@ -16,6 +16,12 @@ import helike_curl_spectrum as hc  # noqa: E402
 import test_helike_curl_spectrum as t  # noqa: E402
 
 ORIG_OPS = hc.operators
+ORIG_G2 = hc.g2_bound
+
+
+def drop_gauge_factor(x, y, tt, j):           # claims the floor whenever Delta >= mu^2
+    B, k = hc.fibre_field(x, y, tt), hc.kappa(x, y, tt)
+    return B > abs(k) and B - abs(k) >= (x + (j + 2) / np.sqrt(tt)) ** 2
 
 
 def curl_wrong_orientation(x, y, tt, j):          # (curl b)_1 built from D_02 instead of D_20
@@ -38,6 +44,8 @@ MUTANTS = {
     "twist_formula_shift": ("twist_closed_form",
                             lambda x, y, tt, j: (x + (j + 1) / np.sqrt(tt)) ** 2 + 2 * np.sqrt(tt) * x - y * y),
     "fibre_field_sign": ("fibre_field", lambda x, y, tt: y * y + 2 * np.sqrt(tt) * x),
+    "g2_bound_halved": ("g2_bound", lambda x, y, tt, j: ORIG_G2(x, y, tt, j) / 2),
+    "sufficient_without_gauge_factor": ("floor_sufficient", lambda x, y, tt, j: drop_gauge_factor(x, y, tt, j)),
 }
 
 

@@ -2,8 +2,8 @@
 
 24 November 2026. **ANALYSIS. Not for the report until the open items below are closed.** Follows the
 [curl-spectrum check](helike-curl-spectrum-2026-11-24.md). Only light checks were run here (9 × 9 matrices and single
-sectors). Code: `scripts/helike_curl_spectrum.py`. Tests: `scripts/test_helike_curl_spectrum.py` (12 passing).
-Mutation check: 4 of 4 caught by assertion.
+sectors). Code: `scripts/helike_curl_spectrum.py`. Tests: `scripts/test_helike_curl_spectrum.py` (18 passing).
+Mutation check: 6 of 6 caught by assertion.
 
 Setting: the edge paper's Hessian at the circle-symmetric family M₀ = xτ₀, M₁ = yτ₁, M₂ = yτ₂ on (t,1,1), sector j
 (l = j/2). In three dimensions H = curl_A² + Φ exactly, with curl_A = ∗D_A, the Hessian of Chern–Simons, and Φ the
@@ -101,6 +101,69 @@ the same μ.
 the structural reason she is an exact eigenvector and the natural floor candidate: she gets the full flux discount
 −B, pays only her helicity μ_l², and loses nothing to leakage or gauge.
 
+## Theorem 3 (a sufficient condition for the floor; proved)
+
+Let B > |κ|, Δ = B − |κ| (the flux gap), l = j/2, μ_l = x + (j+2)/√t, and g = ‖G‖ in sector j. Suppose either
+j = 0 and Δ ≥ μ₀², or j ≥ 1 and Δ ≥ μ_l²(1 + g²/4l). Then the twist's eigenvalue λ = μ_l² − B is the lowest
+eigenvalue of H on ker G* in sector j.
+
+**Proof.** Let K = ker G*.
+1. **Reduce to the complement of the twist.** By the Corollary to Proposition 2, the twist ψ₊ and her mirror ψ₋ lie
+   in K and Hψ± = λψ±. For ψ ∈ K, write ψ = aψ₊ + bψ₋ + ψ′ with ψ′ ⊥ ψ±. Then ψ′ ∈ K and, since H is Hermitian,
+   ⟨ψ, Hψ⟩ = (|a|² + |b|²)λ + ⟨ψ′, Hψ′⟩. So it suffices to show ⟨ψ′, Hψ′⟩ ≥ λ‖ψ′‖².
+2. **Split by flux.** Write ψ′ = ψ_E + ψ_⊥ along E = V_j ⊗ span{w₊, w₋} (the −B eigenspace) and its complement. Φ
+   preserves both. By Theorem 1, Φ = −B on E and Φ ≥ −|κ| on E^⊥, because for B > |κ| the next eigenvalue of φ is
+   −|κ|. Hence ⟨ψ′, Φψ′⟩ ≥ −B‖ψ′‖² + Δ‖ψ_⊥‖².
+3. **Bound the gauge part.** ψ_E has no top-weight component, because the top weights of E are exactly ψ±. By
+   Proposition 2 the G*-images of different weights and branches are orthogonal (different weights in V_j, and
+   ⟨ū, u⟩ = 0). So ‖G*ψ_E‖² = Σ 2[l(l+1) − m(m+1)]|c_m|² ≥ 4l‖ψ_E‖², the minimum being at m = l − 1 and its mirror.
+   Since G*ψ′ = 0, G*ψ_E = −G*ψ_⊥, so 4l‖ψ_E‖² ≤ g²‖ψ_⊥‖².
+4. **Combine.** With ‖curl ψ′‖² ≥ 0,
+
+     ⟨ψ′, Hψ′⟩ − λ‖ψ′‖² ≥ −μ_l²(‖ψ_E‖² + ‖ψ_⊥‖²) + Δ‖ψ_⊥‖² ≥ ‖ψ_⊥‖²[Δ − μ_l²(1 + g²/4l)] ≥ 0.
+
+   For j = 0, E = span{ψ±}, so ψ_E = 0 and the bracket is Δ − μ₀². ∎
+
+The bound g² ≤ (2l/√t + |x|)² + 2(2l + |y|)² comes from ‖Gξ‖ ≤ Σᵢ(‖êᵢ‖ + |mᵢ|)‖ξ‖, with ‖ê₀‖ = 2l/√t and
+‖ê₁,₂‖ = 2l. Theorem 3 holds on the whole family, not only the Berger path.
+
+**What it proves.**
+- **Sector 0, for every t ≥ 2√5 − 2 ≈ 2.472, with no upper limit.** On the Berger path the condition is t² + 4t − 16 ≥ 0.
+  Spot checks agree out to t = 80.
+- **A moving band of sectors near j ≈ t − 4,** where her helicity is small: j ≤ 1 at t = 4; 0–3 at t = 6; 0 and 3–8 at
+  t = 10; 0 and 11–20 at t = 20; 17 of the first 61 sectors at t = 40.
+- **Never violated:** the condition held at 1,222 random (family member, sector) pairs, and the twist was the floor at
+  every one.
+- **The gauge factor is needed.** The weaker condition Δ ≥ μ_l² alone is false: at (x, y, t) = (0.0674, 2.6596, 3.5715)
+  sector 1 has a state 0.69 below the twist. That point is a test.
+
+**What it does not prove.** The floor in every sector across the window. The bound throws away ‖curl ψ′‖² and uses
+the global ‖G‖, which grows like 2l. The sectors far from j ≈ t − 4, where the twist's own helicity is large, are not
+covered. Sharpening routes: keep the curl term on E^⊥, and use the exact G*-coupling inside each charge block (≤ 9
+states) instead of the global norm. The Floor paper's interval certificates remain the proof there for t ∈ [2.75, 10].
+
+## The x-band check
+
+Corollary 1's flux boundary x_flux(y, t), the largest x with B ≥ |κ|, is
+
+  x_flux = min{ y(y + 2/√t)/(2√t + y), y(y − 2/√t)/(2√t − y) }  (0 < y < 2√t).
+
+Against the paper's Table 2 upper edges:
+
+| t | y | x_flux | paper x*_A / x*_S |
+| --- | --- | --- | --- |
+| 2 | 0.5 | −0.196 | −0.613 / −0.605 |
+| 3 | 0.5 | −0.110 | −0.335 / −0.318 |
+| 4 | 1.5 | +0.300 | −0.208 / −0.192 |
+| 6 | 1.5 | +0.302 | −0.045 / −0.033 |
+| 8 | √8 | +1.179 | +0.083 / +0.138 (cut-off artefacts) |
+
+**The flux boundary is not the x-band edge.** It lies to the right of the edge everywhere, and it reaches x > 0, where
+the paper proves she loses. So the twist loses the floor while she is still the flux minimiser. The upper x-edge is set
+by a competitor that wins on helicity (B₄,₀ for y ≳ 1.5, per the paper), not by flux alignment failing. In the
+helicity–flux picture, the x-band is a helicity competition inside the flux-favourable region. Corollary 1 marks the
+outer boundary of the flux mechanism, not the edge.
+
 ## A route I tried and eliminated
 
 A flux-aligned trial state of weight m has Rayleigh quotient μ_m² + 2[l(l+1) − m(m+1)] − B. For m = −l it drops
@@ -112,8 +175,9 @@ is still the twist. Recorded so I do not reuse it.
 
 ## What is still open (before the report)
 
-1. **The floor itself.** Theorem 1 and Proposition 2 explain the twist's eigenvalue and her privileged place in E₋.
-   They do not prove she is the gauge-orthogonal floor: competitors from outside E₋ pay the flux gap
+1. **The floor itself.** Partly proved: Theorem 3 gives sector 0 for all t ≥ 2.472 and a band near j ≈ t − 4. The rest
+   is open. Earlier wording: Theorem 1 and Proposition 2 explain the twist's eigenvalue and her privileged place in E₋
+   but do not prove she is the gauge-orthogonal floor: competitors from outside E₋ pay the flux gap
    Δ = B − |κ| (2t − 4 on the Berger path) but can save helicity. The lower edge t* = 2.698 comes from such a
    competitor. A proof route: H ≥ curl_A² − B + Δ(1 − P), combined with gauge-orthogonality, to bound the
    complement's contribution sector by sector.
@@ -122,8 +186,8 @@ is still the twist. Recorded so I do not reuse it.
    conjecture is that there is no upper edge in t on the Berger path, and that the Floor paper's t ≤ 10 is the
    certificates' domain, not a physical edge. Not proved.
 3. ~~A written proof of Proposition 2~~ **Done** (above): the transverse curl is −i times the divergence along θ̂¹ + iθ̂².
-4. **The x-band.** Corollary 1 gives the exact reason the twist cannot be the flux minimiser for B < |κ|. Whether that
-   coincides with the paper's edge in x at fixed t is to be checked against its edge data.
+4. ~~The x-band~~ **Checked:** the flux boundary is not the edge; the edge is a helicity competition (above). Still
+   open: the B₄,₀ competitor written in helicity–flux terms.
 
 ## What it says about the quantum probe (exact, light checks)
 
@@ -152,3 +216,21 @@ The matrix model's potential is V = ½|∇W|², so Hess V = (Hess W)² + ∇W·�
   tests the no-upper-edge conjecture.
 - The same scan along x at fixed t, for comparison with the paper's x-band and Corollary 1.
 - Proposition 2 at large j (j ≤ 60) and random family members.
+
+## In plain words (how I picture it)
+
+- **The space** is a three-sphere stretched along one family of circles, the long circles, by the factor t. Picture
+  a bundle of circles, all longer than they are wide.
+- **The background field** has two strengths, one along the long circles (B) and one across them (κ).
+- **A disturbance pays two prices.** It pays for how much it twists against its own grain (helicity squared, μ²), and
+  it is paid for lining up with the flux along the circles (−B at best).
+- **Helike** is the disturbance that turns in the two short directions and rides the long circles. She takes the full
+  flux payment and pays only her own twist: λ = μ² − B.
+- **The lane and the ladder.** All the flux-aligned disturbances form a lane, organised like a ladder by their turning
+  number m. Every rung but the top leaks sideways, into the long direction, and that leak is exactly its spreading.
+  Twist and spread are two faces of one complex derivative (Cauchy–Riemann). The top rung has nowhere higher to go,
+  so it cannot leak. That is Helike: the top of the ladder, the one flux-aligned disturbance that neither leaks nor
+  spreads.
+- **The window.** She is the floor where the flux gap (how much better the lane pays than anything outside it) covers
+  what her twist costs. Stretching the sphere grows the gap, so "by enough" is a stretch. Inside the flux-favourable
+  region, a neighbouring sector can still undercut her by twisting less. That sets the edge in x: "not too much".

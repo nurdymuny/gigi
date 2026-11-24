@@ -169,3 +169,32 @@ def bisect_edge(key, lo, hi, jmax, iters=40):
         else:
             hi = mid
     return (lo + hi) / 2
+
+
+def kappa(x, y, t):
+    """The field across the long circle: F_01 = kappa tau_2 with kappa = y (x - 2/sqrt t)."""
+    return y * (x - 2 / np.sqrt(t))
+
+
+def g2_bound(x, y, t, j):
+    """Analytic bound on ||G||^2 in sector j: sum_i (||e^_i|| + |m_i|)^2 with ||e^_0|| = 2l/sqrt t, ||e^_1,2|| = 2l."""
+    l = j / 2
+    return (2 * l / np.sqrt(t) + abs(x)) ** 2 + 2 * (2 * l + abs(y)) ** 2
+
+
+def floor_sufficient(x, y, t, j):
+    """Theorem 3: if B > |kappa| and Delta = B - |kappa| >= mu_l^2 (1 + g^2/(4l)) (j >= 1), or Delta >= mu_0^2 (j = 0),
+    then the twist is the lowest gauge-orthogonal eigenvalue of sector j."""
+    B, k = fibre_field(x, y, t), kappa(x, y, t)
+    if B <= abs(k):
+        return False
+    delta, mu2 = B - abs(k), (x + (j + 2) / np.sqrt(t)) ** 2
+    if j == 0:
+        return delta >= mu2
+    return delta >= mu2 * (1 + g2_bound(x, y, t, j) / (2 * j))
+
+
+def x_flux(y, t):
+    """Largest x with B >= |kappa| (the twist is the flux minimiser), for 0 < y < 2 sqrt t."""
+    s = np.sqrt(t)
+    return min(y * (y + 2 / s) / (2 * s + y), y * (y - 2 / s) / (2 * s - y))

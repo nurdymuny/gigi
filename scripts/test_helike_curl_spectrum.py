@@ -147,3 +147,60 @@ class CauchyRiemann(unittest.TestCase):
                     np.testing.assert_allclose(Phi @ psi, -B * psi, atol=1e-11)
                     ratio = np.linalg.norm(chi) ** 2 / np.linalg.norm(psi) ** 2
                     self.assertAlmostEqual(ratio, 2 * (l * (l + 1) - mm * (mm + 1)), places=9)
+
+
+class FloorTheorem(unittest.TestCase):
+    def test_sufficient_condition_implies_floor(self):
+        cases = 0
+        for t in (2.48, 2.6, 4., 6., 10., 20.):
+            x, y = hc.berger_xy(t)
+            for j in range(0, 17):
+                if not hc.floor_sufficient(x, y, t, j):
+                    continue
+                C, H, Phi, _, _ = hc.operators(x, y, t, j)
+                hH, _ = hc.gauge_orthogonal(H, hc.gauge_map(x, y, t, j))
+                self.assertAlmostEqual(hH[0], hc.twist_closed_form(x, y, t, j), places=8, msg=(t, j))
+                cases += 1
+        self.assertGreaterEqual(cases, 10)
+
+    def test_gauge_factor_is_needed(self):
+        """Delta >= mu^2 alone is false: at this family member sector 1 has a state below the twist."""
+        x, y, t, j = 0.0674, 2.6596, 3.5715, 1
+        B, k = hc.fibre_field(x, y, t), hc.kappa(x, y, t)
+        self.assertGreaterEqual(B - abs(k), (x + (j + 2) / np.sqrt(t)) ** 2)
+        C, H, Phi, _, _ = hc.operators(x, y, t, j)
+        hH, _ = hc.gauge_orthogonal(H, hc.gauge_map(x, y, t, j))
+        self.assertLess(hH[0], hc.twist_closed_form(x, y, t, j) - .5)
+        self.assertFalse(hc.floor_sufficient(x, y, t, j))
+
+    def test_theorem_condition_never_violated_on_random_family(self):
+        rng = np.random.default_rng(7)
+        checked = 0
+        for _ in range(150):
+            x, y, t = rng.uniform(-3, 1), rng.uniform(.1, 3), rng.uniform(1.5, 12)
+            for j in range(0, 7):
+                if hc.floor_sufficient(x, y, t, j):
+                    C, H, Phi, _, _ = hc.operators(x, y, t, j)
+                    hH, _ = hc.gauge_orthogonal(H, hc.gauge_map(x, y, t, j))
+                    self.assertGreaterEqual(hH[0], hc.twist_closed_form(x, y, t, j) - 1e-8, (x, y, t, j))
+                    checked += 1
+        self.assertGreater(checked, 20)
+
+    def test_sector_zero_threshold(self):
+        """On the Berger path, sector 0 is proved exactly for t >= 2 sqrt 5 - 2."""
+        edge = 2 * np.sqrt(5) - 2
+        for t, want in ((edge - 1e-6, False), (edge + 1e-6, True), (50., True)):
+            self.assertEqual(hc.floor_sufficient(*hc.berger_xy(t), t, 0), want, t)
+
+    def test_g2_bound_dominates_the_gauge_norm(self):
+        for (x, y, t, j) in [(-2., 1.5, 4., 3), (*hc.berger_xy(9.), 9., 6), (.4, .8, 2.5, 4)]:
+            G = hc.gauge_map(x, y, t, j)
+            self.assertLessEqual(np.linalg.norm(G, 2) ** 2, hc.g2_bound(x, y, t, j) + 1e-9)
+
+    def test_flux_boundary_lies_right_of_the_published_edge(self):
+        """By Enough, Table 2 (x*_A, y = 0.5 and 1.5): the flux boundary is never the edge."""
+        table = {(2, .5): -0.613240, (3, .5): -0.335488, (4, 1.5): -0.208048, (8, 1.5): 0.031482}
+        for (t, y), edge in table.items():
+            self.assertGreater(hc.x_flux(y, t), edge + .05, (t, y))
+            B = hc.fibre_field(hc.x_flux(y, t), y, t)
+            self.assertAlmostEqual(B, abs(hc.kappa(hc.x_flux(y, t), y, t)), places=10)

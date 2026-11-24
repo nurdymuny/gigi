@@ -246,3 +246,42 @@ Witten's supersymmetric Hamiltonian. Its harmonic ground energy at a critical po
 and 1 at the second vacuum. That leads to a weak-coupling prediction and a candidate mechanism for the crossing,
 recorded in [the weak-coupling note](helike-second-vacuum-weak-coupling-2026-11-24.md). It is a candidate, not a
 result.
+
+## Addendum: the direction of the sweep
+
+*Added the same day. Analytic, with a test; no new experiment.*
+
+One thing I left out of the original observation is the direction of the sweep. In a given patch, going against
+the grain gives a much closer shave than going with it, close enough that in some sections the Bevel no longer
+protects me. The difference is night and day. My angle α = arccos|n_blade·n_skin| deliberately forgot that sign. The
+model does not forget it.
+
+**The protection has a direction.** The same Hamiltonian factors two ways:
+
+  H = ½A†A + 9/2,  A = ∇ + ∇W,
+  H = ½A′†A′ − 9/2,  A′ = ∇ − ∇W.
+
+Both are exact. Sweeping with W gives the floor 9/2. Sweeping against it gives −9/2, which is weaker than the
+trivial H ≥ 0. Same Hamiltonian, opposite sweep, and the guard is gone.
+
+**S³ has exactly two grains.** A face needs whorls, because a two-dimensional sphere cannot carry a nowhere-vanishing
+direction field. The three-sphere can, and it has two global grains: the left-invariant frame and the
+right-invariant frame. Their flow lines are the two Hopf fibrations, which twist with opposite handedness. Their
+Maurer–Cartan equations differ by a sign: dθ + θ∧θ = 0 for θ = g⁻¹dg, and dθ̄ − θ̄∧θ̄ = 0 for θ̄ = dg g⁻¹. That
+sign reaches the cubic term. The opposite grain alone is the same model with g → −g, its second vacuum on the
+det < 0 orbit: V(−p; g) = V(p; −g).
+
+**Our model shaves with one grain.** The nine homogeneous modes use the left-invariant frame only. That is why its
+second vacuum is not equivalent to the first, even though the two are gauge copies in the full theory, and why the
+model has no parity: parity exchanges the two grains. The "night and day" I feel between sweeps may be the same
+one-sidedness we have been measuring.
+
+**Patches on a grid.** Each patch has its own local frame. Neighbouring frames are related by how the grain turns
+between them, and the cut depends on the sweep relative to the local frame. That is a bundle with a connection, and
+on a grid it is lattice gauge theory: frames at sites, transport on links, curvature in plaquettes. Patches where
+against the grain cuts too close would be where the frame turns fastest. The analogy stops at the whorls: the face
+needs them, S³ does not.
+
+Tests: `scripts/test_ym_helike_second_vacuum.py` (`SweepDirection`) checks both factorizations against finite
+differences and the grain-reversal identity. The model that keeps both grains is scoped in
+[helike-two-grain-scope](helike-two-grain-scope-2026-11-24.md).

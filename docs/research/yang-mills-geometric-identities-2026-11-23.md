@@ -912,6 +912,16 @@ at \(E_*=1\)):
 | 4 | 39,471 | 3.30219 | 2.90391 | 1.685785 |
 | 5 | 158,400 | 3.29425 | 2.89187* | 1.685722 |
 
+**From cutoff diagnostics to enclosures.** A plaquette operator changes each link spin it touches by exactly
+½, so \(H\psi\) for a state with spins \(\le j_{\max}\) lies within spins \(\le j_{\max}+\tfrac12\) and can be
+computed exactly; its norm outside the truncated space is the full residual \(\varepsilon\), and Weinstein's
+theorem then places an eigenvalue of the *untruncated* lattice Hamiltonian in \([E-\varepsilon,E+\varepsilon]\)
+(`scripts/ym_ladder_exterior.py`; adopted from the exterior-residual gate of the Helike quantum probe). On one
+plaquette the interval contains the exact eigenvalue at every cutoff, with \(\varepsilon\) falling from 0.44 to
+\(1.7\times10^{-3}\) between cutoffs 1 and 5/2, while the true error at 5/2 is about \(10^{-7}\): Weinstein is
+rigorous but loose, and a Kato–Temple bound (error of order \(\varepsilon^2\)) needs a proven separation from the
+next eigenvalue. The full table's enclosures are computed by that script.
+
 \* At \(g^2=1\) the five-plaquette value is not converged in the spin cutoff (2.8%
 between cutoffs 3/2 and 2); for one to four plaquettes the change between the two
 largest cutoffs is at most 0.45% at \(g^2=1\) and \(3\times10^{-6}\) at \(g^2=2\).

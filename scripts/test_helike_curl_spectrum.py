@@ -66,3 +66,43 @@ class Windows(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def phi_spectrum(B, k):
+    r = np.sqrt(B * B + 8 * k * k)
+    return np.sort([-B, -B, B, k, -k, k, -k, (B + r) / 2, (B - r) / 2])
+
+
+class FluxTheorem(unittest.TestCase):
+    """Theorem 1: Phi = phi (x) I_{V_j}, spec phi = {-B (x2), B, +-kappa (x2), (B +- sqrt(B^2 + 8 kappa^2))/2}."""
+
+    def test_spectrum_formula_and_sector_independence(self):
+        rng = np.random.default_rng(91)
+        for _ in range(6):
+            x, y, t = rng.uniform(-3, 2), rng.uniform(.2, 3), rng.uniform(.5, 12)
+            B, k = hc.fibre_field(x, y, t), y * (x - 2 / np.sqrt(t))
+            np.testing.assert_allclose(np.linalg.eigvalsh(hc.operators(x, y, t, 0)[2]), phi_spectrum(B, k), atol=1e-12)
+            ev3 = np.linalg.eigvalsh(hc.operators(x, y, t, 3)[2])
+            np.testing.assert_allclose(ev3, np.repeat(phi_spectrum(B, k), 4), atol=1e-11)
+
+    def test_flux_bound_holds_exactly_from_t_equals_two_on_berger(self):
+        for t, holds in ((1.9, False), (2.0, True), (2.1, True), (8., True)):
+            x, y = hc.berger_xy(t)
+            B, k = hc.fibre_field(x, y, t), y * (x - 2 / np.sqrt(t))
+            self.assertEqual(bool(phi_spectrum(B, k).min() >= -B - 1e-12), holds, t)
+
+    def test_cauchy_riemann_leak_equals_gauge_component(self):
+        for (x, y, t, j) in [(-2., 1.5, 4., 3), (.5, 1., 4., 3), (*hc.berger_xy(9.), 9., 5), (1.2, .4, 1.5, 4)]:
+            C, H, Phi, _, _ = hc.operators(x, y, t, j)
+            B = hc.fibre_field(x, y, t)
+            w, V = np.linalg.eigh(Phi)
+            P = V[:, np.abs(w + B) < 1e-9]
+            self.assertEqual(P.shape[1], 2 * (j + 1))
+            _, U = np.linalg.eigh(P.conj().T @ C @ P)
+            psis = P @ U
+            leak = np.linalg.norm((np.eye(len(C)) - P @ P.conj().T) @ C @ psis, axis=0) ** 2
+            gs = np.linalg.norm(hc.gauge_map(x, y, t, j).conj().T @ psis, axis=0) ** 2
+            np.testing.assert_allclose(leak, gs, atol=1e-10)
+            l = j / 2
+            want = np.sort(np.repeat(2 * (l * (l + 1) - np.arange(-l, l + 1) * (np.arange(-l, l + 1) + 1)), 2))
+            np.testing.assert_allclose(np.sort(leak), want, atol=1e-9)

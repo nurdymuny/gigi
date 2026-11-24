@@ -1,0 +1,21 @@
+test_agreement_with_existing_positive_chart (test_helike_qspace_boundary.Coordinates.test_agreement_with_existing_positive_chart) ... ok
+test_bad_patch_and_nonfinite_refuse (test_helike_qspace_boundary.Coordinates.test_bad_patch_and_nonfinite_refuse) ... ok
+test_both_orientations_and_regular_rank_two (test_helike_qspace_boundary.Coordinates.test_both_orientations_and_regular_rank_two) ... ok
+test_interface_density_and_normal_metric (test_helike_qspace_boundary.Coordinates.test_interface_density_and_normal_metric) ... ok
+test_metric_from_independent_cartesian_derivatives (test_helike_qspace_boundary.Coordinates.test_metric_from_independent_cartesian_derivatives) ... ok
+test_complex_current_crosses_not_reflects (test_helike_qspace_boundary.Matching.test_complex_current_crosses_not_reflects) ... ok
+test_cusp_and_wrong_half_normal_sign_rejected (test_helike_qspace_boundary.Matching.test_cusp_and_wrong_half_normal_sign_rejected) ... ok
+test_finite_input_and_exact_interface_required (test_helike_qspace_boundary.Matching.test_finite_input_and_exact_interface_required) ... ok
+test_jump_rejected_even_when_fluxes_match (test_helike_qspace_boundary.Matching.test_jump_rejected_even_when_fluxes_match) ... ok
+test_no_universal_dirichlet_neumann_or_robin_wall (test_helike_qspace_boundary.Matching.test_no_universal_dirichlet_neumann_or_robin_wall) ... ok
+test_nonzero_value_and_derivative_are_allowed (test_helike_qspace_boundary.Matching.test_nonzero_value_and_derivative_are_allowed) ... ok
+test_regular_cartesian_probes_match_at_same_controls (test_helike_qspace_boundary.Matching.test_regular_cartesian_probes_match_at_same_controls) ... ok
+test_gram_square_root_does_not_force_zero_derivative (test_helike_qspace_boundary.Operator.test_gram_square_root_does_not_force_zero_derivative) ... ok
+test_operator_bad_jets_refuse (test_helike_qspace_boundary.Operator.test_operator_bad_jets_refuse) ... ok
+test_reduced_laplacian_matches_cartesian_at_and_across_interface (test_helike_qspace_boundary.Operator.test_reduced_laplacian_matches_cartesian_at_and_across_interface) ... ok
+test_signed_flux_cubic_at_same_control_backgrounds (test_helike_qspace_boundary.Operator.test_signed_flux_cubic_at_same_control_backgrounds) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 4.911s
+
+OK

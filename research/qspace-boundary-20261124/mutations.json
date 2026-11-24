@@ -1,0 +1,57 @@
+{
+  "orientation_erased": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_both_orientations_and_regular_rank_two (test_helike_qspace_boundary.Coordinates.test_both_orientations_and_regular_rank_two)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 43, in test_both_orientations_and_regular_rank_two\n    np.testing.assert_allclose(qb.coordinates(q),u,atol=1e-12,rtol=0)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=0, atol=1e-12\n\nMismatched elements: 1 / 6 (16.7%)\nMismatch at index:\n [2]: 0.3 (ACTUAL), -0.3 (DESIRED)\nMax absolute difference among violations: 0.6\nMax relative difference among violations: 2.\n ACTUAL: array([ 0.182322, -0.105361,  0.3     ,  0.25    , -0.35    ,  0.4     ])\n DESIRED: array([ 0.182322, -0.105361, -0.3     ,  0.25    , -0.35    ,  0.4     ])\n\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nFAILED (failures=1)\n"
+  },
+  "density_jacobian_wrong": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_agreement_with_existing_positive_chart (test_helike_qspace_boundary.Coordinates.test_agreement_with_existing_positive_chart)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 75, in test_agreement_with_existing_positive_chart\n    self.assertAlmostEqual(qb.density(u),np.exp(chart.log_measure(z))/abs(np.linalg.det(J)),delta=1e-10)\nAssertionError: 197.75463011334162 != np.float64(51.07236353577866) within 1e-10 delta (np.float64(146.68226657756296) difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.355s\n\nFAILED (failures=1)\n"
+  },
+  "metric_replaced_by_flat": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_metric_from_independent_cartesian_derivatives (test_helike_qspace_boundary.Coordinates.test_metric_from_independent_cartesian_derivatives)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 58, in test_metric_from_independent_cartesian_derivatives\n    np.testing.assert_allclose(qb.metric(u),grad@grad.T,atol=1e-8,rtol=1e-8)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-08, atol=1e-08\n\nMismatched elements: 22 / 36 (61.1%)\nFirst 5 mismatches are at indices:\n [0, 0]: 1.0 (ACTUAL), 0.6944444443147655 (DESIRED)\n [1, 1]: 1.0 (ACTUAL), 1.2881515775537167 (DESIRED)\n [1, 3]: 0.0 (ACTUAL), -0.1736111110899992 (DESIRED)\n [1, 4]: 0.0 (ACTUAL), -0.07716049381634967 (DESIRED)\n [1, 5]: 0.0 (ACTUAL), -0.06751543208769972 (DESIRED)\nMax absolute difference among violations: 0.5625\nMax relative difference among violations: 1.\n ACTUAL: array([[1., 0., 0., 0., 0., 0.],\n       [0., 1., 0., 0., 0., 0.],\n       [0., 0., 1., 0., 0., 0.],...\n DESIRED: array([[ 0.694444,  0.      ,  0.      ,  0.      ,  0.      ,  0.      ],\n       [ 0.      ,  1.288152,  0.      , -0.173611, -0.07716 , -0.067515],\n       [ 0.      ,  0.      ,  1.345186,  0.      , -0.096065,  0.174833],...\n\n----------------------------------------------------------------------\nRan 1 test in 0.012s\n\nFAILED (failures=1)\n"
+  },
+  "density_drift_removed": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_reduced_laplacian_matches_cartesian_at_and_across_interface (test_helike_qspace_boundary.Operator.test_reduced_laplacian_matches_cartesian_at_and_across_interface)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 94, in test_reduced_laplacian_matches_cartesian_at_and_across_interface\n    np.testing.assert_allclose(qb.laplacian(u,grad,hess),lap,atol=1e-9,rtol=1e-9)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-09, atol=1e-09\n\nMismatched elements: 1 / 1 (100%)\nMax absolute difference among violations: 0.43718572\nMax relative difference among violations: 0.57263929\n ACTUAL: array(-0.326272+0.j)\n DESIRED: array(-0.763457)\n\n----------------------------------------------------------------------\nRan 1 test in 1.757s\n\nFAILED (failures=1)\n"
+  },
+  "signed_cubic_replaced_by_absolute": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_signed_flux_cubic_at_same_control_backgrounds (test_helike_qspace_boundary.Operator.test_signed_flux_cubic_at_same_control_backgrounds)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 109, in test_signed_flux_cubic_at_same_control_backgrounds\n    self.assertAlmostEqual(qb.potential(up,1.15,3.,g)-qb.potential(um,1.15,3.,g),want,delta=1e-10)\nAssertionError: 0.0 != np.float64(-13.940374018575609) within 1e-10 delta (np.float64(13.940374018575609) difference)\n\n----------------------------------------------------------------------\nRan 1 test in 1.168s\n\nFAILED (failures=1)\n"
+  },
+  "value_jump_ignored": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_jump_rejected_even_when_fluxes_match (test_helike_qspace_boundary.Matching.test_jump_rejected_even_when_fluxes_match)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 164, in test_jump_rejected_even_when_fluxes_match\n    self.assertFalse(r['matches'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.222s\n\nFAILED (failures=1)\n"
+  },
+  "half_normal_sign_reversed": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_cusp_and_wrong_half_normal_sign_rejected (test_helike_qspace_boundary.Matching.test_cusp_and_wrong_half_normal_sign_rejected)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 169, in test_cusp_and_wrong_half_normal_sign_rejected\n    self.assertFalse(r['matches'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.202s\n\nFAILED (failures=1)\n"
+  },
+  "dirichlet_wall_imposed": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_nonzero_value_and_derivative_are_allowed (test_helike_qspace_boundary.Matching.test_nonzero_value_and_derivative_are_allowed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 145, in test_nonzero_value_and_derivative_are_allowed\n    self.assertTrue(r['matches'])\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.186s\n\nFAILED (failures=1)\n"
+  },
+  "neumann_wall_imposed": {
+    "failures": 1,
+    "errors": 0,
+    "caught_by_assertion": true,
+    "log": "F\n======================================================================\nFAIL: test_complex_current_crosses_not_reflects (test_helike_qspace_boundary.Matching.test_complex_current_crosses_not_reflects)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_qspace_boundary.py\", line 158, in test_complex_current_crosses_not_reflects\n    self.assertTrue(r['matches'])\nAssertionError: np.False_ is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.192s\n\nFAILED (failures=1)\n"
+  },
+  "all_caught": true
+}

@@ -1,0 +1,21 @@
+test_helike_qspace_boundary (unittest.loader._FailedTest.test_helike_qspace_boundary) ... ERROR
+
+======================================================================
+ERROR: test_helike_qspace_boundary (unittest.loader._FailedTest.test_helike_qspace_boundary)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_helike_qspace_boundary
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_qspace_boundary.py", line 10, in <module>
+    import helike_qspace_boundary as qb
+ModuleNotFoundError: No module named 'helike_qspace_boundary'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

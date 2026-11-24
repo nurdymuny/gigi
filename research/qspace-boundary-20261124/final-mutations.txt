@@ -1,0 +1,9 @@
+orientation_erased {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+density_jacobian_wrong {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+metric_replaced_by_flat {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+density_drift_removed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+signed_cubic_replaced_by_absolute {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+value_jump_ignored {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+half_normal_sign_reversed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+dirichlet_wall_imposed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+neumann_wall_imposed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}

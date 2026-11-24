@@ -1,5 +1,7 @@
 """Local boundary gates from the original Cartesian SO(3)-singlet model."""
 import unittest
+import json
+from pathlib import Path
 import numpy as np
 import sympy as sp
 from scipy.spatial.transform import Rotation
@@ -112,9 +114,13 @@ class Operator(unittest.TestCase):
         r0,r1,*_=qb.chart_values(POINT)
         slopes=[]
         for h in (1e-4,1e-8):
-            derivative=r0*r1/(2*np.sqrt(h))
+            step=h*1e-4
+            def determinant(hh):
+                u=POINT.copy(); u[2]=np.sqrt(hh)
+                return np.linalg.det(qb.factor(u))
+            derivative=(determinant(h+step)-determinant(h-step))/(2*step)
             slopes.append(derivative)
-            self.assertAlmostEqual(2*np.sqrt(h)*derivative,r0*r1,delta=1e-12)
+            self.assertAlmostEqual(2*np.sqrt(h)*derivative,r0*r1,delta=1e-8)
         self.assertGreater(slopes[1],90*slopes[0])
 
     def test_operator_bad_jets_refuse(self):
@@ -188,6 +194,45 @@ class Matching(unittest.TestCase):
             self.assertTrue(reports[-1]['matches'])
         self.assertEqual(reports[0]['positive_conormal'],[0.,0.])
         self.assertGreater(reports[2]['positive_conormal'][0],1.)
+
+
+class SavedBoundary(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.folder=Path(__file__).resolve().parent.parent/'research/qspace-boundary-20261124/controls-ffc54419'
+        cls.receipt=json.loads((cls.folder/'receipt.json').read_text())
+
+    def test_source_snapshots_and_local_only_status(self):
+        from run_helike_flux_background import sha
+        r=self.receipt
+        self.assertEqual(r['status'],'PASS_LOCAL_MATCHING')
+        self.assertFalse(r['source_dirty'])
+        self.assertFalse(r['physical_spectrum_certified'])
+        self.assertFalse(r['registered_grid_released'])
+        self.assertEqual([row['g2'] for row in r['controls']],[.004,.002])
+        for path,digest in r['sources'].items():
+            self.assertEqual(sha(self.folder/'sources'/path),digest)
+        for row in r['controls']:
+            self.assertEqual(row['s'],1.15); self.assertEqual(row['t'],3.)
+            self.assertEqual(len(row['checks']),15)
+            for check in row['checks']:
+                a,b=check['cartesian_H'],check['reduced_H']
+                self.assertTrue(np.isfinite([a,b]).all())
+                self.assertLessEqual(abs(a-b),1e-9*(1+abs(a)))
+                self.assertAlmostEqual(abs(a-b),check['H_error'],delta=1e-12)
+
+    def test_replay_against_independent_cartesian_oracle(self):
+        from run_helike_qspace_boundary import measure_control
+        for row in self.receipt['controls']:
+            replay=measure_control(row['g2'])
+            self.assertEqual(len(replay['checks']),len(row['checks']))
+            for actual,saved in zip(replay['checks'],row['checks']):
+                self.assertEqual((actual['w'],actual['probe']),(saved['w'],saved['probe']))
+                for key in ('value','cartesian_laplacian','reduced_laplacian','cartesian_H','reduced_H'):
+                    np.testing.assert_allclose(actual[key],saved[key],atol=1e-9,rtol=1e-9)
+                if actual['w']==0.:
+                    self.assertTrue(actual['matching']['matches'])
+                    self.assertTrue(saved['matching']['matches'])
 
 
 if __name__=='__main__': unittest.main(verbosity=2)

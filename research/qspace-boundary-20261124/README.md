@@ -39,3 +39,19 @@ Use a new output directory. The runner refuses nonempty evidence directories,
 retains declared source snapshots and writes each control before proceeding.
 `PASS_LOCAL_MATCHING` cannot release the registered grid or certify a spectrum.
 The previous 0.0034559546 versus 0.003 refinement failure is unchanged.
+
+## Pinned measurement and replay
+
+`controls-ffc54419/` retains the clean-source run at the pushed checkpoint,
+including the receipt, integrity hash and declared source snapshots.
+`controls-ffc54419.txt` records the outputs as they arrived.
+Each coupling has 15 direct Cartesian/reduced operator comparisons; maximum
+absolute Laplacian disagreements are 6.93e-14 and 6.39e-14. Local matching
+passes. This is not a new eigensolve.
+
+`final-green.txt` records 18 boundary tests after adding two saved-source and
+independent-oracle replay tests. Together with the 18 unchanged interior tests,
+36 focused tests pass. The source snapshot intentionally contains the test
+version from before the recorded run, not the subsequent replay additions.
+
+Full interpretation: [results note](../../docs/research/helike-qspace-boundary-results-2026-11-24.md).

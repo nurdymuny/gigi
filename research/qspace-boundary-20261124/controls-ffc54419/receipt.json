@@ -1,0 +1,615 @@
+{
+ "status": "PASS_LOCAL_MATCHING",
+ "scope": "local rank-two Cartesian matching at fixed controls",
+ "physical_spectrum_certified": false,
+ "registered_grid_released": false,
+ "source_revision": "ffc544190afea4474cc82b3d400b8a0d39ba3f73",
+ "source_dirty": false,
+ "source_hash_policy": "sha256-universal-newline-v1",
+ "sources": {
+  "scripts/helike_qspace_boundary.py": "12d6e55aacd4da3195de8df55ff7c100c10b0fbbd5e96e1f0e0b9554fc043202",
+  "scripts/helike_berger_model.py": "3e78cc9e168b8ac9b8791fc587a2f46ab9c6664c5c6daec7cb4badcfa33ae0ce",
+  "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+  "scripts/helike_condensate_pt.py": "cf3f0392bc87479e797193455d8b5e9b431ab356adfefe7bc79be4f80d00db20",
+  "scripts/helike_condensate_fock.py": "49b93abceef77ca3a4d920c5463d9f628407e7844f3b357897db6ccd9e674094",
+  "scripts/helike_positive_cone.py": "3b43140e3ee534833762e238f268dd3f0f78b3ce1bb3fcdd9eca396107e66b7f",
+  "scripts/test_helike_qspace_boundary.py": "86a991b2873ce4d7cedeb8d8f134274f51d99a0299aa7c52b3e13bcbd3c4885f",
+  "scripts/check_qspace_boundary_mutations.py": "d2ffc358e971c1331aaab68a44abd92e646c1a391054033e5b3d3a1d9297b6bd",
+  "scripts/run_helike_qspace_boundary.py": "d911fecabbc0e01ea22abefb820d0ec953dc787b3be6fe55295d233aac6d482a",
+  "scripts/run_helike_flux_background.py": "3293a081513fe6d2d793e0b247741a1e00d83fb54f46bbc89feb058a23baf130",
+  "docs/research/helike-qspace-boundary-spec-2026-11-24.md": "c4e343ec5b340472a88dc138d66c516f1cdd4bb6849cf7f8c86cf42381f133b7",
+  "docs/research/helike-quantum-probe-preregistration-2026-11-23.md": "ccb37f20ce6d0df3694eade5ed828e134b84cfe4ec85bf70d3ac0519eb653da1"
+ },
+ "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "libraries": {
+  "numpy": "2.4.0",
+  "scipy": "1.16.3",
+  "sympy": "1.14.0"
+ },
+ "matching_tolerance": 1e-10,
+ "controls": [
+  {
+   "s": 1.15,
+   "t": 3.0,
+   "g2": 0.004,
+   "interface": [
+    2.3511862569722273,
+    2.900492401306282,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "metric_eigenvalues": [
+    0.0030245746691871457,
+    0.009073724007561434,
+    1.0,
+    1.0,
+    1.0,
+    3.9999999999999987
+   ],
+   "density": 3060182.507760829,
+   "max_laplacian_error": 6.927791673660977e-14,
+   "max_H_error": 1.1641532182693481e-10,
+   "signed_potential_difference": -13.940374018575653,
+   "expected_signed_difference": -13.940374018575609,
+   "complex_probe_normal_current_per_density": 0.1353352832366127,
+   "complex_probe_matching": {
+    "matches": true,
+    "value_jump": 0.0,
+    "conormal_sum": 0.0,
+    "positive_conormal": [
+     0.0,
+     1125778.2308376767
+    ],
+    "negative_conormal": [
+     0.0,
+     -1125778.2308376767
+    ],
+    "tolerance": 1e-10,
+    "scope": "local_rank_two_matching_only",
+    "spectral_certified": false
+   },
+   "checks": [
+    {
+     "w": -0.2,
+     "probe": 0,
+     "value": 0.3678571882677234,
+     "cartesian_laplacian": -0.012238592261576165,
+     "reduced_laplacian": -0.01223859226157617,
+     "laplacian_error": 5.204170427930421e-18,
+     "cartesian_H": 101.65614576363306,
+     "reduced_H": 101.65614576363306,
+     "H_error": 0.0
+    },
+    {
+     "w": -0.2,
+     "probe": 1,
+     "value": -14.043789286034505,
+     "cartesian_laplacian": 0.8920011370802314,
+     "reduced_laplacian": 0.8920011370802309,
+     "laplacian_error": 5.551115123125783e-16,
+     "cartesian_H": -3881.16818885013,
+     "reduced_H": -3881.16818885013,
+     "H_error": 0.0
+    },
+    {
+     "w": -0.2,
+     "probe": 2,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0
+    },
+    {
+     "w": -0.2,
+     "probe": 3,
+     "value": 121.6080685834853,
+     "cartesian_laplacian": -5.51714575801869,
+     "reduced_laplacian": -5.5171457580186924,
+     "laplacian_error": 2.6645352591003757e-15,
+     "cartesian_H": 33606.73257263823,
+     "reduced_H": 33606.73257263823,
+     "H_error": 0.0
+    },
+    {
+     "w": -0.2,
+     "probe": 4,
+     "value": -1507.2016832747145,
+     "cartesian_laplacian": 13.430142453884509,
+     "reduced_laplacian": 13.43014245388444,
+     "laplacian_error": 6.927791673660977e-14,
+     "cartesian_H": -416491.9595711546,
+     "reduced_H": -416491.9595711546,
+     "H_error": 0.0
+    },
+    {
+     "w": 0.0,
+     "probe": 0,
+     "value": 0.36787944117144256,
+     "cartesian_laplacian": -0.012239467229900556,
+     "reduced_laplacian": -0.012239467229900563,
+     "laplacian_error": 6.938893903907228e-18,
+     "cartesian_H": 99.08400480192226,
+     "reduced_H": 99.08400480192226,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       0.0,
+       0.0
+      ],
+      "negative_conormal": [
+       0.0,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 1,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       214895790.55313346,
+       0.0
+      ],
+      "negative_conormal": [
+       -214895790.55313346,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 2,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       0.0,
+       0.0
+      ],
+      "negative_conormal": [
+       0.0,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 3,
+     "value": 121.63014023730817,
+     "cartesian_laplacian": -5.518191617571644,
+     "reduced_laplacian": -5.518191617571646,
+     "laplacian_error": 1.7763568394002505e-15,
+     "cartesian_H": 32760.384846517885,
+     "reduced_H": 32760.384846517885,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       0.0,
+       0.0
+      ],
+      "negative_conormal": [
+       0.0,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 4,
+     "value": 40.54338007910275,
+     "cartesian_laplacian": -0.6131324019524087,
+     "reduced_laplacian": -0.6131324019524069,
+     "laplacian_error": 1.7763568394002505e-15,
+     "cartesian_H": 10919.515149770681,
+     "reduced_H": 10919.515149770681,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       23683306917.209927,
+       0.0
+      ],
+      "negative_conormal": [
+       -23683306917.209927,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.2,
+     "probe": 0,
+     "value": 0.3678571882677234,
+     "cartesian_laplacian": -0.012238592261576165,
+     "reduced_laplacian": -0.01223859226157617,
+     "laplacian_error": 5.204170427930421e-18,
+     "cartesian_H": 96.52807897375942,
+     "reduced_H": 96.5280789737594,
+     "H_error": 1.4210854715202004e-14
+    },
+    {
+     "w": 0.2,
+     "probe": 1,
+     "value": 14.043789286034505,
+     "cartesian_laplacian": -0.8920011370802314,
+     "reduced_laplacian": -0.8920011370802309,
+     "laplacian_error": 5.551115123125783e-16,
+     "cartesian_H": 3685.392513564744,
+     "reduced_H": 3685.3925135647432,
+     "H_error": 9.094947017729282e-13
+    },
+    {
+     "w": 0.2,
+     "probe": 2,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0
+    },
+    {
+     "w": 0.2,
+     "probe": 3,
+     "value": 121.6080685834853,
+     "cartesian_laplacian": -5.51714575801869,
+     "reduced_laplacian": -5.5171457580186924,
+     "laplacian_error": 2.6645352591003757e-15,
+     "cartesian_H": 31911.470612907862,
+     "reduced_H": 31911.470612907855,
+     "H_error": 7.275957614183426e-12
+    },
+    {
+     "w": 0.2,
+     "probe": 4,
+     "value": 1588.2835385220587,
+     "cartesian_laplacian": -14.656303411802709,
+     "reduced_laplacian": -14.65630341180265,
+     "laplacian_error": 5.861977570020827e-14,
+     "cartesian_H": 416756.6660776347,
+     "reduced_H": 416756.6660776346,
+     "H_error": 1.1641532182693481e-10
+    }
+   ],
+   "seconds": 1.7660000000032596
+  },
+  {
+   "s": 1.15,
+   "t": 3.0,
+   "g2": 0.002,
+   "interface": [
+    2.6977598472521995,
+    3.2470659915862545,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "metric_eigenvalues": [
+    0.0015122873345935726,
+    0.00453686200378072,
+    1.0,
+    1.0,
+    1.0,
+    4.000000000000002
+   ],
+   "density": 17311006.423249077,
+   "max_laplacian_error": 6.394884621840902e-14,
+   "max_H_error": 1.3969838619232178e-09,
+   "signed_potential_difference": -19.714666001623186,
+   "expected_signed_difference": -19.71466600162314,
+   "complex_probe_normal_current_per_density": 0.1353352832366127,
+   "complex_probe_matching": {
+    "matches": true,
+    "value_jump": 0.0,
+    "conormal_sum": 0.0,
+    "positive_conormal": [
+     0.0,
+     6368363.369100119
+    ],
+    "negative_conormal": [
+     0.0,
+     -6368363.369100119
+    ],
+    "tolerance": 1e-10,
+    "scope": "local_rank_two_matching_only",
+    "spectral_certified": false
+   },
+   "checks": [
+    {
+     "w": -0.2,
+     "probe": 0,
+     "value": 0.3678683145513189,
+     "cartesian_laplacian": -0.006119514869052234,
+     "reduced_laplacian": -0.006119514869052237,
+     "laplacian_error": 2.6020852139652106e-18,
+     "cartesian_H": 201.79313871116005,
+     "reduced_H": 201.79313871116,
+     "H_error": 5.684341886080802e-14
+    },
+    {
+     "w": -0.2,
+     "probe": 1,
+     "value": -28.088428114703134,
+     "cartesian_laplacian": 0.892030686272669,
+     "reduced_laplacian": 0.8920306862726701,
+     "laplacian_error": 1.1102230246251565e-15,
+     "cartesian_H": -15408.04134973633,
+     "reduced_H": -15408.041349736326,
+     "H_error": 3.637978807091713e-12
+    },
+    {
+     "w": -0.2,
+     "probe": 2,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0
+    },
+    {
+     "w": -0.2,
+     "probe": 3,
+     "value": 243.23820826447758,
+     "cartesian_laplacian": -5.51766867315644,
+     "reduced_laplacian": -5.5176686731564395,
+     "laplacian_error": 8.881784197001252e-16,
+     "cartesian_H": 133428.3769393294,
+     "reduced_H": 133428.37693932938,
+     "H_error": 2.9103830456733704e-11
+    },
+    {
+     "w": -0.2,
+     "probe": 4,
+     "value": -6110.07338928346,
+     "cartesian_laplacian": 27.474755304431056,
+     "reduced_laplacian": 27.474755304430992,
+     "laplacian_error": 6.394884621840902e-14,
+     "cartesian_H": -3351626.6457641004,
+     "reduced_H": -3351626.6457640994,
+     "H_error": 9.313225746154785e-10
+    },
+    {
+     "w": 0.0,
+     "probe": 0,
+     "value": 0.36787944117144245,
+     "cartesian_laplacian": -0.006119733614950267,
+     "reduced_laplacian": -0.006119733614950271,
+     "laplacian_error": 3.469446951953614e-18,
+     "cartesian_H": 198.15883000342194,
+     "reduced_H": 198.15883000342194,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       0.0,
+       0.0
+      ],
+      "negative_conormal": [
+       0.0,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 1,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       2431268331.977031,
+       0.0
+      ],
+      "negative_conormal": [
+       -2431268331.977031,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 2,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       0.0,
+       0.0
+      ],
+      "negative_conormal": [
+       0.0,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 3,
+     "value": 243.2602804746163,
+     "cartesian_laplacian": -5.518191617571634,
+     "reduced_laplacian": -5.518191617571634,
+     "laplacian_error": 0.0,
+     "cartesian_H": 131033.26209864511,
+     "reduced_H": 131033.26209864511,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       0.0,
+       0.0
+      ],
+      "negative_conormal": [
+       0.0,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.0,
+     "probe": 4,
+     "value": 81.08676015820541,
+     "cartesian_laplacian": -0.6131324019524043,
+     "reduced_laplacian": -0.6131324019524027,
+     "laplacian_error": 1.5543122344752192e-15,
+     "cartesian_H": 43677.14090047974,
+     "reduced_H": 43677.14090047974,
+     "H_error": 0.0,
+     "matching": {
+      "matches": true,
+      "value_jump": 0.0,
+      "conormal_sum": 0.0,
+      "positive_conormal": [
+       535892061506.6037,
+       0.0
+      ],
+      "negative_conormal": [
+       -535892061506.6037,
+       0.0
+      ],
+      "tolerance": 1e-10,
+      "scope": "local_rank_two_matching_only",
+      "spectral_certified": false
+     }
+    },
+    {
+     "w": 0.2,
+     "probe": 0,
+     "value": 0.3678683145513189,
+     "cartesian_laplacian": -0.006119514869052234,
+     "reduced_laplacian": -0.006119514869052237,
+     "laplacian_error": 2.6020852139652106e-18,
+     "cartesian_H": 194.5407377572008,
+     "reduced_H": 194.5407377572007,
+     "H_error": 8.526512829121202e-14
+    },
+    {
+     "w": 0.2,
+     "probe": 1,
+     "value": 28.088428114703134,
+     "cartesian_laplacian": -0.892030686272669,
+     "reduced_laplacian": -0.8920306862726701,
+     "laplacian_error": 1.1102230246251565e-15,
+     "cartesian_H": 14854.287370944357,
+     "reduced_H": 14854.287370944352,
+     "H_error": 5.4569682106375694e-12
+    },
+    {
+     "w": 0.2,
+     "probe": 2,
+     "value": 0.0,
+     "cartesian_laplacian": 0.0,
+     "reduced_laplacian": 0.0,
+     "laplacian_error": 0.0,
+     "cartesian_H": 0.0,
+     "reduced_H": 0.0,
+     "H_error": 0.0
+    },
+    {
+     "w": 0.2,
+     "probe": 3,
+     "value": 243.23820826447758,
+     "cartesian_laplacian": -5.51766867315644,
+     "reduced_laplacian": -5.5176686731564395,
+     "laplacian_error": 8.881784197001252e-16,
+     "cartesian_H": 128633.01690456203,
+     "reduced_H": 128633.01690456197,
+     "H_error": 5.820766091346741e-11
+    },
+    {
+     "w": 0.2,
+     "probe": 4,
+     "value": 6272.242004614834,
+     "cartesian_laplacian": -28.70096818433295,
+     "reduced_laplacian": -28.700968184332915,
+     "laplacian_error": 3.552713678800501e-14,
+     "cartesian_H": 3316927.8958069757,
+     "reduced_H": 3316927.8958069743,
+     "H_error": 1.3969838619232178e-09
+    }
+   ],
+   "seconds": 1.4680000000080327
+  }
+ ]
+}

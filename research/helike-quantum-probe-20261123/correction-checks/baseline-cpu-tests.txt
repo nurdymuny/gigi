@@ -1,0 +1,19 @@
+test_all_invariants_and_determinant_sector (test_ym_helike_quantum.BasisTests.test_all_invariants_and_determinant_sector) ... ok
+test_independent_gauss_kernel_and_operator (test_ym_helike_quantum.BasisTests.test_independent_gauss_kernel_and_operator) ... ok
+test_missing_cubic_and_early_projection_are_rejected (test_ym_helike_quantum.BasisTests.test_missing_cubic_and_early_projection_are_rejected) ... ok
+test_oscillator_physical_gap_and_degeneracy (test_ym_helike_quantum.BasisTests.test_oscillator_physical_gap_and_degeneracy) ... ok
+test_rotation_never_demotes_to_float32 (test_ym_helike_quantum.BasisTests.test_rotation_never_demotes_to_float32) ... ok
+test_constant_probe_does_not_normalize_vacuum (test_ym_helike_quantum.ProbeTests.test_constant_probe_does_not_normalize_vacuum) ... ok
+test_degenerate_level_uses_whole_projector (test_ym_helike_quantum.ProbeTests.test_degenerate_level_uses_whole_projector) ... ok
+test_diagnostics_include_a_probe_level_above_the_first_three (test_ym_helike_quantum.ProbeTests.test_diagnostics_include_a_probe_level_above_the_first_three) ... ok
+test_exterior_action_keeps_excitation_above_cutoff (test_ym_helike_quantum.ProbeTests.test_exterior_action_keeps_excitation_above_cutoff) ... ok
+test_lower_invisible_level_is_not_relabelled (test_ym_helike_quantum.ProbeTests.test_lower_invisible_level_is_not_relabelled) ... ok
+test_evidence_replay_rejects_changed_gap_and_weight (test_ym_helike_quantum.ReceiptTests.test_evidence_replay_rejects_changed_gap_and_weight) ... ok
+test_evidence_replay_rejects_nonfinite_claims (test_ym_helike_quantum.ReceiptTests.test_evidence_replay_rejects_nonfinite_claims) ... ok
+test_stable_gap_cannot_hide_drifting_energies (test_ym_helike_quantum.ReceiptTests.test_stable_gap_cannot_hide_drifting_energies) ... ok
+test_stale_and_missing_gates_cannot_pass (test_ym_helike_quantum.ReceiptTests.test_stale_and_missing_gates_cannot_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.737s
+
+OK

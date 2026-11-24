@@ -109,6 +109,8 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 23 Nov | [Helike quantum probe implementation record](helike-quantum-implementation-2026-11-23.md): complete invariant polynomial basis, exact Gaussian preconditioning and independently constructed oscillator reference |
 | 23 Nov | [Helike in a published quantum Yang-Mills model: first GPU survey](helike-quantum-probe-results-2026-11-23.md): 15 finite-cutoff cases replayed; directional/scalar responses separated; convergence and usefulness gate remains UNRESOLVED |
 | 23 Nov | [Illustrated Helike quantum report](../papers/helike-quantum-probe/README.md): paper-ready PDF, five reusable figures, editable LaTeX, source data and reproduction commands |
+| 23 Nov | [Helike convergence amendment](helike-quantum-convergence-amendment-2026-11-23.md): fixed ground-energy width selection, spin-resolved levels, physical observable scaling and numerical enclosure estimates; survey NOT RUN |
+| 23 Nov | [Convergence correction review handoff](helike-quantum-convergence-corrections-2026-11-23.md): adversarial fixes, focused test receipts, unchanged physics and explicit review hold before a larger run |
 | 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 
 ## Where we were: status and strategy

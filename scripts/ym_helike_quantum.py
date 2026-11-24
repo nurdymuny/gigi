@@ -515,21 +515,56 @@ def hamiltonian(ops, g2, alpha=1.0):
     -1/2 Lap_q = alpha (H0 - tr/2), 1/2 tr(q q^T) = tr/(2 alpha), det q = det x / alpha^(3/2), quartic / alpha^2, so
         H_alpha = alpha*H0 + (1/(2 alpha) - alpha/2)*tr - 3 g alpha^(-3/2) D + g^2 alpha^(-2) V4.
     alpha = 1 is exactly the registered matrix; alpha changes only the basis width, not the model."""
+    if not np.isfinite([g2, alpha]).all() or g2 < 0 or alpha <= 0:
+        raise ValueError("finite nonnegative g2 and positive alpha required")
     g = math.sqrt(g2)
     return (alpha*ops["H0"] + (1/(2*alpha) - alpha/2)*ops["trace"] - 3*g*alpha**-1.5*ops["D"]
             + g2*alpha**-2*ops["V4"])
 
 
+def scaled_probes(ops, alpha):
+    """Physical q-observables in x coordinates, q = x/sqrt(alpha)."""
+    if not np.isfinite(alpha) or alpha <= 0:
+        raise ValueError("finite positive alpha required")
+    return {"tensor": [p/alpha for p in ops["tensor"]], "scalar": ops["scalar"]/alpha**2}
+
+
 def level_spins(energies, vectors, j2):
-    """Spatial spin of each complete level from <J^2> = J(J+1) (J2 is assembled from the real rotation generators,
-    so J^2 = sum L^T L). Returns, per level: indices, J, and the deviation of <J^2> from J(J+1)."""
+    """Resolve all irreducible spin copies within each complete energy level.
+
+    vectors must be the complete metric-orthonormal eigenbasis of the finite
+    problem. J2 is a covariant matrix in that same basis, not S^-1 J2.
+    """
+    if not all(np.isfinite(a).all() for a in (energies, vectors, j2)):
+        raise ValueError("finite spin inputs required")
+    if vectors.shape != j2.shape or len(energies) != len(j2):
+        raise ValueError("complete square eigenbasis required for spin classification")
+    casimir = vectors.conj().T @ j2 @ vectors
+    if la.norm(casimir-casimir.conj().T) > 1e-6:
+        raise ValueError("Hermitian Casimir required")
     out = []
     for indices in energy_groups(energies):
-        block = vectors[:, indices]
-        value = float(np.trace(block.conj().T @ j2 @ block).real/len(indices))
-        J = int(round((-1 + math.sqrt(1 + 4*max(value, 0.)))/2))
-        out.append({"indices": indices.tolist(), "J": J, "J2": value, "J2_deviation": abs(value - J*(J+1)),
-                    "multiplicity": len(indices), "expected_multiplicity": 2*J + 1})
+        block = casimir[np.ix_(indices, indices)]
+        outside = casimir[:, indices].copy()
+        outside[indices] = 0
+        leakage = float(la.norm(outside)/max(1., la.norm(block)))
+        if leakage > 1e-6:
+            raise ValueError("Casimir leakage between energy levels exceeds 1e-6")
+        values = la.eigvalsh(block)
+        spins = np.rint((np.sqrt(1+4*np.maximum(values, 0))-1)/2).astype(int)
+        deviations = np.abs(values-spins*(spins+1))
+        if np.max(deviations) > 1e-6:
+            raise ValueError("Casimir eigenvalues do not resolve integer spin within 1e-6")
+        components = []
+        for J in sorted(set(spins.tolist())):
+            count = int(np.count_nonzero(spins == J))
+            if count % (2*J+1):
+                raise ValueError("incomplete spin multiplet in energy level")
+            components.append({"J": J, "multiplicity": count, "copies": count//(2*J+1),
+                               "J2_deviation": float(np.max(deviations[spins == J]))})
+        out.append({"indices": indices.tolist(), "J": components[0]["J"] if len(components) == 1 else None,
+                    "components": components, "multiplicity": len(indices), "leakage": leakage,
+                    "J2_deviation": float(np.max(deviations)), "validated": True})
     return out
 
 
@@ -541,41 +576,67 @@ def probe_report_with_spin(energies, vectors, probes, j2, channel):
     symmetry zero (SELECTION_RULE_ZERO), not as a small or unresolved overlap. Requires a spin-0 vacuum."""
     report = probe_report(energies, vectors, probes)
     spins = level_spins(energies, vectors, j2)
-    if spins[0]["J"] != 0 or spins[0]["J2_deviation"] > 1e-6:
-        return dict(report, spin_status="VACUUM_NOT_SPIN_0")
+    if spins[0]["J"] != 0 or spins[0]["multiplicity"] != 1:
+        raise ValueError("spin-0 nondegenerate vacuum required")
+    if channel not in ALLOWED_SPIN:
+        raise ValueError("unknown probe channel")
+    amplitudes = np.column_stack([vectors.conj().T @ p @ vectors[:, 0] for p in probes])
+    amplitudes[0] = 0
+    casimir = vectors.conj().T @ j2 @ vectors
+    allowed_J = next(iter(ALLOWED_SPIN[channel]))
+    response_norm = float(la.norm(amplitudes))
+    error = float(la.norm(casimir@amplitudes-allowed_J*(allowed_J+1)*amplitudes))
+    if response_norm > 1e-12 and error/response_norm > 1e-6:
+        raise ValueError("probe response violates its registered spin selection rule")
+    report["spin_status"] = "VALIDATED"
+    report["probe_spin_residual"] = error/response_norm if response_norm > 1e-12 else None
+    if not report["levels"]:
+        return report
     for level, spin in zip(report["levels"], spins[1:]):
         level["J"], level["J2_deviation"] = spin["J"], spin["J2_deviation"]
-        level["multiplicity_matches_2J+1"] = spin["multiplicity"] == spin["expected_multiplicity"]
-        level["selection_rule_zero"] = spin["J"] not in ALLOWED_SPIN[channel]
+        level["spin_components"] = spin["components"]
+        level["selection_rule_zero"] = all(c["J"] not in ALLOWED_SPIN[channel] for c in spin["components"])
+        if level["selection_rule_zero"] and level["weight"] > 1e-12:
+            raise ValueError("probe has non-negligible weight in a forbidden spin level")
     first = report["levels"][0]
     if first["selection_rule_zero"]:
         report["status"] = "SELECTION_RULE_ZERO"
-        report["status_note"] = (f"lowest level has J = {first['J']}; {channel} reaches only J in "
+        report["status_note"] = (f"lowest level has spins {[c['J'] for c in first['spin_components']]}; {channel} reaches only J in "
                                  f"{sorted(ALLOWED_SPIN[channel])} from the spin-0 vacuum; its measured weight "
-                                 f"{first['weight']:.3e} is rounding of an exact zero")
+                                  f"{first['weight']:.3e} is retained; the zero follows from the registered operator symmetry")
     return report
 
 
 def residual_enclosures(energies, level_residuals, level_indices):
     """From the full-space residual eps = ||(H - E)psi|| of a normalised state:
-    * Weinstein (rigorous): some eigenvalue of the untruncated operator lies in [E - eps, E + eps];
+    * Weinstein: the exact theorem places spectrum within [E - eps, E + eps].
+      These floating-point estimates are not certified upper bounds on eps.
     * Kato-Temple (conditional): if the true spectrum has no other eigenvalue in (a, b) with a < E < b, then
       E - eps^2/(b - E) <= lambda <= E + eps^2/(E - a). Here a, b are the neighbouring Ritz values, which are NOT
       proven bounds on the true neighbours (Ritz values overestimate), so this interval is labelled conditional.
     Upper Ritz bounds (lambda_k <= E_k for the ordered true eigenvalues) hold by min-max for the finite basis."""
+    if (not np.isfinite(energies).all() or np.any(np.diff(energies) < 0)
+            or not np.isfinite(level_residuals).all() or np.any(np.array(level_residuals) < 0)
+            or len(level_residuals) != len(level_indices)):
+        raise ValueError("ordered finite energies and matching nonnegative finite residuals required")
     out = []
     groups = energy_groups(energies)
     means = [float(np.mean(energies[g])) for g in groups]
     index_of = {tuple(g.tolist()): i for i, g in enumerate(groups)}
     for eps, idx in zip(level_residuals, level_indices):
         k = index_of.get(tuple(idx))
+        if k is None:
+            raise ValueError("residual must refer to a complete energy group")
         E = means[k]
-        row = {"level": k, "E": E, "residual": eps, "weinstein": [E - eps, E + eps]}
+        spread = float(np.max(np.abs(energies[groups[k]]-E)))
+        radius = float(eps + spread)
+        row = {"level": k, "E": E, "residual": eps, "group_center_allowance": spread,
+               "weinstein": [E - radius, E + radius], "certified": False, "status": "NUMERICAL_ESTIMATE"}
         a = means[k - 1] if k > 0 else None
         b = means[k + 1] if k + 1 < len(means) else None
-        if b is not None and (a is None or eps < min(E - a, b - E)):
-            lo = E - eps**2/(b - E)
-            hi = E + eps**2/(E - a) if a is not None else E
+        if b is not None and radius < b - E and (a is None or radius < E - a):
+            lo = E - radius**2/(b - E)
+            hi = E + radius**2/(E - a) if a is not None else E
             row["kato_temple_conditional"] = [lo, hi]
         out.append(row)
     return out

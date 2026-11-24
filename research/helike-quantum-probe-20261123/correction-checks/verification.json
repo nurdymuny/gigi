@@ -1,0 +1,33 @@
+{
+  "kind": "focused_correction_verification",
+  "status": "CHECKS_PASS_SURVEY_NOT_RUN",
+  "date": "2026-11-23",
+  "base_revision": "57d20b67",
+  "branch": "feat/helike-quantum-convergence-20261123",
+  "checks": {
+    "new_cpu_regressions": 29,
+    "existing_cpu_regressions": 14,
+    "mechanism_removals_rejected": 15
+  },
+  "not_run": [
+    "registered alpha-selection/convergence survey",
+    "CUDA execution of corrected runner",
+    "full GIGI test suite",
+    "HP09 utility comparison"
+  ],
+  "source_hashes": {
+    "scripts/ym_helike_quantum.py": "84c1604a4d9c252e0642f6e1b691e0a632e21a13da9f0d649b40b3018eedf6a6",
+    "scripts/run_ym_helike_convergence.py": "daf0f02724719e6d709f68eb0d42ca1480bd5235a6d069b2cf8e46082aafd442",
+    "scripts/test_ym_helike_convergence.py": "37f05146cc7a04615a731ce8ea0683bf7011e2b67e68ed0b2a14a8d82600a746",
+    "scripts/check_ym_helike_convergence_mutations.py": "12591a6df01eaf547fe812f04472fb967c3535a713c6eb54766d4e8f9d1a4088",
+    "scripts/verify_ym_helike_evidence.py": "b602928c5702495b1964e426911354eb43c1f32f060198ccf5892c6ddd28bd1d",
+    "docs/research/helike-quantum-probe-preregistration-2026-11-23.md": "ccb37f20ce6d0df3694eade5ed828e134b84cfe4ec85bf70d3ac0519eb653da1",
+    "docs/research/helike-quantum-gpu-amendment-2026-11-23.md": "6735097f296e692a024f5f8e2cb84f368a4cb92e4fce7a9d88098f30da448ec5",
+    "docs/research/helike-quantum-convergence-amendment-2026-11-23.md": "ba32ba76c26cadd3959e028aedac4870b4f9e5d6249bbeafba12552da17a03a9"
+  },
+  "receipts_sha256": {
+    "focused-tests.txt": "e3fcfdf71adb70fa3fa86520b522e23f70b24fd28284ff6749d94bf377be0117",
+    "baseline-cpu-tests.txt": "c1ca71c69373f2d287307787e36fd58d3d86655eb91b3826e007b7a3ecb471a2",
+    "mutation-checks.json": "98d1ed04eabeec2db42a50ebb438722d1f84f545767936d746fd633cb4a65d4f"
+  }
+}

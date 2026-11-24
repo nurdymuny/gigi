@@ -1,6 +1,6 @@
 # Two grains: scoping the left-and-right homogeneous model
 
-24 November 2026. **SCOPE, NOT A REGISTRATION. Nothing here has been computed beyond the tests named. Statements
+24 November 2026. **SCOPE, NOT A REGISTRATION. Phase 1 done: [results](helike-two-grain-phase1-2026-11-24.md). E1, E3, E4 and E5 confirmed; E2 confirmed with opposite grain signs (W₁₈ = W_R − W_L), so H ≥ 9 + C needs per-grain sweeps. Nothing here has been computed beyond the tests named. Statements
 marked *expected* are derivation sketches to be verified in Phase 1.**
 
 ## Why

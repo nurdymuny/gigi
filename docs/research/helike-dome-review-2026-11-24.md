@@ -44,6 +44,11 @@ turn a finite reference into an infinite-tail certificate.
 
 ## Where the dome belongs
 
+> **Correction (two-grain Phase 1, same day):** the weak-coupling argument below rests on the one-grain local
+> offset of 1. With both grains the offset is about 3.37, and in the full theory it is 0, so this section's case for
+> a weak-coupling dome test does not hold as written. The truncation analysis above is unaffected. See
+> [two-grain Phase 1](helike-two-grain-phase1-2026-11-24.md).
+
 The weak-coupling note ([helike-second-vacuum-weak-coupling](helike-second-vacuum-weak-coupling-2026-11-24.md))
 suggests why the controls were a hard case.
 - At g² = 1 and 2 the second vacuum sits at |q| = √3 and √1.5. That is well inside the origin basis's reach, and

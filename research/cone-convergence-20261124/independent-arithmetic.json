@@ -1,0 +1,66 @@
+{
+  "scope": "independent Decimal arithmetic on recorded scalars, not matrix replay",
+  "comparisons": [
+    {
+      "g2": "0.004",
+      "channel": "helike",
+      "Mq6": "1.0881506933025147",
+      "Mq8": "1.0879701666872634",
+      "absolute_change_decimal": "0.0001805266152513",
+      "threshold": "0.003",
+      "pass": true
+    },
+    {
+      "g2": "0.004",
+      "channel": "competitor",
+      "Mq6": "1.0962441489593235",
+      "Mq8": "1.0955779453125754",
+      "absolute_change_decimal": "0.0006662036467481",
+      "threshold": "0.003",
+      "pass": true
+    },
+    {
+      "g2": "0.002",
+      "channel": "helike",
+      "Mq6": "1.0890870744498322",
+      "Mq8": "1.089042464872331",
+      "absolute_change_decimal": "0.0000446095775012",
+      "threshold": "0.003",
+      "pass": true
+    },
+    {
+      "g2": "0.002",
+      "channel": "competitor",
+      "Mq6": "1.1013023579665457",
+      "Mq8": "1.1011455727505188",
+      "absolute_change_decimal": "0.0001567852160269",
+      "threshold": "0.003",
+      "pass": true
+    }
+  ],
+  "Mq6_archived_baseline_agreement": [
+    {
+      "g2": "0.004",
+      "channel": "helike",
+      "absolute_gap_difference": "9E-16"
+    },
+    {
+      "g2": "0.004",
+      "channel": "competitor",
+      "absolute_gap_difference": "3.5E-15"
+    },
+    {
+      "g2": "0.002",
+      "channel": "helike",
+      "absolute_gap_difference": "2.6E-15"
+    },
+    {
+      "g2": "0.002",
+      "channel": "competitor",
+      "absolute_gap_difference": "8E-16"
+    }
+  ],
+  "minimum_identification_weight": "0.9808081919195198",
+  "maximum_overlap_error": "8.3631986103061E-7",
+  "all_pass": true
+}

@@ -1,0 +1,11 @@
+{
+  "source_revision": "59534df9c8dcb6de640c78e8993cb5e08bac5d80",
+  "convergence": "CONVERGED",
+  "receipt_sha256": "f1eec3b8d49a9a93c95ca0cb98bbe3a344ae51e561b5d47543c438bc6abeeb74",
+  "unmet_release_conditions": [
+    "certificate",
+    "method_amendment"
+  ],
+  "full_grid_released": false,
+  "physical_spectrum_certified": false
+}

@@ -133,6 +133,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 
 | date | note |
 | --- | --- |
+| 24 Nov | [Mq 6 to 8 control results](helike-cone-convergence-results-2026-11-24.md): both couplings pass the unchanged 0.003 refinement and 0.95 identification gates; source-pinned logs retained, certificate and full-grid release still held |
 | 24 Nov | [Quasimode certification spec](helike-quasimode-certification-spec-2026-11-24.md): full residual, bounded charge projection, explicit separation and numerical versus interval evidence; implementation still held |
 | 24 Nov | [Quasimode evidence amendment](helike-quasimode-evidence-amendment-2026-11-24.md): fixed cases, thresholds, provenance, stale-PASS and adversarial release gates before repair |
 | 24 Nov | [Quasimode evidence results](helike-quasimode-evidence-results-2026-11-24.md): four review corrections, focused tests and caught verifier mutations; no larger run or new spectral certificate |

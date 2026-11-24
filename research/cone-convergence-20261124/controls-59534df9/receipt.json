@@ -1,0 +1,156 @@
+{
+ "schema": "cone-convergence-v1",
+ "status": "COMPLETE",
+ "decision": "CONVERGED",
+ "scope": "receipt consistency only, not matrix replay or physical certification",
+ "hash_policy": "sha256-universal-newline-v1",
+ "s": 1.15,
+ "t": 3.0,
+ "g2": [
+  0.004,
+  0.002
+ ],
+ "ladder": [
+  6,
+  8
+ ],
+ "gap_tol": 0.003,
+ "weight_min": 0.95,
+ "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "started_utc": "2026-11-24T21:44:14Z",
+ "rows": {
+  "0.004": {
+   "6": {
+    "E0": 5.40635779940525,
+    "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+    "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+    "energy_shift": -47.52734374999997,
+    "reference_weight_error": 2.7980580152853207e-07,
+    "overlap_orders": [
+     10,
+     12
+    ],
+    "helike": {
+     "gap": 1.0881506933025147,
+     "weight": 0.9885333264400942,
+     "log_basis_weight": 0.9765881045524816,
+     "level_index": 1
+    },
+    "competitor": {
+     "gap": 1.0962441489593235,
+     "weight": 0.9808081919195198,
+     "log_basis_weight": 0.9425922076140058,
+     "level_index": 3
+    },
+    "dimension": 924,
+    "asymmetry": 6.281086761816823e-14,
+    "seconds": 6.389999999999418
+   },
+   "8": {
+    "E0": 5.40634041301367,
+    "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+    "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+    "energy_shift": -47.52734374999997,
+    "reference_weight_error": 8.3631986103061e-07,
+    "overlap_orders": [
+     10,
+     12
+    ],
+    "helike": {
+     "gap": 1.0879701666872634,
+     "weight": 0.9886875768437073,
+     "log_basis_weight": 0.9764448671069815,
+     "level_index": 1
+    },
+    "competitor": {
+     "gap": 1.0955779453125754,
+     "weight": 0.9811986591438617,
+     "log_basis_weight": 0.9420061520583954,
+     "level_index": 3
+    },
+    "dimension": 3003,
+    "asymmetry": 8.570921750106208e-14,
+    "seconds": 42.4369999999908
+   }
+  },
+  "0.002": {
+   "6": {
+    "E0": 5.409174538359108,
+    "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+    "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+    "energy_shift": -95.05468749999991,
+    "reference_weight_error": 3.16359253238474e-08,
+    "overlap_orders": [
+     10,
+     12
+    ],
+    "helike": {
+     "gap": 1.0890870744498322,
+     "weight": 0.9943433989747622,
+     "log_basis_weight": 0.9882565668351294,
+     "level_index": 1
+    },
+    "competitor": {
+     "gap": 1.1013023579665457,
+     "weight": 0.9905908650892777,
+     "log_basis_weight": 0.9710147181818451,
+     "level_index": 3
+    },
+    "dimension": 924,
+    "asymmetry": 1.1468603844377867e-13,
+    "seconds": 6.156999999991967
+   },
+   "8": {
+    "E0": 5.409172325854493,
+    "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+    "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+    "energy_shift": -95.05468749999991,
+    "reference_weight_error": 8.940704054882787e-08,
+    "overlap_orders": [
+     10,
+     12
+    ],
+    "helike": {
+     "gap": 1.089042464872331,
+     "weight": 0.9943831154865386,
+     "log_basis_weight": 0.9882263450842068,
+     "level_index": 1
+    },
+    "competitor": {
+     "gap": 1.1011455727505188,
+     "weight": 0.9907002546154084,
+     "log_basis_weight": 0.970896255469953,
+     "level_index": 3
+    },
+    "dimension": 3003,
+    "asymmetry": 1.4233059175694507e-13,
+    "seconds": 42.15600000000268
+   }
+  }
+ },
+ "changes": {
+  "0.004": {
+   "helike": 0.00018052661525125302,
+   "competitor": 0.0006662036467481869
+  },
+  "0.002": {
+   "helike": 4.460957750129779e-05,
+   "competitor": 0.0001567852160269112
+  }
+ },
+ "revision": "59534df9c8dcb6de640c78e8993cb5e08bac5d80",
+ "source_dirty": false,
+ "sources_sha256": {
+  "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe",
+  "scripts/helike_condensate_fock.py": "49b93abceef77ca3a4d920c5463d9f628407e7844f3b357897db6ccd9e674094",
+  "scripts/helike_condensate_pt.py": "cf3f0392bc87479e797193455d8b5e9b431ab356adfefe7bc79be4f80d00db20",
+  "scripts/helike_berger_model.py": "3e78cc9e168b8ac9b8791fc587a2f46ab9c6664c5c6daec7cb4badcfa33ae0ce",
+  "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+  "scripts/run_helike_cone_convergence.py": "475f32db07f515d1478e39101c7752ad38f2beadad1a696d48fc54160d7155f0",
+  "scripts/run_helike_flux_background.py": "46297e8cb71ad58c11f8493494471569684e538a38291cfc83446ac4933734d3",
+  "docs/research/helike-quasimode-certification-spec-2026-11-24.md": "3ed55da7b8cedf83a19753a289fdbfd99a5cd807da9a2bf6eb4b3f0cbfd28f9a",
+  "docs/research/helike-quasimode-evidence-amendment-2026-11-24.md": "c90fa3e3cb45b005dc046271e4a873318406882876eb6240c96a6d41042a3ddd"
+ },
+ "finished_utc": "2026-11-24T21:45:51Z"
+}

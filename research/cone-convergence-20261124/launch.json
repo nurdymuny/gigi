@@ -1,0 +1,11 @@
+{
+  "source_revision": "59534df9c8dcb6de640c78e8993cb5e08bac5d80",
+  "branch": "feat/helike-quantum-convergence-20261123",
+  "machine_cpu": "13th Gen Intel(R) Core(TM) i7-13620H",
+  "logical_processors": 16,
+  "total_memory_kib": 66727144,
+  "available_memory_kib": 39747364,
+  "started_utc": "2026-11-24T21:44:11.0229747Z",
+  "command": "python -u scripts/run_helike_cone_convergence.py research/cone-convergence-20261124/controls-59534df9",
+  "full_grid_authorized": false
+}

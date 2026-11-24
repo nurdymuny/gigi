@@ -1,0 +1,3 @@
+{"utc":"2026-11-24T21:44:35.7570203Z","pid":21704,"cpu_seconds":23.0,"working_set_bytes":1152491520,"private_bytes":2164813824,"available_memory_kib":38688412}
+{"utc":"2026-11-24T21:45:01.6414638Z","pid":21704,"cpu_seconds":71.015625,"working_set_bytes":781103104,"private_bytes":1807626240,"available_memory_kib":38946548}
+{"utc":"2026-11-24T21:45:44.0565545Z","pid":21704,"cpu_seconds":113.625,"working_set_bytes":771293184,"private_bytes":1838059520,"available_memory_kib":38875872}

@@ -1,0 +1,6 @@
+{
+ "status": "PASS",
+ "scope": "receipt consistency only, not matrix replay or physical certification",
+ "decision": "CONVERGED",
+ "receipt_sha256": "f1eec3b8d49a9a93c95ca0cb98bbe3a344ae51e561b5d47543c438bc6abeeb74"
+}

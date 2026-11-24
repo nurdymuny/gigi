@@ -97,6 +97,14 @@ The Ricci reconstruction programme that came before this (the two-ring PG paper,
 stability studies) is a series of paired specifications and results in [`docs/`](../), named `RICCI_*_SPEC.md` and
 `RICCI_*_RESULTS.md`. They are indexed in [`docs/README.md`](../README.md#the-ricci-reconstruction-series).
 
+## Yang-Mills geometric requirements
+
+| date | note |
+| --- | --- |
+| 23 Nov | [Yang-Mills Requirements as Geometric Objects](yang-mills-geometric-identities-2026-11-23.md) |
+| 23 Nov | [Adversarial review of the Yang Mills geometric identities](yang-mills-geometric-identities-adversarial-review-2026-11-23.md): reproduced finite results, acceptance failures, and amendments needed before the excitation study |
+| 23 Nov | [Pre-registration: the lowest excitation on SU(2) ladders](../../research/ym-ladder-20261123/prereg_lowest_excitation.md) |
+
 ## Where we were: status and strategy
 
 | date | note |

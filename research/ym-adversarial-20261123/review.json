@@ -1,0 +1,414 @@
+{
+  "reviewed_source": "b418ef79789769c9ea0ce2ae51906de0bcbc3141",
+  "lean_source_inspected_not_rebuilt": "c06bed173d937263eae4b26c32644b11c0c59789",
+  "environment": {
+    "python": "3.12.10",
+    "numpy": "2.4.0",
+    "scipy": "1.16.3",
+    "sympy": "1.14.0",
+    "threads": {
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    }
+  },
+  "source_sha256_git_blobs": {
+    "scripts/ym_geometry_tests.py": "d1dd399d9c9f31d185a04f2883d51e70a468cc1740d50315f40235046a565f29",
+    "scripts/ym_geometry_rtc_cells.py": "e5214a35cef0c5666e339c8ffe3fbddd31e07ea45f9fcbcc6c90abc803ff5a0b",
+    "scripts/ym_geometry_lattice_tests.py": "944640d579cdd3390a143b39b6ba1f115d2ba0552f1f4caf427a709934a8dde4",
+    "scripts/ks_su2_lattice.py": "5e7bfaf465547071df6ad6663e260fad22793a1fbe8ae176920e0ce1c0859158",
+    "scripts/_receipt_status.py": "84d2ca4b337336e4e5797c96e7801843f538eb7f589f9bee4f10dbe3ca826c05",
+    "docs/research/yang-mills-geometric-identities-2026-11-23.md": "1b8e1bb0f6bfb42b8902eb0b086b5e5975443caafa88c348628d8b366d082c25",
+    "research/ym-ladder-20261123/prereg_lowest_excitation.md": "5bcc73291a3649cfeb58b8bf7574e94ba1866655da48ac4ff3d869be81a60b2a",
+    "research/ym-geometry-20261123/lattice_tests.json": "687d9a2d2364559be2a16e6c74b730658c79485d6f7907a99ca6599bf6569256"
+  },
+  "replayed_validations": {
+    "v1": {
+      "product_rule": 2.2266822963392197e-15,
+      "inverse_link": 4.443059973708341e-16,
+      "gauge_generators": 2.230443306400422e-14,
+      "pass_": true
+    },
+    "v2": {
+      "cases": [
+        {
+          "jmax": 1.0,
+          "g2": 0.5,
+          "max_diff": 1.7763568394002505e-15
+        },
+        {
+          "jmax": 1.0,
+          "g2": 1.0,
+          "max_diff": 1.7763568394002505e-15
+        },
+        {
+          "jmax": 1.0,
+          "g2": 4.0,
+          "max_diff": 0.0
+        },
+        {
+          "jmax": 2.5,
+          "g2": 0.5,
+          "max_diff": 7.105427357601002e-15
+        },
+        {
+          "jmax": 2.5,
+          "g2": 1.0,
+          "max_diff": 7.105427357601002e-15
+        },
+        {
+          "jmax": 2.5,
+          "g2": 4.0,
+          "max_diff": 0.0
+        }
+      ],
+      "pass_": true
+    },
+    "v3": {
+      "cases": [
+        {
+          "graph": "ladder2",
+          "jmax": 0.5,
+          "spin_network_states": 4,
+          "brute_force_dim": 78125,
+          "brute_force_physical": 4,
+          "max_diff": 1.13509202037676e-12
+        },
+        {
+          "graph": "theta",
+          "jmax": 1.0,
+          "spin_network_states": 11,
+          "brute_force_dim": 2744,
+          "brute_force_physical": 11,
+          "max_diff": 4.289901767151605e-13
+        },
+        {
+          "graph": "theta",
+          "jmax": 1.5,
+          "spin_network_states": 23,
+          "brute_force_dim": 27000,
+          "brute_force_physical": 23,
+          "max_diff": 1.6324719354088302e-12
+        }
+      ],
+      "pass_": true
+    },
+    "v4": {
+      "samples": 6,
+      "max_change_under_gauge": 2.7024319392315048e-15,
+      "typical_amplitude": 1.593670443668737,
+      "pass_": true
+    },
+    "v5": {
+      "cases": [
+        {
+          "graph": "ladder2",
+          "jmax": 2.0,
+          "states": 42,
+          "commutator_interior": 6.661338147750939e-16,
+          "max_abs_eigenvalue_trU": 1.7320508075688776
+        },
+        {
+          "graph": "ladder3",
+          "jmax": 1.5,
+          "states": 187,
+          "commutator_interior": 3.3306690738754696e-16,
+          "max_abs_eigenvalue_trU": 1.618033988749897
+        },
+        {
+          "graph": "ring3",
+          "jmax": 1.5,
+          "states": 1618,
+          "commutator_interior": 3.3306690738754696e-16,
+          "max_abs_eigenvalue_trU": 1.6180339887498951
+        }
+      ],
+      "pass_": true
+    }
+  },
+  "bounded_new_ladder_rows": [
+    {
+      "p": 1,
+      "jmax": 1.0,
+      "states": 3,
+      "g2": 1.0,
+      "E0": 2.356841319128895,
+      "E0_per_plaquette": 2.356841319128895,
+      "gap": 3.4772582977665847,
+      "gap_electric": 1.5,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5362675570255742,
+      "gap_semigroup": 3.4772582977665807,
+      "sublevel_radius_sampled_max": 0.5362675520321216,
+      "sublevel_radius_attained": 0.5362675570255745
+    },
+    {
+      "p": 1,
+      "jmax": 1.0,
+      "states": 3,
+      "g2": 2.0,
+      "E0": 1.6868054739785014,
+      "E0_per_plaquette": 1.6868054739785014,
+      "gap": 3.4293465527529134,
+      "gap_electric": 3.0,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5400006872099694,
+      "gap_semigroup": 3.429346552752911,
+      "sublevel_radius_sampled_max": 0.5400005626726382,
+      "sublevel_radius_attained": 0.5400006872099696
+    },
+    {
+      "p": 1,
+      "jmax": 1.5,
+      "states": 4,
+      "g2": 1.0,
+      "E0": 2.33406299552903,
+      "E0_per_plaquette": 2.33406299552903,
+      "gap": 3.2849091596805167,
+      "gap_electric": 1.5,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5517448878396893,
+      "gap_semigroup": 3.284909159680513,
+      "sublevel_radius_sampled_max": 0.5504105920190014,
+      "sublevel_radius_attained": 0.5517448878396894
+    },
+    {
+      "p": 1,
+      "jmax": 1.5,
+      "states": 4,
+      "g2": 2.0,
+      "E0": 1.6867204878144493,
+      "E0_per_plaquette": 1.6867204878144493,
+      "gap": 3.4263012146250658,
+      "gap_electric": 3.0,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5402406134936858,
+      "gap_semigroup": 3.426301214625067,
+      "sublevel_radius_sampled_max": 0.5394872644372558,
+      "sublevel_radius_attained": 0.5402406134936856
+    },
+    {
+      "p": 2,
+      "jmax": 1.0,
+      "states": 11,
+      "g2": 1.0,
+      "E0": 4.855403811419828,
+      "E0_per_plaquette": 2.427701905709914,
+      "gap": 3.2849357040080616,
+      "gap_electric": 1.5,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.551742658613925,
+      "gap_semigroup": 3.2849357040080616,
+      "sublevel_radius_sampled_max": 0.5021635627886208,
+      "sublevel_radius_attained": 0.5517426586139249
+    },
+    {
+      "p": 2,
+      "jmax": 1.0,
+      "states": 11,
+      "g2": 2.0,
+      "E0": 3.3738082059067094,
+      "E0_per_plaquette": 1.6869041029533547,
+      "gap": 3.382754112532545,
+      "gap_electric": 3.0,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5437068250445564,
+      "gap_semigroup": 3.3827541125325467,
+      "sublevel_radius_sampled_max": 0.4976651039747847,
+      "sublevel_radius_attained": 0.543706825044556
+    },
+    {
+      "p": 2,
+      "jmax": 1.5,
+      "states": 23,
+      "g2": 1.0,
+      "E0": 4.67679426100798,
+      "E0_per_plaquette": 2.33839713050399,
+      "gap": 3.1144753694842224,
+      "gap_electric": 1.5,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5666404186705641,
+      "gap_semigroup": 3.1144753694842247,
+      "sublevel_radius_sampled_max": 0.4106337535267419,
+      "sublevel_radius_attained": 0.5666404186705641
+    },
+    {
+      "p": 2,
+      "jmax": 1.5,
+      "states": 23,
+      "g2": 2.0,
+      "E0": 3.3722260379487348,
+      "E0_per_plaquette": 1.6861130189743674,
+      "gap": 3.3551682617961185,
+      "gap_electric": 3.0,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5459374005286123,
+      "gap_semigroup": 3.3551682617961185,
+      "sublevel_radius_sampled_max": 0.37874714535527165,
+      "sublevel_radius_attained": 0.5459374005286123
+    },
+    {
+      "p": 3,
+      "jmax": 1.0,
+      "states": 49,
+      "g2": 1.0,
+      "E0": 7.329609473018182,
+      "E0_per_plaquette": 2.4432031576727273,
+      "gap": 3.2471919402383005,
+      "gap_electric": 1.5,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5549399872090293,
+      "gap_semigroup": 3.2471919402383005,
+      "sublevel_radius_sampled_max": 0.3681190963076982,
+      "sublevel_radius_attained": 0.5549399872090294
+    },
+    {
+      "p": 3,
+      "jmax": 1.0,
+      "states": 49,
+      "g2": 2.0,
+      "E0": 5.060766015788759,
+      "E0_per_plaquette": 1.6869220052629197,
+      "gap": 3.3585958451476996,
+      "gap_electric": 3.0,
+      "seconds": 0.0,
+      "sublevel_radius_E1": 0.5456587537822144,
+      "gap_semigroup": 3.358595845147696,
+      "sublevel_radius_sampled_max": 0.34572605057379147,
+      "sublevel_radius_attained": 0.5456587537822147
+    }
+  ],
+  "replayed_reflection": {
+    "p": 3,
+    "jmax": 2.0,
+    "states": 590,
+    "wilson_lambda": [
+      1.0,
+      0.43312742672231175,
+      0.13374514655537642,
+      0.0318919870561823,
+      0.006177198330647276
+    ],
+    "wilson_vs_bessel_max_rel_err": 4.218847493575595e-15,
+    "wilson": {
+      "lambda_min": 0.006177198330647276,
+      "gram_min_eigenvalue": -1.1917706838823834e-20,
+      "rounding_bound": 1.430226938190198e-14,
+      "psd_certified": true
+    },
+    "states_with_negative_kinetic_weight": 290,
+    "gate_negative_adjoint": {
+      "betaF": 2.0,
+      "betaA": -2.0,
+      "lambda": [
+        1.0,
+        0.25736144147758167,
+        -0.08542455131693247,
+        -0.06365824697591342,
+        0.0023692637672649663
+      ],
+      "gram_min_eigenvalue": -1.1480369901808053e-07,
+      "rounding_bound": 1.4000132817549541e-14,
+      "caught": true
+    },
+    "pass_": true
+  },
+  "reflection_warnings": [
+    "The occurrence of roundoff error is detected, which prevents \n  the requested tolerance from being achieved.  The error may be \n  underestimated."
+  ],
+  "earlier_gate_witnesses": {
+    "wrong_shift": {
+      "submitted_receipt_ok": true,
+      "residual_to_expected": [
+        1000.0000067564786,
+        999.9999628733501
+      ]
+    },
+    "stale_pass": {
+      "failed_process_exit": 1,
+      "receipt_unchanged": true,
+      "receipt_still_says_ok": true
+    }
+  },
+  "small_counterexamples": {
+    "complex_graph": {
+      "lhs": [
+        0.9999999999999998,
+        0.0
+      ],
+      "rhs_as_written": [
+        0.0,
+        -0.9999999999999998
+      ],
+      "rhs_modulus_squared": 1.0,
+      "signed_state_measure": [
+        0.5,
+        0.5
+      ]
+    },
+    "psd_label": {
+      "negative_eigenvalue": -1e-15,
+      "accepted_as_certified": true,
+      "tolerance": 4.440892098500626e-15
+    },
+    "projector_profile": {
+      "sine_amplitudes": [
+        0.7071067811865476,
+        1.0,
+        0.7071067811865476
+      ],
+      "diagonal_intensities": [
+        0.5000000000000001,
+        1.0,
+        0.5000000000000001
+      ],
+      "correct_edge_weight": 0.5000000000000001,
+      "edge_weight_if_intensities_are_squared_again": 0.3333333333333335,
+      "opposite_parities_have_identical_diagonal_intensities": true
+    }
+  },
+  "lattice_reducer_witnesses": {
+    "fixture_kind": "committed fixture replay with deliberate corruption, NOT measured physics",
+    "failed_validation_still_enters_physics": true,
+    "collapsed_gap": {
+      "injected_p5_gap": 1e-12,
+      "submitted_receipt_ok": true,
+      "volume_check_pass": true
+    }
+  },
+  "winding_control": {
+    "p": 3,
+    "jmax": 0.5,
+    "states": 16,
+    "sector_counts": {
+      "even": 8,
+      "odd": 8
+    },
+    "max_cross_sector_plaquette_entry": 0.0,
+    "electric_odd_min_over_g_squared": 1.125,
+    "electric_even_nonzero_min_over_g_squared": 1.5,
+    "scope": "electric-only and selection-rule control; no finite-coupling ring gap claim"
+  },
+  "scope_exclusions": [
+    "large p=4,5 production rerun",
+    "new preregistered excitation profiles or scores",
+    "Lean rebuild",
+    "Rust engine suite",
+    "live GIGI server",
+    "continuum proof"
+  ],
+  "status": "ADVERSARIAL_FINDINGS_REPRODUCED_NOT_SCIENTIFIC_GATE_PASS",
+  "hash_contract": "SHA256 of text with CRLF normalized to LF, matching Git blobs",
+  "audit_script_sha256": "4e060c646f6e73635add87382ed2424a5b3e243106523a41a03d38dd3a633f6d",
+  "evidence_sha256": {
+    "replay.log": "e96c5d316f8107de0bb63db3bb461847bebec3952f52a6baf1e78ba877a66af4",
+    "plaquette-baseline.json": "a45bb6fc503ffcdd44ad7d100ac23c760fae63f901400e07c872387e77127874",
+    "wrong-shift-submitted-receipt.json": "b0c1e672ee6c0092e2f2daca13479515ef9f679c690af0159d16db99b3a72f0e",
+    "stale-submitted-receipt.json": "03791f9a1a37c6a515d06ee5fb326e85d3b1e7bd3cd9fd00e39e76b15096c433",
+    "collapsed-gap-reducer-receipt.json": "5c45307e9a0be51205f04630f8322cf498bf6ae95840750dab7b38c6879dffb2"
+  },
+  "prior_cell_receipt": {
+    "origin": "earlier 63588263 replay, not rerun here",
+    "sha256": "8120bde8edd7a8097835cb585d1f22499f5c3d994541644f0bc33c25bdd6cd7b"
+  }
+}

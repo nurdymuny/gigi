@@ -1,0 +1,777 @@
+{
+ "note": "docs/research/yang-mills-geometric-identities-2026-11-23.md, Sections 5, 7, 9, 10",
+ "model": "Kogut-Susskind SU(2) on ladders of p plaquettes, lattice units, link spins <= jmax",
+ "V1": {
+  "product_rule": 2.5989654674417885e-15,
+  "inverse_link": 4.440892098500626e-16,
+  "gauge_generators": 1.1546319456101628e-14,
+  "pass": true
+ },
+ "V2": {
+  "cases": [
+   {
+    "jmax": 1.0,
+    "g2": 0.5,
+    "max_diff": 1.7763568394002505e-15
+   },
+   {
+    "jmax": 1.0,
+    "g2": 1.0,
+    "max_diff": 8.881784197001252e-16
+   },
+   {
+    "jmax": 1.0,
+    "g2": 4.0,
+    "max_diff": 0.0
+   },
+   {
+    "jmax": 2.5,
+    "g2": 0.5,
+    "max_diff": 7.105427357601002e-15
+   },
+   {
+    "jmax": 2.5,
+    "g2": 1.0,
+    "max_diff": 7.105427357601002e-15
+   },
+   {
+    "jmax": 2.5,
+    "g2": 4.0,
+    "max_diff": 0.0
+   }
+  ],
+  "pass": true
+ },
+ "V3": {
+  "cases": [
+   {
+    "graph": "ladder2",
+    "jmax": 0.5,
+    "spin_network_states": 4,
+    "brute_force_dim": 78125,
+    "brute_force_physical": 4,
+    "max_diff": 5.737632591262809e-13
+   },
+   {
+    "graph": "theta",
+    "jmax": 1.0,
+    "spin_network_states": 11,
+    "brute_force_dim": 2744,
+    "brute_force_physical": 11,
+    "max_diff": 3.659295089164516e-13
+   },
+   {
+    "graph": "theta",
+    "jmax": 1.5,
+    "spin_network_states": 23,
+    "brute_force_dim": 27000,
+    "brute_force_physical": 23,
+    "max_diff": 1.4317436125566019e-12
+   }
+  ],
+  "pass": true
+ },
+ "V4": {
+  "samples": 6,
+  "max_change_under_gauge": 3.071598968108665e-15,
+  "typical_amplitude": 1.5936704436687013,
+  "pass": true
+ },
+ "V5": {
+  "cases": [
+   {
+    "graph": "ladder2",
+    "jmax": 2.0,
+    "states": 42,
+    "commutator_interior": 8.881784197001252e-16,
+    "max_abs_eigenvalue_trU": 1.7320508075688767
+   },
+   {
+    "graph": "ladder3",
+    "jmax": 1.5,
+    "states": 187,
+    "commutator_interior": 4.440892098500626e-16,
+    "max_abs_eigenvalue_trU": 1.6180339887498958
+   },
+   {
+    "graph": "ring3",
+    "jmax": 1.5,
+    "states": 1618,
+    "commutator_interior": 9.992007221626409e-16,
+    "max_abs_eigenvalue_trU": 1.6180339887498947
+   }
+  ],
+  "pass": true
+ },
+ "table": [
+  {
+   "p": 1,
+   "jmax": 1.5,
+   "states": 4,
+   "g2": 1.0,
+   "E0": 2.33406299552903,
+   "E0_per_plaquette": 2.33406299552903,
+   "gap": 3.2849091596805158,
+   "gap_electric": 1.5,
+   "seconds": 0.0,
+   "sublevel_radius_E1": 0.5517448878396893,
+   "gap_semigroup": 3.284909159680515,
+   "sublevel_radius_sampled_max": 0.5508259042504993,
+   "sublevel_radius_attained": 0.5517448878396896
+  },
+  {
+   "p": 1,
+   "jmax": 1.5,
+   "states": 4,
+   "g2": 2.0,
+   "E0": 1.6867204878144493,
+   "E0_per_plaquette": 1.6867204878144493,
+   "gap": 3.426301214625065,
+   "gap_electric": 3.0,
+   "seconds": 0.0,
+   "sublevel_radius_E1": 0.5402406134936859,
+   "gap_semigroup": 3.426301214625068,
+   "sublevel_radius_sampled_max": 0.5397256957009827,
+   "sublevel_radius_attained": 0.5402406134936857
+  },
+  {
+   "p": 1,
+   "jmax": 2.0,
+   "states": 5,
+   "g2": 1.0,
+   "E0": 2.3332494624473004,
+   "E0_per_plaquette": 2.3332494624473004,
+   "gap": 3.269521461207825,
+   "gap_electric": 1.5,
+   "seconds": 0.0,
+   "sublevel_radius_E1": 0.5530417317447243,
+   "gap_semigroup": 3.2695214612078303,
+   "sublevel_radius_sampled_max": 0.5515939226129253,
+   "sublevel_radius_attained": 0.5530417317447239
+  },
+  {
+   "p": 1,
+   "jmax": 2.0,
+   "states": 5,
+   "g2": 2.0,
+   "E0": 1.6867202570681208,
+   "E0_per_plaquette": 1.6867202570681208,
+   "gap": 3.4262885848956,
+   "gap_electric": 3.0,
+   "seconds": 0.0,
+   "sublevel_radius_E1": 0.5402416091900988,
+   "gap_semigroup": 3.4262885848956035,
+   "sublevel_radius_sampled_max": 0.5298982692960365,
+   "sublevel_radius_attained": 0.5402416091900984
+  },
+  {
+   "p": 1,
+   "jmax": 2.5,
+   "states": 6,
+   "g2": 1.0,
+   "E0": 2.3332363914962184,
+   "E0_per_plaquette": 2.3332363914962184,
+   "gap": 3.2691041277452473,
+   "gap_electric": 1.5,
+   "seconds": 0.0,
+   "sublevel_radius_E1": 0.5530770312405869,
+   "gap_semigroup": 3.26910412774525,
+   "sublevel_radius_sampled_max": 0.5192408909889615,
+   "sublevel_radius_attained": 0.5530770312405868
+  },
+  {
+   "p": 1,
+   "jmax": 2.5,
+   "states": 6,
+   "g2": 2.0,
+   "E0": 1.686720256798323,
+   "E0_per_plaquette": 1.686720256798323,
+   "gap": 3.426288565747484,
+   "gap_electric": 3.0,
+   "seconds": 0.0,
+   "sublevel_radius_E1": 0.5402416106996927,
+   "gap_semigroup": 3.4262885657474818,
+   "sublevel_radius_sampled_max": 0.5213769230848795,
+   "sublevel_radius_attained": 0.5402416106996928
+  },
+  {
+   "p": 2,
+   "jmax": 1.5,
+   "states": 23,
+   "g2": 1.0,
+   "E0": 4.67679426100798,
+   "E0_per_plaquette": 2.33839713050399,
+   "gap": 3.114475369484224,
+   "gap_electric": 1.5,
+   "seconds": 0.0,
+   "sublevel_radius_E1": 0.566640418670564,
+   "gap_semigroup": 3.1144753694842278,
+   "sublevel_radius_sampled_max": 0.41164610986165723,
+   "sublevel_radius_attained": 0.5666404186705639
+  },
+  {
+   "p": 2,
+   "jmax": 1.5,
+   "states": 23,
+   "g2": 2.0,
+   "E0": 3.3722260379487357,
+   "E0_per_plaquette": 1.6861130189743678,
+   "gap": 3.3551682617961176,
+   "gap_electric": 3.0,
+   "seconds": 0.1,
+   "sublevel_radius_E1": 0.5459374005286124,
+   "gap_semigroup": 3.355168261796117,
+   "sublevel_radius_sampled_max": 0.38241528655060675,
+   "sublevel_radius_attained": 0.5459374005286125
+  },
+  {
+   "p": 2,
+   "jmax": 2.0,
+   "states": 42,
+   "g2": 1.0,
+   "E0": 4.653689608419607,
+   "E0_per_plaquette": 2.3268448042098036,
+   "gap": 3.069424442430684,
+   "gap_electric": 1.5,
+   "seconds": 0.1,
+   "sublevel_radius_E1": 0.5707836527423102,
+   "gap_semigroup": 3.069424442430682,
+   "sublevel_radius_sampled_max": 0.32533273911623856,
+   "sublevel_radius_attained": 0.5707836527423104
+  },
+  {
+   "p": 2,
+   "jmax": 2.0,
+   "states": 42,
+   "g2": 2.0,
+   "E0": 3.3722065868544147,
+   "E0_per_plaquette": 1.6861032934272073,
+   "gap": 3.3545893833556737,
+   "gap_electric": 3.0,
+   "seconds": 0.1,
+   "sublevel_radius_E1": 0.5459845028297019,
+   "gap_semigroup": 3.3545893833556715,
+   "sublevel_radius_sampled_max": 0.27555764930775045,
+   "sublevel_radius_attained": 0.5459845028297019
+  },
+  {
+   "p": 2,
+   "jmax": 2.5,
+   "states": 69,
+   "g2": 1.0,
+   "E0": 4.652048811360359,
+   "E0_per_plaquette": 2.3260244056801795,
+   "gap": 3.0625027401417917,
+   "gap_electric": 1.5,
+   "seconds": 12.7,
+   "sublevel_radius_E1": 0.5714283157886925,
+   "gap_semigroup": 3.0625027401417886,
+   "sublevel_radius_sampled_max": 0.27576219947892755,
+   "sublevel_radius_attained": 0.5714283157886926
+  },
+  {
+   "p": 2,
+   "jmax": 2.5,
+   "states": 69,
+   "g2": 2.0,
+   "E0": 3.3722064708779085,
+   "E0_per_plaquette": 1.6861032354389542,
+   "gap": 3.3545845394091094,
+   "gap_electric": 3.0,
+   "seconds": 12.7,
+   "sublevel_radius_E1": 0.5459848970243883,
+   "gap_semigroup": 3.354584539409112,
+   "sublevel_radius_sampled_max": 0.24190704803721932,
+   "sublevel_radius_attained": 0.5459848970243885
+  },
+  {
+   "p": 3,
+   "jmax": 1.5,
+   "states": 187,
+   "g2": 1.0,
+   "E0": 7.018012776361221,
+   "E0_per_plaquette": 2.339337592120407,
+   "gap": 3.032184222541918,
+   "gap_electric": 1.5,
+   "seconds": 0.5,
+   "sublevel_radius_E1": 0.5742780382908321,
+   "gap_semigroup": 3.0321842225419235,
+   "sublevel_radius_sampled_max": 0.28305621499943084,
+   "sublevel_radius_attained": 0.5742780382908316
+  },
+  {
+   "p": 3,
+   "jmax": 1.5,
+   "states": 187,
+   "g2": 2.0,
+   "E0": 5.057713592045041,
+   "E0_per_plaquette": 1.6859045306816804,
+   "gap": 3.318983609264923,
+   "gap_electric": 3.0,
+   "seconds": 0.7,
+   "sublevel_radius_E1": 0.5489053278092134,
+   "gap_semigroup": 3.3189836092649183,
+   "sublevel_radius_sampled_max": 0.24080486726224937,
+   "sublevel_radius_attained": 0.5489053278092141
+  },
+  {
+   "p": 3,
+   "jmax": 2.0,
+   "states": 590,
+   "g2": 1.0,
+   "E0": 6.973693927819902,
+   "E0_per_plaquette": 2.3245646426066338,
+   "gap": 2.965908519145877,
+   "gap_electric": 1.5,
+   "seconds": 2.2,
+   "sublevel_radius_E1": 0.5806589497768451,
+   "gap_semigroup": 2.965908519145874,
+   "sublevel_radius_sampled_max": 0.231547320123124,
+   "sublevel_radius_attained": 0.5806589497768455
+  },
+  {
+   "p": 3,
+   "jmax": 2.0,
+   "states": 590,
+   "g2": 2.0,
+   "E0": 5.057674548870756,
+   "E0_per_plaquette": 1.6858915162902521,
+   "gap": 3.31810328704485,
+   "gap_electric": 3.0,
+   "seconds": 3.4,
+   "sublevel_radius_E1": 0.5489781377052637,
+   "gap_semigroup": 3.3181032870448584,
+   "sublevel_radius_sampled_max": 0.18762007280307286,
+   "sublevel_radius_attained": 0.5489781377052636
+  },
+  {
+   "p": 3,
+   "jmax": 2.5,
+   "states": 1523,
+   "g2": 1.0,
+   "E0": 6.970343084263829,
+   "E0_per_plaquette": 2.3234476947546097,
+   "gap": 2.954827356263154,
+   "gap_electric": 1.5,
+   "seconds": 6.2,
+   "sublevel_radius_E1": 0.5817467214770072
+  },
+  {
+   "p": 3,
+   "jmax": 2.5,
+   "states": 1523,
+   "g2": 2.0,
+   "E0": 5.057674312747013,
+   "E0_per_plaquette": 1.6858914375823375,
+   "gap": 3.318095778145066,
+   "gap_electric": 3.0,
+   "seconds": 6.2,
+   "sublevel_radius_E1": 0.5489787588777318
+  },
+  {
+   "p": 4,
+   "jmax": 1.5,
+   "states": 1690,
+   "g2": 1.0,
+   "E0": 9.35924129557838,
+   "E0_per_plaquette": 2.339810323894595,
+   "gap": 2.995113005284379,
+   "gap_electric": 1.5,
+   "seconds": 6.5,
+   "sublevel_radius_E1": 0.5778210957853137
+  },
+  {
+   "p": 4,
+   "jmax": 1.5,
+   "states": 1690,
+   "g2": 2.0,
+   "E0": 6.743200842732743,
+   "E0_per_plaquette": 1.6858002106831858,
+   "gap": 3.3032118484589086,
+   "gap_electric": 3.0,
+   "seconds": 6.6,
+   "sublevel_radius_E1": 0.550214189410762
+  },
+  {
+   "p": 4,
+   "jmax": 2.0,
+   "states": 9536,
+   "g2": 1.0,
+   "E0": 9.293681231951625,
+   "E0_per_plaquette": 2.3234203079879063,
+   "gap": 2.91693140875196,
+   "gap_electric": 1.5,
+   "seconds": 36.3,
+   "sublevel_radius_E1": 0.5855134712194088
+  },
+  {
+   "p": 4,
+   "jmax": 2.0,
+   "states": 9536,
+   "g2": 2.0,
+   "E0": 6.743142197449528,
+   "E0_per_plaquette": 1.685785549362382,
+   "gap": 3.302199274010089,
+   "gap_electric": 3.0,
+   "seconds": 36.6,
+   "sublevel_radius_E1": 0.5502985407900393
+  },
+  {
+   "p": 4,
+   "jmax": 2.5,
+   "states": 39471,
+   "g2": 1.0,
+   "E0": 9.2886146258208,
+   "E0_per_plaquette": 2.3221536564552,
+   "gap": 2.9039139031443764,
+   "gap_electric": 1.5,
+   "seconds": 128.4,
+   "sublevel_radius_E1": 0.5868243575704202
+  },
+  {
+   "p": 4,
+   "jmax": 2.5,
+   "states": 39471,
+   "g2": 2.0,
+   "E0": 6.743141841064178,
+   "E0_per_plaquette": 1.6857854602660445,
+   "gap": 3.3021905671501894,
+   "gap_electric": 3.0,
+   "seconds": 129.4,
+   "sublevel_radius_E1": 0.5502992662734786
+  },
+  {
+   "p": 5,
+   "jmax": 1.5,
+   "states": 15675,
+   "g2": 1.0,
+   "E0": 11.700468744828543,
+   "E0_per_plaquette": 2.3400937489657085,
+   "gap": 1e-12,
+   "gap_electric": 1.5,
+   "seconds": 48.5,
+   "sublevel_radius_E1": 1000000.0
+  },
+  {
+   "p": 5,
+   "jmax": 1.5,
+   "states": 15675,
+   "g2": 2.0,
+   "E0": 8.428688088172805,
+   "E0_per_plaquette": 1.685737617634561,
+   "gap": 1e-12,
+   "gap_electric": 3.0,
+   "seconds": 48.9,
+   "sublevel_radius_E1": 1000000.0
+  },
+  {
+   "p": 5,
+   "jmax": 2.0,
+   "states": 158400,
+   "g2": 1.0,
+   "E0": 11.613667790089268,
+   "E0_per_plaquette": 2.3227335580178536,
+   "gap": 1e-12,
+   "gap_electric": 1.5,
+   "seconds": 546.8,
+   "sublevel_radius_E1": 1000000.0
+  },
+  {
+   "p": 5,
+   "jmax": 2.0,
+   "states": 158400,
+   "g2": 2.0,
+   "E0": 8.428609840561908,
+   "E0_per_plaquette": 1.6857219681123816,
+   "gap": 1e-12,
+   "gap_electric": 3.0,
+   "seconds": 552.7,
+   "sublevel_radius_E1": 1000000.0
+  }
+ ],
+ "P1_regulator": {
+  "rows": [
+   {
+    "p": 1,
+    "g2": 1.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 0.00012764359173944584
+   },
+   {
+    "p": 1,
+    "g2": 2.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 5.588588258831351e-09
+   },
+   {
+    "p": 2,
+    "g2": 1.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 0.0022550489248762684
+   },
+   {
+    "p": 2,
+    "g2": 2.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 1.443976001436198e-06
+   },
+   {
+    "p": 3,
+    "g2": 1.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 0.003736178243931243
+   },
+   {
+    "p": 3,
+    "g2": 2.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 2.2630096576659042e-06
+   },
+   {
+    "p": 4,
+    "g2": 1.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 0.004462739702595031
+   },
+   {
+    "p": 4,
+    "g2": 2.0,
+    "jmax": [
+     2.0,
+     2.5
+    ],
+    "gap_rel_change": 2.6366851837433813e-06
+   },
+   {
+    "p": 5,
+    "g2": 1.0,
+    "jmax": [
+     1.5,
+     2.0
+    ],
+    "gap_rel_change": 0.0
+   },
+   {
+    "p": 5,
+    "g2": 2.0,
+    "jmax": [
+     1.5,
+     2.0
+    ],
+    "gap_rel_change": 0.0
+   }
+  ],
+  "pass": true
+ },
+ "P2_volume": {
+  "rows": [
+   {
+    "g2": 1.0,
+    "p": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "gap": [
+     3.2691041277452473,
+     3.0625027401417917,
+     2.954827356263154,
+     2.9039139031443764,
+     1e-12
+    ],
+    "radius": [
+     0.5530770312405869,
+     0.5714283157886925,
+     0.5817467214770072,
+     0.5868243575704202,
+     1000000.0
+    ],
+    "E0_per_plaquette": [
+     2.3332363914962184,
+     2.3260244056801795,
+     2.3234476947546097,
+     2.3221536564552,
+     2.3227335580178536
+    ],
+    "min_gap": 1e-12
+   },
+   {
+    "g2": 2.0,
+    "p": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "gap": [
+     3.426288565747484,
+     3.3545845394091094,
+     3.318095778145066,
+     3.3021905671501894,
+     1e-12
+    ],
+    "radius": [
+     0.5402416106996927,
+     0.5459848970243883,
+     0.5489787588777318,
+     0.5502992662734786,
+     1000000.0
+    ],
+    "E0_per_plaquette": [
+     1.686720256798323,
+     1.6861032354389542,
+     1.6858914375823375,
+     1.6857854602660445,
+     1.6857219681123816
+    ],
+    "min_gap": 1e-12
+   }
+  ],
+  "pass": true
+ },
+ "P3_three_ways": {
+  "cases": 16,
+  "max_semigroup_rel_err": 2.4424906541753444e-15,
+  "max_radius_attained_rel_err": 1.1102230246251565e-15,
+  "sampled_never_exceeds": true,
+  "pass": true
+ },
+ "P4_electric_vs_full": {
+  "rows": [
+   {
+    "p": 1,
+    "jmax": 2.0,
+    "g2": 1.0,
+    "gap": 3.269521461207825,
+    "gap_electric": 1.5
+   },
+   {
+    "p": 1,
+    "jmax": 2.0,
+    "g2": 2.0,
+    "gap": 3.4262885848956,
+    "gap_electric": 3.0
+   },
+   {
+    "p": 2,
+    "jmax": 2.0,
+    "g2": 1.0,
+    "gap": 3.069424442430684,
+    "gap_electric": 1.5
+   },
+   {
+    "p": 2,
+    "jmax": 2.0,
+    "g2": 2.0,
+    "gap": 3.3545893833556737,
+    "gap_electric": 3.0
+   },
+   {
+    "p": 3,
+    "jmax": 2.0,
+    "g2": 1.0,
+    "gap": 2.965908519145877,
+    "gap_electric": 1.5
+   },
+   {
+    "p": 3,
+    "jmax": 2.0,
+    "g2": 2.0,
+    "gap": 3.31810328704485,
+    "gap_electric": 3.0
+   },
+   {
+    "p": 4,
+    "jmax": 2.0,
+    "g2": 1.0,
+    "gap": 2.91693140875196,
+    "gap_electric": 1.5
+   },
+   {
+    "p": 4,
+    "jmax": 2.0,
+    "g2": 2.0,
+    "gap": 3.302199274010089,
+    "gap_electric": 3.0
+   },
+   {
+    "p": 5,
+    "jmax": 2.0,
+    "g2": 1.0,
+    "gap": 1e-12,
+    "gap_electric": 1.5
+   },
+   {
+    "p": 5,
+    "jmax": 2.0,
+    "g2": 2.0,
+    "gap": 1e-12,
+    "gap_electric": 3.0
+   }
+  ],
+  "differ_everywhere": true,
+  "pass": true
+ },
+ "P5_reflection": {
+  "p": 3,
+  "jmax": 2.0,
+  "states": 590,
+  "wilson_lambda": [
+   1.0,
+   0.43312742672231175,
+   0.13374514655537642,
+   0.031891987056182285,
+   0.006177198330647269
+  ],
+  "wilson_vs_bessel_max_rel_err": 3.1086244689504383e-15,
+  "wilson": {
+   "lambda_min": 0.006177198330647269,
+   "gram_min_eigenvalue": -3.686706498622878e-21,
+   "rounding_bound": 1.4302269381902046e-14,
+   "psd_certified": true
+  },
+  "states_with_negative_kinetic_weight": 290,
+  "gate_negative_adjoint": {
+   "betaF": 2.0,
+   "betaA": -2.0,
+   "lambda": [
+    1.0,
+    0.25736144147758167,
+    -0.08542455131693247,
+    -0.06365824697591342,
+    0.0023692637672649776
+   ],
+   "gram_min_eigenvalue": -1.14803699018579e-07,
+   "rounding_bound": 1.4000132817549588e-14,
+   "caught": true
+  },
+  "pass": true
+ },
+ "all_pass": true,
+ "all_gates_caught": true,
+ "ok": true
+}

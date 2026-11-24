@@ -1,0 +1,272 @@
+{
+ "note": "docs/research/yang-mills-geometric-identities-2026-11-23.md, Section 1",
+ "data_root_note": "frozen inputs of Reading the Curve (archived checkpoint)",
+ "cells": [
+  {
+   "level": 0,
+   "n": 1,
+   "rings": 1,
+   "cells": 120,
+   "exactness_max": 1.8358166060594087e-14,
+   "committed_amplification_max_rel_err": 9.547918011776346e-15,
+   "amplification_over_inverse_sigma_min": [
+    1.1127360564786202,
+    1.1127856432467622
+   ],
+   "weakest_direction_B_share": [
+    0.9808559967355447,
+    0.9809622823544777
+   ],
+   "metric_transported_max_rel_err": 1.2212453270876722e-14,
+   "raw_condition_change": [
+    2.5536250674637686,
+    2.5542842377489605
+   ],
+   "pass": true,
+   "paper_claim_1.03_to_1.13": {
+    "range": [
+     1.1127,
+     1.1128
+    ],
+    "pass": true
+   },
+   "gate_raw_coefficient_length": {
+    "condition_ratio_range": [
+     2.5536250674637686,
+     2.5542842377489605
+    ],
+    "caught": true
+   }
+  },
+  {
+   "level": 0,
+   "n": 1,
+   "rings": 2,
+   "cells": 120,
+   "exactness_max": 7.576029262498472e-15,
+   "committed_amplification_max_rel_err": 3.552713678800501e-15,
+   "amplification_over_inverse_sigma_min": [
+    1.992472077970381,
+    1.9930669396510137
+   ],
+   "weakest_direction_B_share": [
+    0.9935320716440199,
+    0.9939378917460703
+   ],
+   "metric_transported_max_rel_err": 2.1094237467877974e-15,
+   "raw_condition_change": [
+    2.5317332513947024,
+    2.5342902364019024
+   ],
+   "pass": true,
+   "gate_raw_coefficient_length": {
+    "condition_ratio_range": [
+     2.5317332513947024,
+     2.5342902364019024
+    ],
+    "caught": true
+   }
+  },
+  {
+   "level": 1,
+   "n": 2,
+   "rings": 1,
+   "cells": 960,
+   "exactness_max": 2.222379424874312e-14,
+   "committed_amplification_max_rel_err": 9.769962616701378e-15,
+   "amplification_over_inverse_sigma_min": [
+    1.069347503855831,
+    1.1256915750589715
+   ],
+   "weakest_direction_B_share": [
+    0.9804663069773394,
+    0.9999732708409156
+   ],
+   "metric_transported_max_rel_err": 1.4432899320127035e-14,
+   "raw_condition_change": [
+    4.936019416233828,
+    5.283832049672657
+   ],
+   "pass": true,
+   "paper_claim_1.03_to_1.13": {
+    "range": [
+     1.0693,
+     1.1257
+    ],
+    "pass": true
+   },
+   "gate_raw_coefficient_length": {
+    "condition_ratio_range": [
+     4.936019416233828,
+     5.283832049672657
+    ],
+    "caught": true
+   }
+  },
+  {
+   "level": 1,
+   "n": 2,
+   "rings": 2,
+   "cells": 960,
+   "exactness_max": 9.762914958311178e-15,
+   "committed_amplification_max_rel_err": 4.884981308350689e-15,
+   "amplification_over_inverse_sigma_min": [
+    1.4690839738699206,
+    2.164648407409171
+   ],
+   "weakest_direction_B_share": [
+    0.9951475191826894,
+    0.9998070961267942
+   ],
+   "metric_transported_max_rel_err": 2.6645352591003757e-15,
+   "raw_condition_change": [
+    4.918080806816474,
+    5.117249376773704
+   ],
+   "pass": true,
+   "gate_raw_coefficient_length": {
+    "condition_ratio_range": [
+     4.918080806816474,
+     5.117249376773704
+    ],
+    "caught": true
+   }
+  },
+  {
+   "level": 2,
+   "n": 3,
+   "rings": 1,
+   "cells": 3240,
+   "exactness_max": 4.633066507725259e-14,
+   "committed_amplification_max_rel_err": 9.325873406851315e-15,
+   "amplification_over_inverse_sigma_min": [
+    1.0255466744215094,
+    1.1256092946425558
+   ],
+   "weakest_direction_B_share": [
+    0.9803740138646053,
+    0.9999979712832029
+   ],
+   "metric_transported_max_rel_err": 1.1435297153639112e-14,
+   "raw_condition_change": [
+    7.343232756540333,
+    8.07348154296332
+   ],
+   "pass": true,
+   "paper_claim_1.03_to_1.13": {
+    "range": [
+     1.0255,
+     1.1256
+    ],
+    "pass": true
+   },
+   "gate_raw_coefficient_length": {
+    "condition_ratio_range": [
+     7.343232756540333,
+     8.07348154296332
+    ],
+    "caught": true
+   }
+  },
+  {
+   "level": 2,
+   "n": 3,
+   "rings": 2,
+   "cells": 3240,
+   "exactness_max": 1.470991889458675e-14,
+   "committed_amplification_max_rel_err": 9.103828801926284e-15,
+   "amplification_over_inverse_sigma_min": [
+    1.0651508132476668,
+    2.1668227954426715
+   ],
+   "weakest_direction_B_share": [
+    0.9951214670880304,
+    0.9999848976058243
+   ],
+   "metric_transported_max_rel_err": 3.6637359812630166e-15,
+   "raw_condition_change": [
+    7.315427453625509,
+    7.8468394721167645
+   ],
+   "pass": true,
+   "gate_raw_coefficient_length": {
+    "condition_ratio_range": [
+     7.315427453625509,
+     7.8468394721167645
+    ],
+    "caught": true
+   }
+  }
+ ],
+ "gauge": [
+  {
+   "level": 0,
+   "n": 1,
+   "edges": 142,
+   "faces": 240,
+   "cells": 120,
+   "vertices": 22,
+   "nullity_D1": 21,
+   "H1_zero": true,
+   "gauge_datum_closure_residual": 3.608479726462548e-14,
+   "recovered_from_gauge_max": 3.7685648516807805e-13,
+   "recovered_shift_max": 3.779199175824033e-13,
+   "gate_connection_read_as_physical": {
+    "cells": 40,
+    "connection_change_from_gauge_over_data": [
+     2.105871274809754,
+     23.414288770357505
+    ],
+    "caught": true
+   },
+   "observation_rival_curl_also_gauge_blind": {
+    "curl_from_gauge_over_curl_from_data": [
+     1.653178701522862e-14,
+     1.9755173336481102e-13
+    ]
+   },
+   "gate_non_closed_refused": {
+    "tried": 20,
+    "refused": 20,
+    "caught": true
+   },
+   "pass": true
+  },
+  {
+   "level": 1,
+   "n": 2,
+   "edges": 1124,
+   "faces": 1920,
+   "cells": 960,
+   "vertices": 164,
+   "nullity_D1": 163,
+   "H1_zero": true,
+   "gauge_datum_closure_residual": 2.352847143793727e-13,
+   "recovered_from_gauge_max": 1.434860009575096e-12,
+   "recovered_shift_max": 1.4350881594182852e-12,
+   "gate_connection_read_as_physical": {
+    "cells": 40,
+    "connection_change_from_gauge_over_data": [
+     0.6751814661875661,
+     18.900014068368836
+    ],
+    "caught": true
+   },
+   "observation_rival_curl_also_gauge_blind": {
+    "curl_from_gauge_over_curl_from_data": [
+     1.3164357399633348e-13,
+     2.042142422015869e-12
+    ]
+   },
+   "gate_non_closed_refused": {
+    "tried": 20,
+    "refused": 20,
+    "caught": true
+   },
+   "pass": true
+  }
+ ],
+ "all_pass": true,
+ "all_gates_caught": true,
+ "ok": true
+}

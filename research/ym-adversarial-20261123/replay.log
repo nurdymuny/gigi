@@ -1,0 +1,47 @@
+T7a {'g2': 0.25, 'N': 160, 'E0': 2.835365457764153, 'Delta': 3.838313950841048, 'radius_pred': 0.5104224323246507, 'radius_max_sampled': 0.4979101993022101, 'radius_attained': 0.5104224323246507, 'Delta_semigroup': 3.8383139508410236, 'pass': True}
+T7a {'g2': 1.0, 'N': 160, 'E0': 2.3332362820904495, 'Delta': 3.26909918552091, 'radius_pred': 0.5530774493113728, 'radius_max_sampled': 0.5062923669076345, 'radius_attained': 0.5530774493113728, 'Delta_semigroup': 3.2690991855204397, 'pass': True}
+T7a {'g2': 4.0, 'N': 160, 'E0': 0.9585123864992355, 'Delta': 6.057972654203663, 'radius_pred': 0.4062901988172581, 'radius_max_sampled': 0.33928596362677466, 'radius_attained': 0.4062901988172581, 'Delta_semigroup': 6.057972654204263, 'pass': True}
+T8 {'g2': 1.0, 'grid': 800, 'ground_state_positive': True, 'identity_max_rel_err': 8.332522494107578e-16, 'poincare_max_ratio_sampled': 5.801551594254167e-05, 'poincare_ratio_at_psi1_over_psi0': 1.0000000000000013, 'Delta_fd': 3.2690783400170123, 'Delta_character_basis': 3.269099185520625, 'pass': True}
+T8 {'g2': 4.0, 'grid': 800, 'ground_state_positive': True, 'identity_max_rel_err': 6.374132902259376e-16, 'poincare_max_ratio_sampled': 2.5686072352639062e-05, 'poincare_ratio_at_psi1_over_psi0': 1.0000000000000002, 'Delta_fd': 6.057934309183526, 'Delta_character_basis': 6.057972654204851, 'pass': True}
+T7b pass True
+T7c pass True
+T10 pass True
+T5 pass True
+gates caught: 12 / 12 | ok: True
+REPLAY v1 seconds 0.01
+REPLAY v2 seconds 0.05
+REPLAY v3 seconds 86.05
+REPLAY v4 seconds 0.49
+REPLAY v5 seconds 5.84
+{'p': 1, 'jmax': 1.0, 'states': 3, 'g2': 1.0, 'E0': 2.356841, 'E0_per_plaquette': 2.356841, 'gap': 3.477258, 'gap_electric': 1.5, 'seconds': 0.0, 'sublevel_radius_E1': 0.536268, 'gap_semigroup': 3.477258, 'sublevel_radius_sampled_max': 0.536268, 'sublevel_radius_attained': 0.536268}
+{'p': 1, 'jmax': 1.0, 'states': 3, 'g2': 2.0, 'E0': 1.686805, 'E0_per_plaquette': 1.686805, 'gap': 3.429347, 'gap_electric': 3.0, 'seconds': 0.0, 'sublevel_radius_E1': 0.540001, 'gap_semigroup': 3.429347, 'sublevel_radius_sampled_max': 0.540001, 'sublevel_radius_attained': 0.540001}
+{'p': 1, 'jmax': 1.5, 'states': 4, 'g2': 1.0, 'E0': 2.334063, 'E0_per_plaquette': 2.334063, 'gap': 3.284909, 'gap_electric': 1.5, 'seconds': 0.0, 'sublevel_radius_E1': 0.551745, 'gap_semigroup': 3.284909, 'sublevel_radius_sampled_max': 0.550411, 'sublevel_radius_attained': 0.551745}
+{'p': 1, 'jmax': 1.5, 'states': 4, 'g2': 2.0, 'E0': 1.68672, 'E0_per_plaquette': 1.68672, 'gap': 3.426301, 'gap_electric': 3.0, 'seconds': 0.0, 'sublevel_radius_E1': 0.540241, 'gap_semigroup': 3.426301, 'sublevel_radius_sampled_max': 0.539487, 'sublevel_radius_attained': 0.540241}
+{'p': 2, 'jmax': 1.0, 'states': 11, 'g2': 1.0, 'E0': 4.855404, 'E0_per_plaquette': 2.427702, 'gap': 3.284936, 'gap_electric': 1.5, 'seconds': 0.0, 'sublevel_radius_E1': 0.551743, 'gap_semigroup': 3.284936, 'sublevel_radius_sampled_max': 0.502164, 'sublevel_radius_attained': 0.551743}
+{'p': 2, 'jmax': 1.0, 'states': 11, 'g2': 2.0, 'E0': 3.373808, 'E0_per_plaquette': 1.686904, 'gap': 3.382754, 'gap_electric': 3.0, 'seconds': 0.0, 'sublevel_radius_E1': 0.543707, 'gap_semigroup': 3.382754, 'sublevel_radius_sampled_max': 0.497665, 'sublevel_radius_attained': 0.543707}
+{'p': 2, 'jmax': 1.5, 'states': 23, 'g2': 1.0, 'E0': 4.676794, 'E0_per_plaquette': 2.338397, 'gap': 3.114475, 'gap_electric': 1.5, 'seconds': 0.0, 'sublevel_radius_E1': 0.56664, 'gap_semigroup': 3.114475, 'sublevel_radius_sampled_max': 0.410634, 'sublevel_radius_attained': 0.56664}
+{'p': 2, 'jmax': 1.5, 'states': 23, 'g2': 2.0, 'E0': 3.372226, 'E0_per_plaquette': 1.686113, 'gap': 3.355168, 'gap_electric': 3.0, 'seconds': 0.0, 'sublevel_radius_E1': 0.545937, 'gap_semigroup': 3.355168, 'sublevel_radius_sampled_max': 0.378747, 'sublevel_radius_attained': 0.545937}
+{'p': 3, 'jmax': 1.0, 'states': 49, 'g2': 1.0, 'E0': 7.329609, 'E0_per_plaquette': 2.443203, 'gap': 3.247192, 'gap_electric': 1.5, 'seconds': 0.0, 'sublevel_radius_E1': 0.55494, 'gap_semigroup': 3.247192, 'sublevel_radius_sampled_max': 0.368119, 'sublevel_radius_attained': 0.55494}
+{'p': 3, 'jmax': 1.0, 'states': 49, 'g2': 2.0, 'E0': 5.060766, 'E0_per_plaquette': 1.686922, 'gap': 3.358596, 'gap_electric': 3.0, 'seconds': 0.0, 'sublevel_radius_E1': 0.545659, 'gap_semigroup': 3.358596, 'sublevel_radius_sampled_max': 0.345726, 'sublevel_radius_attained': 0.545659}
+T7a {'g2': 0.25, 'N': 160, 'E0': 2.835365457764153, 'Delta': 3.838313950841048, 'radius_pred': 0.5104224323246507, 'radius_max_sampled': 0.4995392961516972, 'radius_attained': 0.5104224323246507, 'Delta_semigroup': 3.8383139508410236, 'pass': True}
+T7a {'g2': 1.0, 'N': 160, 'E0': 2.3332362820904495, 'Delta': 3.26909918552091, 'radius_pred': 0.5530774493113728, 'radius_max_sampled': 0.49966489084025734, 'radius_attained': 0.5530774493113728, 'Delta_semigroup': 3.2690991855204397, 'pass': True}
+T7a {'g2': 4.0, 'N': 160, 'E0': 0.9585123864992355, 'Delta': 6.057972654203663, 'radius_pred': 0.4062901988172581, 'radius_max_sampled': 0.3466498694983079, 'radius_attained': 0.4062901988172581, 'Delta_semigroup': 6.057972654204263, 'pass': True}
+T8 {'g2': 1.0, 'grid': 800, 'ground_state_positive': True, 'identity_max_rel_err': 8.353721155648534e-16, 'poincare_max_ratio_sampled': 5.9372490524714834e-05, 'poincare_ratio_at_psi1_over_psi0': 1.0000000000000013, 'Delta_fd': 3.2690783400170123, 'Delta_character_basis': 3.269099185520625, 'pass': True}
+T8 {'g2': 4.0, 'grid': 800, 'ground_state_positive': True, 'identity_max_rel_err': 6.490943967994468e-16, 'poincare_max_ratio_sampled': 2.5871706033040033e-05, 'poincare_ratio_at_psi1_over_psi0': 1.0000000000000002, 'Delta_fd': 6.057934309183526, 'Delta_character_basis': 6.057972654204851, 'pass': True}
+T7b pass True
+T7c pass True
+T10 pass True
+T5 pass True
+gates caught: 12 / 12 | ok: True
+V1 pass False 0.0 s
+V2 pass True 0.0 s
+V3 pass True 0.0 s
+V4 pass True 0.0 s
+V5 pass True 0.0 s
+V1 pass True 0.0 s
+V2 pass True 0.0 s
+V3 pass True 0.0 s
+V4 pass True 0.0 s
+V5 pass True 0.0 s
+P5 True True 0.0 s
+{'V1': True, 'V2': True, 'V3': True, 'V4': True, 'V5': True, 'P1_regulator': True, 'P2_volume': True, 'P3_three_ways': True, 'P4_electric_vs_full': True, 'P5_reflection': True} ok: True

@@ -1,0 +1,212 @@
+{
+ "note": "docs/research/yang-mills-geometric-identities-2026-11-23.md",
+ "model": "Kogut-Susskind SU(2), one plaquette, lattice units",
+ "T7a": [
+  {
+   "g2": 0.25,
+   "N": 160,
+   "E0": 2.835365457764153,
+   "Delta": 3.838313950841048,
+   "radius_pred": 0.5104224323246507,
+   "radius_max_sampled": 0.4979101993022101,
+   "radius_attained": 0.5104224323246507,
+   "Delta_semigroup": 3.8383139508410236,
+   "pass": true,
+   "gate_vacuum_kept": {
+    "q_vacuum": -6.573390450070012e-15,
+    "caught": true
+   },
+   "gate_normalized_only": {
+    "radius_gapless_model": 12.609520212918492,
+    "radius_this_model": 0.5104224323246507,
+    "unit_sphere_max_norm_both": 1.0,
+    "caught": true
+   }
+  },
+  {
+   "g2": 1.0,
+   "N": 160,
+   "E0": 2.3332362820904495,
+   "Delta": 3.26909918552091,
+   "radius_pred": 0.5530774493113728,
+   "radius_max_sampled": 0.5062923669076345,
+   "radius_attained": 0.5530774493113728,
+   "Delta_semigroup": 3.2690991855204397,
+   "pass": true,
+   "gate_vacuum_kept": {
+    "q_vacuum": -1.4904842911227651e-15,
+    "caught": true
+   },
+   "gate_normalized_only": {
+    "radius_gapless_model": 12.609520212918492,
+    "radius_this_model": 0.5530774493113728,
+    "unit_sphere_max_norm_both": 1.0,
+    "caught": true
+   }
+  },
+  {
+   "g2": 4.0,
+   "N": 160,
+   "E0": 0.9585123864992355,
+   "Delta": 6.057972654203663,
+   "radius_pred": 0.4062901988172581,
+   "radius_max_sampled": 0.33928596362677466,
+   "radius_attained": 0.4062901988172581,
+   "Delta_semigroup": 6.057972654204263,
+   "pass": true,
+   "gate_vacuum_kept": {
+    "q_vacuum": 6.681409395679306e-17,
+    "caught": true
+   },
+   "gate_normalized_only": {
+    "radius_gapless_model": 12.609520212918492,
+    "radius_this_model": 0.4062901988172581,
+    "unit_sphere_max_norm_both": 1.0,
+    "caught": true
+   }
+  }
+ ],
+ "T7b": {
+  "gapless_family": [
+   {
+    "N": 10,
+    "gap_of_truncation": 0.1,
+    "sublevel_radius": 3.1622776601683795
+   },
+   {
+    "N": 100,
+    "gap_of_truncation": 0.01,
+    "sublevel_radius": 10.0
+   },
+   {
+    "N": 1000,
+    "gap_of_truncation": 0.001,
+    "sublevel_radius": 31.622776601683793
+   },
+   {
+    "N": 10000,
+    "gap_of_truncation": 0.0001,
+    "sublevel_radius": 100.0
+   }
+  ],
+  "flagged_no_uniform_bound": true,
+  "plaquette_gap_vs_basis_size": {
+   "40": 3.269099185521046,
+   "80": 3.2690991855211533,
+   "160": 3.269099185520625,
+   "320": 3.269099185521115
+  },
+  "plaquette_gap_stable": true,
+  "pass": true
+ },
+ "T7c": {
+  "true_gap": 3.26909918552091,
+  "probe_decay_rate": 6.081159041936191,
+  "probe_overlap_with_lowest_excitation": 6.933347799794049e-33,
+  "fit_would_mislead": true,
+  "gate": {
+   "caught": true
+  },
+  "pass": true
+ },
+ "T8": [
+  {
+   "g2": 1.0,
+   "grid": 800,
+   "ground_state_positive": true,
+   "identity_max_rel_err": 8.332522494107578e-16,
+   "poincare_max_ratio_sampled": 5.801551594254167e-05,
+   "poincare_ratio_at_psi1_over_psi0": 1.0000000000000013,
+   "Delta_fd": 3.2690783400170123,
+   "Delta_character_basis": 3.269099185520625,
+   "pass": true,
+   "gate_sign_changing_state": {
+    "negative_edge_weights": 1,
+    "caught": true
+   },
+   "gate_shifted_E0": {
+    "identity_residual": -9.49985405895859e-07,
+    "expected": -9.499856686538999e-07,
+    "caught": true
+   }
+  },
+  {
+   "g2": 4.0,
+   "grid": 800,
+   "ground_state_positive": true,
+   "identity_max_rel_err": 6.374132902259376e-16,
+   "poincare_max_ratio_sampled": 2.5686072352639062e-05,
+   "poincare_ratio_at_psi1_over_psi0": 1.0000000000000002,
+   "Delta_fd": 6.057934309183526,
+   "Delta_character_basis": 6.057972654204851,
+   "pass": true,
+   "gate_sign_changing_state": {
+    "negative_edge_weights": 1,
+    "caught": true
+   },
+   "gate_shifted_E0": {
+    "identity_residual": -1.0480289347469807e-06,
+    "expected": -1.0480402578786383e-06,
+    "caught": true
+   }
+  }
+ ],
+ "T10": {
+  "lichnerowicz_first_eigenvalue": 3,
+  "lichnerowicz_bound": 3,
+  "saturated": true,
+  "minmax_levels_ok": true,
+  "gaps": [
+   {
+    "g2": 0.05,
+    "gap_full": 3.968546650102147,
+    "gap_electric": 0.07500000000000001,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 0.2,
+    "gap_full": 3.87158122230179,
+    "gap_electric": 0.30000000000000004,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 1.0,
+    "gap_full": 3.2690991855209095,
+    "gap_electric": 1.5,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 4.0,
+    "gap_full": 6.057972654203661,
+    "gap_electric": 6.0,
+    "weak_coupling_prediction": 4.0
+   },
+   {
+    "g2": 16.0,
+    "gap_full": 24.000911436099464,
+    "gap_electric": 24.0,
+    "weak_coupling_prediction": 4.0
+   }
+  ],
+  "gaps_differ": true,
+  "weak_coupling_trend_ok": true,
+  "pass": true
+ },
+ "T5": {
+  "g2": 1.0,
+  "tau": 0.5,
+  "preparations": 12,
+  "min_eigenvalue": -2.4068467702627255e-16,
+  "rounding_bound": 4.302504581390834e-14,
+  "psd_certified": true,
+  "gate_negative_transfer": {
+   "min_eigenvalue": -0.0003150817273828842,
+   "bound": 4.302491315387281e-14,
+   "caught": true
+  },
+  "pass": true
+ },
+ "all_pass": true,
+ "all_gates_caught": true,
+ "ok": true
+}

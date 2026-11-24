@@ -24,6 +24,37 @@ At the origin every eigenvalue is +1. None of these numbers depends on g. Only t
 barrier between the vacua depend on the coupling. Along the gradient-flow path q = aR/g, V = (3/2)a²(1 − a)²/g²,
 so the barrier is 3/(32g²), and the action difference is ΔW = 1/(2g²).
 
+**Why these numbers: colour–space locking, and the double cover.** The table is one identity:
+
+  Hess W(I/g) = I + L_colour · L_space,  while Hess W(0) = I.
+
+The fluctuation δ carries colour spin 1 (row index) and spatial spin 1 (column index). At the second vacuum, q ∝ R
+identifies the colour frame with the spatial frame, so δ splits by total spin J = 0, 1, 2. With
+L_c · L_s = [J(J+1) − 4]/2,
+
+  μ_J = J(J+1)/2 − 1:  J = 0 → −1 (breathing),  J = 1 → 0 (orbit),  J = 2 → +2 (shape).
+
+The one downward direction, which supplies the extra unit of energy below, is the colour–space singlet, the
+state in which the two spins are fully anti-aligned. The stiffest directions are the spin-2 shape modes, the same
+quadrupole channel as Helike's |m| = 2. Test: `scripts/test_ym_helike_second_vacuum.py`. It checks the identity
+against a finite-difference Hessian, and the J-labels against the Casimir.
+
+I read this as another instance of the double cover, at three levels:
+1. **In the computation.** The dome's Haar series came from unit quaternions, S³ = SU(2) → SO(3). The quadratic form
+   uᵀBu is blind to u → −u, and that is why the Dirichlet parameters are ½.
+2. **In the vacuum.** The space is the three-sphere, which is SU(2) itself. The second vacuum is essentially the
+   Maurer–Cartan form of the identity map S³ → SU(2): the vacuum in which space is the group. Its winding fixes
+   ΔW = 1/(2g²). Its orbit is SO(3) = SU(2)/{±1}, because −1 acts trivially on adjoint colour, so states along it
+   carry integer spin only.
+3. **In the local geometry.** Locking turns colour into spin. That is the identity above, the mechanism known as
+   "spin from isospin".
+
+Caveat. In the full field theory the second vacuum is a gauge copy of the first, related by a large gauge
+transformation, and the two cannot be told apart. This model keeps only the homogeneous left-invariant modes, and
+that truncation breaks the equivalence, which is why the Hessians differ (all 1 against −1, 0, 2). Everything in
+this note is a statement about this model. Whether it survives with the other modes restored must be checked
+against analyses that keep both left- and right-invariant modes (van Baal and collaborators).
+
 **One object gives both frame and widths.** At any critical point of W, ∇W = 0, so
 
   Hess V = (Hess W)².

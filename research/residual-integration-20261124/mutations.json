@@ -1,0 +1,61 @@
+{
+ "all_caught": true,
+ "mutants": [
+  {
+   "name": "translation",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_independent_unshifted_quadrature (test_helike_residual_moments.Moments.test_independent_unshifted_quadrature) ... FAIL\n\n======================================================================\nFAIL: test_independent_unshifted_quadrature (test_helike_residual_moments.Moments.test_independent_unshifted_quadrature)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 77, in test_independent_unshifted_quadrature\n    np.testing.assert_allclose(a['value'],[expected],rtol=1e-12,atol=1e-12)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-12, atol=1e-12\n\nMismatched elements: 1 / 1 (100%)\nMismatch at index:\n [0]: 1.7829179115945915 (ACTUAL), 3.1015966435326368 (DESIRED)\nMax absolute difference among violations: 1.31867873\nMax relative difference among violations: 0.42516126\n ACTUAL: array([1.782918])\n DESIRED: array([3.101597])\n\n----------------------------------------------------------------------\nRan 1 test in 0.003s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "square_prefactor",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_completed_square_prefactor (test_helike_residual_moments.Moments.test_completed_square_prefactor) ... FAIL\n\n======================================================================\nFAIL: test_completed_square_prefactor (test_helike_residual_moments.Moments.test_completed_square_prefactor)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 59, in test_completed_square_prefactor\n    self.assertAlmostEqual(rm.norm_squared(sp,[(np.array([.7]),C)])['value'][0],np.exp(.7**2/1.4),places=12)\nAssertionError: 1.0 != np.float64(1.4190675485932571) within 12 places (np.float64(0.4190675485932571) difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "conjugation",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms) ... FAIL\n\n======================================================================\nFAIL: test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 66, in test_complex_norm_and_cross_terms\n    self.assertAlmostEqual(value,8.,places=12)\nAssertionError: 0.0 != 8.0 within 12 places (8.0 difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "cross_terms",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms) ... FAIL\n\n======================================================================\nFAIL: test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 66, in test_complex_norm_and_cross_terms\n    self.assertAlmostEqual(value,8.,places=12)\nAssertionError: 6.0 != 8.0 within 12 places (2.0 difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "density_drift",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_operator_matches_cartesian_and_reduced (test_helike_residual_moments.Moments.test_operator_matches_cartesian_and_reduced) ... FAIL\n\n======================================================================\nFAIL: test_operator_matches_cartesian_and_reduced (test_helike_residual_moments.Moments.test_operator_matches_cartesian_and_reduced)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 94, in test_operator_matches_cartesian_and_reduced\n    np.testing.assert_allclose(actual,oracle,rtol=1e-9,atol=1e-10)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-09, atol=1e-10\n\nMismatched elements: 1 / 1 (100%)\nMax absolute difference among violations: 0.03716508\nMax relative difference among violations: 0.22454388\n ACTUAL: array(0.128349+0.j)\n DESIRED: array(0.165514+0.j)\n\n----------------------------------------------------------------------\nRan 1 test in 0.535s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "derivative_raise",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_derivative_keeps_raising_part (test_helike_residual_moments.Moments.test_derivative_keeps_raising_part) ... FAIL\n\n======================================================================\nFAIL: test_derivative_keeps_raising_part (test_helike_residual_moments.Moments.test_derivative_keeps_raising_part)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 101, in test_derivative_keeps_raising_part\n    np.testing.assert_allclose(sp.op(C,0,'physical'),expected,atol=1e-14)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-14\n\nMismatched elements: 1 / 3 (33.3%)\nMismatch at index:\n [1, 0]: 0j (ACTUAL), (-1+0j) (DESIRED)\nMax absolute difference among violations: 1.\nMax relative difference among violations: 1.\n ACTUAL: array([[0.+0.j],\n       [0.+0.j],\n       [0.+0.j]])\n DESIRED: array([[ 0.+0.j],\n       [-1.+0.j],\n       [ 0.+0.j]])\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "truncation",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_nonzero_truncation_refuses (test_helike_residual_moments.Moments.test_nonzero_truncation_refuses) ... FAIL\n\n======================================================================\nFAIL: test_nonzero_truncation_refuses (test_helike_residual_moments.Moments.test_nonzero_truncation_refuses)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 106, in test_nonzero_truncation_refuses\n    with self.assertRaises(ValueError): sp.op(C,0,'coordinate')\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "false_certificate",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_numerical_moments_never_certify (test_helike_residual_moments.Moments.test_numerical_moments_never_certify) ... FAIL\n\n======================================================================\nFAIL: test_numerical_moments_never_certify (test_helike_residual_moments.Moments.test_numerical_moments_never_certify)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 20, in run\n    try: test(self)\n         ^^^^^^^^^^\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_residual_moments.py\", line 122, in test_numerical_moments_never_certify\n    self.assertFalse(result['certified'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  }
+ ]
+}

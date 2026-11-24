@@ -1,0 +1,225 @@
+test_completed_square_prefactor (test_helike_residual_moments.Moments.test_completed_square_prefactor) ... FAIL
+test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms) ... FAIL
+test_derivative_keeps_raising_part (test_helike_residual_moments.Moments.test_derivative_keeps_raising_part) ... FAIL
+test_high_degree_alias_is_recovered (test_helike_residual_moments.Moments.test_high_degree_alias_is_recovered) ... FAIL
+test_independent_unshifted_quadrature (test_helike_residual_moments.Moments.test_independent_unshifted_quadrature) ... FAIL
+test_invalid_inputs_refuse (test_helike_residual_moments.Moments.test_invalid_inputs_refuse) ... FAIL
+test_nonzero_truncation_refuses (test_helike_residual_moments.Moments.test_nonzero_truncation_refuses) ... FAIL
+test_numerical_moments_never_certify (test_helike_residual_moments.Moments.test_numerical_moments_never_certify) ... FAIL
+test_operator_matches_cartesian_and_reduced (test_helike_residual_moments.Moments.test_operator_matches_cartesian_and_reduced) ... FAIL
+test_translation_coefficients (test_helike_residual_moments.Moments.test_translation_coefficients) ... FAIL
+
+======================================================================
+FAIL: test_completed_square_prefactor (test_helike_residual_moments.Moments.test_completed_square_prefactor)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 45, in test_completed_square_prefactor
+    sp=rm.Space([1.4],0); C=self.one(sp)
+       ^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 50, in test_complex_norm_and_cross_terms
+    sp=rm.Space([1.],1)
+       ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_derivative_keeps_raising_part (test_helike_residual_moments.Moments.test_derivative_keeps_raising_part)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 86, in test_derivative_keeps_raising_part
+    sp=rm.Space([2.],2); C=self.one(sp)
+       ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_high_degree_alias_is_recovered (test_helike_residual_moments.Moments.test_high_degree_alias_is_recovered)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 29, in test_high_degree_alias_is_recovered
+    sp=rm.Space([1.],10); C=self.one(sp,10)
+       ^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_independent_unshifted_quadrature (test_helike_residual_moments.Moments.test_independent_unshifted_quadrature)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 57, in test_independent_unshifted_quadrature
+    sp=rm.Space([1.4],5); C=self.one(sp,5,.2+.3j)+self.one(sp,0)
+       ^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_invalid_inputs_refuse (test_helike_residual_moments.Moments.test_invalid_inputs_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 97, in test_invalid_inputs_refuse
+    with self.assertRaises(ValueError): rm.Space([0.],2)
+                                        ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_nonzero_truncation_refuses (test_helike_residual_moments.Moments.test_nonzero_truncation_refuses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 92, in test_nonzero_truncation_refuses
+    sp=rm.Space([1.],2); C=self.one(sp,2,1e-25)
+       ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_numerical_moments_never_certify (test_helike_residual_moments.Moments.test_numerical_moments_never_certify)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 107, in test_numerical_moments_never_certify
+    result=rm.numerical_result([.1],[.1])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 17, in numerical_result
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_operator_matches_cartesian_and_reduced (test_helike_residual_moments.Moments.test_operator_matches_cartesian_and_reduced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 73, in test_operator_matches_cartesian_and_reduced
+    space,groups=rm.build_residual(chart,basis,w,C,E,1.15,3.,np.sqrt(.004))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 8, in build_residual
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+======================================================================
+FAIL: test_translation_coefficients (test_helike_residual_moments.Moments.test_translation_coefficients)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 37, in test_translation_coefficients
+    sp=rm.Space([2.],3); C=self.one(sp,2); mu=np.array([.3])
+       ^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 5, in __init__
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 17, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.002s
+
+FAILED (failures=10)

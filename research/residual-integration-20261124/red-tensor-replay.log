@@ -1,0 +1,39 @@
+test_completed_square_prefactor (test_helike_residual_moments.Moments.test_completed_square_prefactor) ... ok
+test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms) ... ok
+test_derivative_keeps_raising_part (test_helike_residual_moments.Moments.test_derivative_keeps_raising_part) ... ok
+test_high_degree_alias_is_recovered (test_helike_residual_moments.Moments.test_high_degree_alias_is_recovered) ... ok
+test_independent_unshifted_quadrature (test_helike_residual_moments.Moments.test_independent_unshifted_quadrature) ... ok
+test_invalid_inputs_refuse (test_helike_residual_moments.Moments.test_invalid_inputs_refuse) ... ok
+test_nonzero_truncation_refuses (test_helike_residual_moments.Moments.test_nonzero_truncation_refuses) ... ok
+test_numerical_moments_never_certify (test_helike_residual_moments.Moments.test_numerical_moments_never_certify) ... ok
+test_operator_matches_cartesian_and_reduced (test_helike_residual_moments.Moments.test_operator_matches_cartesian_and_reduced) ... ok
+test_tensor_replay_on_known_alias (test_helike_residual_moments.Moments.test_tensor_replay_on_known_alias) ... FAIL
+test_translation_coefficients (test_helike_residual_moments.Moments.test_translation_coefficients) ... ok
+
+======================================================================
+FAIL: test_tensor_replay_on_known_alias (test_helike_residual_moments.Moments.test_tensor_replay_on_known_alias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 38, in test_tensor_replay_on_known_alias
+    try: old=rm.tensor_norm(sp,groups,10); fine=rm.tensor_norm(sp,groups,12)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_residual_moments.py", line 148, in tensor_norm
+    if len(space.w)!=6: raise ValueError('six-dimensional controls required')
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: six-dimensional controls required
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 15, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 39, in test_tensor_replay_on_known_alias
+    except ValueError as exc: self.fail(f'tensor polynomial replay missing: {exc}')
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: tensor polynomial replay missing: six-dimensional controls required
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.458s
+
+FAILED (failures=1)

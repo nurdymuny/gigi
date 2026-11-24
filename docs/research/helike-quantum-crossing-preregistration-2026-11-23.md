@@ -1,6 +1,19 @@
 # Confirmatory crossing experiment: follow the states, not just the gap
 
-23 November 2026, Pacific time. Specification v1. **REVIEW HOLD. NOT IMPLEMENTED. NOT RUN.**
+23 November 2026, Pacific time. Specification v2. **REVIEW HOLD. NOT IMPLEMENTED. NOT RUN.**
+
+**Changes from v1 (made before any held-out data exists).** The v1 order rule added the two residual radii.
+At the residuals measured so far (about 0.14 to 0.3 at N=14), that allowance is several times larger than the
+expected |D| (about 0.06 at 1.60 and 0.044 at 1.90). Every point would have come back `ORDER_UNRESOLVED`,
+so the outcome was effectively decided before the run. v2 makes two changes:
+1. **The order is decided by Temple lower bounds together with variational upper bounds** (section 5). The
+   separation each Temple bound needs is registered as an assumption and checked for sensitivity. The v1
+   residual-sum allowance is still computed and reported as a secondary record.
+2. **The primary test is narrowed to the outer pair, 1.60 and 1.90**, which only has to bracket a sign change.
+   The prediction bracket [1.70, 1.82] stays frozen as a secondary test. The order status is reported
+   separately from the scientific status. The expected outcome is registered now: UNRESOLVED unless the
+   residuals fall first.
+Nothing else changes: the couplings, cutoffs, width rule, inherited gates, geometry and budgets are as in v1.
 
 This commit specifies the experiment and its tests. It does not authorize a run. Review this commit on the other
 machine before implementation or execution. All gates below are NOT RUN; a test definition is not a test receipt.
@@ -42,7 +55,9 @@ that check. A later documentation-only change to the exploration script does not
 
 Recomputed linear interpolation gives 1.7699786411 at N=10 and 1.7609417618 at N=12: a shift of 0.0090368794.
 These values informed this design. They are not independent predictions, measured roots, or confidence limits.
-The earlier residual-versus-width assertion lacks a retained table and is not used to select the next method.
+The earlier residual-versus-width assertion lacked a retained table. That table is now saved at cutoff 10
+(`exploration-edge-20261124/width_residuals_N10.json`, commit 9585e76). On its grid, a per-level width improves a
+residual by at most 1.3 times. It informs the engineering plan, but it does not select a method for this experiment.
 
 **Held out means absent from the saved exploration and known earlier surveys, not statistically independent
 data.** This is a deterministic numerical replication within the same model. If any proposed point has already
@@ -82,8 +97,8 @@ the classical spatial-harmonic index j=0. Increasing this basis does not add the
 | Width rule | Minimum computed E0; exact ties choose smaller alpha; publish all energies and the runner-up difference |
 | Width reuse | Freeze one alpha per coupling across all three cutoffs and all states |
 | Grid boundary | Record it; refuse confirmatory launch for that coupling, no automatic grid extension |
-| Prediction bracket | Crossing within `[1.70, 1.82]` |
-| Outer checks | Scalar lower at `1.60`; tensor lower at `1.90` |
+| Primary order test (v2) | Scalar lower at `1.60`; tensor lower at `1.90`; Temple rule, section 5 |
+| Prediction bracket, secondary (v2) | Crossing within `[1.70, 1.82]`: scalar lower at `1.70`, tensor lower at `1.82` |
 | Fine-bracket checks | `1.74` and `1.78`; secondary resolution, not permission to move the primary bracket |
 | Main solver | CUDA float64/complex128, no automatic CPU fallback |
 | Budgets | 45 minutes per complete registered attempt, 8 GiB worker host RSS, 4 GiB CUDA allocation |
@@ -128,29 +143,139 @@ member's norm. Include the subspace energy spread in the reported residual radiu
 
 ## 5. What counts as a resolved crossing
 
-Let epsilon_s and epsilon_t be the full residual norms plus their respective energy-spread allowances.
-Define the numerical separation allowance
+### Computed quantities
+
+In each case record the computed (Ritz) values:
+- rho_Omega for the vacuum;
+- rho_s for the selected scalar branch, the second Ritz value in the spin-0 sector;
+- rho_t^- <= rho_t^+, the smallest and largest eigenvalue of the tensor block B_t. They differ only by the
+  energy spread.
+
+For each branch, also record the next Ritz value in the same spin sector (rho_s', rho_t') and its residual
+radius (epsilon_s', epsilon_t'). Let epsilon_s and epsilon_t be the operator norms of the full-space residuals
+R_U from section 4, plus the 1e-6 spin-leakage tolerance. The spread is carried by rho_t^- and rho_t^+, so it is
+not added to epsilon a second time.
+
+### Two inequalities for the exact operator
+
+**Upper bounds (min-max).** The polynomial basis spans a rotation-invariant subspace of the operator domain,
+so each spin sector can be treated on its own. Within one sector, the k-th Ritz value is at least the k-th exact
+eigenvalue. Hence
 
 \[
- u_D=\epsilon_s+\epsilon_t+10^{-8}\max(1,|E_s|,|E_t|).
+ E_s\le\rho_s,\qquad E_t\le\rho_t^+ .
 \]
 
-At each point, D > u_D is `SCALAR_LOWER`, D < -u_D is `TENSOR_LOWER`, otherwise `ORDER_UNRESOLVED`.
-These floating residual radii are not certified error bounds or a proof that all exact levels are enclosed.
-Their purpose here is to refuse an order claim when the measured equation mismatch can obscure it.
-The sign test is additional; it cannot waive the old residual or convergence gates.
+These use no residual.
 
-**Primary numerical support requires all of the following:**
+**Lower bounds (Temple).** Take a normalized trial vector in one sector with Rayleigh quotient rho and residual
+norm epsilon. Suppose beta > rho and no exact eigenvalue of that sector lies strictly between the targeted
+eigenvalue lambda and beta. Then
+
+\[
+ \lambda\ \ge\ \rho-\frac{\epsilon^2}{\beta-\rho}.
+\]
+
+This follows from <(H-lambda)(H-beta)x, x> >= 0. For the scalar branch, beta must not exceed the third exact
+scalar eigenvalue. For the tensor branch, beta must not exceed the second exact spin-2 eigenvalue. The function
+rho - epsilon^2/(beta - rho) increases with rho, so the tensor bound uses rho_t^-:
+
+\[
+ \tau_s=\frac{\epsilon_s^2}{\beta_s-\rho_s},\qquad \tau_t=\frac{\epsilon_t^2}{\beta_t-\rho_t^-},\qquad
+ E_s\ge\rho_s-\tau_s,\qquad E_t\ge\rho_t^--\tau_t .
+\]
+
+The width is quadratic in the residual. With epsilon = 0.1 and a separation of 1, tau is 0.01. The v1
+allowance would have been about 0.2.
+
+### The separation is an assumption, registered as one
+
+The finite basis does not prove that no exact sector eigenvalue lies between a branch and beta. Register
+
+\[
+ \beta=\rho'-\epsilon' .
+\]
+
+Weinstein places an exact eigenvalue within epsilon' of rho'. The assumption is that this eigenvalue is the next
+exact eigenvalue of the sector, and that the basis has not missed an exact eigenvalue below it. Record it as
+`separation: ASSUMED_FROM_RITZ`. A case where beta <= rho + epsilon has an unresolved separation. Its order is
+`ORDER_UNRESOLVED` with reason `SEPARATION_NOT_RESOLVED`.
+
+**Sensitivity check.** Repeat the rule with beta_half = rho + (beta - rho)/2, which doubles tau. The verdict must
+be the same under beta and beta_half. If not, the case is `ORDER_UNRESOLVED` with reason `SEPARATION_SENSITIVE`.
+
+### Order rule
+
+With eta = 1e-8 max(1, |rho_s|, |rho_t^+|):
+
+- `SCALAR_LOWER` if rho_s + eta < rho_t^- - tau_t: the scalar's upper bound lies below the tensor's lower bound.
+- `TENSOR_LOWER` if rho_t^+ + eta < rho_s - tau_s.
+- `ORDER_UNRESOLVED` otherwise, with the reason recorded.
+
+So proving the scalar lower needs only the tensor's Temple width, and proving the tensor lower needs only the
+scalar's.
+
+These are float64 residuals and an assumed separation. They are not interval arithmetic, certified enclosures or
+a proof. Every record carries `certified: False`. The v1 allowance,
+u_D = epsilon_s + epsilon_t + 1e-8 max(1, |E_s|, |E_t|), is computed for every case and kept as the secondary
+field `weinstein_order`. It cannot override the rule above.
+
+### Feasibility, written before any held-out data
+
+These estimates come only from the exploration and the convergence run.
+
+| Quantity | Value |
+| --- | --- |
+| Next scalar above the scalar branch (N=12, g^2 = 1.5 to 2) | about 1.7 |
+| Next spin-2 above the tensor branch (same cases) | about 3.0 to 3.2 |
+| epsilon at N=14 (convergence run, g^2 = 2 and 1) | about 0.14 to 0.3 |
+| tau_t | about 0.006 to 0.03 |
+| tau_s | about 0.013 to 0.065 |
+| D (exploratory interpolation at N=12) | about +0.060 at 1.60; -0.044 at 1.90 |
+
+- `SCALAR_LOWER` at 1.60 is plausible at N=14 and 16.
+- `TENSOR_LOWER` at 1.90 is marginal.
+- The interior points are expected to stay `ORDER_UNRESOLVED`.
+
+These are expectations, not thresholds. They cannot be used to tune anything after the data exist.
+
+### Primary order test: the outer pair
+
+`order_status: RESOLVED_OUTER` requires `SCALAR_LOWER` at 1.60 and `TENSOR_LOWER` at 1.90, both at all three
+cutoffs. It shows at least one sign change in [1.60, 1.90] in this model, and nothing finer. If 1.60 resolves as
+`TENSOR_LOWER` or 1.90 as `SCALAR_LOWER` at all three cutoffs, the result is `order_status: CONTRADICTED`.
+Anything else is `order_status: UNRESOLVED`.
+
+The prediction bracket [1.70, 1.82] stays frozen as a secondary test. `prediction_bracket_status` is
+`CONSISTENT` only when 1.70 is `SCALAR_LOWER` and 1.82 is `TENSOR_LOWER` at all three cutoffs. It is
+`CONTRADICTED` when either resolves the other way at all three cutoffs, and `ORDER_UNRESOLVED` otherwise.
+No coupling moves between tiers after data exist.
+
+### Order status and scientific status are separate
+
+Resolving the order cannot waive the inherited residual, probe or convergence gates. Those include the
+full-space residual at most 0.01 max(1, |gap|) and both cutoff increments.
+
+**Expected outcome, registered now.** At N=14 the residuals are about 4.5 to 11 times above the inherited
+allowance. Unless the N=16 engineering and residual work lowers them, the scientific status will be UNRESOLVED.
+The informative outcome this design makes possible is `order_status: RESOLVED_OUTER` with scientific status
+UNRESOLVED. That outcome is reported exactly as an order resolved under the registered separation assumption at
+unconverged cutoffs. It is never reported as a supported crossing. `order_status: CONTRADICTED` becomes
+`NOT_SUPPORTED` only when the inherited gates also pass.
+
+**Scientific support (`SUPPORTED_NUMERICALLY_IN_THIS_MODEL`) requires all of the following:**
 
 - All 18 cases and all prerequisite gates complete, with both successive convergence checks at every coupling.
-- At 1.60 and 1.70, `SCALAR_LOWER` at all three cutoffs; at 1.82 and 1.90, `TENSOR_LOWER` at all three cutoffs.
-- The full finite spectrum has no lower competing excitation at these points. Its audit is not replaced by
+- `order_status: RESOLVED_OUTER`, including the separation-sensitivity check.
+- The full finite spectrum has no lower competing excitation at 1.60 and 1.90. Its audit is not replaced by
   inspecting only the two channels.
 - The ground, scalar and tensor state-geometry measurements pass the consistency and stability gates below.
-- The exact planted positive and negative controls produce their independently specified outcomes.
+- The exact planted positive and negative controls produce their independently specified outcomes, including
+  QC14.
 
-The interior points refine a bracket only if they separately resolve. Their unresolved order is reported as
-`fine_bracket_status: ORDER_UNRESOLVED`; it does not alter the predefined primary test. No scalar/tensor spin
+The interior points (1.70, 1.74, 1.78, 1.82) refine a bracket only if they resolve on their own. An
+unresolved order at 1.74 or 1.78 is reported as `fine_bracket_status: ORDER_UNRESOLVED`; it does not alter the
+primary test. No scalar/tensor spin
 assignment or geometry measurement may be omitted because these two points are close to degeneracy.
 
 Report a primary bracket, not a unique critical coupling or phase transition. Linear interpolation, if displayed,
@@ -286,8 +411,9 @@ either sign or either status. Separate uncertainty fixtures from positive and ne
 | QC11 Bounded execution | Enforced 45-minute/8-GiB/4-GiB limits, fixed tiles, interrupted/restarted worker remains incomplete | Budget bypass, leaked prior-cutoff arrays, omitted stage logging or resource stop upgraded to COMPLETE |
 | QC12 Integrity and replay | Replay matrices, all moments, projectors, kernels, shell blocks and verdicts on pinned sources | Wrong alpha/g, corrupt array, mismatched unit, missing case/log/gate or unverified resume |
 | QC13 Honest reporting | Figures and exported records match receipts, all statuses retained; current verified manifest controls PASS | Cached/stale PASS after failed replay, omitted refusal panel, fabricated root/error bars or synthetic data mixed with measurements |
+| QC14 Ordering bounds | Diagonal fixture with known spectrum and trial vectors of known residual: Temple and min-max bounds hold and match the formula; a two-branch fixture resolves SCALAR_LOWER, TENSOR_LOWER and UNRESOLVED as designed; beta_half flips a marginal fixture to SEPARATION_SENSITIVE | Put beta above the next exact eigenvalue without refusal, use rho_t^+ in tau_t, add the spread twice, use the Weinstein sum as the verdict, call the bound certified |
 
-All QC00--QC13 gates currently have status **NOT RUN**. Existing HP gates are prerequisites, not automatic
+All QC00--QC14 gates currently have status **NOT RUN**. Existing HP gates are prerequisites, not automatic
 passes for the new code. Mutation tests must demonstrate the named scientific failure, with failure reasons
 checked and no unexpected errors. Use temporary isolated copies; never edit the pinned survey source in place.
 
@@ -357,7 +483,7 @@ preserve original attempt boundaries and cumulative consumed budget, not a fresh
 These are proposed files, not existing runnable commands:
 
 - `scripts/ym_helike_crossing.py`: sector projectors, full-action state geometry, shell decomposition and decisions.
-- `scripts/test_ym_helike_crossing.py`: QC00--QC10 planted fixtures and focused numerical tests.
+- `scripts/test_ym_helike_crossing.py`: QC00--QC10 and QC14 planted fixtures and focused numerical tests.
 - `scripts/check_ym_helike_crossing_mutations.py`: mechanism-removal checks with asserted failure reasons.
 - `scripts/run_ym_helike_crossing.py`: budgeted worker/supervisor, registration, logging and atomic receipts.
 - `scripts/verify_ym_helike_crossing.py`: independent artifact replay and invalidation of stale acceptance.
@@ -385,7 +511,8 @@ from its feature set and normalization frozen beforehand.
 Generate four reusable figures from the same pinned receipt, not hand-entered numbers:
 
 1. **The crossing:** E_s-E_ground, E_t-E_ground and their difference at all six couplings and all three cutoffs.
-   Show the fixed prediction bracket, numerical residual allowances and unresolved points. No smoothed line
+   Show the outer pair, the secondary prediction bracket, the Temple widths (under beta and beta_half), the
+   secondary Weinstein allowance and unresolved points with their reasons. No smoothed line
    presented as a measured root; no uniqueness claim.
 2. **State geometry:** size, signed volume and anisotropy, plus their covariance for ground/scalar/tensor.
    Put the classical reference values beside them. Any covariance ellipse is a moment summary, not a measured
@@ -402,12 +529,12 @@ the panel remains present and labelled. Missing N=16 results never acquire inter
 ## 12. Decision and review sequence
 
 Scientific status is `NOT_EVALUATED` before execution; `UNRESOLVED` for missing/inadequate numerical evidence;
-`NOT_SUPPORTED` for a resolved contradiction of the registered crossing predictions; or
+`NOT_SUPPORTED` for a resolved contradiction of the primary order test with all inherited gates passing; or
 `SUPPORTED_NUMERICALLY_IN_THIS_MODEL` when every primary requirement is met. Geometry-hypothesis status is
-separate. Supported crossing plus contradicted volume contrast is a valid result with a rejected explanation,
+separate, and `order_status` is reported beside both (section 5). Supported crossing plus contradicted volume contrast is a valid result with a rejected explanation,
 not permission to invent a new explanation after seeing the data. No status is `certified_gap` or a Clay claim.
 
-1. Commit and push these corrections and this specification. **Stop for review.**
+1. Commit and push these corrections and this specification (v2). **Stop for review.**
 2. After approval, write behavioural red tests, implement the smallest required pieces, run focused tests and
    mutation checks, and publish their receipts. Do not touch held-out spectra during this phase.
 3. Freeze and push the implemented registration, full executable source and resource plan for pre-run review.

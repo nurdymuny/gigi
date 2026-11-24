@@ -6,6 +6,7 @@ Published papers cite these folders by path, so **folders here are never renamed
 
 | folder | files | cited by |
 | --- | --- | --- |
+| [`quantum-order-controls-20261123/`](quantum-order-controls-20261123/) | run and TDD receipts | [Next-level control results](../docs/research/quantum-order-controls-results-2026-11-23.md): six saved GPU cases, full-state replay, resource logs and mechanism-removal tests |
 | [`adjacent-ideas-20261119/`](adjacent-ideas-20261119/) | 1 | [adjacent-ideas-grid-2026-11-19.md](../docs/research/adjacent-ideas-grid-2026-11-19.md) |
 | [`basin-floor-20261122/`](basin-floor-20261122/) | 1 | [the-basin-2026-11-22.md](../docs/research/the-basin-2026-11-22.md) |
 | [`book-receipts-20261122/`](book-receipts-20261122/) | 4 | the Helike book's receipts table (four numbers that had no committed receipt): `scripts/book_receipt_*.py` |

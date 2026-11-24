@@ -1,0 +1,36 @@
+test_eligible_interval_is_uncertified (test_ym_helike_convergence.EnclosureTests.test_eligible_interval_is_uncertified) ... ok
+test_ground_guard (test_ym_helike_convergence.EnclosureTests.test_ground_guard) ... ok
+test_group_center_includes_energy_spread (test_ym_helike_convergence.EnclosureTests.test_group_center_includes_energy_spread) ... ok
+test_nonfinite_or_negative_residual_refused (test_ym_helike_convergence.EnclosureTests.test_nonfinite_or_negative_residual_refused) ... ok
+test_budget_refusal_precedes_construction (test_ym_helike_convergence.RunnerTests.test_budget_refusal_precedes_construction) ... ok
+test_case_arrays_replay_and_corruption (test_ym_helike_convergence.RunnerTests.test_case_arrays_replay_and_corruption) ... ok
+test_incomplete_receipt_refused (test_ym_helike_convergence.RunnerTests.test_incomplete_receipt_refused) ... ok
+test_json_refuses_nan (test_ym_helike_convergence.RunnerTests.test_json_refuses_nan) ... ok
+test_manifest_rejects_missing_gate_partial_run_and_forged_choice (test_ym_helike_convergence.RunnerTests.test_manifest_rejects_missing_gate_partial_run_and_forged_choice) ... ok
+test_missing_or_failed_gate_cannot_converge (test_ym_helike_convergence.RunnerTests.test_missing_or_failed_gate_cannot_converge) ... ok
+test_resource_stop_clears_acceptance (test_ym_helike_convergence.RunnerTests.test_resource_stop_clears_acceptance) ... ok
+test_source_snapshot_tampering_refused (test_ym_helike_convergence.RunnerTests.test_source_snapshot_tampering_refused) ... ok
+test_supervisor_preserves_worker_failure_reason (test_ym_helike_convergence.RunnerTests.test_supervisor_preserves_worker_failure_reason) ... ok
+test_supervisor_stops_memory_overrun_and_clears_success (test_ym_helike_convergence.RunnerTests.test_supervisor_stops_memory_overrun_and_clears_success) ... ok
+test_supervisor_stops_timeout (test_ym_helike_convergence.RunnerTests.test_supervisor_stops_timeout) ... ok
+test_worker_exit_without_completion_is_failed (test_ym_helike_convergence.RunnerTests.test_worker_exit_without_completion_is_failed) ... ok
+test_worker_source_drift_stops_before_basis (test_ym_helike_convergence.RunnerTests.test_worker_source_drift_stops_before_basis) ... ok
+test_casimir_leakage_refused (test_ym_helike_convergence.SpinTests.test_casimir_leakage_refused) ... ok
+test_constant_probe_is_not_indexed_as_an_excited_level (test_ym_helike_convergence.SpinTests.test_constant_probe_is_not_indexed_as_an_excited_level) ... ok
+test_forbidden_complete_level_is_symmetry_zero (test_ym_helike_convergence.SpinTests.test_forbidden_complete_level_is_symmetry_zero) ... ok
+test_incomplete_multiplet_refused (test_ym_helike_convergence.SpinTests.test_incomplete_multiplet_refused) ... ok
+test_mixed_level_keeps_scalar_signal (test_ym_helike_convergence.SpinTests.test_mixed_level_keeps_scalar_signal) ... ok
+test_non_scalar_vacuum_refused (test_ym_helike_convergence.SpinTests.test_non_scalar_vacuum_refused) ... ok
+test_nonintegral_casimir_refused (test_ym_helike_convergence.SpinTests.test_nonintegral_casimir_refused) ... ok
+test_rotated_mixed_level_and_repeated_irreps (test_ym_helike_convergence.SpinTests.test_rotated_mixed_level_and_repeated_irreps) ... ok
+test_wrong_rank_probe_refused (test_ym_helike_convergence.SpinTests.test_wrong_rank_probe_refused) ... ok
+test_alpha_one_preserves_matrix_and_exterior (test_ym_helike_convergence.WidthTests.test_alpha_one_preserves_matrix_and_exterior) ... ok
+test_exterior_scaled_trace_matches_independent_oscillator_action (test_ym_helike_convergence.WidthTests.test_exterior_scaled_trace_matches_independent_oscillator_action) ... ok
+test_invalid_width_refused (test_ym_helike_convergence.WidthTests.test_invalid_width_refused) ... ok
+test_physical_probe_normalization (test_ym_helike_convergence.WidthTests.test_physical_probe_normalization) ... ok
+test_solver_orders_eigenpairs_without_changing_values (test_ym_helike_convergence.WidthTests.test_solver_orders_eigenpairs_without_changing_values) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.657s
+
+OK

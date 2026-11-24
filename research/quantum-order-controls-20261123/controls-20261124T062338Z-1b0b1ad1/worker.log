@@ -1,0 +1,112 @@
+{"utc": "2026-11-24T06:23:41.278051+00:00", "phase": "startup", "gpu": {"name": "NVIDIA GeForce RTX 5070 Laptop GPU", "torch": "2.11.0.dev20260108+cu128", "cuda": "12.8"}}
+{"utc": "2026-11-24T06:23:41.302051+00:00", "phase": "test_gate", "gate": "ordering_tests"}
+{"utc": "2026-11-24T06:23:41.780855+00:00", "phase": "test_gate", "gate": "runner_tests"}
+{"utc": "2026-11-24T06:23:42.441654+00:00", "phase": "test_gate", "gate": "original_tests"}
+{"utc": "2026-11-24T06:23:43.579888+00:00", "phase": "test_gate", "gate": "amendment_tests"}
+{"utc": "2026-11-24T06:23:45.457447+00:00", "phase": "basis", "cutoff": 10}
+{"utc": "2026-11-24T06:23:47.694648+00:00", "phase": "solve", "case": "N10-g2-1-alpha-1.7"}
+{"utc": "2026-11-24T06:23:48.017988+00:00", "phase": "full_residual", "case": "N10-g2-1-alpha-1.7", "level": "vacuum", "rank": 1}
+{"utc": "2026-11-24T06:23:48.759941+00:00", "phase": "level_complete", "case": "N10-g2-1-alpha-1.7", "level": "vacuum", "residual": 0.0988251173644318}
+{"utc": "2026-11-24T06:23:48.768947+00:00", "phase": "full_residual", "case": "N10-g2-1-alpha-1.7", "level": "scalar", "rank": 1}
+{"utc": "2026-11-24T06:23:49.578396+00:00", "phase": "level_complete", "case": "N10-g2-1-alpha-1.7", "level": "scalar", "residual": 0.34705523703148594}
+{"utc": "2026-11-24T06:23:49.583378+00:00", "phase": "full_residual", "case": "N10-g2-1-alpha-1.7", "level": "scalar_next", "rank": 1}
+{"utc": "2026-11-24T06:23:50.388834+00:00", "phase": "level_complete", "case": "N10-g2-1-alpha-1.7", "level": "scalar_next", "residual": 0.4809420266158154}
+{"utc": "2026-11-24T06:23:50.396831+00:00", "phase": "full_residual", "case": "N10-g2-1-alpha-1.7", "level": "tensor", "rank": 5}
+{"utc": "2026-11-24T06:23:51.471315+00:00", "phase": "level_complete", "case": "N10-g2-1-alpha-1.7", "level": "tensor", "residual": 0.38834927773728545}
+{"utc": "2026-11-24T06:23:51.480337+00:00", "phase": "full_residual", "case": "N10-g2-1-alpha-1.7", "level": "tensor_next", "rank": 5}
+{"utc": "2026-11-24T06:23:52.552576+00:00", "phase": "level_complete", "case": "N10-g2-1-alpha-1.7", "level": "tensor_next", "residual": 1.040742141741991}
+{"utc": "2026-11-24T06:23:52.707070+00:00", "phase": "case_complete", "cutoff": 10, "g2": 1.0, "order": "SCALAR_LOWER", "gpu_allocated_bytes": 8519680, "gpu_peak_bytes": 36782592}
+{"utc": "2026-11-24T06:23:52.710068+00:00", "phase": "solve", "case": "N10-g2-2-alpha-2.3"}
+{"utc": "2026-11-24T06:23:53.031184+00:00", "phase": "full_residual", "case": "N10-g2-2-alpha-2.3", "level": "vacuum", "rank": 1}
+{"utc": "2026-11-24T06:23:53.870478+00:00", "phase": "level_complete", "case": "N10-g2-2-alpha-2.3", "level": "vacuum", "residual": 0.08980845349228968}
+{"utc": "2026-11-24T06:23:53.878477+00:00", "phase": "full_residual", "case": "N10-g2-2-alpha-2.3", "level": "scalar", "rank": 1}
+{"utc": "2026-11-24T06:23:54.668287+00:00", "phase": "level_complete", "case": "N10-g2-2-alpha-2.3", "level": "scalar", "residual": 0.4167585752925786}
+{"utc": "2026-11-24T06:23:54.676287+00:00", "phase": "full_residual", "case": "N10-g2-2-alpha-2.3", "level": "scalar_next", "rank": 1}
+{"utc": "2026-11-24T06:23:55.496565+00:00", "phase": "level_complete", "case": "N10-g2-2-alpha-2.3", "level": "scalar_next", "residual": 0.7528789668251067}
+{"utc": "2026-11-24T06:23:55.502860+00:00", "phase": "full_residual", "case": "N10-g2-2-alpha-2.3", "level": "tensor", "rank": 5}
+{"utc": "2026-11-24T06:23:56.656746+00:00", "phase": "level_complete", "case": "N10-g2-2-alpha-2.3", "level": "tensor", "residual": 0.42787494946032595}
+{"utc": "2026-11-24T06:23:56.665747+00:00", "phase": "full_residual", "case": "N10-g2-2-alpha-2.3", "level": "tensor_next", "rank": 5}
+{"utc": "2026-11-24T06:23:57.759162+00:00", "phase": "level_complete", "case": "N10-g2-2-alpha-2.3", "level": "tensor_next", "residual": 1.2853824816796589}
+{"utc": "2026-11-24T06:23:57.910856+00:00", "phase": "case_complete", "cutoff": 10, "g2": 2.0, "order": "ORDER_UNRESOLVED", "gpu_allocated_bytes": 8519680, "gpu_peak_bytes": 36782592}
+{"utc": "2026-11-24T06:23:57.948882+00:00", "phase": "basis", "cutoff": 12}
+{"utc": "2026-11-24T06:24:05.885125+00:00", "phase": "solve", "case": "N12-g2-1-alpha-1.7"}
+{"utc": "2026-11-24T06:24:08.198844+00:00", "phase": "full_residual", "case": "N12-g2-1-alpha-1.7", "level": "vacuum", "rank": 1}
+{"utc": "2026-11-24T06:24:11.549491+00:00", "phase": "level_complete", "case": "N12-g2-1-alpha-1.7", "level": "vacuum", "residual": 0.041379254399154554}
+{"utc": "2026-11-24T06:24:11.558492+00:00", "phase": "full_residual", "case": "N12-g2-1-alpha-1.7", "level": "scalar", "rank": 1}
+{"utc": "2026-11-24T06:24:14.873101+00:00", "phase": "level_complete", "case": "N12-g2-1-alpha-1.7", "level": "scalar", "residual": 0.15887970462661868}
+{"utc": "2026-11-24T06:24:14.882126+00:00", "phase": "full_residual", "case": "N12-g2-1-alpha-1.7", "level": "scalar_next", "rank": 1}
+{"utc": "2026-11-24T06:24:18.135164+00:00", "phase": "level_complete", "case": "N12-g2-1-alpha-1.7", "level": "scalar_next", "residual": 0.3791573933948041}
+{"utc": "2026-11-24T06:24:18.142055+00:00", "phase": "full_residual", "case": "N12-g2-1-alpha-1.7", "level": "tensor", "rank": 5}
+{"utc": "2026-11-24T06:24:22.707827+00:00", "phase": "level_complete", "case": "N12-g2-1-alpha-1.7", "level": "tensor", "residual": 0.17969593281807772}
+{"utc": "2026-11-24T06:24:22.713842+00:00", "phase": "full_residual", "case": "N12-g2-1-alpha-1.7", "level": "tensor_next", "rank": 5}
+{"utc": "2026-11-24T06:24:27.230775+00:00", "phase": "level_complete", "case": "N12-g2-1-alpha-1.7", "level": "tensor_next", "residual": 0.5236817364027986}
+{"utc": "2026-11-24T06:24:27.751360+00:00", "phase": "case_complete", "cutoff": 12, "g2": 1.0, "order": "SCALAR_LOWER", "gpu_allocated_bytes": 8519680, "gpu_peak_bytes": 124299264}
+{"utc": "2026-11-24T06:24:27.755616+00:00", "phase": "solve", "case": "N12-g2-2-alpha-2.3"}
+{"utc": "2026-11-24T06:24:30.045943+00:00", "phase": "full_residual", "case": "N12-g2-2-alpha-2.3", "level": "vacuum", "rank": 1}
+{"utc": "2026-11-24T06:24:33.332326+00:00", "phase": "level_complete", "case": "N12-g2-2-alpha-2.3", "level": "vacuum", "residual": 0.05242269784050325}
+{"utc": "2026-11-24T06:24:33.341331+00:00", "phase": "full_residual", "case": "N12-g2-2-alpha-2.3", "level": "scalar", "rank": 1}
+{"utc": "2026-11-24T06:24:36.648602+00:00", "phase": "level_complete", "case": "N12-g2-2-alpha-2.3", "level": "scalar", "residual": 0.22301031472047803}
+{"utc": "2026-11-24T06:24:36.658123+00:00", "phase": "full_residual", "case": "N12-g2-2-alpha-2.3", "level": "scalar_next", "rank": 1}
+{"utc": "2026-11-24T06:24:39.935382+00:00", "phase": "level_complete", "case": "N12-g2-2-alpha-2.3", "level": "scalar_next", "residual": 0.46973005447392374}
+{"utc": "2026-11-24T06:24:39.944932+00:00", "phase": "full_residual", "case": "N12-g2-2-alpha-2.3", "level": "tensor", "rank": 5}
+{"utc": "2026-11-24T06:24:44.474189+00:00", "phase": "level_complete", "case": "N12-g2-2-alpha-2.3", "level": "tensor", "residual": 0.20361451315842002}
+{"utc": "2026-11-24T06:24:44.486189+00:00", "phase": "full_residual", "case": "N12-g2-2-alpha-2.3", "level": "tensor_next", "rank": 5}
+{"utc": "2026-11-24T06:24:49.088042+00:00", "phase": "level_complete", "case": "N12-g2-2-alpha-2.3", "level": "tensor_next", "residual": 0.8631380311192911}
+{"utc": "2026-11-24T06:24:49.615659+00:00", "phase": "case_complete", "cutoff": 12, "g2": 2.0, "order": "ORDER_UNRESOLVED", "gpu_allocated_bytes": 8519680, "gpu_peak_bytes": 124299264}
+{"utc": "2026-11-24T06:24:49.659667+00:00", "phase": "basis", "cutoff": 14}
+{"utc": "2026-11-24T06:25:22.682625+00:00", "phase": "solve", "case": "N14-g2-1-alpha-1.7"}
+{"utc": "2026-11-24T06:25:43.538181+00:00", "phase": "full_residual", "case": "N14-g2-1-alpha-1.7", "level": "vacuum", "rank": 1}
+{"utc": "2026-11-24T06:25:58.256526+00:00", "phase": "level_complete", "case": "N14-g2-1-alpha-1.7", "level": "vacuum", "residual": 0.026259838230648164}
+{"utc": "2026-11-24T06:25:58.264524+00:00", "phase": "full_residual", "case": "N14-g2-1-alpha-1.7", "level": "scalar", "rank": 1}
+{"utc": "2026-11-24T06:26:12.879058+00:00", "phase": "level_complete", "case": "N14-g2-1-alpha-1.7", "level": "scalar", "residual": 0.11147566473552435}
+{"utc": "2026-11-24T06:26:12.889060+00:00", "phase": "full_residual", "case": "N14-g2-1-alpha-1.7", "level": "scalar_next", "rank": 1}
+{"utc": "2026-11-24T06:26:27.996604+00:00", "phase": "level_complete", "case": "N14-g2-1-alpha-1.7", "level": "scalar_next", "residual": 0.16510489380263044}
+{"utc": "2026-11-24T06:26:28.010613+00:00", "phase": "full_residual", "case": "N14-g2-1-alpha-1.7", "level": "tensor", "rank": 5}
+{"utc": "2026-11-24T06:26:47.121267+00:00", "phase": "level_complete", "case": "N14-g2-1-alpha-1.7", "level": "tensor", "residual": 0.08344191781537301}
+{"utc": "2026-11-24T06:26:47.130263+00:00", "phase": "full_residual", "case": "N14-g2-1-alpha-1.7", "level": "tensor_next", "rank": 5}
+{"utc": "2026-11-24T06:27:06.549958+00:00", "phase": "level_complete", "case": "N14-g2-1-alpha-1.7", "level": "tensor_next", "residual": 0.2832373453718758}
+{"utc": "2026-11-24T06:27:09.144968+00:00", "phase": "case_complete", "cutoff": 14, "g2": 1.0, "order": "SCALAR_LOWER", "gpu_allocated_bytes": 8519680, "gpu_peak_bytes": 429377536}
+{"utc": "2026-11-24T06:27:09.150482+00:00", "phase": "solve", "case": "N14-g2-2-alpha-2.3"}
+{"utc": "2026-11-24T06:27:23.702390+00:00", "phase": "full_residual", "case": "N14-g2-2-alpha-2.3", "level": "vacuum", "rank": 1}
+{"utc": "2026-11-24T06:27:34.876127+00:00", "phase": "level_complete", "case": "N14-g2-2-alpha-2.3", "level": "vacuum", "residual": 0.024022975265711535}
+{"utc": "2026-11-24T06:27:34.882131+00:00", "phase": "full_residual", "case": "N14-g2-2-alpha-2.3", "level": "scalar", "rank": 1}
+{"utc": "2026-11-24T06:27:45.891731+00:00", "phase": "level_complete", "case": "N14-g2-2-alpha-2.3", "level": "scalar", "residual": 0.12611463514111365}
+{"utc": "2026-11-24T06:27:45.900767+00:00", "phase": "full_residual", "case": "N14-g2-2-alpha-2.3", "level": "scalar_next", "rank": 1}
+{"utc": "2026-11-24T06:27:56.976669+00:00", "phase": "level_complete", "case": "N14-g2-2-alpha-2.3", "level": "scalar_next", "residual": 0.2609084411497741}
+{"utc": "2026-11-24T06:27:56.987672+00:00", "phase": "full_residual", "case": "N14-g2-2-alpha-2.3", "level": "tensor", "rank": 5}
+{"utc": "2026-11-24T06:28:15.018834+00:00", "phase": "level_complete", "case": "N14-g2-2-alpha-2.3", "level": "tensor", "residual": 0.11738268324448435}
+{"utc": "2026-11-24T06:28:15.032878+00:00", "phase": "full_residual", "case": "N14-g2-2-alpha-2.3", "level": "tensor_next", "rank": 5}
+{"utc": "2026-11-24T06:28:34.394482+00:00", "phase": "level_complete", "case": "N14-g2-2-alpha-2.3", "level": "tensor_next", "residual": 0.5461825079196354}
+{"utc": "2026-11-24T06:28:36.926647+00:00", "phase": "case_complete", "cutoff": 14, "g2": 2.0, "order": "TENSOR_LOWER", "gpu_allocated_bytes": 8519680, "gpu_peak_bytes": 429377536}
+{"utc": "2026-11-24T06:28:37.000179+00:00", "phase": "final_replay"}
+{"utc": "2026-11-24T06:28:40.606894+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 1.0, "level": "vacuum"}
+{"utc": "2026-11-24T06:28:41.734797+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 1.0, "level": "scalar"}
+{"utc": "2026-11-24T06:28:42.889441+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 1.0, "level": "scalar_next"}
+{"utc": "2026-11-24T06:28:44.064524+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 1.0, "level": "tensor"}
+{"utc": "2026-11-24T06:28:45.700465+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 1.0, "level": "tensor_next"}
+{"utc": "2026-11-24T06:28:47.535483+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 2.0, "level": "vacuum"}
+{"utc": "2026-11-24T06:28:48.567558+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 2.0, "level": "scalar"}
+{"utc": "2026-11-24T06:28:49.713850+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 2.0, "level": "scalar_next"}
+{"utc": "2026-11-24T06:28:50.890899+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 2.0, "level": "tensor"}
+{"utc": "2026-11-24T06:28:52.575724+00:00", "phase": "replay_residual", "cutoff": 10, "g2": 2.0, "level": "tensor_next"}
+{"utc": "2026-11-24T06:29:07.811332+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 1.0, "level": "vacuum"}
+{"utc": "2026-11-24T06:29:12.546710+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 1.0, "level": "scalar"}
+{"utc": "2026-11-24T06:29:16.858004+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 1.0, "level": "scalar_next"}
+{"utc": "2026-11-24T06:29:21.200319+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 1.0, "level": "tensor"}
+{"utc": "2026-11-24T06:29:27.331856+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 1.0, "level": "tensor_next"}
+{"utc": "2026-11-24T06:29:35.089102+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 2.0, "level": "vacuum"}
+{"utc": "2026-11-24T06:29:39.358621+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 2.0, "level": "scalar"}
+{"utc": "2026-11-24T06:29:43.708275+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 2.0, "level": "scalar_next"}
+{"utc": "2026-11-24T06:29:48.045136+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 2.0, "level": "tensor"}
+{"utc": "2026-11-24T06:29:54.017519+00:00", "phase": "replay_residual", "cutoff": 12, "g2": 2.0, "level": "tensor_next"}
+{"utc": "2026-11-24T06:30:51.647418+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 1.0, "level": "vacuum"}
+{"utc": "2026-11-24T06:31:04.435643+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 1.0, "level": "scalar"}
+{"utc": "2026-11-24T06:31:15.617135+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 1.0, "level": "scalar_next"}
+{"utc": "2026-11-24T06:31:26.818260+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 1.0, "level": "tensor"}
+{"utc": "2026-11-24T06:31:41.550209+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 1.0, "level": "tensor_next"}
+{"utc": "2026-11-24T06:32:10.185641+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 2.0, "level": "vacuum"}
+{"utc": "2026-11-24T06:32:25.095934+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 2.0, "level": "scalar"}
+{"utc": "2026-11-24T06:32:39.828761+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 2.0, "level": "scalar_next"}
+{"utc": "2026-11-24T06:32:54.571879+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 2.0, "level": "tensor"}
+{"utc": "2026-11-24T06:33:14.276608+00:00", "phase": "replay_residual", "cutoff": 14, "g2": 2.0, "level": "tensor_next"}
+{"utc": "2026-11-24T06:33:33.793110+00:00", "phase": "complete", "scientific_status": "UNRESOLVED"}

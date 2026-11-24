@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "verified_cases": 6,
+  "source_hashes": {
+    "scripts/quantum_ordering.py": "43b49b4fb663262ff41bee9d49a1cc6cfcedd1f3da31f2b236bb8a4eacd6d4e9",
+    "scripts/run_quantum_order_controls.py": "081248bb124b2dd7f9718655d83bddc61101c4d03f54a4c4abf9efef68edcd77",
+    "scripts/test_quantum_ordering.py": "6e97cf175949da6c9a986f1b7c8515ec62089a27dfcee8be8d21b0603af37b16",
+    "scripts/test_quantum_order_controls.py": "b8e114916a0d8a9e4d6a12aaca5f5821f8d4ef7ea03d56693264f0511bfef09a",
+    "scripts/check_quantum_order_mutations.py": "ef74e10dc44596f9824098ee760922b629b59e0c8e7252eae86bef70896df09d",
+    "scripts/ym_helike_quantum.py": "6899b9694b513d17cfb4fd37f780da1e741fe3badb73bb1c1d223c808e4eb613",
+    "scripts/run_ym_helike_convergence.py": "31752fd3052966a24a8af08b7273be7dc2222e441e4da284dc4536fc0503782e",
+    "scripts/test_ym_helike_convergence.py": "a46bf8c933bbadbd038213c08997a6848f975046cecf62f0f764eff0c3e379c7",
+    "scripts/check_ym_helike_convergence_mutations.py": "04cbc77c08ca08bfdb64bd46268570bc56163756b83be9d3f30759aab11df8ea",
+    "scripts/verify_ym_helike_evidence.py": "b602928c5702495b1964e426911354eb43c1f32f060198ccf5892c6ddd28bd1d",
+    "scripts/test_ym_helike_quantum.py": "8bbb4ed30ad5770478de3ce73370d544318516abd8013842d934db3256e580da",
+    "docs/research/quantum-order-controls-protocol-2026-11-23.md": "d20288e68ca64f2ae49ac02373c40bb07d5059dd9c9543201adb805778888e9c",
+    "docs/research/helike-quantum-crossing-preregistration-2026-11-23.md": "c05ccd6651945f9407cf7771419c097f418b8a33fae00d16812d89710ef40b4f",
+    "research/helike-quantum-probe-20261123/exploration-edge-20261124/width_residuals_N10.json": "d96aa8a3b600f93624f38b7c2bca2803dde6b0a1e6c46ab51bd86db8b80497b4"
+  },
+  "scientific_status": "UNRESOLVED",
+  "separation_verified": false,
+  "certified": false
+}

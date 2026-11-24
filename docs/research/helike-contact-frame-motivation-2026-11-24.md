@@ -214,3 +214,32 @@ relationship between them does part of the work. I know where to move. The
 contact gives me a local reference for how to meet what is there.
 
 That is what I want the mathematics to capture.
+
+## Addendum: the model already supplies the local frame
+
+*Added after review, the same day. Analytic; no new experiment.*
+
+The first open requirement above asks what object supplies the local reference. At the second vacuum the model
+answers it exactly. At any critical point of W the gradient vanishes, so the Hessian of the potential is the
+square of the Hessian of W:
+
+  Hess V = (Hess W)².
+
+So in this model the two Hessians I was careful to keep apart are tied together at the vacua. The eigenvectors of
+Hess W give the frame, and the absolute eigenvalues give the widths. At q₀ = I/g:
+- the breathing direction (δ ∝ I) has μ = −1;
+- the five symmetric traceless shape directions have μ = +2;
+- the three orbit directions have μ = 0.
+
+None of this depends on g.
+
+The orbit directions are exactly the ones my note warned should not get a confinement width for convenience, and
+the model agrees: μ = 0 there. The admissible treatment is the one the dome already used, a uniform spread along
+the orbit by Haar averaging. So a contact-matched envelope means: frame and widths from Hess W in the six normal
+directions, Haar-averaged along the orbit, with every overlap and kinetic term kept.
+
+The same Hessian gives a local energy count. Because ΔW = 9, H = H_W + 9/2, where H_W is the 0-form part of
+Witten's supersymmetric Hamiltonian. Its harmonic ground energy at a critical point is ½Σ(|μ| − μ): 0 at the origin
+and 1 at the second vacuum. That leads to a weak-coupling prediction and a candidate mechanism for the crossing,
+recorded in [the weak-coupling note](helike-second-vacuum-weak-coupling-2026-11-24.md). It is a candidate, not a
+result.

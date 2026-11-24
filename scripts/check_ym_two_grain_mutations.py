@@ -47,11 +47,19 @@ def projection_without_rotation(M, N, Ds=None):
 
 
 ORIG = tg.curvature
+ORIG_BIDEGREE = tg.bidegree_parts
+
+
+def bidegree_ignores_degree_guard(M, N, Ds=None, maxdeg=4):
+    return ORIG_BIDEGREE(M, N, Ds, maxdeg=4)
+
+
 MUTANTS = {
     "frame_derivative_sign": ("curvature", curvature_frame_sign),
     "bracket_sign": ("curvature", curvature_bracket_sign),
     "right_frame_transposed": ("curvature", curvature_transposed_frame),
     "projection_unrotated": ("projected_gradient", projection_without_rotation),
+    "degree_guard_ignored": ("bidegree_parts", bidegree_ignores_degree_guard),
 }
 
 

@@ -24,6 +24,8 @@
 /research/dome-controls-20261124/** -text whitespace=cr-at-eol,-blank-at-eol
 /research/dome-local-review-20261124/** -text whitespace=cr-at-eol,-blank-at-eol
 /scripts/*dome_local_review*.py -text
+/scripts/*ym_two_grain*.py -text
+/research/two-grain-review-20261124/** -text whitespace=cr-at-eol,-blank-at-eol
 /docs/research/dome-local-review-*.md -text whitespace=cr-at-eol
 /scripts/*dome_execution*.py -text
 /docs/research/sector-*.md -text whitespace=cr-at-eol

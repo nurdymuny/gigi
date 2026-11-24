@@ -1,11 +1,12 @@
 # A second-vacuum candidate for the weak-coupling scalar: an exact local count and a prediction
 
-> **CORRECTION (same day, Phase 1 of the two-grain model).** The weak-coupling prediction below, that the lowest
-> scalar sits on the second vacuum with gap → 1, is an artefact of keeping one grain. With both grains the
-> cross term stiffens the right-grain modes at the second vacuum (ω² = 7/3), and the local offset becomes
-> 4.5√(7/3) − 3.5 ≈ 3.37. In the full theory it is 0, since the vacua are gauge copies. So it is not a property of
-> Yang–Mills, and the proposed weak-coupling test should not be run as written. The exact identities here (the
-> superpotential, Hess W = I + L_c·L_s, the double-cover reading) stand. See
+> **SCOPE CORRECTION (same day, two-grain Phase 1).** The prediction below is confined to the one-grain model.
+> Adding the other grain stiffens nine modes at the second vacuum (ω² = 7/3), changing the local harmonic offset
+> to 4.5√(7/3) - 3.5, approximately 3.37. That is not a measured global excitation gap, nor does it refute the
+> prediction within its original one-grain Hamiltonian. It does prevent using the one-grain local offset as a
+> prediction for the enlarged model. No full-theory zero-point difference was computed. Revise the intended model
+> and global spectral acceptance criteria before a weak-coupling run. The one-grain superpotential and Hessian
+> identities remain unchanged. See
 > [two-grain Phase 1](helike-two-grain-phase1-2026-11-24.md).
 
 24 November 2026. **ANALYTIC NOTE AND PROPOSED PREDICTION. No new numerical experiment was run for this note.**

@@ -1,0 +1,22 @@
+test_group_and_moments (test_ym_two_grain_potential.ExactAverage.test_group_and_moments) ... ok
+test_E1_only_allowed_bidegrees (test_ym_two_grain_potential.Potential.test_E1_only_allowed_bidegrees) ... ok
+test_E2_projected_gradient_has_opposite_grain_signs (test_ym_two_grain_potential.Potential.test_E2_projected_gradient_has_opposite_grain_signs)
+P*F = (-grad W_L(M), +grad W_R(N)): the restricted Chern-Simons functional is W_R - W_L. ... ok
+test_E3_energy_is_projected_gradient_plus_cross_term (test_ym_two_grain_potential.Potential.test_E3_energy_is_projected_gradient_plus_cross_term) ... ok
+test_closed_form_matches_average (test_ym_two_grain_potential.Potential.test_closed_form_matches_average) ... ok
+test_cross_term_can_vanish_with_both_grains_nonzero (test_ym_two_grain_potential.Potential.test_cross_term_can_vanish_with_both_grains_nonzero) ... ok
+test_cross_term_is_one_third_of_colour_cross_products (test_ym_two_grain_potential.Potential.test_cross_term_is_one_third_of_colour_cross_products) ... ok
+test_floors_depend_on_sweep (test_ym_two_grain_potential.Potential.test_floors_depend_on_sweep)
+Laplacian of W_R(p) - W_L(q) (global Chern-Simons) is 0; per-grain W_L(q) + W_R(p) gives 18. ... ok
+test_frame_derivative_against_group_motion (test_ym_two_grain_potential.Potential.test_frame_derivative_against_group_motion) ... ok
+test_independent_colour_and_spatial_rotations (test_ym_two_grain_potential.Potential.test_independent_colour_and_spatial_rotations) ... ok
+test_parity_exchanges_grains (test_ym_two_grain_potential.Potential.test_parity_exchanges_grains) ... ok
+test_rejects_unidentifiable_polynomial_degree (test_ym_two_grain_potential.Potential.test_rejects_unidentifiable_polynomial_degree) ... ok
+test_single_grain_limits (test_ym_two_grain_potential.Potential.test_single_grain_limits) ... ok
+test_hessian_spectra_and_zero_point_offset (test_ym_two_grain_potential.Vacua.test_hessian_spectra_and_zero_point_offset) ... ok
+test_three_vacuum_sets_and_the_mixed_point (test_ym_two_grain_potential.Vacua.test_three_vacuum_sets_and_the_mixed_point) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.717s
+
+OK

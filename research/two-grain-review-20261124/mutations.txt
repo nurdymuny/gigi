@@ -1,0 +1,6 @@
+frame_derivative_sign {'failures': 4, 'errors': 0, 'caught_by_assertion': True}
+bracket_sign {'failures': 4, 'errors': 0, 'caught_by_assertion': True}
+right_frame_transposed {'failures': 2, 'errors': 0, 'caught_by_assertion': True}
+projection_unrotated {'failures': 2, 'errors': 0, 'caught_by_assertion': True}
+degree_guard_ignored {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+ALL MUTANTS CAUGHT

@@ -1,9 +1,10 @@
 # Two grains, Phase 1: the exact potential, and a correction
 
-24 November 2026. **COMPUTED (exact averages, numerical checks). Phase 1 of the
-[two-grain scope](helike-two-grain-scope-2026-11-24.md). No spectra were computed.**
-Code: `scripts/ym_two_grain_potential.py`. Tests: `scripts/test_ym_two_grain_potential.py` (11 passing).
-Mutation check: `scripts/check_ym_two_grain_mutations.py` (4 of 4 caught by assertion).
+24 November 2026. **COMPUTED (algebraically exact quadrature rule, floating-point evaluation). Phase 1 of the
+[two-grain scope](helike-two-grain-scope-2026-11-24.md). No quantum Hamiltonian spectra were computed.**
+Code: `scripts/ym_two_grain_potential.py`. After review, `scripts/test_ym_two_grain_potential.py` has 15 passing tests.
+Mutation check: `scripts/check_ym_two_grain_mutations.py` (5 of 5 caught by assertion).
+Receipts: [bounded review](../../research/two-grain-review-20261124/).
 
 ## How it was derived
 
@@ -16,10 +17,12 @@ B = M + N D(x), and compute the curvature in the left frame from the Lie algebra
 The energy is the S³ average of ½|F|². The density depends on x only through D, as a polynomial of degree ≤ 4,
 so averaging over the 120-element binary icosahedral group (60 rotations) is exact. That group has no invariant
 harmonic with 1 ≤ l ≤ 5. Checks:
-- ⟨D⟩ = 0, ⟨DD⟩ = δδ/3, ⟨D₁₁⁴⟩ = 1/5 and ⟨D₁₁D₂₂D₃₃⟩ = 1/6, all exact;
-- a Monte Carlo over S³ agrees;
+- the exact moment targets ⟨D⟩ = 0, ⟨DD⟩ = δδ/3, ⟨D₁₁⁴⟩ = 1/5 and ⟨D₁₁D₂₂D₃₃⟩ = 1/6 agree at the stated
+  floating-point test tolerances;
+- the curvature average and invariant formula agree at independently chosen coefficient matrices;
 - with N = 0 the result is the one-grain model at g = 1, so the model normalization is fixed by the geometry, not
-  chosen.
+  chosen. This fixes consistency with our existing model units; it is not yet a complete normalization match to
+  another paper's radius, volume and Hamiltonian conventions.
 
 ## The potential
 
@@ -38,13 +41,18 @@ colour cross product of every left mode with every right mode, the same shape as
 | --- | --- | --- |
 | E1 | No quadratic or cubic mixing | Confirmed. The only bidegrees are (2,0), (3,0), (4,0), their mirrors and (2,2). |
 | E2 | The oriented Chern–Simons restriction is a difference | Confirmed. The projected *F is (−∇W_L(q), +∇W_R(p)), so CS₁₈ ∝ W_L(q) − W_R(p), up to one overall convention sign. This is the revised scope's E2 and van Baal–Hari Dass eq. (101), Q(c − ĉ) = Q(c) − Q(d). |
-| E3 | V₁₈ = ½\|∇CS₁₈\|² + C = ½\|∇U₁₈\|² + C, C ≥ 0 | Confirmed exactly, with U₁₈ = W_L + W_R the auxiliary sum and C the cross term above. The magnetic gradient is not closed in the eighteen modes: C = ½\|(1 − P)*F\|² > 0 off the single-grain subspaces. |
-| E4 | Vacua | Exactly three sets: 0, (R/g, 0) and (0, −R/g). The mixed point (R/g, −R′/g) costs 2/g². |
+| E3 | V₁₈ = ½\|∇CS₁₈\|² + C = ½\|∇U₁₈\|² + C, C ≥ 0 | The identity is supported by the quadrature and projection tests, with U₁₈ = W_L + W_R. C is generally positive, but vanishes when all nonzero columns of both families share one colour axis. Both families can therefore be nonzero with C=0. |
+| E4 | Vacua | Three sets: 0, (R/g, 0) and (0, −R/g). The mixed point (R/g, −R′/g) costs 2/g²; exhaustion follows from the nonnegative decomposition, not from sampling those points alone. |
 | E5 | Parity | V₁₈(q,p) = V₁₈(−p,−q). The two second vacua have identical Hessian spectra. |
 
 **The two grains are the two helicities of the curl.** The opposite signs in W₁₈ say that left-invariant forms
 are eigenforms of the curl operator with one sign and right-invariant forms with the other. The razor's sweep
-direction is helicity.
+direction motivates this helicity comparison; the physical shaving direction is not literally a field helicity.
+
+For the vacuum count, every term in V₁₈ is nonnegative. A zero must therefore be a zero of each one-grain square
+and of C. For g>0 the one-grain equation q=g cof(q) permits only q=0 or q=R/g: ranks one and two are incompatible
+with that equation, while full rank gives qqᵀ proportional to I and the stated scale. The right-grain equation
+gives p=0 or -R/g. Of the four combinations, the simultaneous nonzero orbits have C=2/g² and are excluded.
 
 **The bound needs each grain swept with its own grain.** Factoring with the oriented functional CS₁₈ gives
 ΔCS₁₈ = 9 − 9 = 0, and only H ≥ 0 + C. Factoring with the auxiliary sum U₁₈ (each grain with its own W) gives
@@ -72,19 +80,18 @@ not 1.
 | --- | --- |
 | One grain (9 modes) | 1 |
 | Two grains (18 modes) | 4.5√(7/3) − 3.5 ≈ 3.37 |
-| Full theory | 0 (the two vacua are gauge copies) |
+| Full theory | Not computed here; gauge-related fluctuation operators require a common gauge-covariant regulator and domain for comparison |
 
-Both offsets are gaps within one Hamiltonian: the second-vacuum local zero-point energy minus the origin's, in the
-same model. So the comparison is matched, not a shift of absolute zero-point between models. The offset depends on
-the truncation and does not approach the full-theory value monotonically. My weak-coupling
-prediction, that the lowest scalar sits on the second vacuum with gap → 1, was therefore a one-grain artefact. With
-both grains the second-vacuum states sit about 3.37 up, and at weak coupling the lowest excitations are the
-origin's oscillator states (scalar and tensor both at gap 2 to leading order). The one-grain model was cutting too
-close. The [weak-coupling note](helike-second-vacuum-weak-coupling-2026-11-24.md) now carries this correction at
-its top.
+Each offset is a difference between local harmonic zero-point estimates within the same Hamiltonian, not a computed
+global spectral gap. Thus the comparison is not just an arbitrary shift of the zero-point energy between models.
+The one-grain local estimate does not survive this enlargement unchanged. This does not refute a conjecture
+explicitly confined to the one-grain Hamiltonian, but prevents exporting its proposed gap limit of 1 to the larger
+model. The origin's scalar and tensor oscillator excitations at gap 2 are now plausible lower candidates than the
+second-orbit local ground estimate. Establishing the global lowest levels still needs state construction and
+spectral control. The [weak-coupling note](helike-second-vacuum-weak-coupling-2026-11-24.md) records this restriction.
 
 What is not affected:
-- the exact identities (the one-grain superpotential, the colour–space-locking Hessian, the double-cover reading);
+- the one-grain superpotential and colour-space-locking Hessian identities, and the actual SU(2) to SO(3) map;
 - the registered one-grain measurements.
 
 What is now open: whether the one-grain scalar–tensor crossing survives with both grains. Near g² ≈ 1.76 the two
@@ -105,7 +112,7 @@ Read from the published paper (pages 209–213), after Phase 1 had been computed
 
 ## Next
 
-- **Phase 2 is largely done by these tests:** the vacua, Hessians and parity. Still to do: the sphaleron (the
+- **Phase 2 has local checks:** the vacua, Hessians and parity. Still to do: the sphaleron (the
   saddle between 0 and R/g) with the cross term included, and the barrier with both grains.
 - **Phase 3:** sector solvers for (j_L, j_R). The (0,0) invariants now include the cross invariant
   T_q T_p − tr(qqᵀppᵀ), and the potential is known exactly in invariants.

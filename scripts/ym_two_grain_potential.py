@@ -14,7 +14,8 @@ With N = 0 this is E = T/2 - 3 det M + (T^2 - P)/4, which is the one-grain model
 Hamiltonian in model units is H = -1/2 (Lap_q + Lap_p) + E(g q, g p)/g^2. The two mode families are orthonormal under
 the S^3 average (<D> = 0), so the kinetic term stays diagonal.
 
-The S^3 average is exact: the density depends on x only through D(x), as a polynomial of degree <= 4 in D, i.e.
+The quadrature rule is algebraically exact for this degree class; evaluation here is floating point, not certified
+exact arithmetic. The density depends on x only through D(x), as a polynomial of degree <= 4 in D, i.e.
 harmonics with l <= 4. The binary icosahedral group (120 elements, 60 distinct rotations D) has no invariant
 harmonic with 1 <= l <= 5, so its average equals the Haar average for these integrands.
 """
@@ -110,7 +111,9 @@ def one_grain(M, sign=1.):
 
 
 def bidegree_parts(M, N, Ds=None, maxdeg=4):
-    """E(sM, tN) = sum_{i,j} s^i t^j E_ij. Returns {(i,j): E_ij} for i + j <= maxdeg, by exact polynomial fit."""
+    """Floating-point tensor polynomial fit, 0 <= i,j <= 4; total-degree > 4 coefficients should vanish."""
+    if type(maxdeg) is not int or maxdeg != 4:
+        raise ValueError('bidegree fit requires maxdeg=4 on the fixed five-by-five grid')
     pts = np.arange(-2, 3, dtype=float)
     rows, vals = [], []
     for s, t in itertools.product(pts, pts):

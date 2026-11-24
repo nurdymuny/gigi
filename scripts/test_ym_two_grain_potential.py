@@ -51,6 +51,35 @@ class Potential(unittest.TestCase):
     def setUp(self):
         self.rng = np.random.default_rng(61)
 
+    def test_rejects_unidentifiable_polynomial_degree(self):
+        M, N = np.eye(3), 2 * np.eye(3)
+        with self.assertRaises(ValueError):
+            tg.bidegree_parts(M, N, maxdeg=5)
+
+    def test_frame_derivative_against_group_motion(self):
+        u = self.rng.normal(size=4); u /= np.linalg.norm(u)
+        x = tg.quat_to_su2(*u)
+        D = tg.adjoint_inverse(x)
+        h = 1e-5
+        for m in range(3):
+            ep = np.cos(h/2)*np.eye(2) + 2*np.sin(h/2)*tg.TAU[m]
+            em = np.cos(h/2)*np.eye(2) - 2*np.sin(h/2)*tg.TAU[m]
+            measured = (tg.adjoint_inverse(x @ ep) - tg.adjoint_inverse(x @ em))/(2*h)
+            np.testing.assert_allclose(measured, -D @ tg.EPS[m], atol=1e-9, rtol=0)
+
+    def test_independent_colour_and_spatial_rotations(self):
+        M, N = self.rng.normal(size=(3, 3)), self.rng.normal(size=(3, 3))
+        C, L, R = (random_rotation(self.rng) for _ in range(3))
+        self.assertAlmostEqual(tg.energy(C @ M @ L.T, C @ N @ R.T), tg.energy(M, N), places=10)
+
+    def test_cross_term_can_vanish_with_both_grains_nonzero(self):
+        M, N = np.zeros((3, 3)), np.zeros((3, 3))
+        M[0] = [1., 2., -1.]; N[0] = [-2., 1., 3.]
+        cross = sum(np.sum(np.cross(M[:,i], N[:,j])**2) for i in range(3) for j in range(3))/3
+        self.assertEqual(cross, 0.)
+        self.assertGreater(np.linalg.norm(M)*np.linalg.norm(N), 0.)
+        self.assertAlmostEqual(tg.energy(M, N), tg.one_grain(M)+tg.one_grain(N, -1.), places=10)
+
     def test_single_grain_limits(self):
         M = self.rng.normal(size=(3, 3))
         self.assertAlmostEqual(tg.energy(M, 0 * M), tg.one_grain(M), places=10)

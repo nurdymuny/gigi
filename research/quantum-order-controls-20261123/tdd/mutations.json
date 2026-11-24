@@ -1,0 +1,146 @@
+[
+  {
+    "mutation": "promote_assumed_separation",
+    "test": "BoundTests.test_missing_exact_level_never_becomes_verified",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_missing_exact_level_never_becomes_verified (test_quantum_ordering.BoundTests.test_missing_exact_level_never_becomes_verified) ... FAIL\n\n======================================================================\nFAIL: test_missing_exact_level_never_becomes_verified (test_quantum_ordering.BoundTests.test_missing_exact_level_never_becomes_verified)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 42, in test_missing_exact_level_never_becomes_verified\n    self.assertIs(r['separation_verified'], False)\nAssertionError: True is not False\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "promote_conditional_order",
+    "test": "BoundTests.test_missing_exact_level_never_becomes_verified",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_missing_exact_level_never_becomes_verified (test_quantum_ordering.BoundTests.test_missing_exact_level_never_becomes_verified) ... FAIL\n\n======================================================================\nFAIL: test_missing_exact_level_never_becomes_verified (test_quantum_ordering.BoundTests.test_missing_exact_level_never_becomes_verified)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 41, in test_missing_exact_level_never_becomes_verified\n    self.assertEqual(r['unconditional_order'], 'ORDER_UNRESOLVED')\nAssertionError: 'TENSOR_LOWER' != 'ORDER_UNRESOLVED'\n- TENSOR_LOWER\n+ ORDER_UNRESOLVED\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_neighbor_residual",
+    "test": "BoundTests.test_next_residual_is_in_denominator",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_next_residual_is_in_denominator (test_quantum_ordering.BoundTests.test_next_residual_is_in_denominator) ... FAIL\n\n======================================================================\nFAIL: test_next_residual_is_in_denominator (test_quantum_ordering.BoundTests.test_next_residual_is_in_denominator)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 73, in test_next_residual_is_in_denominator\n    self.assertEqual(r['scalar']['beta'], 2.5)\nAssertionError: 3.0 != 2.5\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "pad_energy_with_spin_tolerance",
+    "test": "BoundTests.test_spin_tolerance_does_not_change_energy_residual",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_spin_tolerance_does_not_change_energy_residual (test_quantum_ordering.BoundTests.test_spin_tolerance_does_not_change_energy_residual) ... FAIL\n\n======================================================================\nFAIL: test_spin_tolerance_does_not_change_energy_residual (test_quantum_ordering.BoundTests.test_spin_tolerance_does_not_change_energy_residual)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 67, in test_spin_tolerance_does_not_change_energy_residual\n    self.assertEqual(r['scalar']['residual'], .1)\nAssertionError: 0.100001 != 0.1\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_spin_gate",
+    "test": "BoundTests.test_spin_failure_refuses_instead_of_padding_energy",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_spin_failure_refuses_instead_of_padding_energy (test_quantum_ordering.BoundTests.test_spin_failure_refuses_instead_of_padding_energy) ... FAIL\n\n======================================================================\nFAIL: test_spin_failure_refuses_instead_of_padding_energy (test_quantum_ordering.BoundTests.test_spin_failure_refuses_instead_of_padding_energy)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 61, in test_spin_failure_refuses_instead_of_padding_energy\n    with self.assertRaisesRegex(ValueError, 'spin'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "weaken_separation_guard",
+    "test": "BoundTests.test_separation_guard_is_strict",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_separation_guard_is_strict (test_quantum_ordering.BoundTests.test_separation_guard_is_strict) ... FAIL\n\n======================================================================\nFAIL: test_separation_guard_is_strict (test_quantum_ordering.BoundTests.test_separation_guard_is_strict)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 27, in test_separation_guard_is_strict\n    self.assertFalse(o.lower_estimate(2., .5, 2.5)['usable'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_half_decision",
+    "test": "BoundTests.test_half_separation_can_change_the_order",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_half_separation_can_change_the_order (test_quantum_ordering.BoundTests.test_half_separation_can_change_the_order) ... FAIL\n\n======================================================================\nFAIL: test_half_separation_can_change_the_order (test_quantum_ordering.BoundTests.test_half_separation_can_change_the_order)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 52, in test_half_separation_can_change_the_order\n    self.assertEqual(r['conditional_order'], 'ORDER_UNRESOLVED')\nAssertionError: 'TENSOR_LOWER' != 'ORDER_UNRESOLVED'\n- TENSOR_LOWER\n+ ORDER_UNRESOLVED\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_half_guard",
+    "test": "BoundTests.test_half_separation_guard_cannot_be_skipped",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_half_separation_guard_cannot_be_skipped (test_quantum_ordering.BoundTests.test_half_separation_guard_cannot_be_skipped) ... FAIL\n\n======================================================================\nFAIL: test_half_separation_guard_cannot_be_skipped (test_quantum_ordering.BoundTests.test_half_separation_guard_cannot_be_skipped)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 57, in test_half_separation_guard_cannot_be_skipped\n    self.assertEqual(r['conditional_order'], 'ORDER_UNRESOLVED')\nAssertionError: 'SCALAR_LOWER' != 'ORDER_UNRESOLVED'\n- SCALAR_LOWER\n+ ORDER_UNRESOLVED\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "same_quintet_as_next_level",
+    "test": "SectorTests.test_next_means_distinct_complete_multiplet",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_next_means_distinct_complete_multiplet (test_quantum_ordering.SectorTests.test_next_means_distinct_complete_multiplet) ... FAIL\n\n======================================================================\nFAIL: test_next_means_distinct_complete_multiplet (test_quantum_ordering.SectorTests.test_next_means_distinct_complete_multiplet)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 93, in test_next_means_distinct_complete_multiplet\n    self.assertEqual(levels['tensor_next']['low'], 3.)\nAssertionError: 1.0 != 3.0\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_scaled_trace",
+    "test": "ResidualTests.test_full_action_matches_independent_ladders",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_full_action_matches_independent_ladders (test_quantum_ordering.ResidualTests.test_full_action_matches_independent_ladders) ... FAIL\n\n======================================================================\nFAIL: test_full_action_matches_independent_ladders (test_quantum_ordering.ResidualTests.test_full_action_matches_independent_ladders)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 182, in test_full_action_matches_independent_ladders\n    np.testing.assert_allclose(actual['gram'], expected, atol=1e-10, rtol=1e-10)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-10, atol=1e-10\n\nMismatched elements: 3 / 9 (33.3%)\nMismatch at indices:\n [0, 0]: (12.762539691200269+0j) (ACTUAL), (1.7709022734359443+0j) (DESIRED)\n [1, 1]: (15.446709218340326+0j) (ACTUAL), (2.380131897965778+0j) (DESIRED)\n [2, 2]: (15.446709218340281+0j) (ACTUAL), (2.380131897965781+0j) (DESIRED)\nMax absolute difference among violations: 13.06657732\nMax relative difference among violations: 6.20680067\n ACTUAL: array([[ 1.276254e+01+0.000000e+00j,  0.000000e+00+2.530962e-15j,\n         0.000000e+00+4.491373e-14j],\n       [ 0.000000e+00-2.530962e-15j,  1.544671e+01+0.000000e+00j,...\n DESIRED: array([[1.770902e+00+0.000000e+00j, 0.000000e+00+4.093947e-16j,\n        0.000000e+00+7.535639e-15j],\n       [0.000000e+00-4.093947e-16j, 2.380132e+00+0.000000e+00j,...\n\n----------------------------------------------------------------------\nRan 1 test in 0.068s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_exterior_action",
+    "test": "ResidualTests.test_full_action_matches_independent_ladders",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_full_action_matches_independent_ladders (test_quantum_ordering.ResidualTests.test_full_action_matches_independent_ladders) ... FAIL\n\n======================================================================\nFAIL: test_full_action_matches_independent_ladders (test_quantum_ordering.ResidualTests.test_full_action_matches_independent_ladders)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 182, in test_full_action_matches_independent_ladders\n    np.testing.assert_allclose(actual['gram'], expected, atol=1e-10, rtol=1e-10)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-10, atol=1e-10\n\nMismatched elements: 3 / 9 (33.3%)\nMismatch at indices:\n [0, 0]: (1.5715588346199845e-30+0j) (ACTUAL), (1.7709022734359443+0j) (DESIRED)\n [1, 1]: (1.989903887516027e-29+0j) (ACTUAL), (2.380131897965778+0j) (DESIRED)\n [2, 2]: (5.935092859667408e-30+0j) (ACTUAL), (2.380131897965781+0j) (DESIRED)\nMax absolute difference among violations: 2.3801319\nMax relative difference among violations: 1.\n ACTUAL: array([[ 1.571559e-30+0.000000e+00j,  0.000000e+00-1.004123e-32j,\n         0.000000e+00-1.901925e-30j],\n       [ 0.000000e+00+1.004123e-32j,  1.989904e-29+0.000000e+00j,...\n DESIRED: array([[1.770902e+00+0.000000e+00j, 0.000000e+00+4.093947e-16j,\n        0.000000e+00+7.535639e-15j],\n       [0.000000e+00-4.093947e-16j, 2.380132e+00+0.000000e+00j,...\n\n----------------------------------------------------------------------\nRan 1 test in 0.067s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_complex_conjugation",
+    "test": "ResidualTests.test_full_action_matches_independent_ladders",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_full_action_matches_independent_ladders (test_quantum_ordering.ResidualTests.test_full_action_matches_independent_ladders) ... FAIL\n\n======================================================================\nFAIL: test_full_action_matches_independent_ladders (test_quantum_ordering.ResidualTests.test_full_action_matches_independent_ladders)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 182, in test_full_action_matches_independent_ladders\n    np.testing.assert_allclose(actual['gram'], expected, atol=1e-10, rtol=1e-10)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-10, atol=1e-10\n\nMismatched elements: 2 / 9 (22.2%)\nMismatch at indices:\n [1, 1]: (-2.3801318979657817+0j) (ACTUAL), (2.380131897965778+0j) (DESIRED)\n [2, 2]: (-2.3801318979657813+0j) (ACTUAL), (2.380131897965781+0j) (DESIRED)\nMax absolute difference among violations: 4.7602638\nMax relative difference among violations: 2.\n ACTUAL: array([[ 1.770902e+00+0.000000e+00j,  0.000000e+00+4.770490e-16j,\n         0.000000e+00+7.396861e-15j],\n       [ 0.000000e+00+4.770490e-16j, -2.380132e+00+0.000000e+00j,...\n DESIRED: array([[1.770902e+00+0.000000e+00j, 0.000000e+00+4.093947e-16j,\n        0.000000e+00+7.535639e-15j],\n       [0.000000e+00-4.093947e-16j, 2.380132e+00+0.000000e+00j,...\n\n----------------------------------------------------------------------\nRan 1 test in 0.069s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "mix_width_baselines",
+    "test": "WidthTests.test_saved_width_baselines_are_distinct",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_saved_width_baselines_are_distinct (test_quantum_ordering.WidthTests.test_saved_width_baselines_are_distinct) ... FAIL\n\n======================================================================\nFAIL: test_saved_width_baselines_are_distinct (test_quantum_ordering.WidthTests.test_saved_width_baselines_are_distinct)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_ordering.py\", line 200, in test_saved_width_baselines_are_distinct\n    self.assertAlmostEqual(r['expanded_max_gain'], 1.1089676170903249, places=12)\nAssertionError: 1.3040361304302137 != 1.1089676170903249 within 12 places (0.19506851333988884 difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "leave_verification_running_on_failure",
+    "test": "EvidenceTests.test_incomplete_replay_invalidates_stale_pass",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_incomplete_replay_invalidates_stale_pass (test_quantum_order_controls.EvidenceTests.test_incomplete_replay_invalidates_stale_pass) ... FAIL\n\n======================================================================\nFAIL: test_incomplete_replay_invalidates_stale_pass (test_quantum_order_controls.EvidenceTests.test_incomplete_replay_invalidates_stale_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_order_controls.py\", line 60, in test_incomplete_replay_invalidates_stale_pass\n    self.assertEqual(json.loads((p/'verification.json').read_text())['status'],'FAIL')\nAssertionError: 'RUNNING' != 'FAIL'\n- RUNNING\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.009s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_current_source_check",
+    "test": "EvidenceTests.test_source_and_snapshot_corruption_clear_pass",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_source_and_snapshot_corruption_clear_pass (test_quantum_order_controls.EvidenceTests.test_source_and_snapshot_corruption_clear_pass) ... \n  test_source_and_snapshot_corruption_clear_pass (test_quantum_order_controls.EvidenceTests.test_source_and_snapshot_corruption_clear_pass) (mode='current') ... FAIL\n\n======================================================================\nFAIL: test_source_and_snapshot_corruption_clear_pass (test_quantum_order_controls.EvidenceTests.test_source_and_snapshot_corruption_clear_pass) (mode='current')\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_order_controls.py\", line 29, in test_source_and_snapshot_corruption_clear_pass\n    with self.assertRaisesRegex(ValueError,'source'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.010s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_array_identity_check",
+    "test": "EvidenceTests.test_wrong_array_identity_is_refused_before_read",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_wrong_array_identity_is_refused_before_read (test_quantum_order_controls.EvidenceTests.test_wrong_array_identity_is_refused_before_read) ... FAIL\n\n======================================================================\nFAIL: test_wrong_array_identity_is_refused_before_read (test_quantum_order_controls.EvidenceTests.test_wrong_array_identity_is_refused_before_read)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_order_controls.py\", line 49, in test_wrong_array_identity_is_refused_before_read\n    with self.assertRaisesRegex(ValueError,'identity'):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.005s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_report_recomputation",
+    "test": "ReplayTests.test_saved_states_and_report_are_recomputed",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_saved_states_and_report_are_recomputed (test_quantum_order_controls.ReplayTests.test_saved_states_and_report_are_recomputed) ... FAIL\n\n======================================================================\nFAIL: test_saved_states_and_report_are_recomputed (test_quantum_order_controls.ReplayTests.test_saved_states_and_report_are_recomputed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_order_controls.py\", line 124, in test_saved_states_and_report_are_recomputed\n    with self.assertRaises((ValueError,AssertionError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: (<class 'ValueError'>, <class 'AssertionError'>) not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.439s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_host_budget",
+    "test": "SupervisorTests.test_memory_stop_is_not_complete",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_memory_stop_is_not_complete (test_quantum_order_controls.SupervisorTests.test_memory_stop_is_not_complete) ... FAIL\n\n======================================================================\nFAIL: test_memory_stop_is_not_complete (test_quantum_order_controls.SupervisorTests.test_memory_stop_is_not_complete)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_quantum_order_controls.py\", line 98, in test_memory_stop_is_not_complete\n    self.assertEqual(code,2)\nAssertionError: -9 != 2\n\n----------------------------------------------------------------------\nRan 1 test in 0.513s\n\nFAILED (failures=1)\n"
+  }
+]

@@ -1,11 +1,15 @@
 # Confirmatory crossing experiment: follow the states, not just the gap
 
-23 November 2026, Pacific time. Specification v2. **REVIEW HOLD. NOT IMPLEMENTED. NOT RUN.**
+23 November 2026, Pacific time. Specification v3. **Full crossing experiment NOT IMPLEMENTED / NOT RUN.**
+
+The four review corrections and a bounded existing-control pilot are authorized. The
+[control protocol](quantum-order-controls-protocol-2026-11-23.md) freezes that pilot separately. It must not
+publish the held-out experiment as completed or promote its conditional ordering to verified separation.
 
 **Changes from v1 (made before any held-out data exists).** The v1 order rule added the two residual radii.
-At the residuals measured so far (about 0.14 to 0.3 at N=14), that allowance is several times larger than the
-expected |D| (about 0.06 at 1.60 and 0.044 at 1.90). Every point would have come back `ORDER_UNRESOLVED`,
-so the outcome was effectively decided before the run. v2 makes two changes:
+The corrected control residuals are listed in section 5; the earlier v2 summary mixed levels and overstated
+their N=14 range. Those controls suggest difficulty resolving the anticipated |D| (about 0.06 at 1.60 and
+0.044 at 1.90), but do not establish the outcome at unmeasured held-out points. v2 introduced two changes:
 1. **The order is decided by Temple lower bounds together with variational upper bounds** (section 5). The
    separation each Temple bound needs is registered as an assumption and checked for sensitivity. The v1
    residual-sum allowance is still computed and reported as a secondary record.
@@ -15,8 +19,8 @@ so the outcome was effectively decided before the run. v2 makes two changes:
    residuals fall first.
 Nothing else changes: the couplings, cutoffs, width rule, inherited gates, geometry and budgets are as in v1.
 
-This commit specifies the experiment and its tests. It does not authorize a run. Review this commit on the other
-machine before implementation or execution. All gates below are NOT RUN; a test definition is not a test receipt.
+The full held-out experiment remains unimplemented and is not authorized by the bounded control pilot.
+Its gates below remain NOT RUN; focused pilot receipts are separate and do not replace those gates.
 
 ## 1. The question
 
@@ -57,7 +61,9 @@ Recomputed linear interpolation gives 1.7699786411 at N=10 and 1.7609417618 at N
 These values informed this design. They are not independent predictions, measured roots, or confidence limits.
 The earlier residual-versus-width assertion lacked a retained table. That table is now saved at cutoff 10
 (`exploration-edge-20261124/width_residuals_N10.json`, commit 9585e76). On its grid, a per-level width improves a
-residual by at most 1.3 times. It informs the engineering plan, but it does not select a method for this experiment.
+residual by at most 1.108968 times relative to the expanded grid's selected ground-energy width. The separate
+1.304036-times ground-state improvement compares the older width 2.0 with 2.3, not per-level optimization
+relative to the new optimum. It informs the engineering plan, but does not select a method for this experiment.
 
 **Held out means absent from the saved exploration and known earlier surveys, not statistically independent
 data.** This is a deterministic numerical replication within the same model. If any proposed point has already
@@ -151,10 +157,14 @@ In each case record the computed (Ritz) values:
 - rho_t^- <= rho_t^+, the smallest and largest eigenvalue of the tensor block B_t. They differ only by the
   energy spread.
 
-For each branch, also record the next Ritz value in the same spin sector (rho_s', rho_t') and its residual
-radius (epsilon_s', epsilon_t'). Let epsilon_s and epsilon_t be the operator norms of the full-space residuals
-R_U from section 4, plus the 1e-6 spin-leakage tolerance. The spread is carried by rho_t^- and rho_t^+, so it is
-not added to epsilon a second time.
+For each branch, also record the next DISTINCT complete energy multiplet in the same spin sector, not the next
+eigenvector in a quintet. Keep both endpoints of its energy block and its full residual operator norm. Use
+the next block's lower endpoint as rho' below. Let epsilon_s and epsilon_t be the measured operator norms of
+the full-space residuals R_U from section 4. Spin leakage is a separate dimensionless validation check at 1e-6,
+never an added energy allowance. A failed spin check refuses ordering. The spread is carried by rho_t^- and
+rho_t^+, so it is not added to epsilon a second time. For a lower Temple calculation use rho_t^-; the upper
+variational comparison uses rho_t^+. Evaluate each needed branch's separation and half-separation guard
+separately. An unused branch's unavailable bound cannot invalidate an otherwise valid conditional inequality.
 
 ### Two inequalities for the exact operator
 
@@ -198,11 +208,13 @@ The finite basis does not prove that no exact sector eigenvalue lies between a b
 
 Weinstein places an exact eigenvalue within epsilon' of rho'. The assumption is that this eigenvalue is the next
 exact eigenvalue of the sector, and that the basis has not missed an exact eigenvalue below it. Record it as
-`separation: ASSUMED_FROM_RITZ`. A case where beta <= rho + epsilon has an unresolved separation. Its order is
+`separation: ASSUMED_FROM_RITZ`. This is not a verified lower bound for the next exact level. For a needed
+branch, beta <= rho + epsilon has an unresolved separation. Its order is
 `ORDER_UNRESOLVED` with reason `SEPARATION_NOT_RESOLVED`.
 
 **Sensitivity check.** Repeat the rule with beta_half = rho + (beta - rho)/2, which doubles tau. The verdict must
-be the same under beta and beta_half. If not, the case is `ORDER_UNRESOLVED` with reason `SEPARATION_SENSITIVE`.
+be the same under beta and beta_half, and the same strict separation guard must hold for the needed bound
+after halving. If not, the case is `ORDER_UNRESOLVED` with reason `SEPARATION_SENSITIVE`.
 
 ### Order rule
 
@@ -216,7 +228,11 @@ So proving the scalar lower needs only the tensor's Temple width, and proving th
 scalar's.
 
 These are float64 residuals and an assumed separation. They are not interval arithmetic, certified enclosures or
-a proof. Every record carries `certified: False`. The v1 allowance,
+a proof. The three labels above live ONLY in `conditional_order`. Every record carries `certified: false`,
+`separation_verified: false`, and `unconditional_order: ORDER_UNRESOLVED`. No small residual, stable refinement,
+or half-separation check can change those fields. Any final numerical-support label must retain the qualifier
+`CONDITIONAL_ON_ASSUMED_SEPARATION`. QC14 tests preservation of this boundary, not detection of unknowable
+missing spectrum. The v1 allowance,
 u_D = epsilon_s + epsilon_t + 1e-8 max(1, |E_s|, |E_t|), is computed for every case and kept as the secondary
 field `weinstein_order`. It cannot override the rule above.
 
@@ -228,14 +244,14 @@ These estimates come only from the exploration and the convergence run.
 | --- | --- |
 | Next scalar above the scalar branch (N=12, g^2 = 1.5 to 2) | about 1.7 |
 | Next spin-2 above the tensor branch (same cases) | about 3.0 to 3.2 |
-| epsilon at N=14 (convergence run, g^2 = 2 and 1) | about 0.14 to 0.3 |
-| tau_t | about 0.006 to 0.03 |
-| tau_s | about 0.013 to 0.065 |
+| Target scalar/tensor residuals, N=14, g^2=1, alpha=1.7 | 0.111475665 / 0.083441918 |
+| Target scalar/tensor residuals, N=14, g^2=2, alpha=2.0 (older grid) | 0.136490038 / 0.127719404 |
+| Next same-spin multiplet residuals | Not in the earlier three-level table; required pilot measurements |
+| Temple widths using beta=rho'-epsilon' | Pending those next-level residuals; spacing alone is insufficient |
 | D (exploratory interpolation at N=12) | about +0.060 at 1.60; -0.044 at 1.90 |
 
-- `SCALAR_LOWER` at 1.60 is plausible at N=14 and 16.
-- `TENSOR_LOWER` at 1.90 is marginal.
-- The interior points are expected to stay `ORDER_UNRESOLVED`.
+- Feasibility is unestablished until both target and next-level residuals are measured together.
+- The existing-control pilot is not a measurement at 1.60 or 1.90 and cannot settle those outcomes.
 
 These are expectations, not thresholds. They cannot be used to tune anything after the data exist.
 
@@ -263,7 +279,7 @@ UNRESOLVED. That outcome is reported exactly as an order resolved under the regi
 unconverged cutoffs. It is never reported as a supported crossing. `order_status: CONTRADICTED` becomes
 `NOT_SUPPORTED` only when the inherited gates also pass.
 
-**Scientific support (`SUPPORTED_NUMERICALLY_IN_THIS_MODEL`) requires all of the following:**
+**Scientific support (`SUPPORTED_NUMERICALLY_CONDITIONAL_ON_ASSUMED_SEPARATION`) requires all of the following:**
 
 - All 18 cases and all prerequisite gates complete, with both successive convergence checks at every coupling.
 - `order_status: RESOLVED_OUTER`, including the separation-sensitivity check.
@@ -411,7 +427,7 @@ either sign or either status. Separate uncertainty fixtures from positive and ne
 | QC11 Bounded execution | Enforced 45-minute/8-GiB/4-GiB limits, fixed tiles, interrupted/restarted worker remains incomplete | Budget bypass, leaked prior-cutoff arrays, omitted stage logging or resource stop upgraded to COMPLETE |
 | QC12 Integrity and replay | Replay matrices, all moments, projectors, kernels, shell blocks and verdicts on pinned sources | Wrong alpha/g, corrupt array, mismatched unit, missing case/log/gate or unverified resume |
 | QC13 Honest reporting | Figures and exported records match receipts, all statuses retained; current verified manifest controls PASS | Cached/stale PASS after failed replay, omitted refusal panel, fabricated root/error bars or synthetic data mixed with measurements |
-| QC14 Ordering bounds | Diagonal fixture with known spectrum and trial vectors of known residual: Temple and min-max bounds hold and match the formula; a two-branch fixture resolves SCALAR_LOWER, TENSOR_LOWER and UNRESOLVED as designed; beta_half flips a marginal fixture to SEPARATION_SENSITIVE | Put beta above the next exact eigenvalue without refusal, use rho_t^+ in tau_t, add the spread twice, use the Weinstein sum as the verdict, call the bound certified |
+| QC14 Ordering bounds | Known-separation exact fixtures verify Temple arithmetic; a hidden-level fixture preserves conditional labels even with zero residual; distinct multiplets and both separation guards are tested | Upgrade assumed separation to verified, use a quintet's next vector as its next level, add spin tolerance to energy residual, drop the half-separation guard, mix width baselines |
 
 All QC00--QC14 gates currently have status **NOT RUN**. Existing HP gates are prerequisites, not automatic
 passes for the new code. Mutation tests must demonstrate the named scientific failure, with failure reasons
@@ -530,11 +546,12 @@ the panel remains present and labelled. Missing N=16 results never acquire inter
 
 Scientific status is `NOT_EVALUATED` before execution; `UNRESOLVED` for missing/inadequate numerical evidence;
 `NOT_SUPPORTED` for a resolved contradiction of the primary order test with all inherited gates passing; or
-`SUPPORTED_NUMERICALLY_IN_THIS_MODEL` when every primary requirement is met. Geometry-hypothesis status is
+`SUPPORTED_NUMERICALLY_CONDITIONAL_ON_ASSUMED_SEPARATION` when every primary requirement is met. Geometry-hypothesis status is
 separate, and `order_status` is reported beside both (section 5). Supported crossing plus contradicted volume contrast is a valid result with a rejected explanation,
 not permission to invent a new explanation after seeing the data. No status is `certified_gap` or a Clay claim.
 
-1. Commit and push these corrections and this specification (v2). **Stop for review.**
+1. Commit and push these corrections and this specification (v3). The separately authorized control pilot may
+   run under its protocol; the full held-out experiment remains subject to the gates below.
 2. After approval, write behavioural red tests, implement the smallest required pieces, run focused tests and
    mutation checks, and publish their receipts. Do not touch held-out spectra during this phase.
 3. Freeze and push the implemented registration, full executable source and resource plan for pre-run review.

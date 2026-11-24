@@ -64,8 +64,10 @@ That table is now saved: `scripts/explore_ym_helike_width_residuals.py` writes
 for g² = 1 and 2, at α = 1.0, 1.35, 1.7, 2.0, 2.3 and 2.7. What it shows, and only on that grid at that cutoff:
 the width that minimises each level's residual sits at the ground-energy width or the grid point next to it.
 At g² = 1 the best widths are 1.7, 1.7 and 2.0. At g² = 2 they are 2.3, 2.3 and 2.0. Choosing each level's best
-width instead of α* lowers that level's residual by at most 1.3 times (level 0 at g² = 2: 0.117 to 0.090).
-The excited levels stay at or above 0.35 at every tested width. On this grid, a per-level width is not the missing
+width instead of the expanded grid's ground-energy α* lowers that level's residual by at most 1.108968 times
+(the scalar at g² = 2, α = 2.3 to 2.0). The separate 0.117 to 0.090 ground-state improvement compares the
+older α = 2.0 with the new optimum 2.3; it is not a per-level gain over that new optimum.
+The smallest excited residual is 0.347055237, approximately 0.35. On this grid, a per-level width is not the missing
 5 to 11 times. This does not rule out a different envelope or a finer grid.
 
 ## Caveats

@@ -1,0 +1,9 @@
+{
+  "tests": 19,
+  "assertion_failures": 20,
+  "errors": 0,
+  "source_hashes": {
+    "scripts/quantum_ordering.py": "e3b71adfa41dd1828036bc4b569a6ff2e3b4ffcacd5b12615d3df14400f12757",
+    "scripts/test_quantum_ordering.py": "47ae5a983834df5227bc746ef4d3f7ae833ec63c966aa6a3f481a82d0b6aea7b"
+  }
+}

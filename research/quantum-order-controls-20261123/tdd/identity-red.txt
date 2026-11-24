@@ -1,0 +1,15 @@
+test_wrong_array_identity_is_refused_before_read (test_quantum_order_controls.EvidenceTests.test_wrong_array_identity_is_refused_before_read) ... FAIL
+
+======================================================================
+FAIL: test_wrong_array_identity_is_refused_before_read (test_quantum_order_controls.EvidenceTests.test_wrong_array_identity_is_refused_before_read)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_quantum_order_controls.py", line 49, in test_wrong_array_identity_is_refused_before_read
+    with self.assertRaisesRegex(ValueError,'identity'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.009s
+
+FAILED (failures=1)

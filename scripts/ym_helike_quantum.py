@@ -506,3 +506,163 @@ def gpu_krylov(h, seeds, vacuum, budgets=(8, 16, 32, 64)):
                 residual = float(torch.linalg.norm(acted@v[:, 0]-e[0]*(block@v[:, 0])))
                 checkpoints.append({"matvecs": count, "gap": float(e[0]), "residual": residual})
     return {"status": "COMPUTED", "device": "cuda:0", "checkpoints": checkpoints}
+
+
+# ── Additions for the convergence amendment (draft Amendment 2; defaults reproduce the registered survey) ────────────
+
+def hamiltonian(ops, g2, alpha=1.0):
+    """The registered Hamiltonian in Gaussian-scaled coordinates. With the basis exp(-x.x/2) and q = x/sqrt(alpha),
+    -1/2 Lap_q = alpha (H0 - tr/2), 1/2 tr(q q^T) = tr/(2 alpha), det q = det x / alpha^(3/2), quartic / alpha^2, so
+        H_alpha = alpha*H0 + (1/(2 alpha) - alpha/2)*tr - 3 g alpha^(-3/2) D + g^2 alpha^(-2) V4.
+    alpha = 1 is exactly the registered matrix; alpha changes only the basis width, not the model."""
+    g = math.sqrt(g2)
+    return (alpha*ops["H0"] + (1/(2*alpha) - alpha/2)*ops["trace"] - 3*g*alpha**-1.5*ops["D"]
+            + g2*alpha**-2*ops["V4"])
+
+
+def level_spins(energies, vectors, j2):
+    """Spatial spin of each complete level from <J^2> = J(J+1) (J2 is assembled from the real rotation generators,
+    so J^2 = sum L^T L). Returns, per level: indices, J, and the deviation of <J^2> from J(J+1)."""
+    out = []
+    for indices in energy_groups(energies):
+        block = vectors[:, indices]
+        value = float(np.trace(block.conj().T @ j2 @ block).real/len(indices))
+        J = int(round((-1 + math.sqrt(1 + 4*max(value, 0.)))/2))
+        out.append({"indices": indices.tolist(), "J": J, "J2": value, "J2_deviation": abs(value - J*(J+1)),
+                    "multiplicity": len(indices), "expected_multiplicity": 2*J + 1})
+    return out
+
+
+ALLOWED_SPIN = {"H2": {2}, "H0": {0}}       # from a spin-0 vacuum: a rank-2 tensor reaches J = 2, a scalar J = 0
+
+
+def probe_report_with_spin(energies, vectors, probes, j2, channel):
+    """probe_report plus the exact selection rule: a level whose spin the channel cannot reach is reported as a
+    symmetry zero (SELECTION_RULE_ZERO), not as a small or unresolved overlap. Requires a spin-0 vacuum."""
+    report = probe_report(energies, vectors, probes)
+    spins = level_spins(energies, vectors, j2)
+    if spins[0]["J"] != 0 or spins[0]["J2_deviation"] > 1e-6:
+        return dict(report, spin_status="VACUUM_NOT_SPIN_0")
+    for level, spin in zip(report["levels"], spins[1:]):
+        level["J"], level["J2_deviation"] = spin["J"], spin["J2_deviation"]
+        level["multiplicity_matches_2J+1"] = spin["multiplicity"] == spin["expected_multiplicity"]
+        level["selection_rule_zero"] = spin["J"] not in ALLOWED_SPIN[channel]
+    first = report["levels"][0]
+    if first["selection_rule_zero"]:
+        report["status"] = "SELECTION_RULE_ZERO"
+        report["status_note"] = (f"lowest level has J = {first['J']}; {channel} reaches only J in "
+                                 f"{sorted(ALLOWED_SPIN[channel])} from the spin-0 vacuum; its measured weight "
+                                 f"{first['weight']:.3e} is rounding of an exact zero")
+    return report
+
+
+def residual_enclosures(energies, level_residuals, level_indices):
+    """From the full-space residual eps = ||(H - E)psi|| of a normalised state:
+    * Weinstein (rigorous): some eigenvalue of the untruncated operator lies in [E - eps, E + eps];
+    * Kato-Temple (conditional): if the true spectrum has no other eigenvalue in (a, b) with a < E < b, then
+      E - eps^2/(b - E) <= lambda <= E + eps^2/(E - a). Here a, b are the neighbouring Ritz values, which are NOT
+      proven bounds on the true neighbours (Ritz values overestimate), so this interval is labelled conditional.
+    Upper Ritz bounds (lambda_k <= E_k for the ordered true eigenvalues) hold by min-max for the finite basis."""
+    out = []
+    groups = energy_groups(energies)
+    means = [float(np.mean(energies[g])) for g in groups]
+    index_of = {tuple(g.tolist()): i for i, g in enumerate(groups)}
+    for eps, idx in zip(level_residuals, level_indices):
+        k = index_of.get(tuple(idx))
+        E = means[k]
+        row = {"level": k, "E": E, "residual": eps, "weinstein": [E - eps, E + eps]}
+        a = means[k - 1] if k > 0 else None
+        b = means[k + 1] if k + 1 < len(means) else None
+        if b is not None and (a is None or eps < min(E - a, b - E)):
+            lo = E - eps**2/(b - E)
+            hi = E + eps**2/(E - a) if a is not None else E
+            row["kato_temple_conditional"] = [lo, hi]
+        out.append(row)
+    return out
+
+
+def exterior_diagnostics_scaled(basis, operators, energies, vectors, g2, alpha=1.0):
+    """exterior_diagnostics for H_alpha: the trace term (degree +2) is part of the exterior action when alpha != 1,
+    and every coefficient carries its alpha power. At alpha = 1 this equals exterior_diagnostics."""
+    codes = oscillator_codes(basis["cutoff"]+4)
+    positions = np.searchsorted(codes, basis["codes"])
+    outside = decode(codes).sum(axis=1) > basis["cutoff"]
+    groups = reported_groups(energies, vectors, [operators["tensor"], [operators["scalar"]]])
+    selected_indices = np.concatenate(groups)
+    selected = vectors[:, selected_indices]
+    polynomials = operator_polynomials()
+    g = math.sqrt(g2)
+    hterms = [(-3*g*alpha**-1.5*c, a) for c, a in terms(polynomials["D"])]
+    hterms += [(g2*alpha**-2*c, a) for c, a in terms(polynomials["V4"])]
+    if alpha != 1.0:
+        hterms += [((1/(2*alpha) - alpha/2)*c, a) for c, a in terms(polynomials["trace"])]
+    action = expanded_action(basis, selected, hterms, codes)
+    fock = basis["C"]@selected
+    action[positions] += alpha*(basis["states"].sum(axis=1)+4.5)[:, None]*fock
+    action[positions] -= fock*energies[selected_indices]
+    norms = la.norm(action, axis=0)
+    level_norms, level_idx, offset = [], [], 0
+    for group in groups:
+        block = action[:, offset:offset+len(group)]
+        level_norms.append(float(np.sqrt(max(0., la.eigvalsh(block.conj().T@block)[-1]))))
+        level_idx.append(group.tolist())
+        offset += len(group)
+    del action
+    tails = {}
+    for name, polys in (("H2", polynomials["tensor"]), ("H0", [polynomials["scalar"]])):
+        total, discarded = 0., 0.
+        for poly in polys:
+            response = expanded_action(basis, vectors[:, :1], terms(poly), codes)
+            mean = float((fock[:, 0].conj()@response[positions, 0]).real)
+            response[positions, 0] -= mean*fock[:, 0]
+            total += float(np.vdot(response, response).real)
+            discarded += float(np.vdot(response[outside], response[outside]).real)
+        tails[name] = discarded/total if total > 1e-24 else None
+    allowed = 1e-2*max(1., float(energies[1]-energies[0]))
+    return {"alpha": alpha, "state_indices": selected_indices.tolist(), "full_residual_norms": norms.tolist(),
+            "level_worst_residuals": level_norms, "allowed_residual": allowed, "probe_discarded_fractions": tails,
+            "residual_gate": max(level_norms) <= allowed,
+            "tail_gate": all(x is not None and x <= 1e-3 for x in tails.values()),
+            "enclosures": residual_enclosures(energies, level_norms, level_idx)}
+
+
+def build_basis_extended(cutoff):
+    """Cutoffs above 12 for an amendment run. Identical construction; only the registered cap is lifted (an
+    oscillator axis holds at most 31 quanta, so cutoff + 4 <= 31)."""
+    if type(cutoff) is not int or cutoff < 0 or cutoff + 4 > 31:
+        raise ValueError("cutoff must satisfy cutoff + 4 <= 31")
+    return build_basis(cutoff) if cutoff <= 12 else _build_basis_any(cutoff)
+
+
+def _build_basis_any(cutoff):
+    grams = [gram_polynomial(i, j) for i in range(3) for j in range(i, 3)]
+    det = determinant_polynomial()
+
+    @lru_cache(None)
+    def gram_product(indices):
+        return multiply(gram_product(indices[:-1]), grams[indices[-1]]) if indices else {0: 1}
+
+    polynomials, degrees = [], []
+    for degree in range(cutoff+1):
+        if degree == 1:
+            continue
+        odd = degree % 2
+        count = (degree-3*odd)//2
+        for indices in it.combinations_with_replacement(range(6), count):
+            poly = gram_product(indices)
+            polynomials.append(multiply(poly, det) if odd else poly)
+            degrees.append(degree)
+    codes = np.array(sorted(set().union(*(p.keys() for p in polynomials))), dtype=np.int64)
+    states = decode(codes)
+    factorials = np.array([math.factorial(k) for k in range(cutoff+1)], dtype=float)
+    weights = np.sqrt(np.prod(factorials[states], axis=1) / 2.0**states.sum(axis=1))
+    row, col, data = [], [], []
+    for j, poly in enumerate(polynomials):
+        indices = np.searchsorted(codes, list(poly))
+        row.extend(indices); col.extend([j]*len(poly))
+        data.extend(np.array(list(poly.values()))*weights[indices])
+    c = sparse.csc_matrix((data, (row, col)), shape=(len(codes), len(polynomials)))
+    norms = np.sqrt(np.asarray(c.power(2).sum(axis=0)).ravel())
+    c = (c @ sparse.diags(1/norms)).tocsc()
+    return {"cutoff": cutoff, "codes": codes, "states": states, "C": c, "S": (c.T @ c).toarray(),
+            "degrees": np.array(degrees)}

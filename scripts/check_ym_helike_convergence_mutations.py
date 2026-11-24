@@ -2,6 +2,7 @@
 import inspect
 import io
 import json
+import types
 import unittest
 from unittest.mock import patch
 
@@ -53,8 +54,15 @@ def run():
             raise RuntimeError(f'mutation target drifted: {name}')
         namespace = dict(module.__dict__)
         exec(compile(source.replace(old, new), f'<mutation:{name}>', 'exec'), namespace)
+        compiled = namespace[function]
+        # Rebind the mutant to the module's real globals, so patches a test applies to the module (source hashes,
+        # budgets, basis construction) reach the mutant exactly as they reach the pristine function. With a copied
+        # namespace the mutant bypassed those patches and failed on unrelated errors.
+        mutant = types.FunctionType(compiled.__code__, module.__dict__, compiled.__name__,
+                                    compiled.__defaults__, compiled.__closure__)
+        mutant.__kwdefaults__ = compiled.__kwdefaults__
         stream = io.StringIO()
-        with patch.object(module, function, namespace[function]):
+        with patch.object(module, function, mutant):
             result = unittest.TextTestRunner(stream=stream).run(unittest.defaultTestLoader.loadTestsFromName(test, tests))
         results.append({'mutation': name, 'test': test, 'rejected': not result.wasSuccessful(),
                         'test_output': stream.getvalue()})

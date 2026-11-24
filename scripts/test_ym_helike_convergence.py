@@ -74,7 +74,10 @@ class SpinTests(unittest.TestCase):
 
     def test_mixed_level_keeps_scalar_signal(self):
         e, v, j2, o = self.mixed_fixture()
-        r = q.probe_report_with_spin(e, v, [o], j2, 'H0')
+        try:
+            r = q.probe_report_with_spin(e, v, [o], j2, 'H0')
+        except Exception as exc:  # a mixed-spin level must be resolved, not refused or averaged away
+            self.fail(f'mixed-spin level was not resolved: {type(exc).__name__}: {exc}')
         self.assertEqual(r['status'], 'DETECTED')
         self.assertEqual(r['lowest_weight'], 1.)
         self.assertFalse(r['levels'][0]['selection_rule_zero'])
@@ -179,8 +182,12 @@ class RunnerTests(unittest.TestCase):
 
     def test_budget_refusal_precedes_construction(self):
         with patch.object(runner, 'HOST_BUDGET_BYTES', 1), patch.object(q, 'build_basis') as build:
-            with self.assertRaises(MemoryError):
+            raised = None
+            try:
                 runner.prepare_basis(4, 'cpu')
+            except Exception as exc:  # any other failure must count against the budget gate, not crash the test
+                raised = exc
+            self.assertIsInstance(raised, MemoryError)
             build.assert_not_called()
 
     def test_resource_stop_clears_acceptance(self):
@@ -211,8 +218,14 @@ class RunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
             runner.atomic(folder/'receipt.json', {'status':'RUNNING', 'device':'cpu', 'source_hashes':{}, 'results':{}})
-            with patch.object(runner, 'prepare_basis') as build, self.assertRaisesRegex(RuntimeError, 'sources changed'):
-                runner.worker(folder)
+            raised = None
+            with patch.object(runner, 'prepare_basis') as build:
+                try:
+                    runner.worker(folder)
+                except Exception as exc:  # the drift refusal itself must be what stops the worker
+                    raised = exc
+            self.assertIsInstance(raised, RuntimeError)
+            self.assertIn('sources changed', str(raised))
             build.assert_not_called()
             self.assertEqual(runner.read_json(folder/'receipt.json')['status'], 'FAILED')
 

@@ -87,3 +87,23 @@ budgets. Do not increase the limits silently. A future larger run requires its o
 Full evidence replay, after a run exists, is available through `--verify RUN_FOLDER`. It rebuilds operators and
 exterior actions and can be expensive; it is not a constant-time metadata check. Execute it with the saved source
 snapshot if the working implementation has since changed. No result from such a replay is claimed in this note.
+
+## Review addendum (second machine, before any survey)
+
+Reviewed on a second machine (macOS, CPU only). The 29-test suite passes except the three supervisor tests, which
+need `psutil`, absent there (an environment limit, not a code defect). The mutation checks were all rejected, but
+four were rejected for the wrong reason:
+
+| Mutation | Was rejected by | Now rejected by |
+| --- | --- | --- |
+| `accept_partial_history` | the source-hash guard firing on a valid fixture | its own "partial" assertion |
+| `bypass_budget` | a `TypeError` from the mock basis | its own assertion: MemoryError expected, construction not called |
+| `skip_source_drift_check` | a `KeyError` from the fixture | its own assertion: the "sources changed" refusal |
+| `average_mixed_spin` | the mutated function's integer-spin guard | its own assertion: the mixed level must be resolved |
+
+The root cause of the first three was in the harness: each mutant ran in a copy of its module's globals, so patches a
+test applied to the module (source hashes, budgets, basis construction) never reached the mutant, which then failed
+on unrelated errors. The harness now rebinds each mutant to the module's real globals, and the two exception tests
+and the mixed-spin test catch any exception and assert its type, message or result. After the change all 15 mutants
+are rejected by their own assertions (`correction-checks/mutation-checks-review.json`). Please rerun the full suite,
+including the supervisor tests, on the GPU machine before the survey; the source hashes of the tests have changed.

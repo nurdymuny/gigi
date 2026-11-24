@@ -2,7 +2,7 @@
 
 24 November 2026. **ANALYSIS. Not for the report until the open items below are closed.** Follows the
 [curl-spectrum check](helike-curl-spectrum-2026-11-24.md). Only light checks were run here (9 × 9 matrices and single
-sectors). Code: `scripts/helike_curl_spectrum.py`. Tests: `scripts/test_helike_curl_spectrum.py` (11 passing).
+sectors). Code: `scripts/helike_curl_spectrum.py`. Tests: `scripts/test_helike_curl_spectrum.py` (12 passing).
 Mutation check: 4 of 4 caught by assertion.
 
 Setting: the edge paper's Hessian at the circle-symmetric family M₀ = xτ₀, M₁ = yτ₁, M₂ = yτ₂ on (t,1,1), sector j
@@ -39,7 +39,7 @@ minimiser. This is the side the paper proves she loses.
 sector exactly for t ≥ 2. The threshold t = 2 is also where the Berger x changes sign, and where the Floor paper's
 Casimir remark has the lift's coupling to the stretch vanish.
 
-## Proposition 2 (the flux-aligned subspace; exact identities, numerically verified)
+## Proposition 2 (the flux-aligned subspace; proved below)
 
 Inside E₋, organised by the long-axis weight m = −l, …, l:
 - **Helicity.** The compression P·curl_A·P has eigenvalues μ_m = −(x + (2m + 2)/√t), each twice. The twist is m = l.
@@ -49,9 +49,53 @@ Inside E₋, organised by the long-axis weight m = −l, …, l:
 
   independent of x, y and t (checked at six points, including x > 0 and t < 2, to 10⁻¹⁴).
 
-Why it should hold: on a field along θ̂¹ + iθ̂², the transverse curl and the divergence are the two parts of one
-∂̄-type operator, which acts on V_j through J₊. Its squared norm on the weight-m vector is the J₊ norm. A written
-proof is still owed.
+**Proof of Proposition 2 (the Cauchy–Riemann identity).** The conventions are those of
+`scripts/ricci_su2_spin_sector.py`:
+- the frame is ê₀ = e₀/√t, ê₁ = e₁, ê₂ = e₂, with c₁₂⁰ = 2√t and c₂₀¹ = c₀₁² = 2/√t;
+- on V_j, êᵢ acts as ρᵢ/sᵢ with ρ_a = −2iJ_a, where J₀ is the long-axis generator;
+- the Lie bracket is the cross product, with the field mᵢ = (xe₀, ye₁, ye₂);
+- D_ij b = êᵢbⱼ − êⱼbᵢ + mᵢ×bⱼ − mⱼ×bᵢ − c_ij^k b_k, and (curl b)_k = D_ij b for (i,j,k) cyclic;
+- G*b = −Σᵢ(êᵢ + mᵢ×)bᵢ, since ρᵢ is anti-Hermitian and mᵢ× is antisymmetric.
+
+Put J± = J₁ ± iJ₂, so ê₁ ± iê₂ = −2iJ± and ê₀ = −2iJ₀/√t. Let u = τ₁ + iτ₂. Then
+e₀×u = −iu, e₁×u = ie₀ and e₂×u = −e₀.
+
+Take ψ = f ⊗ (θ̂¹ + iθ̂²) ⊗ u with J₀f = mf, that is b₀ = 0, b₁ = fu, b₂ = ifu.
+
+- **Frame-0 slot.** (curl ψ)₀ = D₁₂ψ = i(ê₁f)u − (ê₂f)u + y[e₁×(ifu) − e₂×(fu)] = i(ê₁ + iê₂)f·u +
+  yf(−e₀ + e₀) = 2(J₊f)⊗u.
+- **Frame-1 slot.** (curl ψ)₁ = D₂₀ψ = −ê₀(if)u − x e₀×(ifu) − (2/√t)fu = (−2m/√t − x − 2/√t)fu = μ_m b₁.
+- **Frame-2 slot.** (curl ψ)₂ = D₀₁ψ = (ê₀f)u + x e₀×(fu) − (2/√t)(ifu) = −i(x + (2m+2)/√t)fu = μ_m b₂.
+- **Divergence.** G*ψ = −[(ê₁ + iê₂)f·u + yf(e₁×u + ie₂×u)] = −(−2iJ₊f)u + 0 = 2i(J₊f)⊗u.
+
+Hence
+
+  curl ψ = μ_m ψ + χ,  χ = (2J₊f ⊗ u, 0, 0) = (−i·G*ψ, 0, 0),
+
+so the transverse curl is exactly −i times the divergence. This is the Cauchy–Riemann statement: along θ̂¹ + iθ̂², both
+are the single operator ê₁ + iê₂ = −2iJ₊, and every field term (y, and x outside μ) cancels.
+
+χ lies in the frame-0 slot. By the proof of Theorem 1, that slot carries only the ±κ (pair) and diagonal-block
+eigenspaces of φ, which are orthogonal to the −B eigenspace whenever −B ∉ {κ, −κ}. In that case Pχ = 0, so
+P·curl·ψ = μ_m ψ and (1 − P)·curl·ψ = χ, and
+
+  ‖(1 − P)curl ψ‖² / ‖ψ‖² = ‖G*ψ‖² / ‖ψ‖² = 4‖J₊f‖²‖u‖² / (2‖f‖²‖u‖²) = 2[l(l+1) − m(m+1)].
+
+The mirror branch ψ = f ⊗ (θ̂¹ − iθ̂²) ⊗ ū is identical with J₋ in place of J₊: e₀×ū = iū and e₁×ū = −ie₀ give
+curl ψ = μ₋ₘψ + (−2J₋f ⊗ ū, 0, 0), G*ψ = 2i(J₋f)⊗ū, and leak ratio 2[l(l+1) − m(m−1)]. Finally ψ ∈ E₋: in Theorem 1's
+coordinates b₁₁ = −b₂₂ and b₁₂ = b₂₁, which is the −B eigenspace. ∎
+
+Test `CauchyRiemann.test_vector_identities_both_branches` checks every line as an exact vector identity (to 10⁻¹¹),
+for both branches and all weights, at three fields including x > 0 and t < 2.
+
+**Corollary (the twist's closed form, derived directly).** For the top weight m = l, J₊f = 0, so χ = 0 and G*ψ = 0:
+the twist is an exact curl eigenvector and gauge-orthogonal. By Theorem 1, Φψ = −Bψ. So
+Hψ = (curl² + Φ)ψ = (μ_l² − B)ψ, which gives
+
+  λ = (x + (j+2)/√t)² − B = (x + (j+2)/√t)² + 2√t·x − y²,
+
+the paper's closed form. This derivation does not use the charge-block counting. The mirror (m = −l, J₋f = 0) has
+the same μ.
 
 **Consequence.** The twist (m = l) is the only flux-aligned state that is both leak-free and gauge-orthogonal. That is
 the structural reason she is an exact eigenvector and the natural floor candidate: she gets the full flux discount
@@ -77,7 +121,7 @@ is still the twist. Recorded so I do not reuse it.
    made small in the sector j ≈ t − 4. Observed: the twist is the floor of every sector j ≤ 12 up to t = 20. My
    conjecture is that there is no upper edge in t on the Berger path, and that the Floor paper's t ≤ 10 is the
    certificates' domain, not a physical edge. Not proved.
-3. **A written proof of Proposition 2** (the J₊ / ∂̄ argument).
+3. ~~A written proof of Proposition 2~~ **Done** (above): the transverse curl is −i times the divergence along θ̂¹ + iθ̂².
 4. **The x-band.** Corollary 1 gives the exact reason the twist cannot be the flux minimiser for B < |κ|. Whether that
    coincides with the paper's edge in x at fixed t is to be checked against its edge data.
 

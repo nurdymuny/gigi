@@ -106,3 +106,44 @@ class FluxTheorem(unittest.TestCase):
             l = j / 2
             want = np.sort(np.repeat(2 * (l * (l + 1) - np.arange(-l, l + 1) * (np.arange(-l, l + 1) + 1)), 2))
             np.testing.assert_allclose(np.sort(leak), want, atol=1e-9)
+
+
+def flux_aligned_state(j, m, branch, x, y, t):
+    """psi = f_m (x) (theta1 +- i theta2) (x) (tau1 +- i tau2) in the builder's (frame, Lie, V_j) index.
+    f_m: J_0 f = m f, with J_a = (i/2) rho_a and J_0 the long-axis generator."""
+    import ricci_su2_spin_sector as rs
+    rho = rs.spin_rep(j)
+    J = [0.5j * r for r in rho]
+    w, V = np.linalg.eigh(J[0])
+    f = V[:, np.argmin(np.abs(w - m))]
+    d = j + 1
+    s = 1 if branch == "+" else -1
+    u = np.array([0, 1, 1j * s])
+    psi = np.zeros(9 * d, complex)
+    for i, coef in ((1, 1.), (2, 1j * s)):
+        psi[i * 3 * d:(i + 1) * 3 * d] = coef * np.kron(u, f)
+    Jpm = J[1] + 1j * s * J[2]                       # J_+ for "+", J_- for "-"
+    return psi, f, u, Jpm
+
+
+class CauchyRiemann(unittest.TestCase):
+    """curl psi = mu psi + chi, chi only in the frame-0 slot, chi = -+ i G* psi = 2 (+-) (J_+- f) (x) u; Phi psi = -B psi."""
+
+    def test_vector_identities_both_branches(self):
+        for (x, y, t, j) in [(-2., 1.5, 4., 4), (.7, .3, 1.5, 3), (*hc.berger_xy(6.), 6., 5)]:
+            C, H, Phi, _, _ = hc.operators(x, y, t, j)
+            G = hc.gauge_map(x, y, t, j)
+            B, d, l = hc.fibre_field(x, y, t), j + 1, j / 2
+            for branch in ("+", "-"):
+                for m in np.arange(-l, l + 1):
+                    psi, f, u, Jpm = flux_aligned_state(j, m, branch, x, y, t)
+                    mm = m if branch == "+" else -m
+                    mu = -(x + (2 * mm + 2) / np.sqrt(t))
+                    chi = C @ psi - mu * psi
+                    np.testing.assert_allclose(chi[3 * d:], 0, atol=1e-11)          # only the frame-0 slot
+                    sgn = 1 if branch == "+" else -1
+                    np.testing.assert_allclose(chi[:3 * d], 2 * sgn * np.kron(u, Jpm @ f), atol=1e-11)
+                    np.testing.assert_allclose(chi[:3 * d], -1j * sgn * (G.conj().T @ psi), atol=1e-11)
+                    np.testing.assert_allclose(Phi @ psi, -B * psi, atol=1e-11)
+                    ratio = np.linalg.norm(chi) ** 2 / np.linalg.norm(psi) ** 2
+                    self.assertAlmostEqual(ratio, 2 * (l * (l + 1) - mm * (mm + 1)), places=9)

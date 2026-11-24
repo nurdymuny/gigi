@@ -65,6 +65,27 @@ class FluxReview(unittest.TestCase):
             self.assertEqual(rec['status'], 'HOLD_DOMAIN')
             self.assertEqual(rec['decision'], 'NOT_EVALUATED')
 
+    def test_passing_receipts_cannot_release_the_localfock_grid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            conv, cert = Path(tmp)/'conv.json', Path(tmp)/'cert.json'
+            conv.write_text(json.dumps({'decision': 'CONVERGED'}))
+            cert.write_text(json.dumps({'status': 'PASS_CERTIFIED'}))
+            self.assertEqual(run.unmet_release_conditions(conv, cert), ['method_amendment'])
+            self.assertEqual(run.unmet_release_conditions(), ['convergence', 'certificate', 'method_amendment'])
+            conv.write_text(json.dumps({'decision': 'NOT_CONVERGED'}))
+            self.assertIn('convergence', run.unmet_release_conditions(conv, cert))
+            out = Path(tmp)/'run'
+            argv = ['runner', str(out), '--convergence', str(Path(tmp)/'missing.json'), '--certificate', str(cert)]
+            with patch.object(sys, 'argv', argv), patch.object(run.lf, 'LocalFock') as solver:
+                try:
+                    self.assertEqual(run.main(), 2)
+                except SystemExit as exc:
+                    self.assertEqual(exc.code, 2)
+            self.assertFalse(solver.called)
+            rec = json.loads((out/'receipt.json').read_text())
+            self.assertEqual(rec['status'], 'HOLD_DOMAIN')
+            self.assertEqual(set(rec['hold_conditions']), {'convergence', 'method_amendment'})
+
     def test_partial_rung_is_retained_on_failure(self):
         design = copy.deepcopy(run.SMOKE)
         design['ladder'] = [[6, 6], [6, 8]]

@@ -171,6 +171,9 @@ class PhysicalControls(unittest.TestCase):
     def test_scope_and_resource_refusal(self):
         self.assertEqual(self.controls[.004].boundary_status,'UNRESOLVED_PHYSICAL_REALIZATION')
         with self.assertRaises(ValueError): pc.ConeRitz(1.15,3.,.1,Mq=7)
+        with self.assertRaises(ValueError): pc.ConeRitz(1.15,3.,.1,Mq=9,max_Mq=8)
+        with self.assertRaises(ValueError): pc.ConeRitz(1.15,3.,.1,Mq=4,max_Mq=11)
+        with self.assertRaises(ValueError): pc.ConeRitz(1.15,3.,.1,Mq=4,max_Mq=True)
 
 
 class SavedControls(unittest.TestCase):

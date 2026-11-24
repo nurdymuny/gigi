@@ -82,6 +82,53 @@ against the edge paper's exact operator, gauge slice or normalization.
    survives both grains.
 4. **The thought experiment below,** kept as mathematics until a concrete test is written.
 
+## An observation: orientation partners (added later on 24 November; observation, not a claim)
+
+Looking back over two days of corrections, one pattern keeps recurring. Almost every artefact I hit came from
+keeping one member of an orientation pair and dropping its partner. Almost every repair restored the partner. I
+record it here with its table so it can be checked, not so it can be quoted.
+
+| Where | The orientation pair | Keeping one partner did this | Restoring the pair did this |
+| --- | --- | --- | --- |
+| Rotations | u and −u in SU(2), one element of SO(3) | Local frames cannot see the sign; the second vacuum looks like plain colour–space locking | The double cover: a Z₂ sign visible only globally |
+| Vacua | Chern–Simons 0 and ±1 | Truncating around one vacuum left the dome test `UNRESOLVED_TRUNCATION` | The outside-origin truncation ratio explained the failure |
+| Grains | Left and right modes: opposite curl signs, the two helicities | One grain leaked curvature (C ≥ 0); the "gap → 1" was an artefact | Two grains, with van Baal and Hari Dass reproduced |
+| Sweep | With W and against W | The oriented Chern–Simons has ΔW = 0 and protects nothing | Sweeping each helicity with its own W restores the floor |
+| Sheets | det q > 0 and det q < 0, meeting at rank two | Interior basis has zero trace at the fold; the linear continuation crossed into det G < 0 and the kinetic form went negative | A matched fold (values equal, conormal sum zero), not a wall |
+| The cubic | The orientation-odd term g det q | — | It is where Helike lives: λ = μ² − B; her protected channel is the chiral null τ₁ + iτ₂ |
+
+**Why this is only an observation.**
+- Orientation is where the Z₂ data of any SO(3)/SU(2) problem lives. Some of these rows may say no more than
+  that, and the rows are not independent: the grain and sweep rows are one fact seen twice.
+- I chose the rows after the fact.
+- It becomes a claim only if it predicts something I have not yet seen. Candidate: in any truncation that keeps
+  one orientation partner, the leak is exactly the orientation-odd part of the energy, so the error should vanish
+  for observables even under the dropped reflection. That is checkable on the two-grain model before anything is
+  written up. Working name: *the orientation principle (conjecture)*.
+
+## Where the theorem stands, and its working name
+
+**Working name: the Helike Ladder Theorem.** Helike is the top rung of a curl ladder whose eigenvalues are
+helicity squared minus flux. This name is the working one until I choose the final one.
+
+**Proved:**
+- Theorem 1, the flux spectrum.
+- Proposition 2, the Cauchy–Riemann identity: the leak equals the gauge component, and the top rung is leak-free.
+- The corollary λ = μ² − B, derived independently.
+- Theorem 3, the sufficient floor: sector 0 for t ≥ 2√5 − 2 ≈ 2.472, and a band of sectors. The gauge factor is
+  required, with a counterexample.
+- The protected-channel theorem: an exact formal eigenfunction to all orders.
+
+**Open:**
+- The all-sector floor.
+- The upper end of the window.
+- The quantum flux edge, held on the domain question until the
+  [quasimode certification](helike-quasimode-certification-spec-2026-11-24.md) and the convergence run.
+
+The proved part is a classical spectral theorem about Helike. It refines the curl-spectrum idea, and I have not
+found it stated in the literature. The decomposition into curl squared plus flux is classical (Bourguignon–Lawson);
+the top-rung identity and the window it explains are what may be mine.
+
 ## A thought experiment: laminar regions as flatness, seen from outside
 
 An earlier private project of mine treats a complex system as a geometric substrate with curvature patterns. It

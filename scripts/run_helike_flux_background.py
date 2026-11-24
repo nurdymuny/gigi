@@ -191,8 +191,37 @@ def verify_receipt(out):
     return 0 if report["status"] == "PASS" else 1
 
 
+RELEASE_CONDITIONS = (
+    ("convergence", "positive-cone controls CONVERGED at Mq 6->8 under 0.003 (run_helike_cone_convergence.py receipt)"),
+    ("certificate", "quasimode certificate PASS_CERTIFIED at the controls (helike-quasimode-certification-spec)"),
+    ("method_amendment", "registered method amended from LocalFock to the certified cone method; LocalFock is "
+                         "not semibounded and cannot be released for the grid under any receipt"),
+)
+
+
+def unmet_release_conditions(convergence=None, certificate=None):
+    """Names of release conditions not met. The method amendment is never met by this runner."""
+    unmet = []
+    try:
+        ok = json.loads(Path(convergence).read_text()).get("decision") == "CONVERGED" if convergence else False
+    except (OSError, ValueError):
+        ok = False
+    if not ok:
+        unmet.append("convergence")
+    try:
+        ok = json.loads(Path(certificate).read_text()).get("status") == "PASS_CERTIFIED" if certificate else False
+    except (OSError, ValueError):
+        ok = False
+    if not ok:
+        unmet.append("certificate")
+    unmet.append("method_amendment")
+    return unmet
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--convergence", help="receipt.json from run_helike_cone_convergence.py")
+    ap.add_argument("--certificate", help="receipt.json from the quasimode certification run")
     ap.add_argument("out_dir")
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--verify", action="store_true")
@@ -221,9 +250,11 @@ def main():
             if sha(dest) != rec["sources_sha256"][s]:
                 raise ValueError(f"source changed during snapshot: {s}")
         if not args.smoke:
-            rec.update(status="HOLD_DOMAIN", reason="positive-cone domain not enforced; see review amendment")
+            unmet = unmet_release_conditions(args.convergence, args.certificate)
+            rec.update(status="HOLD_DOMAIN", reason="positive-cone domain not enforced; see review amendment",
+                       hold_conditions={k: d for k, d in RELEASE_CONDITIONS if k in unmet})
             save_receipt(path, rec)
-            print("HOLD_DOMAIN NOT_EVALUATED")
+            print("HOLD_DOMAIN NOT_EVALUATED; unmet: " + ", ".join(unmet))
             return 2
         expected_cases(D)
         for label in ("primary", "secondary"):

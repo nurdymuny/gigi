@@ -245,9 +245,11 @@ class ConeRitz:
     classify = lf.LocalFock.classify
     spectrum = lf.LocalFock.spectrum
 
-    def __init__(self,s,t,g,Mq=4):
-        if isinstance(Mq,bool) or not isinstance(Mq,int) or not 0 <= Mq <= 6:
-            raise ValueError("reviewed same-control resource cap is 0 <= Mq <= 6")
+    def __init__(self,s,t,g,Mq=4,max_Mq=6):
+        # max_Mq above 6 is an explicit, recorded opt-in for the convergence runner
+        # (run_helike_cone_convergence.py); the reviewed default cap stays 6.
+        if any(isinstance(v,bool) or not isinstance(v,int) for v in (Mq,max_Mq)) or not 6 <= max_Mq <= 10 or not 0 <= Mq <= max_Mq:
+            raise ValueError(f"resource cap is 0 <= Mq <= max_Mq (default 6, explicit opt-in up to 10); got Mq={Mq}, max_Mq={max_Mq}")
         if not np.isfinite([s,t,g]).all() or t <= 1 or g <= 0 or not 1 < s < bm.mc_s_max(t):
             raise ValueError("positive coupling and stable registered-background regime required")
         self.s,self.t,self.g,self.Mq = s,t,g,Mq

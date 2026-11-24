@@ -1,0 +1,61 @@
+{
+ "all_caught": true,
+ "mutants": [
+  {
+   "name": "mixed_shell",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_overlapping_shells_keep_mixed_laplacian_term (test_helike_quasimode.Construction.test_overlapping_shells_keep_mixed_laplacian_term) ... FAIL\n\n======================================================================\nFAIL: test_overlapping_shells_keep_mixed_laplacian_term (test_helike_quasimode.Construction.test_overlapping_shells_keep_mixed_laplacian_term)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 66, in test_overlapping_shells_keep_mixed_laplacian_term\n    np.testing.assert_allclose(geo['lap_eta'][0],lap.item(),rtol=1e-10,atol=1e-10)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-10, atol=1e-10\n\nMismatched elements: 1 / 1 (100%)\nMax absolute difference among violations: 2.24287957\nMax relative difference among violations: 0.04136327\n ACTUAL: array(56.466817)\n DESIRED: array(54.223938)\n\n----------------------------------------------------------------------\nRan 1 test in 0.398s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "gradient_commutator",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions) ... FAIL\n\n======================================================================\nFAIL: test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 120, in test_commutator_keeps_both_contributions\n    np.testing.assert_allclose(out,.5*(3.-2j)-(4.+2j)-3*(2.+1j))\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=0\n\nMismatched elements: 1 / 1 (100%)\nMismatch at index:\n [0]: (-4.5-4j) (ACTUAL), (-8.5-6j) (DESIRED)\nMax absolute difference among violations: 4.47213595\nMax relative difference among violations: 0.42983428\n ACTUAL: array([-4.5-4.j])\n DESIRED: array(-8.5-6.j)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "laplacian_commutator",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions) ... FAIL\n\n======================================================================\nFAIL: test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 120, in test_commutator_keeps_both_contributions\n    np.testing.assert_allclose(out,.5*(3.-2j)-(4.+2j)-3*(2.+1j))\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=0\n\nMismatched elements: 1 / 1 (100%)\nMismatch at index:\n [0]: (-2.5-3j) (ACTUAL), (-8.5-6j) (DESIRED)\nMax absolute difference among violations: 6.70820393\nMax relative difference among violations: 0.64475142\n ACTUAL: array([-2.5-3.j])\n DESIRED: array(-8.5-6.j)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "measure_drift",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_full_operator_matches_independent_cartesian_differentiation (test_helike_quasimode.Construction.test_full_operator_matches_independent_cartesian_differentiation) ... FAIL\n\n======================================================================\nFAIL: test_full_operator_matches_independent_cartesian_differentiation (test_helike_quasimode.Construction.test_full_operator_matches_independent_cartesian_differentiation)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 77, in test_full_operator_matches_independent_cartesian_differentiation\n    np.testing.assert_allclose(actual,oracle,atol=1e-10,rtol=1e-9)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-09, atol=1e-10\n\nMismatched elements: 1 / 1 (100%)\nMax absolute difference among violations: 0.00314996\nMax relative difference among violations: 0.02041629\n ACTUAL: array(0.157437+0.j)\n DESIRED: array(0.154287+0.j)\n\n----------------------------------------------------------------------\nRan 1 test in 0.034s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "charge_sign",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_generator_sign_and_metric_on_known_covariant (test_helike_quasimode.Construction.test_generator_sign_and_metric_on_known_covariant) ... FAIL\n\n======================================================================\nFAIL: test_generator_sign_and_metric_on_known_covariant (test_helike_quasimode.Construction.test_generator_sign_and_metric_on_known_covariant)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 97, in test_generator_sign_and_metric_on_known_covariant\n    self.assertAlmostEqual(abs(-1j*(geom['velocity'][0]@gradient)-2*w),0.,places=11)\nAssertionError: np.float64(3.113648456534835) != 0.0 within 11 places (np.float64(3.113648456534835) difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.003s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "complex_square",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_complex_norm_and_nonfinite_refusals (test_helike_quasimode.Construction.test_complex_norm_and_nonfinite_refusals) ... FAIL\n\n======================================================================\nFAIL: test_complex_norm_and_nonfinite_refusals (test_helike_quasimode.Construction.test_complex_norm_and_nonfinite_refusals)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 124, in test_complex_norm_and_nonfinite_refusals\n    np.testing.assert_allclose(result,[1.])\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=0\n\nMismatched elements: 1 / 1 (100%)\nMismatch at index:\n [0]: 0j (ACTUAL), 1.0 (DESIRED)\nMax absolute difference among violations: 1.\nMax relative difference among violations: 1.\n ACTUAL: array([0.+0.j])\n DESIRED: array([1.])\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "false_certificate",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_numerical_agreement_never_certifies (test_helike_quasimode.Construction.test_numerical_agreement_never_certifies) ... FAIL\n\n======================================================================\nFAIL: test_numerical_agreement_never_certifies (test_helike_quasimode.Construction.test_numerical_agreement_never_certifies)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 131, in test_numerical_agreement_never_certifies\n    self.assertEqual(status['status'],'UNRESOLVED_INTEGRATION')\nAssertionError: 'PASS_CERTIFIED_INTERVAL' != 'UNRESOLVED_INTEGRATION'\n- PASS_CERTIFIED_INTERVAL\n+ UNRESOLVED_INTEGRATION\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "projector_defect",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_projector_bound_and_refusals (test_helike_quasimode.Construction.test_projector_bound_and_refusals) ... FAIL\n\n======================================================================\nFAIL: test_projector_bound_and_refusals (test_helike_quasimode.Construction.test_projector_bound_and_refusals)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_quasimode.py\", line 113, in test_projector_bound_and_refusals\n    self.assertGreaterEqual(bound,.021/np.sqrt(.99))\nAssertionError: 0.021000000000000005 not greater than or equal to np.float64(0.021105794120443454)\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  }
+ ]
+}

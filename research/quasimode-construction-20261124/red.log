@@ -1,0 +1,212 @@
+test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions) ... FAIL
+test_complex_norm_and_nonfinite_refusals (test_helike_quasimode.Construction.test_complex_norm_and_nonfinite_refusals) ... FAIL
+test_cutoff_derivatives_match_cartesian_in_both_shells (test_helike_quasimode.Construction.test_cutoff_derivatives_match_cartesian_in_both_shells) ... FAIL
+test_cutoff_is_invariant_and_shells_are_nontrivial (test_helike_quasimode.Construction.test_cutoff_is_invariant_and_shells_are_nontrivial) ... FAIL
+test_generator_sign_and_metric_on_known_covariant (test_helike_quasimode.Construction.test_generator_sign_and_metric_on_known_covariant) ... FAIL
+test_hermite_grid_norm_and_lowering (test_helike_quasimode.Construction.test_hermite_grid_norm_and_lowering) ... FAIL
+test_numerical_agreement_never_certifies (test_helike_quasimode.Construction.test_numerical_agreement_never_certifies) ... FAIL
+test_projector_bound_and_refusals (test_helike_quasimode.Construction.test_projector_bound_and_refusals) ... FAIL
+test_step_endpoints_and_derivatives (test_helike_quasimode.Construction.test_step_endpoints_and_derivatives) ... FAIL
+
+======================================================================
+FAIL: test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 7, in cutoff_action
+    def cutoff_action(*args, **kwargs): raise NotImplementedError
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 81, in test_commutator_keeps_both_contributions
+    out=self.call('cutoff_action',np.array([2.+1j]),np.array([3.-2j]),np.array([.5]),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: cutoff_action has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_complex_norm_and_nonfinite_refusals (test_helike_quasimode.Construction.test_complex_norm_and_nonfinite_refusals)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 8, in square_integral
+    def square_integral(*args, **kwargs): raise NotImplementedError
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 86, in test_complex_norm_and_nonfinite_refusals
+    result=self.call('square_integral',np.array([[1.],[1j]]),np.array([.5,.5]))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: square_integral has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_cutoff_derivatives_match_cartesian_in_both_shells (test_helike_quasimode.Construction.test_cutoff_derivatives_match_cartesian_in_both_shells)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 4, in geometry
+    def geometry(*args, **kwargs): raise NotImplementedError
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 45, in test_cutoff_derivatives_match_cartesian_in_both_shells
+    geom=self.call('geometry',chart,z[None,:],1.15,3.,np.sqrt(.004))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: geometry has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_cutoff_is_invariant_and_shells_are_nontrivial (test_helike_quasimode.Construction.test_cutoff_is_invariant_and_shells_are_nontrivial)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 3, in cutoff_q
+    def cutoff_q(*args, **kwargs): raise NotImplementedError
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 33, in test_cutoff_is_invariant_and_shells_are_nontrivial
+    value=self.call('cutoff_q',torch.tensor(q),chart).item()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: cutoff_q has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_generator_sign_and_metric_on_known_covariant (test_helike_quasimode.Construction.test_generator_sign_and_metric_on_known_covariant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 4, in geometry
+    def geometry(*args, **kwargs): raise NotImplementedError
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 56, in test_generator_sign_and_metric_on_known_covariant
+    geom=self.call('geometry',chart,z,1.15,3.,np.sqrt(.004))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: geometry has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_hermite_grid_norm_and_lowering (test_helike_quasimode.Construction.test_hermite_grid_norm_and_lowering)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 5, in polynomial_grid
+    def polynomial_grid(*args, **kwargs): raise NotImplementedError
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 67, in test_hermite_grid_norm_and_lowering
+    values=self.call('polynomial_grid',coeff,basis,w,4)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: polynomial_grid has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_numerical_agreement_never_certifies (test_helike_quasimode.Construction.test_numerical_agreement_never_certifies)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 9, in integration_status
+    def integration_status(*args, **kwargs): raise NotImplementedError
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 92, in test_numerical_agreement_never_certifies
+    status=self.call('integration_status',{'norm':1.,'residual_sq':.01},{'norm':1.,'residual_sq':.01})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: integration_status has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_projector_bound_and_refusals (test_helike_quasimode.Construction.test_projector_bound_and_refusals)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 6, in projection_bound
+    def projection_bound(*args, **kwargs): raise NotImplementedError
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 75, in test_projector_bound_and_refusals
+    bound=self.call('projection_bound',0.,.1,.02,.001)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: projection_bound has not implemented its behavioral contract
+
+======================================================================
+FAIL: test_step_endpoints_and_derivatives (test_helike_quasimode.Construction.test_step_endpoints_and_derivatives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 13, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 2, in smooth_step
+    def smooth_step(*args, **kwargs): raise NotImplementedError
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 23, in test_step_endpoints_and_derivatives
+    h,d,dd=self.call('smooth_step',np.array([0.,1.,1.5,2.,3.]))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 15, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: smooth_step has not implemented its behavioral contract
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.007s
+
+FAILED (failures=9)

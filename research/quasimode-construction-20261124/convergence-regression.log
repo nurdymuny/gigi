@@ -1,0 +1,78 @@
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) ... ok
+START g2=0.004 Mq=6
+DONE g2=0.004 Mq=6: helike 1.0000000000 competitor 1.2000000000 (0.0s)
+START g2=0.004 Mq=8
+DONE g2=0.004 Mq=8: helike 1.0010000000 competitor 1.2010000000 (0.0s)
+START g2=0.002 Mq=6
+DONE g2=0.002 Mq=6: helike 1.0000000000 competitor 1.2000000000 (0.0s)
+START g2=0.002 Mq=8
+DONE g2=0.002 Mq=8: helike 1.0010000000 competitor 1.2010000000 (0.0s)
+CONVERGED {"0.004": {"helike": 0.0009999999999998899, "competitor": 0.0009999999999998899}, "0.002": {"helike": 0.0009999999999998899, "competitor": 0.0009999999999998899}}
+PASS receipt consistency only, not matrix replay or physical certification
+test_complete_planted_run_checkpoints_and_verifies (test_helike_cone_convergence.ConvergenceEvidence.test_complete_planted_run_checkpoints_and_verifies) ... ok
+test_consistency_does_not_release_dirty_or_negative_evidence (test_helike_cone_convergence.ConvergenceEvidence.test_consistency_does_not_release_dirty_or_negative_evidence) ... ok
+test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) ... ok
+test_empty_controls_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_empty_controls_refuse) ... ok
+test_extra_control_or_rung_refuses (test_helike_cone_convergence.ConvergenceEvidence.test_extra_control_or_rung_refuses) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_forged_provenance_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_forged_provenance_rejects) ... ok
+test_forged_statuses_never_release (test_helike_cone_convergence.ConvergenceEvidence.test_forged_statuses_never_release) ... ok
+test_gap_threshold_boundary (test_helike_cone_convergence.ConvergenceEvidence.test_gap_threshold_boundary) ... ok
+START g2=0.004 Mq=6
+MemoryError: planted before first solve
+test_initial_failure_retains_receipt (test_helike_cone_convergence.ConvergenceEvidence.test_initial_failure_retains_receipt) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_integrity_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_integrity_change_rejects) ... ok
+test_interrupted_verification_invalidates_pass_first (test_helike_cone_convergence.ConvergenceEvidence.test_interrupted_verification_invalidates_pass_first) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) ... ok
+test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) ... ok
+START g2=0.004 Mq=6
+DONE g2=0.004 Mq=6: helike 1.0000000000 competitor 1.2000000000 (0.0s)
+START g2=0.004 Mq=8
+KeyboardInterrupt: 
+test_later_interrupt_retains_completed_rung (test_helike_cone_convergence.ConvergenceEvidence.test_later_interrupt_retains_completed_rung) ... ok
+PASS receipt consistency only, not matrix replay or physical certification
+test_line_ending_changes_are_portable (test_helike_cone_convergence.ConvergenceEvidence.test_line_ending_changes_are_portable) ... ok
+test_missing_coupling_refuses (test_helike_cone_convergence.ConvergenceEvidence.test_missing_coupling_refuses) ... ok
+test_nonempty_output_is_unchanged (test_helike_cone_convergence.ConvergenceEvidence.test_nonempty_output_is_unchanged) ... ok
+START g2=0.004 Mq=6
+ValueError: nonfinite evidence
+test_nonfinite_output_is_logged_without_nan_json (test_helike_cone_convergence.ConvergenceEvidence.test_nonfinite_output_is_logged_without_nan_json) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_resealed_forged_changes_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_changes_reject) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_resealed_forged_decision_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_decision_reject) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_snapshot_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_snapshot_change_rejects) ... ok
+test_unrepresentable_measurement_cannot_escape_release_hold (test_helike_cone_convergence.ConvergenceEvidence.test_unrepresentable_measurement_cannot_escape_release_hold) ... ok
+PASS receipt consistency only, not matrix replay or physical certification
+test_valid_converged_receipt (test_helike_cone_convergence.ConvergenceEvidence.test_valid_converged_receipt) ... ok
+PASS receipt consistency only, not matrix replay or physical certification
+test_valid_not_converged_receipt (test_helike_cone_convergence.ConvergenceEvidence.test_valid_not_converged_receipt) ... ok
+test_weight_threshold_boundary (test_helike_cone_convergence.ConvergenceEvidence.test_weight_threshold_boundary) ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 5.596s
+
+OK

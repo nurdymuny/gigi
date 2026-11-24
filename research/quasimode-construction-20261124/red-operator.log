@@ -1,0 +1,28 @@
+test_full_operator_matches_independent_cartesian_differentiation (test_helike_quasimode.Construction.test_full_operator_matches_independent_cartesian_differentiation) ... FAIL
+
+======================================================================
+FAIL: test_full_operator_matches_independent_cartesian_differentiation (test_helike_quasimode.Construction.test_full_operator_matches_independent_cartesian_differentiation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 14, in call
+    return getattr(qm, name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_quasimode.py", line 16, in point_action
+    def point_action(*args, **kwargs): raise NotImplementedError
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 73, in test_full_operator_matches_independent_cartesian_differentiation
+    actual=self.call('point_action',q,chart,basis,w,coeff,1.15,3.,np.sqrt(.004),cutoff)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_quasimode.py", line 16, in call
+    self.fail(f'{name} has not implemented its behavioral contract')
+AssertionError: point_action has not implemented its behavioral contract
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)

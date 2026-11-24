@@ -134,6 +134,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | date | note |
 | --- | --- |
 | 24 Nov | [Positive-cone basis specification](helike-positive-cone-basis-spec-2026-11-24.md): exact energy form, fixed harmonic reference, same-control refinement; boundary realization still unresolved |
+| 24 Nov | [Positive-cone basis results](helike-positive-cone-basis-results-2026-11-24.md): valid-domain repair and unchanged weak-coupling controls pass; boundary, sector and full gap convergence remain open |
 | 24 Nov | [Two-grain sphalerons and barriers](helike-two-grain-phase2-2026-11-24.md) |
 | 24 Nov | [Two-grain invariant basis budget](helike-two-grain-phase3-budget-2026-11-24.md) |
 | 24 Nov | [Reflections and intentions](helike-reflections-and-intentions-2026-11-24.md) |

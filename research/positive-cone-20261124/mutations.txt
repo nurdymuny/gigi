@@ -1,0 +1,8 @@
+positive_diagonal_removed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+jacobian_measure_wrong {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+euclidean_metric_substituted {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+source_term_sign_flipped {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+gaussian_completion_factor_removed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+derivative_shell_removed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+reference_volume_factor_removed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+kinetic_measure_derivative_removed {'failures': 1, 'errors': 0, 'caught_by_assertion': True}

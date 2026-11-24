@@ -1,0 +1,9 @@
+test_g_squared_scaling_and_degeneracy (test_helike_condensate_pt.Corrections.test_g_squared_scaling_and_degeneracy) ... ok
+test_one_dimensional_validation (test_helike_condensate_pt.Engine.test_one_dimensional_validation) ... ok
+test_harmonic_frequencies_equal_q_space_vibrations (test_helike_condensate_pt.Reduction.test_harmonic_frequencies_equal_q_space_vibrations) ... ok
+test_measure_identity (test_helike_condensate_pt.Reduction.test_measure_identity) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 4.221s
+
+OK

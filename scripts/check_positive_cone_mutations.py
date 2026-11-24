@@ -16,7 +16,7 @@ MUTANTS=[
     ('gaussian_completion_factor_removed',[('np.exp(alpha*alpha/(4*w))','1.')],tests.Moments,'test_completed_square_against_unshifted_quadrature'),
     ('derivative_shell_removed',[('if o[j] < 0:','if o[j] < 0 or sum(o) > Mq:')],tests.Moments,'test_harmonic_single_and_double_controls'),
     ('reference_volume_factor_removed',[('logdet+u[:,:3]@np.array([4.,3.,2.])','0.*(logdet+u[:,:3]@np.array([4.,3.,2.]))')],tests.Moments,'test_reference_amplitudes_against_direct_pullback'),
-    ('kinetic_measure_derivative_removed',[('- .5*MEASURE_POWERS[i]*embedding','- 0.*MEASURE_POWERS[i]*embedding')],tests.PhysicalControls,'test_same_weak_coupling_coefficients'),
+    ('kinetic_measure_derivative_removed',[('- .5*MEASURE_POWERS[i]*embedding','- 0.*MEASURE_POWERS[i]*embedding')],tests.Moments,'test_kinetic_ground_against_direct_quadrature'),
 ]
 
 

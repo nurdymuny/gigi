@@ -1,0 +1,27 @@
+{"g2": 0.004, "s": 1.15, "t": 3.0, "Mq": 6, "dimension": 924, "result": {"E0": 5.406357799405249, "scope": "positive-cone interior trial values; no boundary or sector convergence certificate", "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION", "energy_shift": -47.52734374999997, "reference_weight_error": 2.7980580086239826e-07, "overlap_orders": [10, 12], "helike": {"gap": 1.0881506933025138, "weight": 0.9885333264400922, "log_basis_weight": 0.9765881045524782, "level_index": 1}, "competitor": {"gap": 1.096244148959327, "weight": 0.9808081919195194, "log_basis_weight": 0.9425922076140055, "level_index": 3}}, "coefficients": [-0.4890837705020523, -2.6031127706740986], "seconds": 7.5939999999973224, "mass_error": 7.105427357601002e-15, "kinetic_min": 1.0904869037258482, "asymmetry": 6.281086761816823e-14, "matrix_file": "control-0.004.npz", "matrix_sha256": "e9cd50177cfce9c0169d4d6ad55eda4f3913de3cc2d69b4ecc4015e360c0d859"}
+{"g2": 0.002, "s": 1.15, "t": 3.0, "Mq": 6, "dimension": 924, "result": {"E0": 5.4091745383591086, "scope": "positive-cone interior trial values; no boundary or sector convergence certificate", "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION", "energy_shift": -95.05468749999991, "reference_weight_error": 3.163592421362438e-08, "overlap_orders": [10, 12], "helike": {"gap": 1.0890870744498296, "weight": 0.9943433989747635, "log_basis_weight": 0.9882565668351303, "level_index": 1}, "competitor": {"gap": 1.1013023579665449, "weight": 0.9905908650892775, "log_basis_weight": 0.971014718181846, "level_index": 3}}, "coefficients": [-0.5099769673462262, -2.677121037739205], "seconds": 7.327999999994063, "mass_error": 7.105427357601002e-15, "kinetic_min": 1.092627651725188, "asymmetry": 1.1468603844377867e-13, "matrix_file": "control-0.002.npz", "matrix_sha256": "5c9a54972f566e0365ea6514bae1083ee7968a61d7c421d7afc554243b8ca046"}
+{
+  "status": "PASS_CONTROLS",
+  "scope": "interior trial controls, no physical boundary certificate",
+  "source_revision": "ad4536e4cc8c387fdc18bafabe440215f9f529c4",
+  "source_dirty": false,
+  "source_hash_policy": "sha256-universal-newline-v1",
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "cutoff": 6,
+  "thresholds": {
+    "coefficient_error": 0.03,
+    "weight_min": 0.95
+  },
+  "certified": false,
+  "extrapolated_coefficients": [
+    -0.5308701641904001,
+    -2.7511293048043117
+  ],
+  "coefficient_errors": [
+    0.0008701641904000912,
+    0.013229304804311948
+  ],
+  "coefficient_pass": true,
+  "weight_pass": true
+}

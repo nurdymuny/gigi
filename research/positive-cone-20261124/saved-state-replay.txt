@@ -1,0 +1,8 @@
+test_eigenpair_check_detects_corrupted_matrix (test_helike_positive_cone.SavedControls.test_eigenpair_check_detects_corrupted_matrix) ... ok
+test_saved_matrix_eigenpairs_and_sources (test_helike_positive_cone.SavedControls.test_saved_matrix_eigenpairs_and_sources) ... ok
+test_saved_original_reference_weights (test_helike_positive_cone.SavedControls.test_saved_original_reference_weights) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 4.903s
+
+OK

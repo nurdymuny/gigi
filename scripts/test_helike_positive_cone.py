@@ -1,5 +1,8 @@
 """Same-model controls for a domain-preserving geometric trial basis."""
 import unittest
+import hashlib
+import json
+from pathlib import Path
 import numpy as np
 from scipy.special import roots_hermite, eval_hermite, factorial
 import helike_berger_model as bm
@@ -111,6 +114,30 @@ class Moments(unittest.TestCase):
             want += weight*ratio*np.outer(np.sqrt(2*L.w)*y,polynomial@vectors)
         np.testing.assert_allclose(L.reference_amplitudes(vectors,3),want,rtol=1e-10,atol=1e-10)
 
+    def test_kinetic_ground_against_direct_quadrature(self):
+        L=pc.ConeRitz(1.15,3.,np.sqrt(.004),Mq=0)
+        nodes,weights=roots_hermite(6)
+        ix=np.indices((6,)*6).reshape(6,-1).T
+        z=nodes[ix]/np.sqrt(L.w)
+        u=L.chart.u0+z@L.chart.S.T
+        r=np.exp(u[:,:3]); a,b,c=u[:,3],u[:,4],u[:,5]
+        G=np.column_stack((r[:,0]**2,a*a+r[:,1]**2,b*b+c*c+r[:,2]**2,r[:,0]*a,r[:,0]*b,a*b+r[:,1]*c))
+        J=np.zeros((len(z),6,6))
+        J[:,0,0]=2*r[:,0]**2
+        J[:,1,1]=2*r[:,1]**2; J[:,1,3]=2*a
+        J[:,2,2]=2*r[:,2]**2; J[:,2,4]=2*b; J[:,2,5]=2*c
+        J[:,3,0]=r[:,0]*a; J[:,3,3]=r[:,0]
+        J[:,4,0]=r[:,0]*b; J[:,4,4]=r[:,0]
+        J[:,5,1]=r[:,1]*c; J[:,5,3]=b; J[:,5,4]=a; J[:,5,5]=r[:,1]
+        inv=np.linalg.inv(J@L.chart.S)
+        A=np.einsum('ijm,bm->bij',cp.C_A,G)
+        B=inv@A@inv.transpose(0,2,1)
+        # Independently fixed measure derivative, not the production assembly constant.
+        d=-z*L.w-.5*(L.chart.S.T@np.array([3.,2.,1.,0.,0.,0.]))
+        integrand=.5*np.einsum('bi,bij,bj->b',d,B,d)
+        want=np.dot(np.prod(weights[ix]/np.sqrt(np.pi),axis=1),integrand)
+        self.assertAlmostEqual(L.T[0,0],want,delta=1e-8)
+
 
 class PhysicalControls(unittest.TestCase):
     @classmethod
@@ -130,7 +157,7 @@ class PhysicalControls(unittest.TestCase):
 
     def test_mass_and_kinetic_form(self):
         for L in self.controls.values():
-            np.testing.assert_allclose(L.mass,np.eye(len(L.basis)),atol=1e-10)
+            np.testing.assert_allclose(L.mass,np.eye(len(L.basis)),atol=1e-10,rtol=0)
             self.assertGreaterEqual(np.linalg.eigvalsh(L.T).min(),-1e-10*max(1,np.linalg.norm(L.T,2)))
             self.assertLess(np.max(abs(L.H-L.H.T)),1e-10)
             self.assertTrue(np.isfinite(L.H).all())
@@ -138,12 +165,63 @@ class PhysicalControls(unittest.TestCase):
     def test_nested_ritz_values(self):
         big=self.controls[.004]
         small=pc.ConeRitz(1.15,3.,np.sqrt(.004),Mq=2)
-        np.testing.assert_allclose(big.H[:len(small.basis),:len(small.basis)],small.H,atol=1e-10)
+        np.testing.assert_allclose(big.H[:len(small.basis),:len(small.basis)],small.H,atol=1e-10,rtol=0)
         self.assertTrue(np.all(np.linalg.eigvalsh(big.H)[:7] <= np.linalg.eigvalsh(small.H)[:7]+1e-10))
 
     def test_scope_and_resource_refusal(self):
         self.assertEqual(self.controls[.004].boundary_status,'UNRESOLVED_PHYSICAL_REALIZATION')
         with self.assertRaises(ValueError): pc.ConeRitz(1.15,3.,.1,Mq=7)
+
+
+class SavedControls(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.folder=Path(__file__).resolve().parent.parent/'research/positive-cone-20261124/controls-ad4536e4'
+        cls.receipt=json.loads((cls.folder/'receipt.json').read_text())
+
+    def test_saved_matrix_eigenpairs_and_sources(self):
+        from run_helike_flux_background import sha
+        self.assertEqual(self.receipt['status'],'PASS_CONTROLS')
+        self.assertFalse(self.receipt['source_dirty'])
+        for path,digest in self.receipt['sources'].items():
+            self.assertEqual(sha(self.folder/'sources'/path),digest)
+        for row in self.receipt['controls']:
+            path=self.folder/row['matrix_file']
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(),row['matrix_sha256'])
+            with np.load(path,allow_pickle=False) as data:
+                H,T,mass,e,v=(data[k] for k in ('H','T','mass','eigenvalues','eigenvectors'))
+                self.assertTrue(all(np.isfinite(x).all() for x in (H,T,mass,e,v)))
+                np.testing.assert_allclose(H,H.T,atol=1e-10,rtol=0)
+                np.testing.assert_allclose(mass,np.eye(len(e)),atol=1e-10,rtol=0)
+                np.testing.assert_allclose(v.T@v,np.eye(len(e)),atol=1e-8,rtol=0)
+                self.assertLess(np.max(abs(H@v-v*e)),1e-9*max(1.,np.max(abs(e))))
+                self.assertGreaterEqual(np.linalg.eigvalsh(T).min(),-1e-9)
+                for name in ('helike','competitor'):
+                    r=row['result'][name]
+                    self.assertAlmostEqual(e[r['level_index']]-e[0],r['gap'],delta=1e-10)
+
+    def test_saved_original_reference_weights(self):
+        for row in self.receipt['controls']:
+            with np.load(self.folder/row['matrix_file'],allow_pickle=False) as data:
+                e,v=data['eigenvalues'],data['eigenvectors']
+            p=cp.CondensatePT(row['s'],row['t'],np.sqrt(row['g2']))
+            L=object.__new__(pc.ConeRitz)
+            L.s,L.t,L.g,L.Mq=row['s'],row['t'],np.sqrt(row['g2']),row['Mq']
+            L.w=p.w; L.chart=pc.ConeChart(cp.mat_from_vec(p.G0),p.M)
+            L.basis=pc.states_up_to(6,L.Mq)
+            L.energy_shift=row['result']['energy_shift']
+            L.spectrum=lambda n:(e[:n],v[:,:n])
+            replay=L.helike_and_competitor()
+            for name in ('helike','competitor'):
+                self.assertAlmostEqual(replay[name]['weight'],row['result'][name]['weight'],delta=1e-8)
+                self.assertEqual(replay[name]['level_index'],row['result'][name]['level_index'])
+
+    def test_eigenpair_check_detects_corrupted_matrix(self):
+        row=self.receipt['controls'][0]
+        with np.load(self.folder/row['matrix_file'],allow_pickle=False) as data:
+            H,e,v=data['H'].copy(),data['eigenvalues'],data['eigenvectors']
+        H[0,0] += .1
+        self.assertGreater(np.max(abs(H@v-v*e)),1e-9*max(1.,np.max(abs(e))))
 
 
 if __name__ == '__main__':

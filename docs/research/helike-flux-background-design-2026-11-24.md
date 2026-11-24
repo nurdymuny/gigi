@@ -157,10 +157,57 @@ passing):
 Mutation check (`check_helike_condensate_mutations.py`): 3 of 3 caught by assertion (moment normalisation, dome scale,
 dropped sources).
 
+## O(g²) corrections (done; exact perturbation theory, validated)
+
+Code: `scripts/helike_condensate_pt.py`. Tests: `scripts/test_helike_condensate_pt.py` (5 passing). Mutation check:
+3 of 3 caught by assertion (kinetic cubic dropped, quartic sign, kinetic-metric entry).
+
+**Method.** Colour singlets are functions of G = qqᵀ, so H reduces exactly to six variables:
+H_red = −½[A_ij(G)∂_i∂_j + b_i∂_i] + V_src(G), with A_ij = ∇G_i·∇G_j linear in G, b_i = ΔG_i, and measure
+ρ = (det G)^(−1/2). The measure identity b_i = ∂_jA_ij + A_ij∂_j log ρ is checked to 10⁻¹⁰.
+
+Around G_bg ~ 1/g², with η = G − G_bg ~ 1/g:
+- **Order g:** the cubic potential, and the kinetic cubic −½∂_i(A₁(η)_ij ∂_j).
+- **Order g²:** the quartic potential.
+- **The curvature potential** from the measure is O(g²) and constant at that order, so it cancels in gaps.
+
+The corrections are exact finite sums in the six normal-mode ladder operators, using the sheet d = +√(det G).
+
+**Validation:**
+- the measure identity;
+- the G-space harmonic frequencies equal the six q-space sourced vibrations (to 2×10⁻⁵);
+- the engine, including the position-dependent kinetic term, matches exact 1D diagonalisation, with residual
+  discrepancy scaling as the next order;
+- the coefficients are exactly g-independent;
+- Helike's doublet stays degenerate.
+
+**Result: Helike's channel is quantum-robust; the competitor is softened.** The gap is ω + c·g², with:
+
+| t = 3, s | 1.01 | 1.10 | 1.15 | 1.20 | 1.25 |
+| --- | --- | --- | --- | --- | --- |
+| c_H (Helike, |Q| = 2) | −0.90 | −0.60 | −0.53 | −0.50 | −0.51 |
+| c_C (competitor, Q = 0) | −5.45 | −3.35 | −2.74 | −2.27 | −1.97 |
+
+(t = 4 is similar: c_H ≈ −0.55 to −0.93, c_C ≈ −2.4 to −6.0.) This is the same pattern as Step 1, where Helike's
+channel was protected and the scalar competitor was pulled down. Her null structure keeps her nearly uncorrected.
+Quantum corrections therefore push the crossing to larger s:
+
+| t | g² = 0 | 0.03 | 0.05 | 0.07 | 0.10 | 0.15 | 0.20 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 1.1436 | 1.1674 | 1.1809 | 1.1931 | 1.2094 | 1.2327 | out of window |
+| 4 | 1.0981 | 1.1260 | 1.1413 | 1.1546 | 1.1721 | 1.1965 | out of window |
+
+**This changes the registration regime.** At the earlier proposal g² = 0.1–0.2 the corrections reach 67–134% of a
+frequency somewhere in the window, so perturbation theory is not reliable there. At g² = 0.03–0.07 and t = 3, the
+corrections at the crossing are at most 14%, the depth is c/g² = 3.9–7.4 (localised), and the background sits at
+|q| ≈ 4.5–6.7. The orbit envelope needs a larger K there, which is a run for the other machine. At t = 4 the depth is
+only 2.6–4.5, so t = 3 is primary.
+
 ## Draft registration (for your review)
 
-- **Couplings and backgrounds:** t ∈ {3, 4}; s on a grid across s*_src(t) inside the window (t = 3: 1.10, 1.13, 1.14,
-  1.15, 1.18, 1.22; t = 4: 1.06, 1.09, 1.10, 1.12, 1.16); g² ∈ {0.1, 0.15, 0.2}.
+- **Couplings and backgrounds (revised after O(g²)):** primary t = 3, with g² ∈ {0.03, 0.05, 0.07} and s across the
+  corrected crossing (1.12, 1.15, 1.165, 1.18, 1.195, 1.22, 1.24). Secondary t = 4, with g² ∈ {0.03, 0.05} and
+  s ∈ {1.09, 1.12, 1.14, 1.16, 1.18}.
 - **Basis:** origin sector basis (m-resolved) plus orbit-envelope items. β is fixed from the sourced Hessian at q_bg
   (the contact frame). K is frozen by the outside-origin ratio below 10⁻⁶ at the top cutoff. Cutoffs fixed in advance.
 - **Readouts:**
@@ -169,7 +216,9 @@ dropped sources).
   - the ordering switch s*_q(t, g) against the harmonic s*_src(t);
   - the two-edge (helicity², flux, quartic, source) shares.
 - **Primary hypothesis:** the lowest excitation becomes the H2^(±2)-dominated |Q| = 2 state for s above a switch point
-  that tends to s*_src(t) as g → 0, within registered tolerances.
+  s*_q(t, g). The registered prediction is s*(t, g) from the O(g²) table (t = 3: 1.1674, 1.1809, 1.1931). The tolerance
+  is fixed from the next-order size, the correction squared over the gap at the crossing. **Secondary:** Helike's
+  measured O(g²) coefficient is small (|c_H| ≲ 0.6 near the crossing) while the competitor's is several times larger.
 - **Controls:**
   - s = 1, where the background is flat (B = 0): the protected 2/√t;
   - s < 1 (B < 0);

@@ -72,3 +72,50 @@ class Budget(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FluxBackground(unittest.TestCase):
+    """The sourced-condensate variant: verified facts used in the flux-background design."""
+
+    def test_vibrations_are_a_quarter_of_the_edge_sector_zero_hessian(self):
+        from test_ym_two_grain_potential import hessian
+        g = .6
+        for (x, y, t) in [(-2., 1.5, 4.), (.5, 1., 4.), (1.1, 2.2, 4.)]:
+            qb = np.diag([x, y, y]) / (2 * g)
+            Hq = np.sort(np.linalg.eigvalsh(hessian(lambda z: bm.V(z.reshape(3, 3), g, t), qb.ravel(), h=1e-4)))
+            He = np.sort(np.linalg.eigvalsh(hc.operators(x, y, t, 0)[1]))
+            np.testing.assert_allclose(Hq, He / 4, atol=2e-4)
+
+    def test_window_global_minimum_and_orbit_zero_modes(self):
+        from scipy.optimize import minimize
+        from test_ym_two_grain_potential import hessian
+        g, t, s = .6, 4., 1.1
+        x, y, qb = bm.mc_background(s, t, g)
+        a, b = bm.sources(qb, g, t)
+        self.assertTrue(bm.bounded(g, t, a, b))
+        f = lambda z: bm.V_sourced(z.reshape(3, 3), g, t, a, b)
+        ev = np.linalg.eigvalsh(hessian(f, qb.ravel(), h=1e-4))
+        self.assertEqual(int(np.sum(np.abs(ev) < 1e-5)), 3)
+        self.assertGreater(ev[np.abs(ev) >= 1e-5].min(), 0)
+        rng = np.random.default_rng(1)
+        best = min(minimize(f, rng.normal(size=9) * rng.uniform(.3, 3)).fun for _ in range(20))
+        self.assertGreaterEqual(best, f(qb.ravel()) - 1e-6)
+        self.assertLess(f(qb.ravel()), 0)
+
+    def test_boundedness_limit(self):
+        """Numerically s_max = 1 + 1/(t + 1) (derivation owed)."""
+        g = .6
+        for t in (3., 4., 6.):
+            smax = 1 + 1 / (t + 1)
+            for s, want in ((smax - 1e-3, True), (smax + 1e-3, False)):
+                _, _, qb = bm.mc_background(s, t, g)
+                self.assertEqual(bm.bounded(g, t, *bm.sources(qb, g, t)), want, (t, s))
+
+    def test_helike_becomes_sector_zero_floor_inside_the_window(self):
+        for t, (below, above) in {4.: (1.10, 1.13), 6.: (1.06, 1.08)}.items():
+            for s, floor in ((below, False), (above, True)):
+                x, y = 2 * s / np.sqrt(t), 2 * s
+                hg, _ = hc.gauge_orthogonal(hc.operators(x, y, t, 0)[1], hc.gauge_map(x, y, t, 0))
+                lam = hc.twist_closed_form(x, y, t, 0)
+                self.assertEqual(bool(hg[0] >= lam - 1e-8), floor, (t, s))
+            self.assertLess(above, 1 + 1 / (t + 1))

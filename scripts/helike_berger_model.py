@@ -74,3 +74,31 @@ def sector_counts(D, m):
     if np.abs(H - Hi).max() > 1e-8:
         raise ArithmeticError("Molien counts not integral")
     return Hi
+
+
+# ---------------------------------------------------------------- flux-background variant (sourced condensate)
+
+def mc_background(s, t, g):
+    """Background on the Maurer-Cartan line A = s theta: edge family (x, y) = (2s/sqrt t, 2s), q_bg = diag(x,y,y)/(2g)."""
+    x, y = 2 * s / np.sqrt(t), 2 * s
+    return x, y, np.diag([x, y, y]) / (2 * g)
+
+
+def sources(qb, g, t, eps=1e-6):
+    """(a, b) making q_bg stationary for V - a|q_0|^2/2 - b(|q_1|^2 + |q_2|^2)/2 (gradient of V at q_bg is diagonal)."""
+    out = []
+    for i in (0, 1):
+        e = np.zeros((3, 3))
+        e[i, i] = eps
+        out.append((V(qb + e, g, t) - V(qb - e, g, t)) / (2 * eps) / qb[i, i])
+    return tuple(out)
+
+
+def V_sourced(q, g, t, a, b):
+    return V(q, g, t) - .5 * a * np.sum(q[0] ** 2) - .5 * b * np.sum(q[1:] ** 2)
+
+
+def bounded(g, t, a, b):
+    """Flat (commuting) directions are bounded below iff omega_0^2 - a > 0 and omega_perp^2 - b > 0."""
+    om = omega(t)
+    return om[0] ** 2 - a > 0 and om[1] ** 2 - b > 0

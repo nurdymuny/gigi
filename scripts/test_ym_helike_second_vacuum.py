@@ -96,5 +96,54 @@ class SecondVacuum(unittest.TestCase):
         self.assertAlmostEqual(.5 * np.sum(np.abs(mu1) - mu1), 1.)
 
 
+
+def _grad(f, q, h=1e-5):
+    g = np.zeros(9)
+    for k in range(9):
+        e = np.zeros(9)
+        e[k] = h
+        g[k] = (f(q + e.reshape(3, 3)) - f(q - e.reshape(3, 3))) / (2 * h)
+    return g
+
+
+def _div(field, q, h=1e-4):
+    s = 0.
+    for k in range(9):
+        e = np.zeros(9)
+        e[k] = h
+        s += (field(q + e.reshape(3, 3))[k] - field(q - e.reshape(3, 3))[k]) / (2 * h)
+    return s
+
+
+class SweepDirection(unittest.TestCase):
+    """Both factorizations of the same H: with W the floor is 9/2; with -W it is -9/2, weaker than H >= 0."""
+
+    def apply_factored(self, sign, g, a, q):
+        Wf = lambda z: sign * W(z, g)
+        psi = lambda z: np.exp(-a * np.sum(z * z) / 2) * (1 + .3 * np.linalg.det(z) - .2 * np.sum(z * z))
+        Apsi = lambda z: _grad(psi, z) + psi(z) * _grad(Wf, z)            # A = grad + grad(sign W)
+        # 1/2 A^dagger A psi = 1/2 (-div(A psi) + grad(sign W) . A psi)
+        return .5 * (-_div(Apsi, q) + _grad(Wf, q) @ Apsi(q)), psi
+
+    def test_both_factorizations(self):
+        rng = np.random.default_rng(51)
+        g, a = .9, 1.3
+        for _ in range(2):
+            q = rng.normal(size=(3, 3)) * .5
+            for sign, shift in ((1, 4.5), (-1, -4.5)):
+                half_AA, psi = self.apply_factored(sign, g, a, q)
+                lap = sum((psi(q + e) - 2 * psi(q) + psi(q - e)) / 1e-6
+                          for e in (np.eye(9)[k].reshape(3, 3) * 1e-3 for k in range(9)))
+                H_psi = -.5 * lap + V(q, g) * psi(q)
+                self.assertAlmostEqual(half_AA + shift * psi(q), H_psi, delta=2e-4 * max(1, abs(H_psi)))
+
+    def test_opposite_grain_is_g_reversed(self):
+        """The right-invariant grain flips the cubic term: V(-p; g) = V(p; -g)."""
+        rng = np.random.default_rng(52)
+        for _ in range(5):
+            p, g = rng.normal(size=(3, 3)), rng.uniform(.2, 2)
+            self.assertAlmostEqual(V(-p, g), V(p, -g), places=10)
+
+
 if __name__ == "__main__":
     unittest.main()

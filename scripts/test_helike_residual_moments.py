@@ -54,6 +54,21 @@ class Moments(unittest.TestCase):
         np.testing.assert_allclose(sp.shift(C,mu,oracle=True),expected,rtol=1e-13,atol=1e-13)
 
     @behavior
+    def test_false_agreement_cancellation_fixture(self):
+        sp=rm.Space([1.],0); C=self.one(sp,0,1e4)
+        groups=[(np.array([1e-6]),C),(np.zeros(1),-C)]
+        expected=.0000500000000000437500000000161458
+        for oracle in (False,True):
+            np.testing.assert_allclose(rm.norm_squared(sp,groups,oracle)['value'],[expected],rtol=0,atol=1e-12)
+
+    @behavior
+    def test_translation_increment_preserves_tiny_change(self):
+        sp=rm.Space([1.],1); C=self.one(sp,0,1e12)+self.one(sp,1)
+        expected=self.one(sp,0,np.sqrt(2)*1e-10)
+        for oracle in (False,True):
+            np.testing.assert_allclose(sp.shift_increment(C,np.array([1e-10]),oracle),expected,rtol=1e-12,atol=1e-22)
+
+    @behavior
     def test_completed_square_prefactor(self):
         sp=rm.Space([1.4],0); C=self.one(sp)
         self.assertAlmostEqual(rm.norm_squared(sp,[(np.array([.7]),C)])['value'][0],np.exp(.7**2/1.4),places=12)

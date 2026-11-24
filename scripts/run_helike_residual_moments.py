@@ -21,7 +21,8 @@ OLD=ROOT/'research/quasimode-construction-20261124/controls-e21087a1'
 EXPECTED='e922d6bfffea50907d1c28d7cf7cdae622bb8eda0da5e4f97fdc1c13807045ab'
 SOURCES=tuple(BASE_SOURCES)+('scripts/helike_residual_moments.py','scripts/run_helike_residual_moments.py',
     'scripts/test_helike_residual_moments.py','scripts/check_helike_residual_mutations.py',
-    'docs/research/helike-residual-integration-registration-2026-11-24.md')
+    'docs/research/helike-residual-integration-registration-2026-11-24.md',
+    'docs/research/helike-residual-centering-amendment-2026-11-24.md')
 
 
 def load_controls(folder):

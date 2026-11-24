@@ -44,27 +44,36 @@ class Space:
         return out
 
     def shift(self,C,mu,oracle=False):
+        return finite(C+self.shift_increment(C,mu,oracle))
+
+    def shift_increment(self,C,mu,oracle=False):
         C=self.check(C); mu=finite(mu)
         if mu.shape!=self.w.shape: raise ValueError('translation dimension mismatch')
-        result=C.copy()
+        increment=np.zeros_like(C)
         for axis,amount in enumerate(mu):
             if amount==0: continue
+            result=C+increment
+            delta=np.zeros_like(C)
             if oracle:
                 x,weights=roots_hermite(self.degree+1)
                 h=pc.normalized_hermites(x,self.degree)
-                translated=pc.normalized_hermites(x+np.sqrt(self.w[axis])*amount,self.degree)
-                matrix=(h*(weights/np.sqrt(np.pi)))@translated.T
-                out=result*matrix[self.states[:,axis],self.states[:,axis],None]
+                offset=np.sqrt(self.w[axis])*amount
+                difference=np.zeros_like(h)
+                if self.degree: difference[1]=np.sqrt(2.)*offset
+                for n in range(1,self.degree):
+                    difference[n+1]=(np.sqrt(2/(n+1))*((x+offset)*difference[n]+offset*h[n])
+                                     -np.sqrt(n/(n+1))*difference[n-1])
+                matrix=(h*(weights/np.sqrt(np.pi)))@difference.T
                 for r in range(1,self.degree+1):
                     src,dst=self.transitions[axis,r]; n=self.states[src,axis]
-                    out[dst]+=result[src]*matrix[n-r,n,None]
+                    delta[dst]+=result[src]*matrix[n-r,n,None]
             else:
-                out=result.copy(); term=result.copy()
+                term=result.copy()
                 for r in range(1,self.degree+1):
                     term=self.op(term,axis,'derivative')*(amount/r)
-                    out+=term
-            result=out
-        return finite(result)
+                    delta+=term
+            increment+=delta
+        return finite(increment)
 
 
 def build_residual(chart,basis,w,coeff,centers,s,t,g):
@@ -109,7 +118,11 @@ def build_residual(chart,basis,w,coeff,centers,s,t,g):
 
 def norm_squared(space,groups,oracle=False,deadline=None):
     if not groups: raise ValueError('nonempty exponential-polynomial required')
-    contributions=[]
+    combined=np.zeros_like(space.check(groups[0][1])); compensation=combined.copy()
+    for _,C in groups:
+        value=space.check(C)-compensation; updated=combined+value
+        compensation=(updated-combined)-value; combined=updated
+    contributions=[np.sum(abs(combined)**2,axis=0)]
     for i,(alpha,A) in enumerate(groups):
         space.check(A); alpha=finite(alpha)
         if alpha.shape!=space.w.shape: raise ValueError('exponent dimension mismatch')
@@ -120,8 +133,10 @@ def norm_squared(space,groups,oracle=False,deadline=None):
             total=alpha+beta; exponent=np.sum(total*total/(4*space.w))
             if exponent>600: raise ValueError('completed-square factor exceeds numerical contract')
             mu=total/(2*space.w)
-            left=space.shift(A,mu,oracle); right=space.shift(B,mu,oracle)
-            pair=np.sum(left.conj()*right,axis=0).real*np.exp(exponent)
+            da=space.shift_increment(A,mu,oracle); db=space.shift_increment(B,mu,oracle)
+            baseline=np.sum(np.conjugate(A)*B,axis=0).real
+            cross=np.sum(np.conjugate(A)*db+np.conjugate(da)*B+np.conjugate(da)*db,axis=0).real
+            pair=cross+np.expm1(exponent)*(baseline+cross)
             contributions.append(pair*(1 if i==j else 2))
     contributions=finite(contributions)
     values=np.array([math.fsum(contributions[:,j]) for j in range(contributions.shape[1])])
@@ -129,7 +144,8 @@ def norm_squared(space,groups,oracle=False,deadline=None):
     scale=np.sum(abs(contributions),axis=0)
     return dict(value=finite(values).tolist(),pair_absolute_sum=scale.tolist(),
                 epsilon_times_pair_sum=(np.finfo(float).eps*scale).tolist(),
-                roundoff_bound_certified=False,method='quadrature_translation' if oracle else 'taylor_translation')
+                roundoff_bound_certified=False,accumulation='centered_before_squaring',
+                method='quadrature_translation' if oracle else 'taylor_translation')
 
 
 def evaluate(space,groups,z):

@@ -1,0 +1,45 @@
+{"utc": "2026-11-24T22:22:42Z", "event": "control_start", "g2": 0.004, "Mq": 6}
+{"utc": "2026-11-24T22:22:44Z", "event": "point_checks", "g2": 0.004, "Mq": 6, "count": 20, "largest": 5.755682050217169e-16}
+{"utc": "2026-11-24T22:22:44Z", "event": "moments_start", "g2": 0.004, "Mq": 6, "method": "moments"}
+{"utc": "2026-11-24T22:23:17Z", "event": "moments_complete", "g2": 0.004, "Mq": 6, "method": "moments", "result": {"value": [0.0002294397266982899, 0.0023741120403813283, 0.0023741120403813283, 0.006419742752847243], "pair_absolute_sum": [1578258.1970705336, 1565824.2712458014, 1565824.2712458014, 1579616.4258393445], "epsilon_times_pair_sum": [3.5044371783821885e-10, 3.47682831690799e-10, 3.47682831690799e-10, 3.5074530520858727e-10], "roundoff_bound_certified": false, "method": "taylor_translation"}}
+{"utc": "2026-11-24T22:23:17Z", "event": "moments_start", "g2": 0.004, "Mq": 6, "method": "independent_moments"}
+{"utc": "2026-11-24T22:23:22Z", "event": "moments_complete", "g2": 0.004, "Mq": 6, "method": "independent_moments", "result": {"value": [0.0002294398159078366, 0.0023741120337055443, 0.0023741120337055443, 0.006419742985396795], "pair_absolute_sum": [1578258.1970705332, 1565824.2712458014, 1565824.2712458014, 1579616.4258393443], "epsilon_times_pair_sum": [3.5044371783821874e-10, 3.47682831690799e-10, 3.47682831690799e-10, 3.507453052085872e-10], "roundoff_bound_certified": false, "method": "quadrature_translation"}}
+{"utc": "2026-11-24T22:23:22Z", "event": "old_rule_replay_start", "g2": 0.004, "Mq": 6, "order": 10}
+{"utc": "2026-11-24T22:23:27Z", "event": "old_rule_replay_complete", "g2": 0.004, "Mq": 6, "order": 10, "values": [0.00022942235090607713, 0.0023741122455782707, 0.0023741122455782707, 0.006419695122420794], "agreement": true}
+{"utc": "2026-11-24T22:23:27Z", "event": "old_rule_replay_start", "g2": 0.004, "Mq": 6, "order": 12}
+{"utc": "2026-11-24T22:23:39Z", "event": "old_rule_replay_complete", "g2": 0.004, "Mq": 6, "order": 12, "values": [0.00022943991650945295, 0.002374112275226957, 0.002374112275226957, 0.00641974276821944], "agreement": true}
+{"utc": "2026-11-24T22:23:39Z", "event": "control_complete", "g2": 0.004, "Mq": 6, "seconds": 56.875}
+{"utc": "2026-11-24T22:23:39Z", "event": "control_start", "g2": 0.004, "Mq": 8}
+{"utc": "2026-11-24T22:23:42Z", "event": "point_checks", "g2": 0.004, "Mq": 8, "count": 20, "largest": 9.400303885992445e-16}
+{"utc": "2026-11-24T22:23:42Z", "event": "moments_start", "g2": 0.004, "Mq": 8, "method": "moments"}
+{"utc": "2026-11-24T22:25:28Z", "event": "moments_complete", "g2": 0.004, "Mq": 8, "method": "moments", "result": {"value": [4.184081134598419e-05, 7.78177736495351e-05, 7.78177736495351e-05, 0.00031317127238550114], "pair_absolute_sum": [1578209.9225131487, 1565721.7731677345, 1565721.7731677345, 1579250.3942459521], "epsilon_times_pair_sum": [3.504329987331964e-10, 3.476600725455491e-10, 3.476600725455491e-10, 3.506640298680424e-10], "roundoff_bound_certified": false, "method": "taylor_translation"}}
+{"utc": "2026-11-24T22:25:28Z", "event": "moments_start", "g2": 0.004, "Mq": 8, "method": "independent_moments"}
+{"utc": "2026-11-24T22:25:43Z", "event": "moments_complete", "g2": 0.004, "Mq": 8, "method": "independent_moments", "result": {"value": [4.184086611148724e-05, 7.78177272761274e-05, 7.78177272761274e-05, 0.0003131711996629399], "pair_absolute_sum": [1578209.9225131485, 1565721.7731677343, 1565721.7731677343, 1579250.3942459517], "epsilon_times_pair_sum": [3.5043299873319634e-10, 3.4766007254554904e-10, 3.4766007254554904e-10, 3.506640298680423e-10], "roundoff_bound_certified": false, "method": "quadrature_translation"}}
+{"utc": "2026-11-24T22:25:43Z", "event": "old_rule_replay_start", "g2": 0.004, "Mq": 8, "order": 10}
+{"utc": "2026-11-24T22:25:50Z", "event": "old_rule_replay_complete", "g2": 0.004, "Mq": 8, "order": 10, "values": [4.150096465741017e-05, 7.760122125128118e-05, 7.760122125128118e-05, 0.0002927992982788611], "agreement": true}
+{"utc": "2026-11-24T22:25:50Z", "event": "old_rule_replay_start", "g2": 0.004, "Mq": 8, "order": 12}
+{"utc": "2026-11-24T22:26:07Z", "event": "old_rule_replay_complete", "g2": 0.004, "Mq": 8, "order": 12, "values": [4.184010088130047e-05, 7.781801339372682e-05, 7.781801339372682e-05, 0.00031312888142617665], "agreement": true}
+{"utc": "2026-11-24T22:26:07Z", "event": "control_complete", "g2": 0.004, "Mq": 8, "seconds": 147.71899999999732}
+{"utc": "2026-11-24T22:26:07Z", "event": "control_start", "g2": 0.002, "Mq": 6}
+{"utc": "2026-11-24T22:26:08Z", "event": "point_checks", "g2": 0.002, "Mq": 6, "count": 20, "largest": 9.811964015940403e-16}
+{"utc": "2026-11-24T22:26:08Z", "event": "moments_start", "g2": 0.002, "Mq": 6, "method": "moments"}
+{"utc": "2026-11-24T22:26:44Z", "event": "moments_complete", "g2": 0.002, "Mq": 6, "method": "moments", "result": {"value": [2.9100974346651636e-05, 0.0005709297327972212, 0.0005709297327972212, 0.0015224517825576823], "pair_absolute_sum": [6369023.315467903, 6343898.943991809, 6343898.943991809, 6371500.643887775], "epsilon_times_pair_sum": [1.4142072658413837e-09, 1.4086285347029846e-09, 1.4086285347029846e-09, 1.4147573432516436e-09], "roundoff_bound_certified": false, "method": "taylor_translation"}}
+{"utc": "2026-11-24T22:26:44Z", "event": "moments_start", "g2": 0.002, "Mq": 6, "method": "independent_moments"}
+{"utc": "2026-11-24T22:26:50Z", "event": "moments_complete", "g2": 0.002, "Mq": 6, "method": "independent_moments", "result": {"value": [2.9101658433625983e-05, 0.0005709297923586541, 0.0005709297923586541, 0.0015224512043334113], "pair_absolute_sum": [6369023.315467904, 6343898.943991809, 6343898.943991809, 6371500.643887772], "epsilon_times_pair_sum": [1.4142072658413839e-09, 1.4086285347029846e-09, 1.4086285347029846e-09, 1.414757343251643e-09], "roundoff_bound_certified": false, "method": "quadrature_translation"}}
+{"utc": "2026-11-24T22:26:50Z", "event": "old_rule_replay_start", "g2": 0.002, "Mq": 6, "order": 10}
+{"utc": "2026-11-24T22:26:55Z", "event": "old_rule_replay_complete", "g2": 0.002, "Mq": 6, "order": 10, "values": [2.9099708246000693e-05, 0.0005709269395873564, 0.0005709269395873564, 0.0015224511524582066], "agreement": true}
+{"utc": "2026-11-24T22:26:55Z", "event": "old_rule_replay_start", "g2": 0.002, "Mq": 6, "order": 12}
+{"utc": "2026-11-24T22:27:06Z", "event": "old_rule_replay_complete", "g2": 0.002, "Mq": 6, "order": 12, "values": [2.910077438852746e-05, 0.0005709269401167986, 0.0005709269401167986, 0.0015224527431265758], "agreement": true}
+{"utc": "2026-11-24T22:27:06Z", "event": "control_complete", "g2": 0.002, "Mq": 6, "seconds": 59.171999999991385}
+{"utc": "2026-11-24T22:27:06Z", "event": "control_start", "g2": 0.002, "Mq": 8}
+{"utc": "2026-11-24T22:27:09Z", "event": "point_checks", "g2": 0.002, "Mq": 8, "count": 20, "largest": 6.99251744221553e-16}
+{"utc": "2026-11-24T22:27:09Z", "event": "moments_start", "g2": 0.002, "Mq": 8, "method": "moments"}
+{"utc": "2026-11-24T22:29:30Z", "event": "moments_complete", "g2": 0.002, "Mq": 8, "method": "moments", "result": {"value": [4.8015027448341855e-06, 7.8957729785472e-06, 7.8957729785472e-06, 3.0537072881649875e-05], "pair_absolute_sum": [6368998.935118247, 6343845.3731583115, 6343845.3731583115, 6371302.513247394], "epsilon_times_pair_sum": [1.4142018523162762e-09, 1.408616639588425e-09, 1.408616639588425e-09, 1.4147133494118767e-09], "roundoff_bound_certified": false, "method": "taylor_translation"}}
+{"utc": "2026-11-24T22:29:30Z", "event": "moments_start", "g2": 0.002, "Mq": 8, "method": "independent_moments"}
+{"utc": "2026-11-24T22:29:47Z", "event": "moments_complete", "g2": 0.002, "Mq": 8, "method": "independent_moments", "result": {"value": [4.801508458000337e-06, 7.896499922697874e-06, 7.896499922697874e-06, 3.0537514709541274e-05], "pair_absolute_sum": [6368998.935118247, 6343845.373158311, 6343845.373158311, 6371302.513247393], "epsilon_times_pair_sum": [1.4142018523162762e-09, 1.4086166395884249e-09, 1.4086166395884249e-09, 1.4147133494118764e-09], "roundoff_bound_certified": false, "method": "quadrature_translation"}}
+{"utc": "2026-11-24T22:29:47Z", "event": "old_rule_replay_start", "g2": 0.002, "Mq": 8, "order": 10}
+{"utc": "2026-11-24T22:29:55Z", "event": "old_rule_replay_complete", "g2": 0.002, "Mq": 8, "order": 10, "values": [4.783340515025651e-06, 7.881837425504796e-06, 7.881837425504796e-06, 2.873986450382523e-05], "agreement": true}
+{"utc": "2026-11-24T22:29:55Z", "event": "old_rule_replay_start", "g2": 0.002, "Mq": 8, "order": 12}
+{"utc": "2026-11-24T22:30:13Z", "event": "old_rule_replay_complete", "g2": 0.002, "Mq": 8, "order": 12, "values": [4.804205250316088e-06, 7.895127666732078e-06, 7.895127666732078e-06, 3.0535129102784654e-05], "agreement": true}
+{"utc": "2026-11-24T22:30:13Z", "event": "control_complete", "g2": 0.002, "Mq": 8, "seconds": 186.96899999999732}
+{"utc": "2026-11-24T22:30:13Z", "event": "complete", "status": "UNRESOLVED_INTEGRATION", "full_grid_released": false}

@@ -1,0 +1,64 @@
+test_bad_state_cannot_replay (test_helike_residual_moments.Moments.test_bad_state_cannot_replay) ... ok
+test_completed_square_prefactor (test_helike_residual_moments.Moments.test_completed_square_prefactor) ... ok
+test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms) ... ok
+test_derivative_keeps_raising_part (test_helike_residual_moments.Moments.test_derivative_keeps_raising_part) ... ok
+test_false_agreement_cancellation_fixture (test_helike_residual_moments.Moments.test_false_agreement_cancellation_fixture) ... FAIL
+test_high_degree_alias_is_recovered (test_helike_residual_moments.Moments.test_high_degree_alias_is_recovered) ... ok
+test_independent_unshifted_quadrature (test_helike_residual_moments.Moments.test_independent_unshifted_quadrature) ... ok
+test_invalid_inputs_refuse (test_helike_residual_moments.Moments.test_invalid_inputs_refuse) ... ok
+test_missing_control_cannot_replay (test_helike_residual_moments.Moments.test_missing_control_cannot_replay) ... ok
+test_nonzero_truncation_refuses (test_helike_residual_moments.Moments.test_nonzero_truncation_refuses) ... ok
+test_numerical_moments_never_certify (test_helike_residual_moments.Moments.test_numerical_moments_never_certify) ... ok
+test_operator_matches_cartesian_and_reduced (test_helike_residual_moments.Moments.test_operator_matches_cartesian_and_reduced) ... ok
+test_saved_control_provenance (test_helike_residual_moments.Moments.test_saved_control_provenance) ... ok
+test_tensor_replay_on_known_alias (test_helike_residual_moments.Moments.test_tensor_replay_on_known_alias) ... ok
+test_translation_coefficients (test_helike_residual_moments.Moments.test_translation_coefficients) ... ok
+test_translation_increment_preserves_tiny_change (test_helike_residual_moments.Moments.test_translation_increment_preserves_tiny_change) ... FAIL
+
+======================================================================
+FAIL: test_false_agreement_cancellation_fixture (test_helike_residual_moments.Moments.test_false_agreement_cancellation_fixture)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 20, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 62, in test_false_agreement_cancellation_fixture
+    np.testing.assert_allclose(rm.norm_squared(sp,groups,oracle)['value'],[expected],rtol=0,atol=1e-12)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\testing\_private\utils.py", line 1768, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\testing\_private\utils.py", line 983, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=0, atol=1e-12
+
+Mismatched elements: 1 / 1 (100%)
+Mismatch at index:
+ [0]: 4.999339580535889e-05 (ACTUAL), 5.000000000004375e-05 (DESIRED)
+Max absolute difference among violations: 6.60419468e-09
+Max relative difference among violations: 0.00013208
+ ACTUAL: array([4.99934e-05])
+ DESIRED: array([5.e-05])
+
+======================================================================
+FAIL: test_translation_increment_preserves_tiny_change (test_helike_residual_moments.Moments.test_translation_increment_preserves_tiny_change)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 20, in run
+    try: test(self)
+         ^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 69, in test_translation_increment_preserves_tiny_change
+    np.testing.assert_allclose(sp.shift_increment(C,np.array([1e-10]),oracle),expected,rtol=1e-12,atol=1e-22)
+                               ^^^^^^^^^^^^^^^^^^
+AttributeError: 'Space' object has no attribute 'shift_increment'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_residual_moments.py", line 22, in run
+    self.fail(f'missing required behavior: {exc}')
+AssertionError: missing required behavior: 'Space' object has no attribute 'shift_increment'
+
+----------------------------------------------------------------------
+Ran 16 tests in 1.900s
+
+FAILED (failures=2)

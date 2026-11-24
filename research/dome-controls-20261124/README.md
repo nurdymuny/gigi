@@ -44,3 +44,10 @@ reversal, projection geometry, limits and replay commands. No follow-up physical
 experiment was launched. `check_report.py` rechecks the four main numerical
 tables and rejects four deliberately altered displayed values; it is not a
 physical-model verifier.
+
+Packaging check: the preregistration's working copy used CRLF newlines while
+the earlier Git blob used LF. Its recorded snapshot and working bytes agree;
+normalizing only newlines proves the mathematical text is identical. The result
+commits preserve the exact run bytes with a narrow Git attribute so strict
+source-hash replay also works after checkout on another machine. No experiment
+was rerun and no registered content was changed.

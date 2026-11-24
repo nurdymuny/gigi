@@ -91,3 +91,52 @@ A reading is reported as holding only if it holds at every p scored; g² = 1 is 
 
 Amendments after any data is seen will be listed here with what had been seen when they were made. These runs wait
 until Test G (`research/edge-theorem-20261122-g/`) finishes, so the two do not compete for the machine.
+
+## Amendment 1 (23 November 2026, after the adversarial review; before any measurement)
+
+**What had been seen when this was written.** None of the measurements above. Known in addition to the original
+registration: the adversarial review's electric-only control on the three-plaquette ring at link spins ≤ 1/2 (16
+physical basis states, 8 in each winding sector; no plaquette matrix element between sectors; least odd-sector
+electric energy 9g²/8 against the least nonzero even-sector energy 3g²/2). Those are exact Casimir sums for the
+represented states, not finite-coupling ring gaps. The original registration above is kept unchanged.
+
+**A1.1 Winding sectors (review C1).** A ring has a noncontractible cycle. Cutting it through one top and one bottom
+horizontal link defines z(s) = (−1)^(2 j_top + 2 j_bottom), which every plaquette operator preserves. A ring state in
+the other sector cannot be created from the vacuum by any plaquette operator, so its transition amplitudes all vanish,
+and an open-versus-ring gap ordering alone would not separate an edge from a band. Therefore:
+- every ring state is labelled by its winding sector (and, where computed, its reflection sector);
+- the **absolute gap** (lowest excited state of the whole ring) and the **probe-accessible gap** (lowest excited state
+  in the vacuum's sector with nonzero plaquette transition strength) are reported separately;
+- the ring comparison of the Scoring section uses the probe-accessible gap, sector-matched to the open ladder;
+- a verdict whose definition depends on rings is scored only if at least one valid, sector-matched ring comparison
+  was made; "every ring measured" is not satisfied by measuring none.
+
+**A1.2 The transition kernel replaces diagonal intensities (review C2).** For the excited level with projector P (rank
+r) and O_k = tr U_k, the measured object is the kernel C_kl = ⟨O_k Ω, P O_l Ω⟩. Its diagonal I_k = C_kk is the
+intensity. In the Scoring section, |A_k| is replaced by the envelope √I_k, and W by (I₁ + I_p)/Σ I_k (for a three-site
+sine amplitude this is 1/2; squaring intensities again would give 1/3). Signs and parity are read from the kernel, not
+from the diagonal: for a rank-one real level, the relative sign of plaquettes k and l is the sign of C_kl; "node-free"
+means every C_1k has one sign. For a degenerate level, parity is read from the action of the reflection on the excited
+subspace. The energy profile of a level of rank r is e_k = Tr(P h_k)/r − ⟨Ω, h_k Ω⟩; for a numerically grouped but
+split cluster this is the cluster's mean excitation energy, reported with the cluster's energy spread.
+
+**A1.3 What the profile is (review C3).** ψ₁/ψ₀ lives on the gauge configuration space. Because ψ₁ is orthogonal to
+the positive ψ₀, the ratio has zero weighted mean and must change sign. The plaquette profile is a spatial response
+extracted from it, not the whole field; a node-free envelope is a different object from a node-free ratio, and the
+results will be described that way. The comparison with Helike (Section 14, item 2 of the note) needs the same
+geometric space: the meshes discretise S³/2I, not S³, and a uniform ladder Hamiltonian carries no Berger metric. That
+experiment needs its own specification (quotient or cover, metric weights, gauge sector, normalisation, and a map from
+classical tangent fields to quantum observables) before any comparison of charge or shape.
+
+**A1.4 Added gates (all must be caught before any verdict counts).**
+- **G6, inaccessible winding state**: a planted ring spectrum with a lower state in the odd winding sector must be
+  reported as "probe does not see this level", not classified as an edge or a band.
+- **G7, zero overlap**: a level with zero transition strength returns "probe does not see this level", never a
+  normalised profile.
+- **G8, kernel formulas**: the three-site sine gives W = 1/2; the profiles (1, 0, 1) and (1, 0, −1), identical in
+  intensity, are resolved as even and odd from the kernel.
+- **G9, planted doublet**: a degenerate pair is rotated by a random unitary inside its span; the kernel, the energy
+  profile and the parity verdict are unchanged, while single-eigenvector profiles change. This gate runs even if the
+  real spectra have no degeneracy.
+- **G10, gaps converged too**: G5's cutoff check applies to the gaps compared (open, ring, absolute and
+  probe-accessible), not only to profiles; a stable profile can coexist with a poorly converged energy.

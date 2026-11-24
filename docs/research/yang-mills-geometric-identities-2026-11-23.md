@@ -98,13 +98,18 @@ sketch. [Reading the Curve, recovery, conditioning, and flow analysis](../papers
 one and two rings), using the paper's own recovery code:
 
 - \(\mathcal R_KX_K=I_{11}\) holds to \(5\times10^{-14}\), and the committed
-  amplifications \(\Lambda_K=\|\mathcal R_K\|_2\) are reproduced exactly.
+  amplifications \(\Lambda_K=\|\mathcal R_K\|_2\) are reproduced to numerical
+  precision (identical digits on this machine; last digits can differ across
+  libraries).
 - \(\Lambda_K\ge1/\sigma_{\min}(X_K)\) is a theorem, not an observation: a short
   semiaxis forces a large amplification (Lean: `amplification_lower_bound`). For
   one ring the measured ratio lies in \([1.026,1.126]\), which the paper rounds to
   "between 1.03 and 1.13"; for two rings it lies in \([1.07,2.17]\).
 - The direction the measurements barely see is the gradient: on every cell at
-  least 98% of the weakest semiaxis lies in the \(B\) part. Face fluxes read the
+  least 98% of the weakest semiaxis lies in the \(B\) part. That share is the
+  squared norm of the gradient coefficients of the weakest right singular vector,
+  in the paper's eleven-coefficient basis with the diameter-scaled chart metric;
+  it is not a basis-independent energy fraction. Face fluxes read the
   field at face centroids, so how the field *varies* across the cell is what
   they see least.
 - Metric fidelity: in physical units the flux map is exactly
@@ -120,14 +125,19 @@ one and two rings), using the paper's own recovery code:
 the meshes confirm directly: the face-edge map has nullity \(V-1\) (21 at
 \(n=1\), 163 at \(n=2\)). So every edge datum with zero flux through every face
 is pure gauge. Adding such data to the paper's data, at the data's own size,
-changes no recovered coefficient by more than \(1.4\times10^{-12}\). A rival
+changes no recovered coefficient by more than \(1.4\times10^{-12}\), measured as
+\(\max|x_1-x_0|/\max(1,\max|x_0|)\) over the cell's eleven coefficients (a relative
+ruler, not an absolute bound). A rival
 that fits a linear connection to the edge integrals sees the gauge in the
 connection (it moves by 0.7 to 23 times its own size), and that is the failure
 Section 11 names: a frame change reported as a physical one. Its *curl*, though,
-is gauge-blind too, to \(10^{-13}\): a closed edge datum has zero circulation
+is gauge-blind too, to at most \(2.1\times10^{-12}\) relative to its curl on the
+data: a closed edge datum has zero circulation
 around every face, and a linear field's curl is fixed by those circulations.
 Curvature is the gauge-safe reading whichever way it is computed; the connection
-is not.
+is not. This is the Abelian control. A non-Abelian curvature is not invariant but
+covariant, \(F\mapsto gFg^{-1}\); its gauge-invariant reading needs invariant
+contractions or a declared transport to a common frame.
 
 ### The mode is a field, not just an entry in a spectrum
 
@@ -342,10 +352,16 @@ test that the reflected correlations can be an inner product.
 symmetric transfer matrix \(T\), a preparation at time site \(t\ge1\) propagates
 as \(T^t x\). Reflecting through a *site* gives the pairing
 \(\langle x_i,T^{t_i+t_j}x_j\rangle\), which is always the Gram matrix of the
-vectors \(T^{t_i}x_i\): it is nonnegative whatever \(T\) is, so it tests nothing.
-Reflecting through a *link* gives \(\langle x_i,T^{t_i+t_j-1}x_j\rangle\), an odd
-power, which is nonnegative when \(T=S^{\mathsf T}S\) is a positive operator and
-fails as soon as \(T\) has a negative direction that the preparations reach. So
+vectors \(T^{t_i}x_i\): it is nonnegative whatever \(T\) is, so in this
+already-constructed positive Hilbert space it cannot detect the sign of \(T\).
+(That is a statement about this finite test, not a claim that site reflection
+positivity is vacuous as a condition on Euclidean correlations.) Reflecting
+through a *link* gives
+\(\langle x_i,T^{t_i+t_j-1}x_j\rangle=\langle T^{t_i-1}x_i,\,T\,T^{t_j-1}x_j\rangle\):
+one central, unsquared \(T\). The exponent need not be odd; the central \(T\) is
+the point. The pairing is nonnegative when \(T=S^{\mathsf T}S\) is a positive
+operator and fails as soon as \(T\) has a negative direction that the
+preparations reach. So
 on a lattice the test is positivity of the transfer matrix, read through link
 reflection. I learned this by getting it wrong: my first numerical version
 paired preparations through sites, and its planted failure could not fire.
@@ -355,7 +371,7 @@ separately, so a state's transfer weight is a product over its links. An action
 whose time-link coefficients are negative in some spin sector produces a
 negative transfer direction only on states with an *odd* number of links in that
 sector; two such links cancel. A family of preparations that never reaches those
-states certifies positivity it has not tested. On a three-plaquette ladder, a
+states reports positivity it has not tested. On a three-plaquette ladder, a
 mixed action with a negative adjoint term makes 290 of 590 states negative, and
 my first, too-small family missed every one of them.
 (Lean: `site_reflection_always_positive`, `link_reflection_positive`,
@@ -609,19 +625,27 @@ equation and vanishes. Vacuum
 orthogonality becomes \(\int_Q f\,d\nu=0\), zero weighted mean.
 
 **EXACT on a finite weighted graph, with no analytic hypothesis.** Write
-\((Hx)_i=\kappa\sum_j w_{ij}(x_i-x_j)+V_ix_i\) with symmetric weights. If
-\(H\psi_0=E_0\psi_0\), then for every \(f\)
+\((Hx)_i=\kappa\sum_j w_{ij}(x_i-x_j)+V_ix_i\) with real symmetric weights and a real
+potential. If \(H\psi_0=E_0\psi_0\) with \(\psi_0\) real, then for every complex \(f\)
 
 \[
 \langle\psi_0f,(H-E_0)\psi_0f\rangle
-=\frac{\kappa}{2}\sum_{i,j}w_{ij}\,\psi_{0,i}\psi_{0,j}\,(f_i-f_j)^2 .
+=\frac{\kappa}{2}\sum_{i,j}w_{ij}\,\psi_{0,i}\psi_{0,j}\,|f_i-f_j|^2 .
 \]
+
+(The Lean theorem states it for real \(f\), where the modulus is not needed. With
+\((f_i-f_j)^2\) and complex \(f\) it is false: two sites,
+\(H=\left[\begin{smallmatrix}1&-1\\-1&1\end{smallmatrix}\right]\),
+\(\psi=(1,1)/\sqrt2\), \(f=(1,i)\) give 1 on the left and \(-i\) on the right.)
 
 The identity uses only the eigen-equation, so it holds for any eigenvector. What
 the *ground* state adds is positivity: with \(\psi_0>0\) and \(w\ge0\) the right
-side is a Dirichlet form for the measure \(\nu_i=\psi_{0,i}^2\). A sign-changing
-eigenvector gives negative edge weights, and there is then no measure and no
-Poincare inequality. A discretised configuration space is such a graph, so the
+side is a Dirichlet form for the measure \(\nu_i=\psi_{0,i}^2\). A sign-changing real
+eigenvector still defines the measure \(\nu_i=\psi_i^2\); what fails is the
+nonnegativity of the edge form, because some weights \(\psi_i\psi_j\) are
+negative, so no Poincare inequality follows. The positive statement needs
+\(\kappa\ge0\), nonnegative weights, a strictly positive ground state, and the kernel
+and any disconnected components accounted for. A discretised configuration space is such a graph, so the
 continuum statement below is the limit of an exact finite one; the analytic
 hypotheses are what that limit costs. (Lean: `ground_state_transform`,
 `dirichlet_nonneg`, `ground_state_transform_shift`; numerical: T8.)
@@ -688,9 +712,13 @@ low-energy directions cannot be omitted by a finite-rank comparison map.
 to five plaquettes at fixed lattice spacing (Section 12), the gap shrinks as the
 ladder grows, but each step shrinks it about half as much as the last: at
 \(g^2=2\), 3.4263, 3.3546, 3.3181, 3.3022, 3.2943. The ground energy per plaquette
-converges (1.68672 to 1.68572), and the link-spin cutoff, itself a regulator, is
-converged to \(3\times10^{-4}\) or better. This is the uniformity question asked at
-fixed spacing on a strip, and on these sizes it answers yes. It is not the
+converges (1.68672 to 1.68572), and between the two largest link-spin cutoffs
+(itself a regulator) the gap changes by at most \(3.3\times10^{-4}\) at \(g^2=2\);
+adjacent-cutoff agreement is a diagnostic, not an error bound to the
+infinite-cutoff value. These are finite-size observations. A finite list of
+positive gaps is not a uniform lower bound (the \(1/n\) countermodel of
+Section 7); a uniformity claim needs a size-independent estimate through
+comparison maps, and none is claimed. It is not the
 continuum question, which needs \(g\to0\) as the spacing shrinks, and it is not
 two or three dimensions.
 
@@ -812,9 +840,11 @@ replace the universal estimates or axioms in the continuum requirement.
 
 ## 12. Each statement as a test
 
-Every EXACT statement above now has two independent checks: a proof in Lean 4
-of its finite form, and a numerical test on a real lattice gauge model, with the
-failure the note warns about planted and required to be caught.
+Most EXACT statements above now have a proof in Lean 4 of a finite form, under
+the hypotheses stated with it, and a numerical test on a lattice gauge model.
+Coverage is listed claim by claim in Section 13, with what each check does not
+cover; the response to the adversarial review at the end records the gaps it
+found in the acceptance machinery and how each was closed.
 
 **The model.** Kogut–Susskind SU(2) on one plaquette, in lattice units. In the
 character basis \(n=2j+1\) the Hamiltonian is exactly tridiagonal,
@@ -825,8 +855,11 @@ continuum, and nothing below is a statement about the continuum.
 
 **The proofs.** `YMGeometry` in the Lean project (branch `feat/ym-geometry-tests`,
 `docs/papers/berger-spectrum/lean/YMGeometry/`), Lean 4 with Mathlib v4.36.0. All
-fourteen theorems build and depend only on Lean's standard axioms (`propext`,
-`Classical.choice`, `Quot.sound`); there is no `sorry`.
+seventeen theorems build (the fourteen headline results, whose axioms are printed,
+depend only on Lean's standard axioms `propext`, `Classical.choice`, `Quot.sound`);
+there is no `sorry`. `exact_recovery` assumes \(R\circ X=I\); that the paper's
+constrained least-squares construction satisfies it is checked numerically (T1a),
+not proved.
 
 **The numerics.** `scripts/ym_geometry_tests.py` (the plaquette), receipt
 `research/ym-geometry-20261123/ym_geometry_tests.json`, and
@@ -843,16 +876,20 @@ fails or any planted failure goes uncaught.
 | 8 | Ground-state transform; weighted Poincaré with constant \(\kappa/\Delta\) | `ground_state_transform`, `dirichlet_nonneg`, `ground_state_transform_shift` | On an 800-point graph of the plaquette angle: identity to \(8\times10^{-16}\); Poincaré ratio 1 to \(10^{-15}\) at \(f=\psi_1/\psi_0\); graph gap 3.269078 vs exact 3.269099 | Sign-changing state: negative edge weight. Wrong \(E_0\) by \(10^{-6}\): identity breaks by exactly the predicted amount |
 | 10 | Curvature bound is not the physical gap | — | Lichnerowicz saturated (3); \(\lambda_k(H)\ge\lambda_k(H_E)\) for all \(k\) tested; gaps differ at every \(g\); electric gap \(\to0\), full gap \(\to4\) | — |
 | 1 | Recovery exact; conditioning is the flux ellipsoid; the chart's metric is part of the claim; curvature is gauge-blind | `amplification_lower_bound`, `exact_recovery`, `triangle_flux_scale` | All 4,320 cells of *Reading the Curve* (\(n=1,2,3\), one and two rings): \(\mathcal R_KX_K=I\) to \(5\times10^{-14}\); committed \(\Lambda_K\) reproduced exactly; one-ring \(\Lambda_K\sigma_{\min}\in[1.026,1.126]\); weakest direction \(\ge98\%\) gradient; transported metric exact to \(10^{-14}\); \(H^1=0\) from ranks; gauge data change no coefficient beyond \(1.4\times10^{-12}\) | Raw coefficient length distorts the ellipsoid by \(\approx1/d\). A connection read as physical moves under gauge. Non-closed fluxes refused by the paper's one-ring fit (40 of 40) |
-| 5 | Reflection positivity as an inner product | `site_reflection_always_positive`, `link_reflection_positive`, `link_reflection_detects_negative` | Link-reflected correlations of 12 preparations: smallest eigenvalue \(-4\times10^{-16}\), within the rounding bound \(4\times10^{-14}\) | A transfer matrix with one negative eigenvalue: certified negative direction (\(-3.2\times10^{-4}\)) |
+| 5 | Reflection positivity as an inner product | `site_reflection_always_positive`, `link_reflection_positive`, `link_reflection_detects_negative` | Link-reflected correlations of 12 preparations: smallest eigenvalue \(-4\times10^{-16}\), within the rounding bound \(4\times10^{-14}\) | A transfer matrix with one negative eigenvalue: a negative witness (\(-3.2\times10^{-4}\), far below the allowance) |
 
 **On real lattices: ladders of one to five plaquettes.** The single plaquette
 proves the conversions; a lattice tests them where plaquettes share links.
 `scripts/ks_su2_lattice.py` builds Kogut–Susskind SU(2) on any graph whose
-vertices have at most three links, two independent ways: a spin-network basis
+vertices have at most three links, two ways that share their representation helpers
+(spin matrices, Clebsch–Gordan coefficients, the link operators) and are otherwise
+separate: a spin-network basis
 (link spins, with the unique intertwiner at each vertex; the plaquette operator
 assembled from Clebsch–Gordan contractions at its vertices) and a brute-force
-product space with Gauss's law as an energy penalty. Nothing physical is reported
-until both agree and both pass first-principles checks
+product space with Gauss's law as an energy penalty. A failed validation now stops the run before any physics (a planted false
+validation produces zero physics calls and a FAILED receipt). The two
+constructions agree in spectra and state counts; an explicit isometry between
+their Hilbert spaces, with projector comparisons, is not yet built. The checks
 (`scripts/ym_geometry_lattice_tests.py`, receipt
 `research/ym-geometry-20261123/lattice_tests.json`):
 
@@ -882,18 +919,25 @@ largest cutoffs is at most 0.45% at \(g^2=1\) and \(3\times10^{-6}\) at \(g^2=2\
 - **Section 7 on lattices:** on all 16 cases small enough for dense algebra, the
   spectrum, the attained sublevel radius and the Euclidean semigroup give the
   same gap to \(2\times10^{-15}\), and no sampled vector exceeds the radius.
-- **Section 9:** the gap is bounded away from zero across one to five plaquettes,
-  with decrements that halve; the radius grows only from 0.540 to 0.551 at
-  \(g^2=2\).
+- **Section 9 (finite-size observation):** the gap stays well above zero across one
+  to five plaquettes, with decrements that roughly halve; the radius grows only
+  from 0.540 to 0.551 at \(g^2=2\). A diagnostic declared after the table was seen
+  flags a sequence that falls below half its one-plaquette gap or whose
+  decrements grow; the data pass it, and the reviewer's collapsed-gap fixture (the
+  five-plaquette gaps set to \(10^{-12}\)) is flagged.
 - **Section 10:** the electric gap is \(3g^2/2\) (one spin-½ loop) at every size;
   the full gap differs from it in every case.
 - **Section 5:** with Wilson time links, every character coefficient is positive
   (they equal the Bessel ratios \(I_{2j+1}(\beta)/I_1(\beta)\) to \(3\times10^{-15}\)),
-  and the link-reflected correlations of a family reaching every spin sector are
-  a Gram matrix within rounding. Gate: a fundamental-adjoint action with
-  \(\beta_A=-2\) has negative coefficients at spins 1 and 3/2, and link reflection
-  certifies a negative direction (\(-1.1\times10^{-7}\) against a rounding bound of
-  \(1.4\times10^{-14}\)).
+  and the link-reflected correlations of a family reaching every retained basis
+  state are numerically consistent with a Gram matrix. The exact argument is
+  separate: the transfer matrix is \(E K E\) with \(E=e^{-V/2}\) and \(K\) diagonal
+  with positive entries, so it is \(S^{\mathsf T}S\) by construction. The Wilson
+  time-link transfer and the Kogut–Susskind Hamiltonian are different
+  constructions; agreement between them is not tested here. Gate: a
+  fundamental-adjoint action with \(\beta_A=-2\) has negative coefficients at spins 1
+  and 3/2, and link reflection gives a negative witness (\(-1.1\times10^{-7}\)
+  against a rounding allowance of \(1.4\times10^{-14}\)).
 
 **What these tests do not reach.** None of them touches infinite volume, the
 continuum limit, or the Clay target. They make the *conversions* reliable: each
@@ -929,12 +973,13 @@ this is what could be stated with confidence, and what it rests on.
 | Curvature of the group bounds the electric term (Lichnerowicz) but not the physical gap | Exact statement, demonstrated | T10; P4 |
 | *Reading the Curve*'s recovery is exact, its conditioning is the geometry of the flux ellipsoid, its weakest direction is the gradient, and its chart metric is part of the claim (raw coefficients distort by \(1/d\)) | Theorem plus measurement on every cell | Lean `amplification_lower_bound`, `triangle_flux_scale`; T1 |
 | On the Poincare homology sphere (\(H^1=0\), verified from ranks) curvature recovery is gauge-blind; a connection read as physical is not | Measurement on every cell | T1d |
-| Kogut–Susskind SU(2) built two independent ways agrees state for state; on ladders of one to five plaquettes at fixed spacing the gap stays bounded with halving decrements, and Wilson reflection positivity holds | Computation, validated against first principles | V1–V5, P1–P5 |
-| Every finite test above is paired with a planted failure that it catches | Method | the receipts' gates |
+| Kogut–Susskind SU(2) built two ways (sharing representation helpers) agrees in spectra and state counts; on ladders of one to five plaquettes at fixed spacing the gaps are positive with roughly halving decrements (a finite-size observation), and the Wilson transfer matrix is positive by construction, with the computed pairing numerically consistent | Computation, validated against first principles; finite-size observation | V1–V5, P1–P5 |
+| The finite tests carry planted failures; the review found four acceptance rules that a planted failure did not exercise, now repaired with their own fixtures (wrong shift, interrupted run, collapsed gap, failed validation) | Method | the receipts' gates; the response to the review |
 
 **What it would not claim.** Nothing about the continuum, infinite volume, four
 dimensions, or the existence of quantum Yang–Mills with a mass gap. The lattice
-results sit in a regime where a gap is already proved. The contribution is the
+results are consistent with the strong-coupling regime in which a gap is proved,
+and I have not shown that the couplings used lie inside that theorem's range. The contribution is the
 conversions, proved and tested, and a harness that cannot pass by using the wrong
 object. That is what has to exist before any computation in the hard regime can
 be trusted.
@@ -953,16 +998,21 @@ appears, it is not an artifact of the wrong object, the wrong metric, or a famil
 that mattered.
 
 **Known physics is not the same as known geometry.** Much of what these lattices do in this regime is known: the
-strip, the strong-coupling gap, the glueball that hops between plaquettes. What is measured there is spectra,
-masses, correlators. What is not measured is what this note asks for: the excitation as a field on configuration
-space (the cheapest direction \(\psi_1/\psi_0\), the extremal of the weighted Poincaré inequality); the gap as the
-shape of a fixed-energy set; whether a test family reaches the sectors a positivity claim depends on; the
-conditioning of a recovery as an ellipsoid with a weakest direction. The regime is known; the reading is not. That
+strip, the strong-coupling gap, the glueball that hops between plaquettes. Nor does prior work stop at
+eigenvalues: studies of SU(2) plaquette chains examine eigenstates, entanglement and local-operator matrix elements
+([Ebner et al. 2023](https://arxiv.org/abs/2303.14264); [Ebner et al. 2024](https://arxiv.org/abs/2401.15184)).
+What I have not found is the particular reading this note asks for: the cheapest direction \(\psi_1/\psi_0\) as the
+extremal of the weighted Poincaré inequality; the gap as the shape of a fixed-energy set; whether a test family
+reaches the sectors a positivity claim depends on; the conditioning of a recovery as an ellipsoid with a weakest
+direction. I can say what I intend to measure without claiming that others have only looked at numbers; whether
+this reading has been made before is a question for a closer search, not an assumption. That
 is the reason to stay open here, and it is Yang–Mills, which is no reason to close the door.
 
 **Three places, in order.**
 
-1. **The field of the lowest excitation on the ladders.** Already the gaps resist the simplest picture: a single
+1. **The field of the lowest excitation on the ladders** (amended after the review: the ring adds winding
+   sectors that local probes cannot reach, and the profile is a spatial response, not the whole field; see
+   the pre-registration's Amendment 1). Already the gaps resist the simplest picture: a single
    excitation hopping between neighbouring plaquettes fits one and two plaquettes exactly, then predicts gaps
    0.007 to 0.008 too high at three to five. Whether the excitation is a band, an edge, or a band whose ends are
    their own is pre-registered, with its measurements, scoring and planted failures, in
@@ -1003,6 +1053,29 @@ analogy.
 
 I am keeping the data. I am keeping the equations. I am changing what I attend
 to inside them.
+
+## Response to the adversarial review of 23 November
+
+The review (`yang-mills-geometric-identities-adversarial-review-2026-11-23.md`, evidence in
+`research/ym-adversarial-20261123/`) reproduced the principal controls and found that several acceptance rules
+accepted evidence that did not establish the claim beside them. Every finding is accepted.
+
+| Finding | What I did |
+| --- | --- |
+| A1 a wrong energy shift passed | T8 now compares the residual with \(-\delta\|\psi_0f\|^2\) in sign and size within a declared allowance; a wrong size (the review's \(10^3\)), a wrong sign and a missing shift each fail as separate fixtures |
+| A2 an interrupted run left the old PASS | Each run has an identity; the previous receipt is kept as `<name>.previous.json`; RUNNING is written at once, FAILED on any exception, the completed receipt published atomically; a killed run stays RUNNING, which counts as failure. Seven new fault-injection checks (19 in all) |
+| A3 "certified" positivity | Computed eigenvalues are labelled `numerically_consistent`, `negative_witness` or `unresolved`; the review's \(\mathrm{diag}(1,-10^{-15})\) is labelled numerically consistent, never certified; the positivity of the Wilson transfer is stated by its exact factorisation |
+| A4 the volume check accepted a collapsed gap | P1 and P2 are labelled observations and no longer enter the pass predicate; a diagnostic declared after the table was seen flags collapse, and the collapsed-gap fixture is flagged |
+| A5 validation did not stop physics | Validation failure stops the run before physics; a self-test plants a false validation and finds zero physics calls and a FAILED receipt |
+| B1 graph identity, measure, radius hypotheses | Stated for complex \(f\) with the modulus (Lean: real \(f\)); a sign-changing eigenvector keeps its measure; the radius theorem's hypotheses listed |
+| B2 "odd power" | Corrected to one central unsquared \(T\); site reflection's scope stated; the Wilson and Kogut–Susskind transfer constructions named as different |
+| B3 coverage | 17 theorems, not 14; `exact_recovery`'s assumption named; spectra and counts agree, an isometry is not built; shared helpers disclosed; the "two independent checks" sentence withdrawn |
+| B4 rulers | The relative ruler, the \(2.1\times10^{-12}\) curl figure, the coefficient metric of the 98% share, and the Abelian scope are stated |
+| C1–C3 the excitation study | Amendment 1 of the pre-registration, before any measurement: winding sectors and sector-matched ring comparisons, the transition kernel instead of diagonal intensities, a degeneracy rule, zero-overlap refusal, and the distinction between the spatial profile and the configuration-space field |
+| Literature | Ebner et al. 2023 and 2024 cited; the "not measured" claim narrowed; the strong-coupling statement made conditional |
+
+The four- and five-plaquette table and the cell suite are rerun under the repaired scripts once Test G frees the
+machine; until then their receipts are those of the earlier scripts.
 
 ## Sources and development record
 

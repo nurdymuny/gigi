@@ -125,8 +125,37 @@
     "caught": true
    },
    "gate_shifted_E0": {
-    "identity_residual": -9.499708539806306e-07,
-    "expected": -9.499856686538987e-07,
+    "cases": {
+     "correct": {
+      "applied": 1e-06,
+      "declared": 1e-06,
+      "residual": -9.499708539806306e-07,
+      "expected": -9.499856686538989e-07,
+      "accepted": true
+     },
+     "wrong_size": {
+      "applied": 0.001,
+      "declared": 1e-06,
+      "residual": -0.0009499856460024603,
+      "expected": -9.499856686538989e-07,
+      "accepted": false
+     },
+     "wrong_sign": {
+      "applied": -1e-06,
+      "declared": 1e-06,
+      "residual": 9.499999578110874e-07,
+      "expected": -9.499856686538989e-07,
+      "accepted": false
+     },
+     "missing": {
+      "applied": 0.0,
+      "declared": 1e-06,
+      "residual": 7.275957614183426e-12,
+      "expected": -9.499856686538989e-07,
+      "accepted": false
+     }
+    },
+    "allowance": 2.8089016989465537e-08,
     "caught": true
    }
   },
@@ -145,8 +174,37 @@
     "caught": true
    },
    "gate_shifted_E0": {
-    "identity_residual": -1.0480871424078941e-06,
-    "expected": -1.0480402578786448e-06,
+    "cases": {
+     "correct": {
+      "applied": 1e-06,
+      "declared": 1e-06,
+      "residual": -1.0480871424078941e-06,
+      "expected": -1.0480402578786446e-06,
+      "accepted": true
+     },
+     "wrong_size": {
+      "applied": 0.001,
+      "declared": 1e-06,
+      "residual": -0.0010480402852408588,
+      "expected": -1.0480402578786446e-06,
+      "accepted": false
+     },
+     "wrong_sign": {
+      "applied": -1e-06,
+      "declared": 1e-06,
+      "residual": 1.0480289347469807e-06,
+      "expected": -1.0480402578786446e-06,
+      "accepted": false
+     },
+     "missing": {
+      "applied": 0.0,
+      "declared": 1e-06,
+      "residual": -5.820766091346741e-11,
+      "expected": -1.0480402578786446e-06,
+      "accepted": false
+     }
+    },
+    "allowance": 1.3074267223893677e-07,
     "caught": true
    }
   }
@@ -196,17 +254,36 @@
   "g2": 1.0,
   "tau": 0.5,
   "preparations": 12,
-  "min_eigenvalue": -4.332066918114569e-16,
+  "min_eigenvalue": -5.482521595339605e-16,
   "rounding_bound": 4.3025045813908365e-14,
-  "psd_certified": true,
+  "positivity": "numerically_consistent",
   "gate_negative_transfer": {
-   "min_eigenvalue": -0.0003150817273829338,
+   "min_eigenvalue": -0.00031508172738289105,
    "bound": 4.302491315387283e-14,
+   "positivity": "negative_witness",
    "caught": true
   },
   "pass": true
  },
+ "positivity_labels": {
+  "diag(1,-1e-15)": {
+   "label": "numerically_consistent",
+   "expected": "numerically_consistent"
+  },
+  "diag(1,-1e-3)": {
+   "label": "negative_witness",
+   "expected": "negative_witness"
+  },
+  "diag(1,0.5)": {
+   "label": "numerically_consistent",
+   "expected": "numerically_consistent"
+  },
+  "note": "diag(1,-1e-15) is indefinite yet numerically consistent: the label never claims certification",
+  "pass": true
+ },
  "all_pass": true,
  "all_gates_caught": true,
- "ok": true
+ "ok": true,
+ "run_id": "20261123T171907-39357",
+ "finished": 1795483150.30765
 }

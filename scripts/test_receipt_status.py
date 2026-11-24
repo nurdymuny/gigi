@@ -49,6 +49,31 @@ def main():
         results["stale_pass"] = helper_exit(stale, stale_check=True) == 1
         fresh = d / "fresh.json"; fresh.write_text(json.dumps({"all_proved": True}))
         results["fresh_pass"] = helper_exit(fresh, stale_check=True) == 0
+        # run lifecycle: an interrupted attempt never leaves an earlier PASS describing it
+        life = d / "life.json"; life.write_text(json.dumps({"all_proved": True}))
+        crash = ("import sys; sys.path.insert(0, %r); import _receipt_status as R\n"
+                 "def main():\n    raise RuntimeError('planted')\n"
+                 "R.run(%r, main)\n" % (str(HERE), str(life)))
+        rc = subprocess.run([PY, "-c", crash], capture_output=True).returncode
+        rec = json.loads(life.read_text())
+        results["exception_leaves_FAILED"] = rc != 0 and rec.get("status") == "FAILED"
+        results["previous_kept_as_history"] = json.loads((d / "life.previous.json").read_text()) == {"all_proved": True}
+        results["FAILED_receipt_rejected"] = helper_exit(life) == 1
+        killed = d / "killed.json"
+        kill = ("import sys, os; sys.path.insert(0, %r); import _receipt_status as R\n"
+                "R.start_run(%r); os._exit(9)\n" % (str(HERE), str(killed)))
+        subprocess.run([PY, "-c", kill], capture_output=True)
+        results["killed_leaves_RUNNING"] = json.loads(killed.read_text()).get("status") == "RUNNING"
+        results["RUNNING_receipt_rejected"] = helper_exit(killed) == 1
+        good = d / "good.json"
+        ok = ("import sys; sys.path.insert(0, %r); import _receipt_status as R\n"
+              "def main():\n    R.publish(%r, {'ok': True})\n    R.exit_on_failure(%r)\n"
+              "R.run(%r, main)\n" % (str(HERE), str(good), str(good), str(good)))
+        results["completed_run_passes"] = subprocess.run([PY, "-c", ok], capture_output=True).returncode == 0
+        foreign = ("import sys; sys.path.insert(0, %r); import _receipt_status as R\n"
+                   "def main():\n    R.exit_on_failure(%r)\n"
+                   "R.run(%r, main)\n" % (str(HERE), str(good), str(d / "other.json")))
+        results["receipt_of_another_run_rejected"] = subprocess.run([PY, "-c", foreign], capture_output=True).returncode == 1
         # end to end on a real proof script (the j >= 100 Gershgorin tail; seconds)
         out = d / "tail.json"
         rc = subprocess.run([PY, str(HERE / "ricci_su2_floor_large_j.py"), str(out), "50", "20", "2.75", "10"],

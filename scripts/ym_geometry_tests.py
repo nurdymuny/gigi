@@ -43,6 +43,30 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _receipt_status  # noqa: E402
 
 EPS = np.finfo(float).eps
+
+
+def positivity(ev_min, bound):
+    """What a computed least eigenvalue can say. 'numerically_consistent': not below the rounding allowance (this is
+    not a certificate: an exact matrix diag(1, -1e-15) is indefinite and still lands here). 'negative_witness': far
+    below it (100 allowances). 'unresolved': in between. 'certified' is reserved for an exact argument."""
+    if ev_min >= -bound:
+        return "numerically_consistent"
+    if ev_min < -100 * bound:
+        return "negative_witness"
+    return "unresolved"
+
+
+def positivity_fixtures():
+    """The labels on matrices whose sign is known exactly."""
+    out = {}
+    for name, M, want in (("diag(1,-1e-15)", np.diag([1.0, -1e-15]), "numerically_consistent"),
+                          ("diag(1,-1e-3)", np.diag([1.0, -1e-3]), "negative_witness"),
+                          ("diag(1,0.5)", np.diag([1.0, 0.5]), "numerically_consistent")):
+        bound = 10 * 2 * EPS * np.abs(M).max()
+        out[name] = {"label": positivity(np.linalg.eigvalsh(M).min(), bound), "expected": want}
+    out["note"] = ("diag(1,-1e-15) is indefinite yet numerically consistent: the label never claims certification")
+    out["pass"] = all(v["label"] == v["expected"] for k, v in out.items() if isinstance(v, dict))
+    return out
 RNG = np.random.default_rng(20261123)
 
 
@@ -178,19 +202,34 @@ def t8(g2=1.0, M=800):
     ratio_attained = (nu @ (f1 - nu @ f1) ** 2) * Delta / dirichlet_form(f1, psi0, kappa, w)
     # converges to the exact character-basis gap
     Delta_exact = float(np.diff(spectrum(g2, 160, 2)[0])[0])
-    # gate F3: a sign-changing "ground state" (psi1) gives negative edge weights: no measure, no Poincare
+    # gate F3: with a sign-changing eigenvector (psi1) nu = psi1^2 is still a measure, but some edge weights
+    # psi_i psi_j are negative, so the edge form is not nonnegative and no Poincare inequality follows
     neg_edges = int((psi1[:-1] * psi1[1:] < 0).sum())
-    # gate F4: E0 shifted by 1e-6 breaks the identity by a detectable amount
+    # gate F4: a shift delta of E0 must break the identity by exactly -delta ||psi0 f||^2, in sign and size.
+    # The check compares with that prediction; a wrong size, a wrong sign and a missing shift must each fail.
     f = RNG.standard_normal(M)
-    shifted = (psi0 * f) @ (H - (E0 + 1e-6) * np.eye(M)) @ (psi0 * f) - dirichlet_form(f, psi0, kappa, w)
+    x = psi0 * f
+    D = dirichlet_form(f, psi0, kappa, w)
+    allowance = 1e3 * EPS * (abs(x @ H @ x) + abs(D) + abs(E0) * (x @ x))
+
+    def shift_check(applied, declared):
+        r = x @ (H - (E0 + applied) * np.eye(M)) @ x - D
+        expected = -declared * (x @ x)
+        return {"applied": applied, "declared": declared, "residual": r, "expected": expected,
+                "accepted": bool(abs(r - expected) <= allowance)}
+    shift_cases = {"correct": shift_check(1e-6, 1e-6), "wrong_size": shift_check(1e-3, 1e-6),
+                   "wrong_sign": shift_check(-1e-6, 1e-6), "missing": shift_check(0.0, 1e-6)}
     ok = positive and max(errs) < 1e-9 and max(ratios) <= 1 + 1e-9 and abs(ratio_attained - 1) < 1e-8 \
         and abs(Delta / Delta_exact - 1) < 1e-4
     return dict(g2=g2, grid=M, ground_state_positive=positive, identity_max_rel_err=max(errs),
                 poincare_max_ratio_sampled=max(ratios), poincare_ratio_at_psi1_over_psi0=ratio_attained,
                 Delta_fd=Delta, Delta_character_basis=Delta_exact, pass_=bool(ok),
                 gate_sign_changing_state={"negative_edge_weights": neg_edges, "caught": neg_edges > 0},
-                gate_shifted_E0={"identity_residual": shifted, "expected": -1e-6 * (psi0 * f) @ (psi0 * f),
-                                 "caught": bool(abs(shifted) > 1e3 * EPS * abs(dirichlet_form(f, psi0, kappa, w)))})
+                gate_shifted_E0={"cases": shift_cases, "allowance": allowance,
+                                 "caught": bool(shift_cases["correct"]["accepted"]
+                                                and not shift_cases["wrong_size"]["accepted"]
+                                                and not shift_cases["wrong_sign"]["accepted"]
+                                                and not shift_cases["missing"]["accepted"])})
 
 
 # ----------------------------------------------------------------------------------------------------------------- T10
@@ -249,17 +288,18 @@ def t5(g2=1.0, N=120, tau=0.5):
 
     G, ev = gram(T)
     bound = 10 * len(preps) * EPS * np.abs(G).max()                  # rounding bound on the computed eigenvalues
-    psd = bool(ev.min() >= -bound)
+    label = positivity(ev.min(), bound)
     # gate: a transfer matrix with one negative eigenvalue (not reflection positive)
     k = 3
     Tbad = T - 2 * np.exp(-tau * E[k]) * np.outer(V[:, k], V[:, k])
     Gb, evb = gram(Tbad)
     boundb = 10 * len(preps) * EPS * np.abs(Gb).max()
-    caught = bool(evb.min() < -100 * boundb)
+    label_bad = positivity(evb.min(), boundb)
+    caught = label_bad == "negative_witness"
     return dict(g2=g2, tau=tau, preparations=len(preps), min_eigenvalue=ev.min(), rounding_bound=bound,
-                psd_certified=psd, gate_negative_transfer={"min_eigenvalue": evb.min(), "bound": boundb,
-                                                           "caught": caught},
-                pass_=bool(psd and caught))
+                positivity=label, gate_negative_transfer={"min_eigenvalue": evb.min(), "bound": boundb,
+                                                          "positivity": label_bad, "caught": caught},
+                pass_=bool(label == "numerically_consistent" and caught))
 
 
 def main():
@@ -267,7 +307,7 @@ def main():
     res = {"note": "docs/research/yang-mills-geometric-identities-2026-11-23.md",
            "model": "Kogut-Susskind SU(2), one plaquette, lattice units",
            "T7a": [t7a(g2) for g2 in (0.25, 1.0, 4.0)], "T7b": t7b(), "T7c": t7c(), "T8": [t8(1.0), t8(4.0)],
-           "T10": t10(), "T5": t5()}
+           "T10": t10(), "T5": t5(), "positivity_labels": positivity_fixtures()}
 
     def fix(o):                                        # numpy scalars -> python; 'pass_' -> 'pass' for the helper
         if isinstance(o, dict):
@@ -291,20 +331,18 @@ def main():
                 collect(v)
     collect(res)
     res["all_pass"] = all(t["pass"] for key in ("T7a", "T8") for t in res[key]) and all(
-        res[key]["pass"] for key in ("T7b", "T7c", "T10", "T5"))
+        res[key]["pass"] for key in ("T7b", "T7c", "T10", "T5", "positivity_labels"))
     res["all_gates_caught"] = all(gates)
     res["ok"] = res["all_pass"] and res["all_gates_caught"]
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(res, indent=1))
+    _receipt_status.publish(out, res)
     for key in ("T7a", "T8"):
         for t in res[key]:
             print(key, {k: t[k] for k in t if not isinstance(t[k], (dict, list))})
     for key in ("T7b", "T7c", "T10", "T5"):
         print(key, "pass", res[key]["pass"])
     print("gates caught:", sum(map(bool, gates)), "/", len(gates), "| ok:", res["ok"])
-    _receipt_status.exit_on_failure(out)
 
 
 if __name__ == "__main__":
-    _receipt_status.begin()
-    main()
+    _receipt_status.run(sys.argv[1], main)
+    _receipt_status.exit_on_failure(sys.argv[1])

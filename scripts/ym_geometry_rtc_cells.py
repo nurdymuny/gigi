@@ -223,12 +223,10 @@ def main():
     gates = [t[k]["caught"] for t in res["cells"] + res["gauge"] for k in t if k.startswith("gate")]
     res["all_gates_caught"] = all(gates)
     res["ok"] = res["all_pass"] and res["all_gates_caught"]
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(res, indent=1, default=lambda o: o.item()))
+    _receipt_status.publish(out_path, res)
     print("gates caught:", sum(gates), "/", len(gates), "| ok:", res["ok"])
-    _receipt_status.exit_on_failure(out_path)
 
 
 if __name__ == "__main__":
-    _receipt_status.begin()
-    main()
+    _receipt_status.run(sys.argv[1], main)
+    _receipt_status.exit_on_failure(sys.argv[1])

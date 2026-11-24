@@ -41,6 +41,17 @@ import _receipt_status  # noqa: E402
 import ks_su2_lattice as ks  # noqa: E402
 
 RNG = np.random.default_rng(20261123)
+EPS = np.finfo(float).eps
+
+
+def positivity(ev_min, bound):
+    """'numerically_consistent' (not below the rounding allowance; not a certificate), 'negative_witness' (below 100
+    allowances), or 'unresolved'. 'certified' is reserved for an exact argument."""
+    if ev_min >= -bound:
+        return "numerically_consistent"
+    if ev_min < -100 * bound:
+        return "negative_witness"
+    return "unresolved"
 SIG = [np.array([[0, 1], [1, 0]]), np.array([[0, -1j], [1j, 0]]), np.diag([1, -1])]
 THETA = {"nv": 2, "links": [(0, 1)] * 3, "name": "theta",
          "plaqs": [([(0, True), (1, False)], [0, 1]), ([(1, True), (2, False)], [0, 1])]}
@@ -247,83 +258,146 @@ def reflection(p=3, jmax=2.0, betaF=2.0, betaA_bad=-2.0):
 
     mn, bd = link_gram(transfer(lamW))
     out["wilson"] = {"lambda_min": float(lamW.min()), "gram_min_eigenvalue": mn, "rounding_bound": bd,
-                     "psd_certified": bool(mn >= -bd)}
+                     "positivity": positivity(mn, bd),
+                     "exact_argument": "T = E K E with E = exp(-V/2) symmetric and K diagonal with positive entries "
+                                       "(products of the positive Wilson coefficients), so T = S^T S with S = K^(1/2) E: "
+                                       "positive by construction (Lean link_reflection_positive covers the pairing); "
+                                       "the computed Gram is only checked for numerical consistency with that"}
     lamB = wilson_coefficients(betaF, betaA_bad, jmax)
     negw = np.prod(lamB[np.rint(2 * js).astype(int)], axis=1) < 0
     out["states_with_negative_kinetic_weight"] = int(negw.sum())
     mnb, bdb = link_gram(transfer(lamB))
     out["gate_negative_adjoint"] = {"betaF": betaF, "betaA": betaA_bad, "lambda": lamB.tolist(),
                                     "gram_min_eigenvalue": mnb, "rounding_bound": bdb,
-                                    "caught": bool(lamB.min() < 0 and mnb < -100 * bdb)}
-    out["pass_"] = bool(out["wilson_vs_bessel_max_rel_err"] < 1e-9 and lamW.min() > 0 and out["wilson"]["psd_certified"])
+                                    "positivity": positivity(mnb, bdb),
+                                    "caught": bool(lamB.min() < 0 and positivity(mnb, bdb) == "negative_witness")}
+    out["pass_"] = bool(out["wilson_vs_bessel_max_rel_err"] < 1e-9 and lamW.min() > 0 and out["wilson"]["positivity"] == "numerically_consistent")
     return out
 
 
-def main():
-    out = Path(sys.argv[1])
-    res = {"note": "docs/research/yang-mills-geometric-identities-2026-11-23.md, Sections 5, 7, 9, 10",
-           "model": "Kogut-Susskind SU(2) on ladders of p plaquettes, lattice units, link spins <= jmax"}
-    for name, fn in (("V1", v1), ("V2", v2), ("V3", v3), ("V4", v4), ("V5", v5)):
-        t0 = time.time(); res[name] = fn(); print(name, "pass", res[name]["pass_"], round(time.time() - t0, 1), "s",
-                                                   flush=True)
-    sizes = [(1, (1.5, 2.0, 2.5)), (2, (1.5, 2.0, 2.5)), (3, (1.5, 2.0, 2.5)), (4, (1.5, 2.0, 2.5)), (5, (1.5, 2.0))]
-    couplings = (1.0, 2.0)
-    res["table"] = physics(sizes, couplings)
-    T = res["table"]
-    # P1: regulator convergence at each (p, g2): relative change of the gap between the two largest cutoffs
+PHYSICS_CALLS = {"n": 0}
+VALIDATIONS = [("V1", v1), ("V2", v2), ("V3", v3), ("V4", v4), ("V5", v5)]
+SIZES = [(1, (1.5, 2.0, 2.5)), (2, (1.5, 2.0, 2.5)), (3, (1.5, 2.0, 2.5)), (4, (1.5, 2.0, 2.5)), (5, (1.5, 2.0))]
+COUPLINGS = (1.0, 2.0)
+
+
+def finite_size_diagnostic(gaps):
+    """Declared on 23 November after the table had been seen: a consistency diagnostic, not a prediction and not a
+    bound. Flags a size sequence whose gap falls below half its one-plaquette value, or whose step-to-step decrements
+    grow (beyond 5%). A finite list cannot establish uniformity (the 1/n countermodel); this only catches collapse."""
+    floor_ok = min(gaps) >= 0.5 * gaps[0]
+    dec = [abs(b - a) for a, b in zip(gaps, gaps[1:])]
+    shrinking = all(d2 <= 1.05 * d1 for d1, d2 in zip(dec[1:], dec[2:])) if len(dec) > 2 else True
+    return {"floor_half_of_first": bool(floor_ok), "decrements_not_growing": bool(shrinking),
+            "flagged": not (floor_ok and shrinking)}
+
+
+def reduce(T, sizes, couplings):
+    """Aggregate the table. Observations are reported, not gated: finite-size gaps (P2) and adjacent-cutoff changes
+    (P1) are labelled as what they are."""
+    out = {}
     conv = []
     for p, jm in sizes:
         for g2 in couplings:
             a, b = [next(r for r in T if r["p"] == p and r["jmax"] == j and r["g2"] == g2)["gap"] for j in jm[-2:]]
             conv.append({"p": p, "g2": g2, "jmax": list(jm[-2:]), "gap_rel_change": abs(b / a - 1)})
-    res["P1_regulator"] = {"rows": conv, "pass_": all(c["gap_rel_change"] < 1e-2 for c in conv if c["g2"] >= 2.0)}
-    # P2: uniformity in volume at the largest cutoff for each p
+    out["P1_adjacent_cutoff_observation"] = {
+        "meaning": "relative change of the gap between the two largest cutoffs; agreement of adjacent cutoffs is not "
+                   "an error bound to the infinite-cutoff value", "rows": conv}
     vol = []
     for g2 in couplings:
         best = [max((r for r in T if r["p"] == p and r["g2"] == g2), key=lambda r: r["jmax"]) for p, _ in sizes]
-        vol.append({"g2": g2, "p": [r["p"] for r in best], "gap": [r["gap"] for r in best],
+        gaps = [r["gap"] for r in best]
+        vol.append({"g2": g2, "p": [r["p"] for r in best], "gap": gaps,
                     "radius": [r["sublevel_radius_E1"] for r in best],
                     "E0_per_plaquette": [r["E0_per_plaquette"] for r in best],
-                    "min_gap": min(r["gap"] for r in best)})
-    res["P2_volume"] = {"rows": vol, "pass_": all(v["min_gap"] > 0 for v in vol)}
-    # P3: gap three ways where dense
+                    "finite_size_diagnostic": finite_size_diagnostic(gaps)})
+    out["P2_finite_size_observation"] = {
+        "meaning": "gaps on the sizes computed, at fixed spacing; not a uniform lower bound", "rows": vol}
     three = [r for r in T if "gap_semigroup" in r]
-    res["P3_three_ways"] = {"cases": len(three),
+    out["P3_three_ways"] = {"cases": len(three),
                             "max_semigroup_rel_err": max(abs(r["gap_semigroup"] / r["gap"] - 1) for r in three),
                             "max_radius_attained_rel_err": max(abs(r["sublevel_radius_attained"] / r["sublevel_radius_E1"] - 1) for r in three),
                             "sampled_never_exceeds": all(r["sublevel_radius_sampled_max"] <= r["sublevel_radius_E1"] * (1 + 1e-9) for r in three)}
-    res["P3_three_ways"]["pass_"] = bool(res["P3_three_ways"]["max_semigroup_rel_err"] < 1e-8
-                                         and res["P3_three_ways"]["max_radius_attained_rel_err"] < 1e-8
-                                         and res["P3_three_ways"]["sampled_never_exceeds"])
-    # P4: electric vs full gap
-    res["P4_electric_vs_full"] = {"rows": [{"p": r["p"], "jmax": r["jmax"], "g2": r["g2"], "gap": r["gap"],
+    out["P3_three_ways"]["pass_"] = bool(out["P3_three_ways"]["max_semigroup_rel_err"] < 1e-8
+                                         and out["P3_three_ways"]["max_radius_attained_rel_err"] < 1e-8
+                                         and out["P3_three_ways"]["sampled_never_exceeds"])
+    out["P4_electric_vs_full"] = {"rows": [{"p": r["p"], "jmax": r["jmax"], "g2": r["g2"], "gap": r["gap"],
                                             "gap_electric": r["gap_electric"]} for r in T if r["jmax"] == 2.0],
                                   "differ_everywhere": all(abs(r["gap"] - r["gap_electric"]) > 1e-6 for r in T)}
-    res["P4_electric_vs_full"]["pass_"] = res["P4_electric_vs_full"]["differ_everywhere"]
+    out["P4_electric_vs_full"]["pass_"] = out["P4_electric_vs_full"]["differ_everywhere"]
+    # gate: a collapsed gap (every five-plaquette gap replaced by 1e-12) must be flagged by the diagnostic
+    collapsed = [dict(r) for r in T]
+    for r in collapsed:
+        if r["p"] == max(p for p, _ in sizes):
+            r["gap"] = 1e-12
+            r["sublevel_radius_E1"] = 1e6
+    flags = []
+    for g2 in couplings:
+        best = [max((r for r in collapsed if r["p"] == p and r["g2"] == g2), key=lambda r: r["jmax"]) for p, _ in sizes]
+        flags.append(finite_size_diagnostic([r["gap"] for r in best])["flagged"])
+    out["gate_collapsed_gap"] = {"fixture": "largest-size gaps replaced by 1e-12 (not simulated physics)",
+                                 "flagged": flags, "caught": bool(all(flags))}
+    return out
+
+
+def tidy(o):
+    if isinstance(o, dict):
+        return {("pass" if k == "pass_" else k): tidy(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [tidy(v) for v in o]
+    if isinstance(o, (np.floating, np.integer, np.bool_)):
+        return o.item()
+    return o
+
+
+def main(out=None, validations=None, sizes=SIZES, couplings=COUPLINGS):
+    out = Path(out or sys.argv[1])
+    res = {"note": "docs/research/yang-mills-geometric-identities-2026-11-23.md, Sections 5, 7, 9, 10",
+           "model": "Kogut-Susskind SU(2) on ladders of p plaquettes, lattice units, link spins <= jmax"}
+    for name, fn in (validations or VALIDATIONS):
+        t0 = time.time(); res[name] = fn(); print(name, "pass", res[name]["pass_"], round(time.time() - t0, 1), "s",
+                                                   flush=True)
+    vnames = [n for n, _ in (validations or VALIDATIONS)]
+    if not all(res[n]["pass_"] for n in vnames):
+        res = tidy(res)
+        res["status"] = "FAILED: validation did not pass; no physics computed or published"
+        res["ok"] = False
+        _receipt_status.publish(out, res)
+        print(res["status"])
+        return res
+    PHYSICS_CALLS["n"] += 1
+    res["table"] = physics(sizes, couplings)
+    res.update(reduce(res["table"], sizes, couplings))
     t0 = time.time(); res["P5_reflection"] = reflection(); print("P5", res["P5_reflection"]["pass_"],
                                                                  res["P5_reflection"]["gate_negative_adjoint"]["caught"],
                                                                  round(time.time() - t0, 1), "s", flush=True)
-
-    def fix(o):
-        if isinstance(o, dict):
-            return {("pass" if k == "pass_" else k): fix(v) for k, v in o.items()}
-        if isinstance(o, list):
-            return [fix(v) for v in o]
-        if isinstance(o, (np.floating, np.integer, np.bool_)):
-            return o.item()
-        return o
-    res = fix(res)
-    keys = ["V1", "V2", "V3", "V4", "V5", "P1_regulator", "P2_volume", "P3_three_ways", "P4_electric_vs_full",
-            "P5_reflection"]
+    res = tidy(res)
+    keys = vnames + ["P3_three_ways", "P4_electric_vs_full", "P5_reflection"]
     res["all_pass"] = all(res[k]["pass"] for k in keys)
-    res["all_gates_caught"] = res["P5_reflection"]["gate_negative_adjoint"]["caught"]
+    res["gates"] = {"negative_adjoint": res["P5_reflection"]["gate_negative_adjoint"]["caught"],
+                    "collapsed_gap": res["gate_collapsed_gap"]["caught"]}
+    res["all_gates_caught"] = all(res["gates"].values())
     res["ok"] = res["all_pass"] and res["all_gates_caught"]
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(res, indent=1))
-    print({k: res[k]["pass"] for k in keys}, "ok:", res["ok"])
-    _receipt_status.exit_on_failure(out)
+    _receipt_status.publish(out, res)
+    print({k: res[k]["pass"] for k in keys}, res["gates"], "ok:", res["ok"])
+    return res
+
+
+def selftest_short_circuit(out):
+    """A false validation must stop the run before any physics, with a FAILED current receipt."""
+    stub = lambda ok: (lambda: {"pass_": ok})  # noqa: E731
+    PHYSICS_CALLS["n"] = 0
+    _receipt_status.start_run(out)
+    r = main(out, validations=[("V1", stub(False)), ("V2", stub(True))])
+    rec = json.loads(Path(out).read_text())
+    ok = PHYSICS_CALLS["n"] == 0 and rec.get("ok") is False and "FAILED" in rec.get("status", "")
+    print("short-circuit self-test:", "PASS" if ok else "FAIL", "| physics calls", PHYSICS_CALLS["n"])
+    return ok
 
 
 if __name__ == "__main__":
-    _receipt_status.begin()
-    main()
+    if sys.argv[1] == "--selftest-short-circuit":
+        sys.exit(0 if selftest_short_circuit(sys.argv[2]) else 1)
+    _receipt_status.run(sys.argv[1], main)
+    _receipt_status.exit_on_failure(sys.argv[1])

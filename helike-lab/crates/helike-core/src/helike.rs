@@ -154,6 +154,71 @@ impl SectorData {
     }
 }
 
+/// One rung of the ladder in sector j: the state psi = (theta^1 + i s theta^2) (x) (tau_1 + i s tau_2) (x) f_m.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct Rung {
+    /// Branch s = +1 or -1.
+    pub branch: i8,
+    /// The weight mm (= m on the + branch, -m on the - branch).
+    pub mm: f64,
+    /// h_m = -(x + (2 mm + 2)/sqrt t), the rung's curl value.
+    pub h: f64,
+    /// Closed-form leak 2[l(l+1) - mm(mm+1)]; zero exactly on the top rung (the twist).
+    pub leak: f64,
+    /// Computed ||curl psi - h psi||^2 / ||psi||^2.
+    pub leak_computed: f64,
+    /// Largest entry of chi = curl psi - h psi outside the frame-0 slot (the identity says it is zero).
+    pub off_slot: f64,
+}
+
+/// The ladder identity curl psi = h_m psi + chi, chi in the frame-0 slot, ||chi||^2 = 2[l(l+1) - mm(mm+1)] ||psi||^2,
+/// computed at every rung of sector j (port of section 3 of `helike_ladder_receipt.py`).
+pub fn ladder(m: &Member, j: usize) -> Vec<Rung> {
+    let (geo, field, rep) = (m.geometry(), m.field(), Rep::spin(j));
+    let sec = Sector::new(&geo, &field, &rep);
+    let curl = sec.curl().expect("three-dimensional");
+    let d = j + 1;
+    let l = j as f64 / 2.0;
+    // The weight along the long axis is the eigenvalue of (i/2) rho_0 (rho_0 = -2i J_x in this convention, so the
+    // weight vectors are not the spin basis vectors).
+    let (wvals, wvecs) = linalg::eigh(&linalg::scale(&rep.mats[0], linalg::C64::new(0.0, 0.5)));
+    let mut out = vec![];
+    for sgn in [1i8, -1] {
+        let s = sgn as f64;
+        for k in 0..d {
+            let mval = l - k as f64;
+            let col = (0..d).min_by(|&a, &b| (wvals[a] - mval).abs().partial_cmp(&(wvals[b] - mval).abs()).unwrap()).unwrap();
+            let mut psi = vec![linalg::ZERO; 9 * d];
+            let u = [linalg::ZERO, linalg::ONE, linalg::C64::new(0.0, s)];
+            for a in 0..3 {
+                for w in 0..d {
+                    let f = wvecs[(w, col)];
+                    psi[3 * d + a * d + w] = u[a] * f;
+                    psi[6 * d + a * d + w] = linalg::C64::new(0.0, s) * u[a] * f;
+                }
+            }
+            let mm = if sgn == 1 { mval } else { -mval };
+            let h = -(m.x + (2.0 * mm + 2.0) / m.t.sqrt());
+            let n2: f64 = psi.iter().map(|z| z.norm_sqr()).sum();
+            let mut chi2 = 0.0;
+            let mut off = 0.0f64;
+            for i in 0..9 * d {
+                let mut v = linalg::ZERO;
+                for c in 0..9 * d {
+                    v += curl[(i, c)] * psi[c];
+                }
+                let chi = v - psi[i] * h;
+                chi2 += chi.norm_sqr();
+                if i >= 3 * d {
+                    off = off.max(chi.norm());
+                }
+            }
+            out.push(Rung { branch: sgn, mm, h, leak: 2.0 * (l * (l + 1.0) - mm * (mm + 1.0)), leak_computed: chi2 / n2, off_slot: off });
+        }
+    }
+    out
+}
+
 /// phi_A(x) = min_{j <= jmax, q non-twist} [lambda_min(B_{j,q}) - lambda_j], with the arg (j, q).
 pub fn phi_a(m: &Member, jmax: usize) -> (f64, usize, f64) {
     (0..=jmax)
@@ -201,6 +266,16 @@ pub fn edge(which: Spectrum, y: f64, t: f64, jmax: usize, lo: f64, hi: f64, n: u
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ladder_identity_holds() {
+        for (x, y, t, j) in [(-2.0, 1.5, 4.0, 4), (0.7, 0.3, 1.5, 3), (-0.4, 2.2, 2.2, 2), (1.2, 0.4, 1.5, 6)] {
+            for r in ladder(&Member::new(x, y, t), j) {
+                assert!((r.leak - r.leak_computed).abs() < 1e-11, "leak at {r:?}");
+                assert!(r.off_slot < 1e-12, "chi outside frame-0 slot: {r:?}");
+            }
+        }
+    }
 
     #[test]
     fn twist_on_berger_is_floor_law() {

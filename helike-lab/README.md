@@ -75,6 +75,39 @@ Each receipt records:
 
 `verify` re-runs the recorded command and compares the results.
 
+## The viewer (milestone M1, first cut)
+
+`cargo run --release -p helike-view` opens three scenes. Each panel shows its frame's status label.
+
+**The ladder and flux fan.** Sliders for t, for x and y (or "on the Berger field"), and for the sector. The scene
+shows:
+- the nine flux eigenvalues, computed (dots) on the closed form (ticks), with the difference printed;
+- the rungs of the ladder with their leak arrows, the computed leak against 2[l(l+1) − m(m+1)] (port of the
+  receipt's ladder check, now also a unit test);
+- per sector, Helike's price against her cheapest gauge-orthogonal rival, with a green dot where the ladder's
+  sufficient condition proves the floor.
+
+**Helike on the three-sphere.** Hopf fibres (the long circles) after stereographic projection, and her amplitude
+|f|² = cos^{2j}(η/2) and phase as colour and ticks. These are closed forms. The picture is not to scale in t, and the
+scene says so.
+
+**The edge forming.**
+- φ_A (or φ_S) on an (x, t) grid at fixed y, streamed row by row in a refining order, with the edge φ = 0 drawn as a
+  line.
+- Overlays: ladder-proved cells, the x_flux curve, the certificate domain D, and the Berger field.
+- Clicking a pixel streams that point's margins in every sector.
+
+The solver runs in its own thread and sends `helike_stream::Frame`s, and the drawing code never calls the solver
+(`crates/helike-view/src/solver.rs` versus `main.rs`). The same frames can later come over a socket from the big
+machine.
+
+`helike-view --shot ladder|sphere|edge out.png` renders one scene once its frames are complete, saves the window as a
+PNG and exits. It is used to check the scenes without a person at the screen.
+
+The viewer is drawn with egui's painter on the wgpu backend. It does not yet use the GPU-instanced tubes or the
+batched GPU block solver of the spec (M2). It pins eframe 0.35, because 0.37 needs rustc 1.95 and this machine has
+1.92.
+
 ## Status
 
 **Computed, all in double precision on the CPU:**
@@ -84,7 +117,7 @@ Each receipt records:
 - the edge functions and edges.
 
 **Not yet built:**
-- the viewer (M1);
+- the viewer's remote stream (WebSocket) and scenes 4–5;
 - GPU batched blocks (M2);
 - `helike-quantum` (M3);
 - interval enclosures (`inari`).

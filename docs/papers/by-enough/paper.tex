@@ -624,6 +624,16 @@ $x=(2-t)/\sqrt t$ and $y=\sqrt t$ give $\Theta=-t$.
 The threshold $t=2$ is the stretch at which the Berger $x$ changes sign, where the discount of
 Corollary~\ref{cor:lift} begins.
 
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/fig_ladder_fluxfan.pdf}
+\caption{The flux fan on the Berger path. The nine eigenvalues of $\varphi$ (Theorem~\ref{thm:flux}), the same in every
+sector, against the stretch $t$. Helike's value $-B$ (blue, twice) separates below all the others at $t=2$, and the
+shaded wedge is the flux gap $\Delta=2t-4$ of Corollary~\ref{cor:fluxmin}. Every curve is a closed form; nothing is
+fitted (\texttt{scripts/helike\_ladder\_figures.py}).}
+\label{fig:fluxfan}
+\end{figure}
+
 \subsection{The ladder}\label{subsec:ladder}
 
 Let $E=V_j\otimes\mathrm{span}\{w_+,w_-\}$, the flux-aligned states, and $P$ the orthogonal projection on $E$. Write
@@ -758,11 +768,24 @@ precision gives these sectors (computed):
   \item at $t=20$, $j=0$ and $11\le j\le20$, of $j\le40$;
   \item at $t=40$, $j=0$ and $28\le j\le43$, of $j\le60$.
 \end{itemize}
+Figure~\ref{fig:coverage} shows where this proof and the interval certificates of~\cite{davisfloor2026} each reach.
 As a check (computed), wherever the condition holds the twist is the floor. That covers $28$ Berger cases with
 $t\in[2.48,40]$, $j\le20$, and $805$ random pairs (member, sector) with $x\in[-3,1]$, $y\in[0.1,3]$, $t\in[1.5,12]$, $j\le6$,
 with the smallest margin $-6.8\times10^{-13}$ (double precision). The gauge factor cannot be dropped. At
 $(x,y,t)=(0.0674,2.6596,3.5715)$ the condition $\Delta\ge h_1^2$ holds, yet the sector $j=1$ has a gauge-orthogonal state
 $0.691$ below the twist. Theorem~\ref{thm:ladderfloor} does not apply there.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_ladder_coverage.pdf}
+\caption{Where each proof reaches on the Berger path, sector by sector (gauge-orthogonal floor). Blue: cells proved
+by Theorem~\ref{thm:ladderfloor}, a band along $j\approx t-4$, where her helicity vanishes, plus the sector $0$ from
+$t\ge2\sqrt5-2$. Green frame: every sector proved by the interval certificates of~\cite{davisfloor2026},
+$2.75\le t\le10$. Light grey: computed, she is the floor; dark grey: computed, she is not (double precision, step
+$0.25$ in $t$, $j\le24$). None of the $503$ blue cells is computed as dark grey
+(\texttt{scripts/helike\_ladder\_figures.py}, cache \texttt{L/figures/coverage\_cache.json}).}
+\label{fig:coverage}
+\end{figure}
 
 The theorem does not prove the floor of every sector. It discards $\norm{\mathrm{curl}\,\psi'}^2$ and bounds the gauge
 coupling by the global $\gamma_j$, which grows like $j$. So sectors far from $j\approx t-4$, where the twist's own

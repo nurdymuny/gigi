@@ -1,6 +1,6 @@
 """Figures for the Helike Ladder Theorem (By Enough v2, Section 4), drawn from closed forms and light sector solves.
 
-usage: python scripts/helike_ladder_figures.py OUT_DIR
+usage: python scripts/helike_ladder_figures.py OUT_DIR [PAPER_FIGURES_DIR]
 
 fig_ladder      the ladder: rungs by helicity, sideways leak = gauge part, top rung (Helike) leak-free
 fig_prices      the two prices on the Berger path: helicity cost per sector against the flux discount B
@@ -100,7 +100,7 @@ def fig_prices(out):
     save(fig, out, "fig_prices")
 
 
-def fig_fluxfan(out):
+def fig_fluxfan(out, title=True, name="fig_fluxfan"):
     t = np.linspace(0.25, 10, 600)
     B, Th = 3 * t - 4, -t
     r = np.sqrt(B * B + 8 * Th * Th)
@@ -110,9 +110,9 @@ def fig_fluxfan(out):
     others = np.min(np.vstack([c for _, c in curves]), axis=0)
     gap = t >= 2
     ax.fill_between(t[gap], -B[gap], others[gap], color=BLUE, alpha=0.10, lw=0, zorder=1)
-    for name, c in curves:
+    for label, c in curves:
         ax.plot(t, c, color=MUTED, lw=1.2, zorder=2)
-        ax.text(10.15, c[-1], name, color=INK2, fontsize=8, va="center")
+        ax.text(10.15, c[-1], label, color=INK2, fontsize=8, va="center")
     ax.plot(t, -B, color=BLUE, lw=2.4, zorder=3)
     ax.text(10.15, -B[-1], "−B  (×2): Helike's flux", color=BLUE, fontsize=8.5, va="center")
     ax.axvline(2, color=INK2, lw=0.8, ls=(0, (3, 3)))
@@ -121,11 +121,12 @@ def fig_fluxfan(out):
     ax.set_xlim(0.25, 10)
     ax.set_xlabel("stretch t (Berger path)")
     ax.set_ylabel("eigenvalue of the flux form φ")
-    ax.set_title("The flux fan: nine exact eigenvalues, the same in every sector", fontsize=10.5, color=INK)
-    save(fig, out, "fig_fluxfan")
+    if title:
+        ax.set_title("The flux fan: nine exact eigenvalues, the same in every sector", fontsize=10.5, color=INK)
+    save(fig, out, name)
 
 
-def fig_coverage(out, cache):
+def fig_coverage(out, cache, title=True, name="fig_coverage"):
     ts = np.round(np.arange(2.0, 20.01, 0.25), 2)
     js = np.arange(0, 25)
     if cache.exists():
@@ -142,7 +143,7 @@ def fig_coverage(out, cache):
         cache.write_text(json.dumps({"t": ts.tolist(), "j": js.tolist(), "is_floor": comp.tolist(),
                                      "tolerance": "1e-8 relative, double precision"}))
     lad = np.array([[hc.floor_sufficient(*hc.berger_xy(t), t, int(j)) for t in ts] for j in js])
-    fig, ax = plt.subplots(figsize=(7.6, 4.4))
+    fig, ax = plt.subplots(figsize=(7.6, 4.4) if title else (7.0, 4.6))
     dt = 0.25
     for a, j in enumerate(js):
         for b, t in enumerate(ts):
@@ -164,14 +165,16 @@ def fig_coverage(out, cache):
                Rectangle((0, 0), 1, 1, color="#6f6e69"), Rectangle((0, 0), 1, 1, fc="none", ec=AQUA, lw=2)]
     ax.legend(handles, ["proved by the ladder floor theorem", "computed: she is the floor (not proved there)",
                         "computed: she is not the floor", "proved by the Floor certificates"],
-              loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=8)
+              **(dict(loc="upper left", bbox_to_anchor=(1.01, 1.0)) if title else
+                 dict(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=2)), fontsize=8)
     ax.set_xlim(1.85, 20.15)
     ax.set_ylim(-0.5, len(js) - 0.5)
     ax.set_xlabel("stretch t (Berger path)")
     ax.set_ylabel("sector j")
     ax.grid(False)
-    ax.set_title("Where each proof reaches (gauge-orthogonal floor, sector by sector)", fontsize=10.5, color=INK)
-    save(fig, out, "fig_coverage")
+    if title:
+        ax.set_title("Where each proof reaches (gauge-orthogonal floor, sector by sector)", fontsize=10.5, color=INK)
+    save(fig, out, name)
     return int(lad.sum()), int(comp.sum()), int((~comp).sum()), int((lad & ~comp).sum())
 
 
@@ -250,6 +253,12 @@ def main(out):
     stats = fig_coverage(out, out / "coverage_cache.json")
     fig_xband(out)
     fig_spin(out)
+    if len(sys.argv) > 2:                      # paper versions: no on-plot titles (the captions carry them)
+        paper = Path(sys.argv[2])
+        fig_fluxfan(paper, title=False, name="fig_ladder_fluxfan")
+        fig_coverage(paper, out / "coverage_cache.json", title=False, name="fig_ladder_coverage")
+        for f in paper.glob("fig_ladder_*.png"):
+            f.unlink()
     print("coverage: ladder-proved cells %d, computed floor %d, computed not floor %d, ladder-proved but computed "
           "not floor %d (must be 0)" % stats)
 

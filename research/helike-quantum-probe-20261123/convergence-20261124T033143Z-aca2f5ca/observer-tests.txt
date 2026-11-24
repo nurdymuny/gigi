@@ -1,0 +1,7 @@
+test_new_case_has_observed_not_invented_completion_time (test_monitor_ym_helike_convergence.RecorderTests.test_new_case_has_observed_not_invented_completion_time) ... ok
+test_records_exact_results_once_without_changing_receipt (test_monitor_ym_helike_convergence.RecorderTests.test_records_exact_results_once_without_changing_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK

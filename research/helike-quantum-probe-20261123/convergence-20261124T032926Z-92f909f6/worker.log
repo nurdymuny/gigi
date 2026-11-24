@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_ym_helike_convergence.py", line 416, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_ym_helike_convergence.py", line 377, in main
+    return worker(args.worker)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_ym_helike_convergence.py", line 304, in worker
+    result, arrays = case(b, ops, g2, alpha, device)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_ym_helike_convergence.py", line 118, in case
+    out['exterior'] = q.exterior_diagnostics_scaled(b, ops, e, v, g2, alpha)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_quantum.py", line 687, in exterior_diagnostics_scaled
+    "enclosures": residual_enclosures(energies, level_norms, level_idx)}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\ym_helike_quantum.py", line 621, in residual_enclosures
+    raise ValueError("ordered finite energies and matching nonnegative finite residuals required")
+ValueError: ordered finite energies and matching nonnegative finite residuals required

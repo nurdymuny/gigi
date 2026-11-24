@@ -1,0 +1,12 @@
+[
+  {
+    "mutation": "duplicate_cases",
+    "rejected_by_assertion": true,
+    "output": "F\n======================================================================\nFAIL: test_records_exact_results_once_without_changing_receipt (test_monitor_ym_helike_convergence.RecorderTests.test_records_exact_results_once_without_changing_receipt)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_monitor_ym_helike_convergence.py\", line 25, in test_records_exact_results_once_without_changing_receipt\n    self.assertEqual(monitor.record_cases(receipt, seen, journal, writer, 'second', False), 0)\nAssertionError: 1 != 0\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "wrong_residual",
+    "rejected_by_assertion": true,
+    "output": "F\n======================================================================\nFAIL: test_records_exact_results_once_without_changing_receipt (test_monitor_ym_helike_convergence.RecorderTests.test_records_exact_results_once_without_changing_receipt)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_monitor_ym_helike_convergence.py\", line 32, in test_records_exact_results_once_without_changing_receipt\n    self.assertEqual(float(rows[0]['max_residual']), .2)\nAssertionError: 0.1 != 0.2\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  }
+]

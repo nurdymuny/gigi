@@ -1,0 +1,14 @@
+test_casimir_leakage_refused (test_ym_helike_convergence.SpinTests.test_casimir_leakage_refused) ... ok
+test_constant_probe_is_not_indexed_as_an_excited_level (test_ym_helike_convergence.SpinTests.test_constant_probe_is_not_indexed_as_an_excited_level) ... ok
+test_forbidden_complete_level_is_symmetry_zero (test_ym_helike_convergence.SpinTests.test_forbidden_complete_level_is_symmetry_zero) ... ok
+test_incomplete_multiplet_refused (test_ym_helike_convergence.SpinTests.test_incomplete_multiplet_refused) ... ok
+test_mixed_level_keeps_scalar_signal (test_ym_helike_convergence.SpinTests.test_mixed_level_keeps_scalar_signal) ... ok
+test_non_scalar_vacuum_refused (test_ym_helike_convergence.SpinTests.test_non_scalar_vacuum_refused) ... ok
+test_nonintegral_casimir_refused (test_ym_helike_convergence.SpinTests.test_nonintegral_casimir_refused) ... ok
+test_rotated_mixed_level_and_repeated_irreps (test_ym_helike_convergence.SpinTests.test_rotated_mixed_level_and_repeated_irreps) ... ok
+test_wrong_rank_probe_refused (test_ym_helike_convergence.SpinTests.test_wrong_rank_probe_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.003s
+
+OK

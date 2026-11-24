@@ -1,0 +1,13 @@
+{
+  "observer_sources_sha256": {
+    "scripts/monitor_ym_helike_convergence.py": "ff5c7ef900607ed4b561d32904704e5a2629900861f1909e218f0eab2ee25d63",
+    "scripts/test_monitor_ym_helike_convergence.py": "a8cbcbfbde3ebd2bc98bbb53544da0def54a48a612f225f9f9b0e3e70c3bcba6"
+  },
+  "sampling_seconds": 5,
+  "started_at_utc": "2026-11-24T03:41:58.687411+00:00",
+  "last_observation_utc": "2026-11-24T03:44:12.428319+00:00",
+  "case_snapshots": 24,
+  "resource_samples": 27,
+  "no_prior_resource_history_claimed": true,
+  "modifies_calculation": false
+}

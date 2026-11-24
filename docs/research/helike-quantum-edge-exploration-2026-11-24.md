@@ -59,6 +59,15 @@ claim. Those measurements must be saved and replayed before drawing a conclusion
 widths on one grid would only establish that observation at those tested widths and cutoffs, not exclude every
 per-level width or a different basis construction.
 
+That table is now saved: `scripts/explore_ym_helike_width_residuals.py` writes
+`exploration-edge-20261124/width_residuals_N10.json`. It holds the full-space residual of levels 0 to 2 at cutoff 10,
+for g² = 1 and 2, at α = 1.0, 1.35, 1.7, 2.0, 2.3 and 2.7. What it shows, and only on that grid at that cutoff:
+the width that minimises each level's residual sits at the ground-energy width or the grid point next to it.
+At g² = 1 the best widths are 1.7, 1.7 and 2.0. At g² = 2 they are 2.3, 2.3 and 2.0. Choosing each level's best
+width instead of α* lowers that level's residual by at most 1.3 times (level 0 at g² = 2: 0.117 to 0.090).
+The excited levels stay at or above 0.35 at every tested width. On this grid, a per-level width is not the missing
+5 to 11 times. This does not rule out a different envelope or a finer grid.
+
 ## Caveats
 
 - Finite cutoffs 10 and 12; the interpolated crossing moved by 0.0090368794 between them. Not converged in the

@@ -102,3 +102,53 @@ def bounded(g, t, a, b):
     """Flat (commuting) directions are bounded below iff omega_0^2 - a > 0 and omega_perp^2 - b > 0."""
     om = omega(t)
     return om[0] ** 2 - a > 0 and om[1] ** 2 - b > 0
+
+
+# closed forms on the Maurer-Cartan line (derived; independent of g)
+
+def mc_sources(s, t):
+    """a = (1-s)(t-2s), b = (1-s)((1-s)/t - s)."""
+    return (1 - s) * (t - 2 * s), (1 - s) * ((1 - s) / t - s)
+
+
+def mc_s_max(t):
+    """Boundedness window s < (t+2)/(t+1): omega_perp^2 - b = s[(2-s)/t + 1 - s]."""
+    return (t + 2) / (t + 1)
+
+
+def mc_depth(s, t, g):
+    """V_src(q_bg) = -s^3 (s-1)(1/2 + 1/t) / g^2."""
+    return -s ** 3 * (s - 1) * (.5 + 1 / t) / g ** 2
+
+
+def mc_helike_freq2(s, t):
+    """Helike's vibration (locked charge |Q| = 2, transverse rows only): omega_H^2 = 2 s (1 + 2/t - s)."""
+    return 2 * s * (1 + 2 / t - s)
+
+
+def locked_charge_casimir():
+    """Q^2 for the U(1) that preserves q_bg: frame rotation in rows (1,2) together with colour rotation about axis 0."""
+    E = np.zeros((3, 3))
+    E[1, 2], E[2, 1] = -1, 1
+    L = np.zeros((9, 9))
+    for c in range(9):
+        d = np.zeros(9)
+        d[c] = 1
+        D = d.reshape(3, 3)
+        L[:, c] = (E @ D + D @ E.T).ravel()
+    return -(L @ L)
+
+
+def mc_vibrations(s, t, g, h=1e-4):
+    """Sourced vibration frequencies^2 at q_bg by locked charge |Q| (colour-orbit zero modes removed)."""
+    from test_ym_two_grain_potential import hessian
+    _, _, qb = mc_background(s, t, g)
+    a, b = mc_sources(s, t)
+    Hs = hessian(lambda z: V_sourced(z.reshape(3, 3), g, t, a, b), qb.ravel(), h=h)
+    wq, U = np.linalg.eigh(locked_charge_casimir())
+    out = {}
+    for Q in (0, 1, 2):
+        S = U[:, np.abs(wq - Q * Q) < 1e-6]
+        ev = np.linalg.eigvalsh(S.T @ Hs @ S)
+        out[Q] = sorted(ev[np.abs(ev) > 1e-5].tolist())
+    return out

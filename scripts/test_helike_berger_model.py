@@ -119,3 +119,30 @@ class FluxBackground(unittest.TestCase):
                 lam = hc.twist_closed_form(x, y, t, 0)
                 self.assertEqual(bool(hg[0] >= lam - 1e-8), floor, (t, s))
             self.assertLess(above, 1 + 1 / (t + 1))
+
+
+class ClosedForms(unittest.TestCase):
+    def test_sources_depth_and_window(self):
+        g = .6
+        for s, t in ((1.1, 4.), (1.05, 6.), (1.15, 3.), (.95, 2.)):
+            _, _, qb = bm.mc_background(s, t, g)
+            a, b = bm.sources(qb, g, t)
+            np.testing.assert_allclose((a, b), bm.mc_sources(s, t), atol=1e-6)
+            self.assertAlmostEqual(bm.V_sourced(qb, g, t, a, b), bm.mc_depth(s, t, g), places=6)
+        for t in (2., 4., 9.):
+            self.assertAlmostEqual(bm.mc_s_max(t), 1 + 1 / (t + 1))
+
+    def test_helike_frequency_and_flat_limit(self):
+        g = .6
+        for s, t in ((1.13, 4.), (1.06, 6.), (1.2, 3.)):
+            self.assertAlmostEqual(bm.mc_vibrations(s, t, g)[2][0], bm.mc_helike_freq2(s, t), places=4)
+        self.assertAlmostEqual(bm.mc_helike_freq2(1., 4.), 1.)          # = (2/sqrt t)^2: Step 1's protected gap
+
+    def test_sourced_crossing_inside_window(self):
+        """Helike (|Q| = 2) overtakes the Q = 0 competitor at s*_src(t) < s_max."""
+        for t, (lo, hi) in {4.: (1.09, 1.11), 6.: (1.05, 1.06)}.items():
+            v_lo, v_hi = bm.mc_vibrations(lo, t, .6), bm.mc_vibrations(hi, t, .6)
+            self.assertGreater(v_lo[2][0], v_lo[0][0])
+            self.assertLess(v_hi[2][0], v_hi[0][0])
+            self.assertLess(hi, bm.mc_s_max(t))
+            self.assertEqual(sum(len(v) for v in v_hi.values()), 6)      # gauge-orthogonal vibrations only

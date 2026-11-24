@@ -5,6 +5,11 @@ is specified in [the protocol](../../docs/research/dome-local-review-protocol-20
 This directory preserves tests and the bounded replication, not a new
 weak-coupling excitation experiment.
 
+Completed run: [audit-93b3b569](audit-93b3b569/), eight batches and 32 rows,
+88.594 supervised seconds. Evidence replay PASS; both precision comparisons
+pass. Interpretation and complete table:
+[results note](../../docs/research/dome-local-review-results-2026-11-24.md).
+
 ## Focused gates
 
 The initial diagnostic failed four behavioral tests: reversed orders,

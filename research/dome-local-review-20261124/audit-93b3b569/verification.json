@@ -1,0 +1,7 @@
+{
+ "status": "PASS",
+ "replayed_batches": 8,
+ "rows": 32,
+ "certified": false,
+ "scope": "saved overlap projection replay; no infinite-tail or physical-gap claim"
+}

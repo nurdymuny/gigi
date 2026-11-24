@@ -125,6 +125,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 24 Nov | [Second-vacuum weak-coupling candidate](helike-second-vacuum-weak-coupling-2026-11-24.md): exact local Hessian decomposition, colour-space locking, harmonic energy count and a conditional global prediction |
 | 24 Nov | [Two-grain scope](helike-two-grain-scope-2026-11-24.md): proposed left-and-right eighteen-mode extension; oriented Chern-Simons versus auxiliary-function distinction, symmetry and domain gates; no spectral run |
 | 24 Nov | [Local geometry and projected-tail audit](dome-local-review-protocol-2026-11-24.md): refusal fixes, independent Gaussian control, rotated geometric checks and a bounded 32-row existing-control replication; no new physical couplings |
+| 24 Nov | [Local geometry and projected-tail results](dome-local-review-results-2026-11-24.md): 32 rows replay; the 13.8% exterior change reproduces despite a tiny total-norm change; higher reference and precision checks, 41 focused tests and eight mechanism removals; old physical gate remains open |
 | 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 
 ## Where we were: status and strategy

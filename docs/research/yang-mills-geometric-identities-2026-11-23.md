@@ -943,7 +943,39 @@ be trusted.
 not a list); two- and three-dimensional lattices (vertices with more than three
 links); and weak coupling, which needs methods beyond exact diagonalisation.
 
-## 14. The question I want to carry forward
+## 14. Where to look
+
+Helike did not come from looking for a discovery. I had an exact object, computed it exactly, and read the
+eigen*field*, not only the number; the structure was there to be read. When the data posed a problem I tried
+geometric readings one after another, kept each only if a written test survived, and the break came when I found
+the right picture: the magnets. The harness of Section 12 is what lets the same method work here: if a pattern
+appears, it is not an artifact of the wrong object, the wrong metric, or a family that never reached the sector
+that mattered.
+
+**Known physics is not the same as known geometry.** Much of what these lattices do in this regime is known: the
+strip, the strong-coupling gap, the glueball that hops between plaquettes. What is measured there is spectra,
+masses, correlators. What is not measured is what this note asks for: the excitation as a field on configuration
+space (the cheapest direction \(\psi_1/\psi_0\), the extremal of the weighted Poincaré inequality); the gap as the
+shape of a fixed-energy set; whether a test family reaches the sectors a positivity claim depends on; the
+conditioning of a recovery as an ellipsoid with a weakest direction. The regime is known; the reading is not. That
+is the reason to stay open here, and it is Yang–Mills, which is no reason to close the door.
+
+**Three places, in order.**
+
+1. **The field of the lowest excitation on the ladders.** Already the gaps resist the simplest picture: a single
+   excitation hopping between neighbouring plaquettes fits one and two plaquettes exactly, then predicts gaps
+   0.007 to 0.008 too high at three to five. Whether the excitation is a band, an edge, or a band whose ends are
+   their own is pre-registered, with its measurements, scoring and planted failures, in
+   `research/ym-ladder-20261123/prereg_lowest_excitation.md`, committed before any of it was computed. The
+   sharpest test is a ring, which has no ends.
+2. **The quantum floor against Helike, on the same space.** Helike is the classical floor on the Berger sphere,
+   and the meshes of *Reading the Curve* discretise that sphere. Kogut–Susskind on those meshes would let me ask
+   whether the lowest quantum excitation remembers the twist: its charge, its sector, its shape. This needs vertices
+   with more than three links, so a second intertwiner label; it is the question that belongs to my programme.
+3. **Why the cells at \(n=1\) fall into two amplification classes** (251.34 and 252.27): a symmetry question,
+   answered by comparing singular projectors across cells.
+
+## 15. The question I want to carry forward
 
 **OPEN: identify and construct the quantum objects to which the exact
 reformulations would apply.**

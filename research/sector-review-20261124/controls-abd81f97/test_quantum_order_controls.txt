@@ -1,0 +1,15 @@
+test_array_corruption_clears_pass (test_quantum_order_controls.EvidenceTests.test_array_corruption_clears_pass) ... ok
+test_exact_six_control_identities (test_quantum_order_controls.EvidenceTests.test_exact_six_control_identities) ... ok
+test_held_out_coupling_is_refused (test_quantum_order_controls.EvidenceTests.test_held_out_coupling_is_refused) ... ok
+test_incomplete_replay_invalidates_stale_pass (test_quantum_order_controls.EvidenceTests.test_incomplete_replay_invalidates_stale_pass) ... ok
+test_malformed_receipt_invalidates_stale_pass (test_quantum_order_controls.EvidenceTests.test_malformed_receipt_invalidates_stale_pass) ... ok
+test_source_and_snapshot_corruption_clear_pass (test_quantum_order_controls.EvidenceTests.test_source_and_snapshot_corruption_clear_pass) ... ok
+test_wrong_array_identity_is_refused_before_read (test_quantum_order_controls.EvidenceTests.test_wrong_array_identity_is_refused_before_read) ... ok
+test_saved_states_and_report_are_recomputed (test_quantum_order_controls.ReplayTests.test_saved_states_and_report_are_recomputed) ... ok
+test_memory_stop_is_not_complete (test_quantum_order_controls.SupervisorTests.test_memory_stop_is_not_complete) ... ok
+test_worker_reason_preserved (test_quantum_order_controls.SupervisorTests.test_worker_reason_preserved) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.602s
+
+OK

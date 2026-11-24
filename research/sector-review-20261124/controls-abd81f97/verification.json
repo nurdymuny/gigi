@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "cases": 16,
+  "replay": "saved high-precision matrices; not fresh assembly",
+  "certified": false,
+  "separation_verified": false,
+  "scientific_status": "UNRESOLVED"
+}

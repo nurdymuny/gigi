@@ -1,0 +1,154 @@
+[
+  {
+    "mutation": "laplacian_P_27T",
+    "test": "GeneratorIdentities.test_laplacians",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_laplacians (test_ym_helike_j0.GeneratorIdentities.test_laplacians) ... FAIL\n\n======================================================================\nFAIL: test_laplacians (test_ym_helike_j0.GeneratorIdentities.test_laplacians)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j0.py\", line 59, in test_laplacians\n    self.assertAlmostEqual(num_lap(lambda z: gens(z)[x], q), want, delta=1e-4 * max(1, abs(want)))\nAssertionError: np.float64(115.12686608483591) != np.float64(111.01519013972434) within np.float64(0.011101519013972435) delta (np.float64(4.111675945111571) difference)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "grad_dd_sign",
+    "test": "GeneratorIdentities.test_gradient_inner_products",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products) ... FAIL\n\n======================================================================\nFAIL: test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j0.py\", line 52, in test_gradient_inner_products\n    self.assertAlmostEqual(G[x] @ G[y], want, delta=1e-5 * max(1, abs(want)), msg=(x, y))\nAssertionError: np.float64(3.2998495794437503) != np.float64(-3.2998495793531486) within np.float64(3.2998495793531486e-05) delta (np.float64(6.5996991587968985) difference) : (2, 2)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "grad_PD_3Td",
+    "test": "GeneratorIdentities.test_gradient_inner_products",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products) ... FAIL\n\n======================================================================\nFAIL: test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j0.py\", line 52, in test_gradient_inner_products\n    self.assertAlmostEqual(G[x] @ G[y], want, delta=1e-5 * max(1, abs(want)), msg=(x, y))\nAssertionError: np.float64(6.691936696516811) != np.float64(5.018952522684221) within np.float64(5.018952522684221e-05) delta (np.float64(1.6729841738325897) difference) : (1, 2)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "grad_PP_drop_d2",
+    "test": "GeneratorIdentities.test_gradient_inner_products",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products) ... FAIL\n\n======================================================================\nFAIL: test_gradient_inner_products (test_ym_helike_j0.GeneratorIdentities.test_gradient_inner_products)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j0.py\", line 52, in test_gradient_inner_products\n    self.assertAlmostEqual(G[x] @ G[y], want, delta=1e-5 * max(1, abs(want)), msg=(x, y))\nAssertionError: np.float64(1075.4090265146692) != np.float64(1069.7279661472082) within np.float64(0.010697279661472082) delta (np.float64(5.6810603674609865) difference) : (1, 1)\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "drop_cubic_term",
+    "test": "Spectrum.test_matches_nine_variable_gpu_controls",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_matches_nine_variable_gpu_controls (test_ym_helike_j0.Spectrum.test_matches_nine_variable_gpu_controls) ... FAIL\n\n======================================================================\nFAIL: test_matches_nine_variable_gpu_controls (test_ym_helike_j0.Spectrum.test_matches_nine_variable_gpu_controls)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j0.py\", line 142, in test_matches_nine_variable_gpu_controls\n    self.assertAlmostEqual(s[\"energies\"][k], z[f\"B_{key}\"][0, 0], delta=1e-11, msg=(name, key))\nAssertionError: 5.824840146332276 != np.float64(5.430741656341482) within 1e-11 delta (np.float64(0.3940984899907942) difference) : ('N10-g2-1-alpha-1.7.npz', 'vacuum')\n\n----------------------------------------------------------------------\nRan 1 test in 0.121s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "separation_promoted",
+    "test": "OrderingInputs.test_temple_quantities_and_labels",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_temple_quantities_and_labels (test_ym_helike_j0.OrderingInputs.test_temple_quantities_and_labels) ... FAIL\n\n======================================================================\nFAIL: test_temple_quantities_and_labels (test_ym_helike_j0.OrderingInputs.test_temple_quantities_and_labels)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j0.py\", line 154, in test_temple_quantities_and_labels\n    self.assertFalse(o[\"separation_verified\"])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "lapA2_21",
+    "test": "Tables.test_laplacians",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_laplacians (test_ym_helike_j2.Tables.test_laplacians) ... FAIL\n\n======================================================================\nFAIL: test_laplacians (test_ym_helike_j2.Tables.test_laplacians)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j2.py\", line 62, in test_laplacians\n    self.assertLess(np.abs(lhs - tensor_eval(j2.LAP_A[k], self.q)).max(), 1e-4 * max(1, np.abs(lhs).max()))\nAssertionError: np.float64(2.41855143870211) not less than np.float64(0.005320811027331729)\n\n----------------------------------------------------------------------\nRan 1 test in 0.003s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "dirP2_drop_e2",
+    "test": "Tables.test_directional_derivatives",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_directional_derivatives (test_ym_helike_j2.Tables.test_directional_derivatives) ... FAIL\n\n======================================================================\nFAIL: test_directional_derivatives (test_ym_helike_j2.Tables.test_directional_derivatives)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j2.py\", line 57, in test_directional_derivatives\n    self.assertLess(np.abs(lhs - tensor_eval(tp, self.q)).max(), 1e-5 * max(1, np.abs(lhs).max()), (x, k))\nAssertionError: np.float64(1124.6999599148307) not less than np.float64(0.024088963461971178) : (1, 2)\n\n----------------------------------------------------------------------\nRan 1 test in 0.007s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "dirD2_dropped",
+    "test": "Tables.test_directional_derivatives",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_directional_derivatives (test_ym_helike_j2.Tables.test_directional_derivatives) ... FAIL\n\n======================================================================\nFAIL: test_directional_derivatives (test_ym_helike_j2.Tables.test_directional_derivatives)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j2.py\", line 57, in test_directional_derivatives\n    self.assertLess(np.abs(lhs - tensor_eval(tp, self.q)).max(), 1e-5 * max(1, np.abs(lhs).max()), (x, k))\nAssertionError: np.float64(44.147861913747796) not less than np.float64(0.000441478619137478) : (2, 2)\n\n----------------------------------------------------------------------\nRan 1 test in 0.011s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "dirP1_7",
+    "test": "Tables.test_directional_derivatives",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_directional_derivatives (test_ym_helike_j2.Tables.test_directional_derivatives) ... FAIL\n\n======================================================================\nFAIL: test_directional_derivatives (test_ym_helike_j2.Tables.test_directional_derivatives)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j2.py\", line 57, in test_directional_derivatives\n    self.assertLess(np.abs(lhs - tensor_eval(tp, self.q)).max(), 1e-5 * max(1, np.abs(lhs).max()), (x, k))\nAssertionError: np.float64(20.157953705206154) not less than np.float64(0.0016126362982228342) : (1, 1)\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "contract22_d2_3",
+    "test": "Tables.test_contractions",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_contractions (test_ym_helike_j2.Tables.test_contractions) ... FAIL\n\n======================================================================\nFAIL: test_contractions (test_ym_helike_j2.Tables.test_contractions)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j2.py\", line 51, in test_contractions\n    self.assertAlmostEqual(evaluate(p, self.q), want, delta=1e-9 * max(1, abs(want)), msg=(k, l))\nAssertionError: np.float64(1549.759176378359) != np.float64(1777.9192158533106) within np.float64(1.7779192158533106e-06) delta (np.float64(228.16003947495165) difference) : (2, 2)\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "contract12_wrong",
+    "test": "Tables.test_contractions",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_contractions (test_ym_helike_j2.Tables.test_contractions) ... FAIL\n\n======================================================================\nFAIL: test_contractions (test_ym_helike_j2.Tables.test_contractions)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j2.py\", line 51, in test_contractions\n    self.assertAlmostEqual(evaluate(p, self.q), want, delta=1e-9 * max(1, abs(want)), msg=(k, l))\nAssertionError: np.float64(422.2678216216248) != np.float64(196.1942120909799) within np.float64(1.961942120909799e-07) delta (np.float64(226.07360953064492) difference) : (1, 2)\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "tensor_residual_zeroed",
+    "test": "Spectrum.test_branch_carries_measured_tensor_residual",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_branch_carries_measured_tensor_residual (test_ym_helike_j2.Spectrum.test_branch_carries_measured_tensor_residual) ... FAIL\n\n======================================================================\nFAIL: test_branch_carries_measured_tensor_residual (test_ym_helike_j2.Spectrum.test_branch_carries_measured_tensor_residual)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_ym_helike_j2.py\", line 98, in test_branch_carries_measured_tensor_residual\n    self.assertEqual((b[\"low\"], b[\"residual\"], b[\"next_low\"], b[\"next_residual\"]),\nAssertionError: Tuples differ: (9.26900484499189, 0.0, 12.442712380868718, 0.8631380311192874) != (9.26900484499189, 0.20361451315841886, 12.442712380868718, 0.8631380311192874)\n\nFirst differing element 1:\n0.0\n0.20361451315841886\n\n- (9.26900484499189, 0.0, 12.442712380868718, 0.8631380311192874)\n+ (9.26900484499189, 0.20361451315841886, 12.442712380868718, 0.8631380311192874)\n?                      + +++++++++++++++\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.525s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "omit_projected_residual",
+    "test": "ResidualTests.test_projected_eigensolver_error_is_part_of_full_residual",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_projected_eigensolver_error_is_part_of_full_residual (test_sector_review.ResidualTests.test_projected_eigensolver_error_is_part_of_full_residual) ... FAIL\n\n======================================================================\nFAIL: test_projected_eigensolver_error_is_part_of_full_residual (test_sector_review.ResidualTests.test_projected_eigensolver_error_is_part_of_full_residual)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_sector_review.py\", line 23, in test_projected_eigensolver_error_is_part_of_full_residual\n    np.testing.assert_allclose(got['residuals'],[2*np.sin(angle)]*2,rtol=1e-12)\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 1768, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\numpy\\testing\\_private\\utils.py\", line 983, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-12, atol=0\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0]: 0.0 (ACTUAL), 0.01999966666833333 (DESIRED)\n [1]: 0.0 (ACTUAL), 0.01999966666833333 (DESIRED)\nMax absolute difference among violations: 0.01999967\nMax relative difference among violations: 1.\n ACTUAL: array([0., 0.])\n DESIRED: array([0.02, 0.02])\n\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "allow_invalid_exterior",
+    "test": "ResidualTests.test_invalid_unreported_direction_refused",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_invalid_unreported_direction_refused (test_sector_review.ResidualTests.test_invalid_unreported_direction_refused) ... FAIL\n\n======================================================================\nFAIL: test_invalid_unreported_direction_refused (test_sector_review.ResidualTests.test_invalid_unreported_direction_refused)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_sector_review.py\", line 30, in test_invalid_unreported_direction_refused\n    with mp.workdps(60), self.assertRaisesRegex(ArithmeticError,'exterior'):\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ArithmeticError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "loosen_channel_allowance",
+    "test": "RunnerTests.test_common_allowance_catches_false_channel_pass",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_common_allowance_catches_false_channel_pass (test_sector_review.RunnerTests.test_common_allowance_catches_false_channel_pass) ... FAIL\n\n======================================================================\nFAIL: test_common_allowance_catches_false_channel_pass (test_sector_review.RunnerTests.test_common_allowance_catches_false_channel_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_sector_review.py\", line 88, in test_common_allowance_catches_false_channel_pass\n    self.assertEqual(row['allowance'],.01)\nAssertionError: 0.02 != 0.01\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "overwrite_evidence",
+    "test": "RunnerTests.test_existing_evidence_cannot_be_overwritten",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_existing_evidence_cannot_be_overwritten (test_sector_review.RunnerTests.test_existing_evidence_cannot_be_overwritten) ... FAIL\n\n======================================================================\nFAIL: test_existing_evidence_cannot_be_overwritten (test_sector_review.RunnerTests.test_existing_evidence_cannot_be_overwritten)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_sector_review.py\", line 105, in test_existing_evidence_cannot_be_overwritten\n    with tempfile.TemporaryDirectory() as tmp, self.assertRaises(FileExistsError):\n                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: FileExistsError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.101s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "skip_residual_replay",
+    "test": "RunnerTests.test_saved_matrices_reject_forged_residuals",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_saved_matrices_reject_forged_residuals (test_sector_review.RunnerTests.test_saved_matrices_reject_forged_residuals) ... FAIL\n\n======================================================================\nFAIL: test_saved_matrices_reject_forged_residuals (test_sector_review.RunnerTests.test_saved_matrices_reject_forged_residuals)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_sector_review.py\", line 62, in test_saved_matrices_reject_forged_residuals\n    with self.assertRaises(AssertionError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: AssertionError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.035s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "mutation": "leave_stale_status",
+    "test": "RunnerTests.test_failed_receipt_replaces_old_pass",
+    "assertion_rejected": true,
+    "failures": 1,
+    "errors": 0,
+    "output": "test_failed_receipt_replaces_old_pass (test_sector_review.RunnerTests.test_failed_receipt_replaces_old_pass) ... FAIL\n\n======================================================================\nFAIL: test_failed_receipt_replaces_old_pass (test_sector_review.RunnerTests.test_failed_receipt_replaces_old_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_sector_review.py\", line 115, in test_failed_receipt_replaces_old_pass\n    self.assertEqual(json.loads((p/'verification.json').read_text())['status'],'FAIL')\nAssertionError: 'PASS' != 'FAIL'\n- PASS\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.005s\n\nFAILED (failures=1)\n"
+  }
+]

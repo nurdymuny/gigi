@@ -5,9 +5,12 @@ On a lattice with a symmetric transfer matrix T, a preparation x at Euclidean ti
 Where the reflection plane sits decides what the test can see:
 
 * **Through a site** (t ↦ −t): the reflected pairing ⟨x_i, T^(t_i + t_j) x_j⟩ is always the Gram matrix of the
-  vectors T^(t_i) x_i. It is nonnegative whatever T is, so it tests nothing about T (`site_reflection_always_positive`).
-* **Through a link** (t ↦ 1 − t): the pairing ⟨x_i, T^(t_i + t_j − 1) x_j⟩ has an odd power. It is nonnegative when
-  T = SᵀS is a positive operator (`link_reflection_positive`), and one negative eigenvalue of T makes it fail
+  vectors T^(t_i) x_i. It is nonnegative whatever T is, so in this already-constructed positive Hilbert space it
+  cannot detect the sign of T (`site_reflection_always_positive`). This is not a claim that site reflection
+  positivity is vacuous as a condition on Euclidean correlations in general.
+* **Through a link** (t ↦ 1 − t): the pairing ⟨x_i, T^(t_i + t_j − 1) x_j⟩ = ⟨T^(t_i − 1) x_i, T · T^(t_j − 1) x_j⟩
+  has one central, unsquared T (the exponent itself need not be odd). It is nonnegative when T = SᵀS is a positive
+  operator (`link_reflection_positive`), and a negative eigenvalue of T that the preparations reach makes it fail
   (`link_reflection_detects_negative`).
 
 So the lattice form of the note's test is positivity of the transfer matrix, read through link reflection. The

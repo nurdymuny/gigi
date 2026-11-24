@@ -13,9 +13,14 @@ above the ground state into "weighted squared gradient" — the configuration-sp
 gauge theory's configuration space, discretised, is such a graph; `scripts/ym_geometry_tests.py` (T8) checks the
 identity on the Kogut–Susskind SU(2) plaquette to 10⁻¹⁵.
 
-Note: the identity uses only `H ψ = E₀ ψ`; it holds for every eigenvector. What the ground state adds is positivity
-of the weights ψ_i ψ_j (`dirichlet_nonneg`). A sign-changing eigenvector gives negative weights: no measure, no
-Poincaré inequality (gate F3 of T8).
+Scope: real symmetric weights, real potential, a real eigenvector ψ, and **real** f. For complex f the same identity
+holds with |f_i − f_j|² on the right; with (f_i − f_j)² it fails (two sites, H = [[1,−1],[−1,1]], ψ = (1,1)/√2,
+f = (1, i): the left side is 1, the unmodulated square gives −i).
+
+The identity uses only `H ψ = E₀ ψ`; it holds for every eigenvector. A sign-changing real eigenvector still defines
+the measure ν_i = ψ_i²; what fails is the nonnegativity of the edge form, because some weights ψ_i ψ_j are negative.
+The usual Dirichlet form and weighted Poincaré statement need κ ≥ 0, nonnegative symmetric weights and a strictly
+positive ground state (`dirichlet_nonneg`), with the kernel and any disconnected components accounted for.
 -/
 import Mathlib
 

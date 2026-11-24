@@ -2,8 +2,10 @@
 YANG–MILLS REQUIREMENTS AS GEOMETRIC OBJECTS, Section 7: the gap as the shape of fixed-energy sets.
 
 The note's equivalence "a positive gap ⇔ the fixed-energy sublevel set is bounded, with radius √(E*/Δ)" needs no
-spectral theorem. It is a fact about any energy that scales quadratically: q(c•x) = c²·q(x), q ≥ 0, and q(x) > 0
-off the vacuum. Here `E` stands for the vacuum-orthogonal form domain; the vacuum has already been removed, which is
+spectral theorem. Its hypotheses: a real normed space E standing for the vacuum-orthogonal form domain; an energy q
+that is nonnegative, quadratic under scaling (q(c•x) = c²·q(x)) and positive on every nonzero vector of E; a
+positive budget E*; and, for the exact supremum radius, the sharp lower constant Δ (`sublevel_radius_sharp`). The
+supremum need not be attained. Quadratic scaling alone is not the whole theorem. Here `E` stands for the vacuum-orthogonal form domain; the vacuum has already been removed, which is
 exactly the hypothesis `pos` (without it, a zero-energy direction makes the sublevel set unbounded: see `vacuum_kept`).
 -/
 import Mathlib

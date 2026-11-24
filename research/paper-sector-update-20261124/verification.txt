@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "scientific_status": "UNRESOLVED",
+  "tested_cases": 15,
+  "pages": 15,
+  "figures": 8
+}

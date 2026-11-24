@@ -23,6 +23,10 @@ def main():
             raise ValueError("source receipt changed")
         if manifest["source_verification_sha256"] != report.digest(report.RUN/"verification.json"):
             raise ValueError("source verification changed")
+        if manifest["sector_receipt_sha256"] != report.digest(report.SECTOR_RUN/"receipt.json"):
+            raise ValueError("sector receipt changed")
+        if manifest["sector_verification_sha256"] != report.digest(report.SECTOR_RUN/"verification.json"):
+            raise ValueError("sector verification changed")
         if manifest["builder_sha256"] != report.digest(Path(report.__file__)):
             raise ValueError("builder changed after artifact generation")
         if manifest["latex_sha256"] != report.digest(report.OUT/"report.tex"):
@@ -33,6 +37,9 @@ def main():
         _, payload = report.load_evidence()
         if json.loads((report.OUT/"plot-data.json").read_text()) != payload:
             raise ValueError("plot data differs from the authoritative receipt")
+        _, sectors = report.load_sector_evidence()
+        if json.loads((report.OUT/"sector-plot-data.json").read_text()) != json.loads(json.dumps(sectors)):
+            raise ValueError("sector plot data differs from authoritative receipt")
         stream = io.StringIO()
         suite = unittest.defaultTestLoader.loadTestsFromModule(tests)
         tested = unittest.TextTestRunner(stream=stream, verbosity=2).run(suite)
@@ -45,6 +52,15 @@ def main():
              'False or', "ReportTests.test_missing_case_and_changed_level_weight_are_refused"),
             ("flipped_quadrature", "quadratures", 'return bc, bs',
              'return bc, -bs', "ReportTests.test_geometry_is_the_declared_tensor_not_artwork"),
+            ("sector_gate_removed", "make_sector_payload",
+             'm["residual_gate"] != gates or m["conservative_residual_gate"] != strict',
+             'False', "SectorReportTests.test_rejects_loose_allowance_and_forged_residual_pass"),
+            ("sector_certification_promoted", "make_sector_payload",
+             'verification.get("certified") is not False or', 'False or',
+             "SectorReportTests.test_rejects_false_certification_and_failed_precision"),
+            ("sector_arithmetic_unchecked", "make_sector_payload",
+             'not math.isclose(m[key], value, rel_tol=0, abs_tol=1e-13)', 'False',
+             "SectorReportTests.test_rejects_nonfinite_residual_and_changed_gap"),
         ]
         rejected = []
         for name, function, old, new, gate in mutations:
@@ -58,23 +74,27 @@ def main():
                 trial = unittest.TextTestRunner(stream=log).run(unittest.defaultTestLoader.loadTestsFromName(gate, tests))
             if trial.wasSuccessful():
                 raise ValueError("removed mechanism was accepted: " + name)
+            if trial.errors or not trial.failures:
+                raise ValueError("mutation must fail by assertion, not an unexpected error: " + name)
             rejected.append({"name": name, "rejected": True, "test_output": log.getvalue()})
         with fitz.open(report.OUT/"report.pdf") as pdf:
             if pdf.metadata.get("author"):
                 raise ValueError("report has an author metadata field")
-            if len(pdf) != 7:
+            if len(pdf) != 15:
                 raise ValueError(f"unexpected pagination: {len(pdf)}")
             text = "\n".join(page.get_text() for page in pdf)
             if "UNRESOLVED" not in text or "99.154" not in text:
                 raise ValueError("result or qualification missing from PDF")
-            if any(f"Figure {n}:" not in text for n in range(1, 6)):
+            if any(f"Figure {n}:" not in text for n in range(1, 9)):
                 raise ValueError("a required figure caption is missing")
+            if "0.002774" not in text or "0.004552" not in text or "FULL-OPERATOR ERROR" not in text:
+                raise ValueError("new numerical result or mathematical derivation missing")
             for page in pdf:
                 for word in page.get_text("words"):
                     if not page.rect.contains(fitz.Rect(*word[:4])):
                         raise ValueError("text outside the page")
         result.update(status="PASS", scientific_status="UNRESOLVED", tested_cases=tested.testsRun,
-                      rejected_mutations=rejected, pages=7, figures=5, empty_author_metadata=True,
+                      rejected_mutations=rejected, pages=15, figures=8, sector_cases=16, empty_author_metadata=True,
                       artifact_manifest_sha256=report.digest(report.OUT/"artifact-manifest.json"),
                       verifier_sha256=report.digest(Path(__file__)), test_output=stream.getvalue(),
                       disclosure="Report integrity PASS is not scientific convergence PASS; visual review is separate.")

@@ -1,7 +1,7 @@
 \documentclass[11pt,letterpaper]{article}
 \usepackage[margin=0.72in,headheight=15pt,headsep=18pt,footskip=25pt]{geometry}
 \usepackage[T1]{fontenc}
-\usepackage{amsmath}
+\usepackage{amsmath,amssymb}
 % Font settings from ../dgstyle.tex; retain this report's author-free layout.
 \usepackage{newpxtext}
 \usepackage[slantedGreek]{newpxmath}
@@ -14,11 +14,11 @@
 \definecolor{teal}{HTML}{176F78}
 \definecolor{gold}{HTML}{A16623}
 \definecolor{muted}{HTML}{65767D}
-\hypersetup{pdftitle={Helike as a Probe of a Quantum Yang-Mills Model},pdfauthor={},pdfsubject={Verified finite-cutoff GPU survey; convergence unresolved}}
+\hypersetup{pdftitle={Helike as a Probe of a Quantum Yang-Mills Model},pdfauthor={},pdfsubject={Geometric probes, invariant-sector construction and verified full-operator residuals}}
 \pagestyle{fancy}\fancyhf{}
 \fancyhead[L]{\sffamily\scriptsize\color{muted} GIGI / COMPUTATIONAL RESEARCH}
-\fancyhead[R]{\sffamily\scriptsize\color{muted} 23 NOVEMBER 2026}
-\fancyfoot[L]{\sffamily\scriptsize\color{muted} HELIKE QUANTUM PROBE / FINITE-CUTOFF REPORT}
+\fancyhead[R]{\sffamily\scriptsize\color{muted} UPDATED 24 NOVEMBER 2026}
+\fancyfoot[L]{\sffamily\scriptsize\color{muted} HELIKE QUANTUM PROBE / WORKING PAPER}
 \fancyfoot[R]{\sffamily\small\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
 \setlength{\parindent}{0pt}\setlength{\parskip}{7pt}
@@ -31,12 +31,50 @@
 \newcommand{\runid}{\texttt{20261124T021903Z-c326a3c5}}
 \begin{document}
 \color{ink}
-\eyebrow{EXPERIMENTAL REPORT / REGISTERED MODEL, PROBES AND THRESHOLDS}
+\eyebrow{WORKING PAPER / GEOMETRIC PROBES AND VERIFIED SECTOR REFINEMENT}
 {\fontsize{28}{31}\selectfont Helike as a Probe of a\\Quantum Yang--Mills Model\par}
 \vspace{6pt}
-{\large A geometric response measured on the GPU, with its convergence limits retained.}
+{\large From a classical geometric direction to residual-controlled quantum states.}
 
-\textbf{Abstract.} A gauge-invariant probe derived from Helike's homogeneous
+\textbf{Abstract.} We map the homogeneous member of Helike to gauge-invariant
+observables in a published SU(2) Yang--Mills sphere matrix model. Following an
+all-spin GPU survey, we construct its scalar invariant ring and spin-2 covariant
+module directly, retaining the same Hamiltonian, domain and signed determinant.
+Exact rational Gaussian moments assemble both the projected Hamiltonian and
+the Gram matrix of its unprojected action. This gives the full-operator residual,
+including numerical eigensolver error, rather than only a small finite-matrix
+residual. Across two frozen controls and eight cutoffs, the vacuum and first
+scalar and tensor states jointly meet the shared residual allowance at $N=20$;
+all three also satisfy $\epsilon\leq0.01$ from $N=22$. At $N=24$, the two sector
+matrices have dimensions 169 and 244. All 16 cases and four precision reassemblies
+pass evidence verification. This clears a measured residual bottleneck in the
+selected model; full-spectrum and continuum conclusions remain separate tasks.
+
+\fig{06-sector-residuals}{The new result: full-operator residuals at every registered
+cutoff, with no fitted curve. The dashed allowance is shared by the vacuum and
+both target sectors; the dotted line is the stronger fixed $0.01$ check.
+Both controls first pass jointly at $N=20$, and pass the stronger check at
+$N=22$. The lines join measured points; they do not prove an asymptotic rate.}
+
+\textbf{Why this matters.} The calculation no longer asks a large undifferentiated
+basis to rediscover the scalar and tensor structure. It builds that structure
+explicitly, then measures what the full operator still pushes outside it.
+The improvement is achieved by a mathematically faithful change of representation
+and larger cutoffs, not a changed physical model or relaxed tolerance.
+
+\textbf{Contribution.} A geometry-derived probe, explicit invariant/covariant
+operator calculus, and replayable full-residual validation are presented together.
+Symmetry reduction and variational diagonalization have established precedents;
+the particular construction and its measured results are the contribution
+documented here, not a claim that those ingredients were first invented here.
+
+\newpage
+\pagetitle{SURVEY / 23 NOVEMBER 2026}{The initial geometric response}
+This section preserves the original all-spin survey. Its response weights were
+not recomputed in the later sector run. Its convergence verdict remains attached
+to that experiment, not substituted for the new residual result.
+
+\textbf{Original survey summary.} A gauge-invariant probe derived from Helike's homogeneous
 geometry is evaluated in a published SU(2) Yang--Mills matrix model on the round
 three-sphere. An unrestricted colour-singlet calculation within each finite
 basis supplies the reference spectrum. At the largest registered cutoff,
@@ -56,25 +94,25 @@ All three cases remain \textbf{UNRESOLVED} under the convergence contract.}
 shape-selective response in an external quantum model. They are compared against
 the whole physical finite spectrum, not a spectrum restricted to look like the probe.
 
-\textbf{What remains open.} The identity and energy of the true lowest excitation
-have not settled under basis growth. The matched-control efficiency comparison
-was therefore not run. This report makes no claim of a continuum mass gap,
+\textbf{What this survey left open.} The identity and energy of the true lowest excitation
+had not settled under basis growth. The matched-control efficiency comparison
+was therefore not run. This paper makes no claim of a continuum mass gap,
 computational advantage, or a result for the full four-dimensional theory.
 
 \newpage
 \pagetitle{01 / EXACT GEOMETRY}{The probe preserves a direction, not just a number}
 The model coordinate $M\in\mathbb{R}^{3\times3}$ has spatial rows and colour
 columns. Colour rotations act on the right. Thus $S=MM^T$ is gauge invariant.
-The two real quadratures of the homogeneous member of Helike are
+The classical field comes from the Floor manuscript [7]. The two real
+quadratures of its homogeneous member are
 \[
  B_c=\frac1{\sqrt2}\begin{pmatrix}0&0&0\\0&1&0\\0&0&-1\end{pmatrix},\qquad
  B_s=\frac1{\sqrt2}\begin{pmatrix}0&0&0\\0&0&1\\0&1&0\end{pmatrix}.
 \]
-\fig{02-probe-geometry}{Exact directional signatures of the two declared tensors.
-Colour is $n^TBn$ on $\|n\|=1$, with the same camera and colour scale in both
-panels. These are calculated quadratic forms, not simulated vacuum shapes or
-quantum eigenfunctions. The sphere's radius is constant; only its colour changes.
-Coordinates use the registered spatial order $(0,1,2)$.}
+\fig{02-probe-geometry}{Exact signatures $n^TBn$ on $\|n\|=1$, with one camera
+and colour scale. Only the fixed-radius sphere's colour changes. These are
+declared quadratic forms, not vacuum shapes or quantum eigenfunctions.
+Coordinates use the registered order $(0,1,2)$.}
 
 Define $O_a(M)=\operatorname{tr}(B_aMM^T)$. At the mapped classical reference
 connection $M_*=I/2$,
@@ -94,9 +132,8 @@ A separate scalar channel is their squared strength:
 \]
 \textbf{H0 is a quartic composite, not the original linear eigenfield.}
 From a spin-0 vacuum, H2 couples to spin 2 and H0 to spin 0. Neither observable
-is expected to detect every symmetry sector. Only the homogeneous classical
-member is translated here; the Berger floor theorem is not imported as a
-quantum conclusion on the round sphere.
+detects every sector. Only the homogeneous classical member is translated;
+the Berger floor theorem is not imported as a quantum conclusion.
 
 \newpage
 \pagetitle{02 / MEASURED RESPONSE}{Where the geometry lands in the spectrum}
@@ -191,11 +228,12 @@ the maximum low-level projector difference was $1.646\times10^{-12}$, both below
 the registered $10^{-10}$ limit. This high numerical precision does not erase
 the exterior residuals shown above.
 
-\textbf{Verdict: UNRESOLVED, with reproducible finite-cutoff observations.}
+\textbf{Original survey verdict: UNRESOLVED.}
 The random-seed and scalar-trace utility comparisons remain \texttt{NOT\_RUN}
 because their convergence prerequisite failed. There is no hidden failed
 comparator from which an advantage is inferred. A new approximation strategy
-or a larger run requires a separate dated amendment.
+or a larger run requires a separate dated amendment. The sector refinement
+reported later follows the 24 November protocol; it does not erase this history.
 
 \newpage
 \pagetitle{05 / METHODS AND EVIDENCE}{A published Hamiltonian and a replayable calculation}
@@ -239,11 +277,9 @@ commit. Evidence replay returned \texttt{VERIFIED}, 15 cases,
 {\small\texttt{ed5d3cf5209bb8cecd6d97c4f0df3065af90363e}}. Per-file hashes identify
 the actual experimental implementation. No server endpoint was changed or deployed.
 
-\textbf{Reuse.}
-Every figure is supplied as PDF, SVG and PNG. The captions and equations are
-editable LaTeX. CSV and JSON exports retain the plotted values, including tiny
-weights. The accompanying README gives one-command figure/report generation
-and the evidence-replay command. Numerical tables are generated from the receipt.
+\textbf{Reuse.} Figures are supplied as PDF, SVG and PNG, with editable LaTeX
+captions and receipt-generated tables. Separate CSV and JSON exports preserve
+the original survey and the new sector controls without merging their scope.
 
 \vspace{5pt}
 {\small\raggedright
@@ -259,7 +295,380 @@ and the evidence-replay command. Numerical tables are generated from the receipt
 }
 
 \newpage
-\pagetitle{06 / NEXT EXPERIMENTAL LAYER}{Use GIGI to connect evidence across models}
+\pagetitle{06 / SCALAR CONSTRUCTION}{Put the operator in the geometry's own coordinates}
+Let $x=\sqrt{\alpha}\,q$ and, on this page onward, set
+\[
+ G=xx^T,\qquad T=\operatorname{tr}G,\qquad
+ P=\operatorname{tr}G^2,\qquad d=\det x.
+\]
+Spatial rows and colour columns match the probe convention. The sector source
+uses the transposed convention, $x_{\rm code}=x^T$ and
+$G=x_{\rm code}^Tx_{\rm code}$; traces, determinant, Laplacian and the spatial
+tensor are unchanged. This is an index convention, not an extra physical map.
+
+\textbf{The complete scalar polynomial space at a cutoff.}
+Colour- and spatial-rotation invariants are generated by $T,P,d$. The elementary
+symmetric functions of the squared singular values are
+$T,(T^2-P)/2,d^2$. Keeping $d$, rather than replacing it by $|d|$, retains the
+orientation information to which the cubic interaction couples. Thus
+\[
+ \mathcal V_N^{(0)}=\operatorname{span}\left\{
+ T^aP^bd^c e^{-T/2}:a,b,c\geq0,\quad 2a+4b+3c\leq N\right\}.
+\]
+This is a complete scalar polynomial sector at degree $N$, not a complete
+finite-dimensional description of the infinite Hilbert space. Rotation averaging
+preserves degree, so it is the scalar part of the original cutoff space.
+
+\textbf{The inherited geometry supplies the differential operator.}
+With $u=(T,P,d)$, the Cartesian Laplacian acts on $F(u)$ as
+\[
+ \Delta_x F=\sum_{i,j}\Gamma_{ij}\partial_i\partial_jF
+               +18\partial_TF+28T\partial_PF,
+\quad
+ \Gamma=\begin{pmatrix}
+ 4T&8P&6d\\
+ 8P&-8T^3+24TP+48d^2&4Td\\
+ 6d&4Td&(T^2-P)/2
+ \end{pmatrix}.
+\]
+Here $\Gamma_{ij}=\nabla_xu_i\cdot\nabla_xu_j$ is the induced co-metric of
+the invariant coordinates. It is not a fitted covariance matrix. It can
+degenerate on singular orbits; the calculation retains the original Cartesian
+measure and regular domain rather than declaring a flat measure in $(T,P,d)$.
+
+For a homogeneous monomial $m$ of degree $D=2a+4b+3c$, the polynomial action is
+\begin{align*}
+ e^{T/2}H(me^{-T/2})={}&
+ \alpha\left[-\tfrac12\Delta_xm+(D+\tfrac92)m-\tfrac T2m\right]
+ +\frac{T}{2\alpha}m-\frac{3g}{\alpha^{3/2}}dm
+ +\frac{g^2}{4\alpha^2}(T^2-P)m.
+\end{align*}
+The action stays in the untruncated invariant ring but can exceed degree $N$.
+Those higher-degree terms are retained when measuring the residual.
+
+\textbf{Exact integration, not sampled integration.}
+Write $\langle F\rangle=\pi^{-9/2}\int F(x)e^{-T}\,d^9x$. Integration by parts gives
+\[
+ \langle\nabla F\cdot\nabla u\rangle+\langle F\Delta u\rangle
+ =\langle F\nabla T\cdot\nabla u\rangle.
+\]
+Using $u=T,P,d$ yields terminating rational recurrences for every polynomial
+moment. For example $\langle T^a\rangle=(2a+7)\langle T^{a-1}\rangle/2$,
+$\langle T\rangle=9/2$, and $\langle d^2\rangle=3/4$.
+No Monte Carlo error or integration grid enters these moments.
+
+\newpage
+\pagetitle{07 / TENSOR CONSTRUCTION}{Retain the turning shape, not five duplicate solves}
+The Helike-derived quadratic observable pairs a trace-free spatial tensor with
+$G$. Its natural spin-2 carrier is therefore the trace-free part of $G$.
+That first carrier alone is not the full sector. Define
+\[
+ A_1=\operatorname{dev}G,\qquad A_2=\operatorname{dev}(G^2),\qquad
+ \operatorname{dev}X=X-\tfrac13\operatorname{tr}(X)I.
+\]
+For a generic diagonal $G$, its rotation stabilizer forces a symmetric equivariant
+tensor to be diagonal in the same frame. Polynomial covariance and Cayley--Hamilton
+reduce its generators to $I,G,G^2$; removing the trace leaves $A_1,A_2$.
+Scalar factors belong to $\mathbb R[T,P,d]$. The cutoff module is
+\[
+ \mathcal V_N^{(2)}=\operatorname{span}\{mA_ke^{-T/2}:
+             k=1,2,\ \deg m+2k\leq N\}.
+\]
+It retains every tensor polynomial in this sector, not just the probe's two
+initial quadratures. The following exact identities close its kinetic action:
+\[
+\begin{array}{c|cc}
+ &A_1&A_2\\\hline
+ \nabla T\cdot\nabla&4A_1&8A_2\\
+ \nabla P\cdot\nabla&8A_2&16(TA_2-e_2A_1)\\
+ \nabla d\cdot\nabla&0&4dA_1\\
+ \Delta_x&0&22A_1
+\end{array}
+\qquad e_2=(T^2-P)/2.
+\]
+The product rule $\Delta(mA_k)=(\Delta m)A_k+
+2\sum_u(\partial_um)(\nabla u\cdot\nabla A_k)+m\Delta A_k$
+then reduces every matrix entry to the same scalar moments. For instance,
+\[
+ A_1:A_1=P-T^2/3,\qquad
+ A_1:A_2=-T^3/2+7TP/6+3d^2.
+\]
+Frobenius contraction sums five components. Rotational invariance gives each
+member one fifth of the Gram entries; the common factor cancels in normalized
+energies and residuals. One matrix thus represents complete five-state multiplets.
+
+\fig{07-sector-dimensions}{Exact basis counts, not runtime measurements. At
+$N=24$, the all-spin colour-singlet polynomial space has 26,572 states; the
+scalar solve uses 169 functions and the tensor solve 244 multiplets. Other spins
+are not included in these two solves. The gray curve counts an unexecuted
+all-spin extension; it is not a measured performance baseline.}
+
+The counts follow $h_0(z)=[(1-z^2)(1-z^3)(1-z^4)]^{-1}$ and
+$h_2(z)=(z^2+z^4)h_0(z)$, summed through $N$. The all-spin count is
+$\binom{\lfloor N/2\rfloor+6}{6}+\binom{\lfloor(N-3)/2\rfloor+6}{6}$.
+At matching cutoffs and widths, sector energies and residuals agree with all
+six saved nine-variable control calculations. The smaller representation does
+not artificially lower the error at the same cutoff; it makes further refinement practical.
+
+\newpage
+\pagetitle{08 / FULL-OPERATOR ERROR}{Measure the part the finite matrix cannot see}
+A small residual inside a diagonalized finite matrix does not test the discarded
+states. We instead compute the norm of the original Hamiltonian acting on the
+approximate wavefunction, including its component outside the trial space.
+
+For basis functions $\phi_i$, assemble three Gram matrices:
+\[
+ S_{ij}=\langle\phi_i,\phi_j\rangle,\qquad
+ H_{ij}=\langle\phi_i,H\phi_j\rangle,\qquad
+ K_{ij}=\langle H\phi_i,H\phi_j\rangle.
+\]
+Crucially, $H\phi_j$ in $K$ is the unprojected polynomial action. Substituting
+the square of the finite Hamiltonian would remove precisely the error being tested.
+Let $S=LL^T$ and orthonormalize to
+\[
+ \widetilde H=L^{-1}HL^{-T},\quad
+ \widetilde K=L^{-1}KL^{-T},\quad
+ X=\widetilde K-\widetilde H^2.
+\]
+If $U$ maps coefficient vectors isometrically into the Hilbert space and
+$\Pi=UU^*$, then
+\[
+ X=U^*H(I-\Pi)HU\succeq0.
+\]
+This is the Gram matrix of the escaped operator action, not an estimated
+tail based on differences between successive eigenvalues.
+
+\textbf{Orthogonal residual decomposition.}
+For the returned numerical eigenpair $(E,v)$, let $\psi=Uv/\|v\|$. Since
+the retained and discarded components are orthogonal,
+\begin{align*}
+ (H-E)Uv&=(I-\Pi)HUv+U(\widetilde H v-Ev),\\
+ \epsilon^2=\|(H-E)\psi\|^2
+ &=\frac{v^TXv+\|\widetilde H v-Ev\|^2}{v^Tv}.
+\end{align*}
+The second term is retained even when the finite eigensolve appears accurate.
+The identity is exact for the mathematical matrices. Its implementation is
+mixed-precision floating-point arithmetic, not an interval certificate.
+
+\textbf{Precision policy.}
+Moments are rational. Assembly, Cholesky whitening, subtraction in $X$, and the
+final residual contractions use 60 decimal digits. NumPy diagonalization uses
+float64. Each top-cutoff sector is freshly reassembled at 100 digits; the six
+reported energies and residuals agree at stored output precision. This does
+not imply 100-digit eigenvalue accuracy. Gram-conditioning checks and a
+$-10^{-12}$ exterior-eigenvalue refusal guard the computation. Only tiny negative
+contractions within an explicitly reported precision-scaled roundoff allowance
+are floored to zero; materially negative values are refused.
+
+\textbf{What the norm means.}
+For a normalized vector in a self-adjoint operator's domain,
+$\operatorname{dist}(E,\sigma(H))\leq\epsilon$. This is a statement about
+proximity to some spectral value, not its index. It does not by itself identify
+the vacuum, prove the lowest excited state, certify a Temple denominator, or
+bound a gap by subtracting two Ritz estimates. These familiar residual principles
+are used here to test the geometry-derived calculation, not claimed as new theorems.
+
+\newpage
+\pagetitle{09 / MEASURED ADVANCE}{The local residual bottleneck is cleared}
+The frozen controls are $(g^2,\alpha)=(1,1.7)$ and $(2,2.3)$, with
+$N=10,12,14,16,18,20,22,24$. No held-out coupling was run. At each cutoff the
+same allowance is applied to the vacuum and both first sector excitations:
+\[
+ a_N=0.01\max\{1,\min(E_s-E_0,E_t-E_0)\}.
+\]
+This is explicitly a two-sector allowance, not a verified global gap.
+Both controls first satisfy all three tests at $N=20$. From $N=22$, all three
+also meet $\epsilon\leq0.01$, independently of that sector-gap estimate.
+
+\begin{center}\small\input{generated/sector-residuals.tex}\end{center}
+The table gives first scalar and tensor residuals. At $N=24$, the vacuum
+residuals are $0.000633454$ and $0.000649068$. Some higher reported states
+have larger residuals: the next tensor's is $0.015631922$ at $g^2=1$ and
+$0.036781034$ at $g^2=2$. The target-state result is not promoted to all levels.
+
+\textbf{Why this is a stronger result than stable-looking energies.}
+At $g^2=1$, the scalar residual falls from $0.347055$ at $N=10$ to $0.002774$
+at $N=24$; at $g^2=2$ it falls from $0.416759$ to $0.004793$.
+These norms test the original Hamiltonian acting on the represented states.
+They do not infer accuracy merely because two successive energy estimates
+look similar. The tensor and vacuum undergo the same check, rather than
+being assigned the scalar's error estimate.
+
+\textbf{What was held fixed.}
+The coupling, Gaussian width within each control, domain, Hamiltonian and
+acceptance rule remain fixed while the nested polynomial space grows.
+The sector representation removes the need to assemble unrelated spin blocks;
+it does not remove the higher-degree action of the operator. That action is
+precisely what the exterior Gram measures. Exact sector reduction preserves
+the target problem, and refinement reduces its observed residual.
+
+\textbf{Evidence checks address different failure modes.}
+\begin{itemize}
+\item Low-cutoff agreement with the nine-variable implementation checks the
+      sector construction against an independent implementation.
+\item Exact-moment and Cartesian derivative controls check the operator tables.
+\item Free-oscillator and nested-cutoff tests check normalization and variational behavior.
+\item Four top-cutoff reassemblies check sensitivity to assembly precision.
+\item Saved-matrix replay checks every reported energy, residual and verdict
+      against its retained matrices; it is not fresh physical assembly.
+\end{itemize}
+Together these support the stated numerical result. They do not replace
+certified spectral separation or the unrun higher-spin comparison.
+
+\newpage
+\pagetitle{09 / BRANCHES AND EVIDENCE}{Follow the scalar and tensor branches separately}
+
+\fig{08-sector-energies}{The two sector excitation estimates, followed separately.
+The scalar Ritz excitation lies lower at $g^2=1$ and the tensor at $g^2=2$.
+These are two controls, not a measured crossing curve in coupling. No error
+bars are drawn because no certified level-specific enclosures were established.}
+
+\begin{center}\small\setlength{\tabcolsep}{4pt}
+\input{generated/sector-levels.tex}\end{center}
+At $N=24$, $E_t-E_s$ is $+0.354777733$ and $-0.075701850$ respectively.
+The conditional Temple ordering survives the registered halved-separation test,
+but the separation is still assumed from Ritz data. The unconditional ordering
+therefore remains \texttt{ORDER\_UNRESOLVED}. Displayed digits reproduce the
+stored calculation, not a claim of nine-digit physical accuracy.
+
+\textbf{Keep the probe map and normalization explicit.}
+With $M=gq=gx/\sqrt\alpha$ and $G=xx^T$, the original observables are
+\[
+ O_A=\frac{g^2}{\alpha}\,B_A:A_1,\qquad
+ O_0=\frac{g^4}{\alpha^2}\,A_1:A_1
+     =\frac{g^4}{\alpha^2}(P-T^2/3).
+\]
+Thus the geometric direction and its scalar strength belong to exactly the
+modules being refined. This algebraic bridge does not supply a new transition
+weight: recomputing $QO_A\Omega$ and its discarded tail at higher cutoffs is
+still required. The present improvement is in the candidate quantum states
+and their full-operator residuals.
+
+\textbf{Execution and evidence.} All 16 cases, four 100-digit reassemblies and
+36 saved matrix archives pass replay. The run's 69 focused tests and 19 rejected
+mechanism removals are retained. Runtime was 828.343 seconds (13.8 minutes),
+with 288.9 MiB peak sampled worker memory, CPU only and one BLAS thread.
+This is a recorded resource result, not a matched CPU/GPU speedup comparison.
+
+\newpage
+\pagetitle{10 / POTENTIAL GEOMETRY}{The same operator exposes its wells and an exact floor}
+In this section $T_q=\operatorname{tr}(qq^T)$ and $d_q=\det q$ refer to the
+physical coordinate $q$, not the width-scaled coordinate $x$. Define
+\[
+ W(q)=\tfrac12T_q-gd_q,\qquad
+ \nabla W=q-g\operatorname{cof}q.
+\]
+The cofactor identities
+$q:\operatorname{cof}q=3d_q$ and
+$\|\operatorname{cof}q\|^2=(T_q^2-\operatorname{tr}((qq^T)^2))/2$
+give the potential exactly:
+\[
+ \tfrac12\|\nabla W\|^2
+ =\tfrac12T_q-3gd_q+
+ \tfrac{g^2}{4}\{T_q^2-\operatorname{tr}((qq^T)^2)\}=V(q).
+\]
+Since $\Delta d_q=0$ and $\Delta T_q=18$, $\Delta W=9$. On the registered
+regular Cartesian domain, with $\mathcal A=\nabla+\nabla W$,
+\[
+ H=\tfrac12\mathcal A^*\mathcal A+\tfrac92\ \geq\ \tfrac92.
+\]
+This is a floor relative to the declared energy origin. It is \emph{not} the
+vacuum-to-excitation gap. Saturation would require $\psi\propto e^{-W}$,
+which is not normalizable for $g>0$: the cubic term produces open directions
+of growth. Nonattainment alone does not prove a strictly separated spectral
+infimum. Every computed ground energy satisfies the non-strict floor.
+
+\textbf{The wells are geometric sets.}
+Solving $q=g\operatorname{cof}q$ gives $q=0$ and $q=O/g$, $O\in SO(3)$.
+A nonzero singular matrix cannot solve this equation: its cofactor has a
+different rank. For an invertible solution, multiplication by $q^T$ gives
+$q^Tq=g\det(q)I$, forcing the stated orientation-preserving orbit.
+Thus the second well is not just another point in nine coordinates.
+
+\textbf{An explicit connecting path, not just an endpoint difference.}
+For fixed $O\in SO(3)$, put
+\[
+ q(t)=\frac{a(t)}gO,\qquad
+ a(t)=\frac1{1+e^{-(t-t_0)}}.
+\]
+Then $\dot a=a(1-a)$ and $\dot q=\nabla W(q)$, so the Euclidean action
+square-completes as
+\begin{align*}
+ S_E&=\int\left(\tfrac12\|\dot q\|^2+\tfrac12\|\nabla W\|^2\right)dt\\
+ &=\tfrac12\int\|\dot q-\nabla W\|^2dt+W(q_+)-W(q_-)\\
+ &=\frac1{2g^2}\quad\text{on this path}.
+\end{align*}
+This provides a checkable connection between the signed determinant, well
+geometry and the declared model. Superpotential/instanton structure in
+Yang--Mills matrix mechanics has precedents [6]; this calculation is not a
+claim of priority for that structure. It does not determine the quantum
+excitation gap from the action alone.
+
+\newpage
+\pagetitle{11 / CONTRIBUTION AND CONTEXT}{What is distinctive, and what is inherited}
+\textbf{The research question is geometric.}
+Instead of starting from a low eigenvalue and naming it, we start from a
+specified classical field direction. Its quadratic observable has the exact
+first variation $\nabla O_a(M_*)=B_a$. Its rotational orbit defines a tensor
+channel; its squared strength defines a separate scalar channel. The reference
+Hamiltonian is not fitted to either. The all-spin survey tests where those
+observables land, and the sector construction makes their relevant spectral
+branches accessible to tighter full-operator error checks.
+
+\textbf{Established ingredients deserve explicit attribution.}
+Pavel [4] uses symmetric gauge variables, elementary symmetric polynomials,
+harmonic-oscillator trial states and spin-resolved variational calculations in
+spatially constant SU(2) Yang--Mills mechanics. That is a close methodological
+precedent, though not the same sphere Hamiltonian with its quadratic and signed
+cubic terms. Acharyya et al. [5] compute low-lying spectra variationally in an
+SU(3) sphere matrix model. The model and its boundary-domain issues are inherited
+from [1,2]. Rayleigh--Ritz reduction, Gaussian integration, representation theory
+and residual estimates are not inventions of this study.
+
+\textbf{The construction documented here.}
+The contribution is the explicit chain from the Helike direction through
+gauge-invariant probes to the $\mathbb R[T,P,d]$ calculus and two-generator
+spin-2 module, with exact moments for both $H$ and its unprojected action,
+mixed-precision residual accounting, independent low-cutoff implementation
+checks, and source-pinned cutoff evidence. It clears a practical residual
+obstacle on the frozen controls while preserving the original physical problem.
+This is more specific than claiming that geometrical methods themselves are new.
+
+\textbf{Priority and utility are separate questions.}
+The sources checked on 24 November establish substantial precedents for the
+ingredients. They do not settle priority for this exact combination and probe
+map. We therefore make no ``first-ever'' claim. The measured result stands
+without one. Nor is a smaller sector matrix by itself a benchmark against
+other solvers: the all-spin calculation answers a broader question.
+
+\textbf{The next scientific boundary.}
+The new run does not recompute probe-response weights or their discarded tails,
+compare high-cutoff complete-level geometry, exclude every higher-spin competitor,
+or certify spectral separation. Its polynomial refinement concerns the selected
+matrix model; it does not restore the spatial field modes omitted in the sphere
+reduction. A held-out crossing experiment and the full continuum problem remain
+separate. The former 99.154\% response is still an $N=12$ observation, not an
+$N=24$ result.
+
+{\small\raggedright
+\textbf{Additional references}\par
+[4] H.-P. Pavel, \emph{SU(2) Yang--Mills quantum mechanics of spatially constant
+fields}, Phys. Lett. B 648 (2007), 97--106,
+\href{https://arxiv.org/abs/hep-th/0701283}{arXiv:hep-th/0701283}.
+\par [5] N. Acharyya, A.~P. Balachandran, M. Pandey, S. Sanyal and S. Vaidya,
+\emph{Glueball Spectra from a Matrix Model of Pure Yang--Mills Theory},
+Int. J. Mod. Phys. A 33 (2018), 1850073,
+\href{https://arxiv.org/abs/1606.08711}{arXiv:1606.08711v3}.
+\par [6] N. Acharyya, M. Pandey and S. Vaidya,
+\emph{Axial Anomaly in SU(N) Yang--Mills Matrix Models},
+\href{https://doi.org/10.1103/PhysRevLett.127.092002}{Phys. Rev. Lett. 127 (2021), 092002}.
+\par [7] \emph{The Floor Theorem for the Yang--Mills Hessian at the Berger
+Field: A Floor Law Across the Berger Spheres}, version 3.3, November 2026,
+\href{https://github.com/nurdymuny/gigi/blob/8dece6505f127eb39bde73fcc942a9879aace8d5/docs/papers/berger-spectrum/paper.tex}{repository manuscript}.
+}
+
+\newpage
+\pagetitle{12 / NEXT EXPERIMENTAL LAYER}{Use GIGI to connect evidence across models}
 \textbf{Plan, not a deployed capability.}
 The model supplies observations. GIGI can organize those observations into
 versioned bundles, compare compatible geometric signatures and expose which
@@ -277,9 +686,10 @@ Comparison map & The explicit bridge between models or cutoffs, its preserved qu
 \end{tabular}
 \end{center}
 
-\textbf{First deliverable: the present 15 cases.}
-Import the verified receipt and immutable array references into isolated GIGI
-bundles. Recover every gap and weight exactly. Follow the scalar and tensor
+\textbf{First deliverable: two evidence families, kept distinct.}
+Import the original 15 all-spin cases and the 16 new sector cases with their
+immutable array references into isolated GIGI bundles. Recover every recorded
+gap, residual and available weight exactly. Follow the scalar and tensor
 branches separately, so the $N=8$ ordering change cannot be hidden by sorting
 each run and calling its first row the same state.
 
@@ -298,8 +708,7 @@ polynomial cutoff approaches the selected matrix model; it does not restore
 the spatial field modes omitted by that model. A continuum claim requires its
 own refinement parameters and limits.
 
-The detailed plan is in
-\texttt{docs/research/ym-evidence-continuum-gigi-plan-2026-11-23.md}.
+The detailed plan is linked from the accompanying README.
 It separates current source-backed GIGI operations from the missing adapters
 and scientific gates. No graph spectral gap, PCA variance, or generic database
 curvature is relabelled as a Yang--Mills excitation energy.
@@ -309,4 +718,11 @@ GIGI should let a researcher ask: \emph{Is this the same geometric excitation
 surviving a change of approximation, or only a similar number?} The answer must
 identify the retained pattern, its comparison map and the evidence that could
 falsify the match. It may also correctly return \emph{not yet comparable}.
+
+\textbf{New evidence identity.}
+Run \texttt{controls-abd81f97} uses source \texttt{abd81f97}; the full revision,
+hashes, source snapshots and replay instructions are linked in the README.
+Figures are regenerated from receipts without a new physical run. Verification
+is \texttt{PASS}; scientific acceptance remains \texttt{UNRESOLVED}.
+Typesetting this paper deploys nothing to GIGI.
 \end{document}

@@ -1,0 +1,66 @@
+......F.FFFFFF
+======================================================================
+FAIL: test_dimension_claims_preserve_sector_scope (test_ym_helike_report.SectorReportTests.test_dimension_claims_preserve_sector_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_report.py", line 129, in test_dimension_claims_preserve_sector_scope
+    self.assertEqual(len(p["final"]), 2)
+AssertionError: 0 != 2
+
+======================================================================
+FAIL: test_rejects_false_certification_and_failed_precision (test_ym_helike_report.SectorReportTests.test_rejects_false_certification_and_failed_precision)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_report.py", line 120, in test_rejects_false_certification_and_failed_precision
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_rejects_loose_allowance_and_forged_residual_pass (test_ym_helike_report.SectorReportTests.test_rejects_loose_allowance_and_forged_residual_pass) (key='allowance')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_report.py", line 106, in test_rejects_loose_allowance_and_forged_residual_pass
+    with self.subTest(key=key), self.assertRaises(ValueError):
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_rejects_loose_allowance_and_forged_residual_pass (test_ym_helike_report.SectorReportTests.test_rejects_loose_allowance_and_forged_residual_pass) (key='residual_gate')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_report.py", line 106, in test_rejects_loose_allowance_and_forged_residual_pass
+    with self.subTest(key=key), self.assertRaises(ValueError):
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_rejects_missing_case_and_forged_completion (test_ym_helike_report.SectorReportTests.test_rejects_missing_case_and_forged_completion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_report.py", line 97, in test_rejects_missing_case_and_forged_completion
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_rejects_nonfinite_residual_and_changed_gap (test_ym_helike_report.SectorReportTests.test_rejects_nonfinite_residual_and_changed_gap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_report.py", line 112, in test_rejects_nonfinite_residual_and_changed_gap
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_sector_results_are_measured_not_promoted (test_ym_helike_report.SectorReportTests.test_sector_results_are_measured_not_promoted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_ym_helike_report.py", line 86, in test_sector_results_are_measured_not_promoted
+    self.assertEqual(len(p["cases"]), 16)
+AssertionError: 0 != 16
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.120s
+
+FAILED (failures=7)

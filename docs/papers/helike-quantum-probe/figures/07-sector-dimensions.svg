@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="519.59952pt" height="188.39952pt" viewBox="0 0 519.59952 188.39952" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title/>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 188.39952 
+L 519.59952 188.39952 
+L 519.59952 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 44.787344 148.003583 
+L 512.39952 148.003583 
+L 512.39952 7.2 
+L 44.787344 7.2 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path id="mbf002203ed" d="M 0 0 
+L 0 3.5 
+" style="stroke: #25343d; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#mbf002203ed" x="56.192519" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="56.192519" y="162.988895" transform="rotate(-0 56.192519 162.988895)">10</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use xlink:href="#mbf002203ed" x="113.218394" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="113.218394" y="162.988895" transform="rotate(-0 113.218394 162.988895)">12</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <g>
+       <use xlink:href="#mbf002203ed" x="170.244269" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="170.244269" y="162.988895" transform="rotate(-0 170.244269 162.988895)">14</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <g>
+       <use xlink:href="#mbf002203ed" x="227.270144" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="227.270144" y="162.988895" transform="rotate(-0 227.270144 162.988895)">16</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <g>
+       <use xlink:href="#mbf002203ed" x="284.296019" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="284.296019" y="162.988895" transform="rotate(-0 284.296019 162.988895)">18</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_6">
+      <g>
+       <use xlink:href="#mbf002203ed" x="341.321895" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="341.321895" y="162.988895" transform="rotate(-0 341.321895 162.988895)">20</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_7">
+      <g>
+       <use xlink:href="#mbf002203ed" x="398.34777" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_7">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="398.34777" y="162.988895" transform="rotate(-0 398.34777 162.988895)">22</text>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_8">
+      <g>
+       <use xlink:href="#mbf002203ed" x="455.373645" y="148.003583" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_8">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="455.373645" y="162.988895" transform="rotate(-0 455.373645 162.988895)">24</text>
+     </g>
+    </g>
+    <g id="text_9">
+     <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="278.593432" y="178.086864" transform="rotate(-0 278.593432 178.086864)">Polynomial cutoff N</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_9">
+      <path d="M 44.787344 114.92728 
+L 512.39952 114.92728 
+" clip-path="url(#p3c81cf771b)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.18; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_10">
+      <defs>
+       <path id="mb1187012f8" d="M 0 0 
+L -3.5 0 
+" style="stroke: #25343d; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#mb1187012f8" x="44.787344" y="114.92728" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_10">
+      <!-- $\mathdefault{10^{2}}$ -->
+      <g style="fill: #25343d" transform="translate(22.497344 118.919937)">
+       <text>
+        <tspan x="0" y="-0.692188" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">1</tspan>
+        <tspan x="5.5" y="-0.692188" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="11.095156" y="-4.498438" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">2</tspan>
+       </text>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_11">
+      <path d="M 44.787344 73.132979 
+L 512.39952 73.132979 
+" clip-path="url(#p3c81cf771b)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.18; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_12">
+      <g>
+       <use xlink:href="#mb1187012f8" x="44.787344" y="73.132979" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_11">
+      <!-- $\mathdefault{10^{3}}$ -->
+      <g style="fill: #25343d" transform="translate(22.497344 77.125635)">
+       <text>
+        <tspan x="0" y="-0.692188" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">1</tspan>
+        <tspan x="5.5" y="-0.692188" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="11.095156" y="-4.498438" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">3</tspan>
+       </text>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_13">
+      <path d="M 44.787344 31.338678 
+L 512.39952 31.338678 
+" clip-path="url(#p3c81cf771b)" style="fill: none; stroke: #b0b0b0; stroke-opacity: 0.18; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#mb1187012f8" x="44.787344" y="31.338678" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_12">
+      <!-- $\mathdefault{10^{4}}$ -->
+      <g style="fill: #25343d" transform="translate(22.497344 35.331334)">
+       <text>
+        <tspan x="0" y="-0.659375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">1</tspan>
+        <tspan x="5.5" y="-0.659375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="11.095156" y="-4.465625" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">4</tspan>
+       </text>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_15">
+      <defs>
+       <path id="m40f33ce529" d="M 0 0 
+L -2 0 
+" style="stroke: #25343d; stroke-width: 0.6"/>
+      </defs>
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="144.140243" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_16">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="136.780632" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_17">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="131.558905" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_18">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="127.508619" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_19">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="124.199294" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_20">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="121.4013" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_10">
+     <g id="line2d_21">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="118.977567" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_11">
+     <g id="line2d_22">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="116.839683" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_12">
+     <g id="line2d_23">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="102.345942" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_13">
+     <g id="line2d_24">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="94.986331" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_14">
+     <g id="line2d_25">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="89.764604" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_15">
+     <g id="line2d_26">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="85.714317" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_16">
+     <g id="line2d_27">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="82.404993" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_17">
+     <g id="line2d_28">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="79.606998" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_18">
+     <g id="line2d_29">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="77.183265" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_19">
+     <g id="line2d_30">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="75.045381" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_20">
+     <g id="line2d_31">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="60.551641" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_21">
+     <g id="line2d_32">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="53.192029" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_22">
+     <g id="line2d_33">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="47.970302" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_23">
+     <g id="line2d_34">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="43.920016" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_24">
+     <g id="line2d_35">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="40.610691" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_25">
+     <g id="line2d_36">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="37.812697" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_26">
+     <g id="line2d_37">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="35.388964" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_27">
+     <g id="line2d_38">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="33.25108" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_28">
+     <g id="line2d_39">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="18.757339" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="ytick_29">
+     <g id="line2d_40">
+      <g>
+       <use xlink:href="#m40f33ce529" x="44.787344" y="11.397728" style="fill: #25343d; stroke: #25343d; stroke-width: 0.6"/>
+      </g>
+     </g>
+    </g>
+    <g id="text_13">
+     <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="15.384688" y="77.601791" transform="rotate(-90 15.384688 77.601791)">Basis size / multiplicities (log scale)</text>
+    </g>
+   </g>
+   <g id="line2d_41">
+    <path d="M 56.192519 84.116829 
+L 113.218394 70.850465 
+L 170.244269 59.004086 
+L 227.270144 48.304619 
+L 284.296019 38.550957 
+L 341.321895 29.590557 
+L 398.34777 21.304921 
+L 455.373645 13.600163 
+" clip-path="url(#p3c81cf771b)" style="fill: none; stroke: #75848a; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="m33cf233d4e" d="M 0 -2 
+L -2 2 
+L 2 2 
+z
+" style="stroke: #75848a; stroke-linejoin: miter"/>
+    </defs>
+    <g clip-path="url(#p3c81cf771b)">
+     <use xlink:href="#m33cf233d4e" x="56.192519" y="84.116829" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     <use xlink:href="#m33cf233d4e" x="113.218394" y="70.850465" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     <use xlink:href="#m33cf233d4e" x="170.244269" y="59.004086" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     <use xlink:href="#m33cf233d4e" x="227.270144" y="48.304619" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     <use xlink:href="#m33cf233d4e" x="284.296019" y="38.550957" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     <use xlink:href="#m33cf233d4e" x="341.321895" y="29.590557" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     <use xlink:href="#m33cf233d4e" x="398.34777" y="21.304921" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     <use xlink:href="#m33cf233d4e" x="455.373645" y="13.600163" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+    </g>
+   </g>
+   <g id="line2d_42">
+    <path d="M 56.192519 141.60342 
+L 113.218394 134.508792 
+L 170.244269 128.631721 
+L 227.270144 123.027853 
+L 284.296019 118.091975 
+L 341.321895 113.530358 
+L 398.34777 109.346115 
+L 455.373645 105.402915 
+" clip-path="url(#p3c81cf771b)" style="fill: none; stroke: #a16623; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="m9912e5125c" d="M -2 2 
+L 2 2 
+L 2 -2 
+L -2 -2 
+z
+" style="stroke: #a16623; stroke-linejoin: miter"/>
+    </defs>
+    <g clip-path="url(#p3c81cf771b)">
+     <use xlink:href="#m9912e5125c" x="56.192519" y="141.60342" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     <use xlink:href="#m9912e5125c" x="113.218394" y="134.508792" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     <use xlink:href="#m9912e5125c" x="170.244269" y="128.631721" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     <use xlink:href="#m9912e5125c" x="227.270144" y="123.027853" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     <use xlink:href="#m9912e5125c" x="284.296019" y="118.091975" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     <use xlink:href="#m9912e5125c" x="341.321895" y="113.530358" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     <use xlink:href="#m9912e5125c" x="398.34777" y="109.346115" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     <use xlink:href="#m9912e5125c" x="455.373645" y="105.402915" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+    </g>
+   </g>
+   <g id="line2d_43">
+    <path d="M 56.192519 140.830919 
+L 113.218394 132.489931 
+L 170.244269 125.13032 
+L 227.270144 118.752085 
+L 284.296019 113.033038 
+L 341.321895 107.811311 
+L 398.34777 103.086904 
+L 455.373645 98.736593 
+" clip-path="url(#p3c81cf771b)" style="fill: none; stroke: #176f78; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="md6a31e708a" d="M 0 2 
+C 0.530406 2 1.03916 1.789267 1.414214 1.414214 
+C 1.789267 1.03916 2 0.530406 2 0 
+C 2 -0.530406 1.789267 -1.03916 1.414214 -1.414214 
+C 1.03916 -1.789267 0.530406 -2 0 -2 
+C -0.530406 -2 -1.03916 -1.789267 -1.414214 -1.414214 
+C -1.789267 -1.03916 -2 -0.530406 -2 0 
+C -2 0.530406 -1.789267 1.03916 -1.414214 1.414214 
+C -1.03916 1.789267 -0.530406 2 0 2 
+z
+" style="stroke: #176f78"/>
+    </defs>
+    <g clip-path="url(#p3c81cf771b)">
+     <use xlink:href="#md6a31e708a" x="56.192519" y="140.830919" style="fill: #176f78; stroke: #176f78"/>
+     <use xlink:href="#md6a31e708a" x="113.218394" y="132.489931" style="fill: #176f78; stroke: #176f78"/>
+     <use xlink:href="#md6a31e708a" x="170.244269" y="125.13032" style="fill: #176f78; stroke: #176f78"/>
+     <use xlink:href="#md6a31e708a" x="227.270144" y="118.752085" style="fill: #176f78; stroke: #176f78"/>
+     <use xlink:href="#md6a31e708a" x="284.296019" y="113.033038" style="fill: #176f78; stroke: #176f78"/>
+     <use xlink:href="#md6a31e708a" x="341.321895" y="107.811311" style="fill: #176f78; stroke: #176f78"/>
+     <use xlink:href="#md6a31e708a" x="398.34777" y="103.086904" style="fill: #176f78; stroke: #176f78"/>
+     <use xlink:href="#md6a31e708a" x="455.373645" y="98.736593" style="fill: #176f78; stroke: #176f78"/>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M 44.787344 148.003583 
+L 44.787344 7.2 
+" style="fill: none; stroke: #bac5c8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 44.787344 148.003583 
+L 512.39952 148.003583 
+" style="fill: none; stroke: #bac5c8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #75848a" x="461.373645" y="16.047663" transform="rotate(-0 461.373645 16.047663)">26,572</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #a16623" x="461.373645" y="107.850415" transform="rotate(-0 461.373645 107.850415)">169</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #176f78" x="461.373645" y="101.184093" transform="rotate(-0 461.373645 101.184093)">244</text>
+   </g>
+   <g id="legend_1">
+    <g id="line2d_44">
+     <path d="M 52.887344 18.846563 
+L 61.887344 18.846563 
+L 70.887344 18.846563 
+" style="fill: none; stroke: #75848a; stroke-width: 1.5; stroke-linecap: square"/>
+     <g>
+      <use xlink:href="#m33cf233d4e" x="61.887344" y="18.846563" style="fill: #75848a; stroke: #75848a; stroke-linejoin: miter"/>
+     </g>
+    </g>
+    <g id="text_17">
+     <text style="font-size: 9px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #25343d" x="78.087344" y="21.996563" transform="rotate(-0 78.087344 21.996563)">All spatial spins (count only)</text>
+    </g>
+    <g id="line2d_45">
+     <path d="M 52.887344 32.426719 
+L 61.887344 32.426719 
+L 70.887344 32.426719 
+" style="fill: none; stroke: #a16623; stroke-width: 1.5; stroke-linecap: square"/>
+     <g>
+      <use xlink:href="#m9912e5125c" x="61.887344" y="32.426719" style="fill: #a16623; stroke: #a16623; stroke-linejoin: miter"/>
+     </g>
+    </g>
+    <g id="text_18">
+     <text style="font-size: 9px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #25343d" x="78.087344" y="35.576719" transform="rotate(-0 78.087344 35.576719)">Scalar basis functions</text>
+    </g>
+    <g id="line2d_46">
+     <path d="M 52.887344 46.151719 
+L 61.887344 46.151719 
+L 70.887344 46.151719 
+" style="fill: none; stroke: #176f78; stroke-width: 1.5; stroke-linecap: square"/>
+     <g>
+      <use xlink:href="#md6a31e708a" x="61.887344" y="46.151719" style="fill: #176f78; stroke: #176f78"/>
+     </g>
+    </g>
+    <g id="text_19">
+     <text style="font-size: 9px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #25343d" x="78.087344" y="49.301719" transform="rotate(-0 78.087344 49.301719)">Tensor multiplets (5 states each)</text>
+    </g>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p3c81cf771b">
+   <rect x="44.787344" y="7.2" width="467.612176" height="140.803583"/>
+  </clipPath>
+ </defs>
+</svg>

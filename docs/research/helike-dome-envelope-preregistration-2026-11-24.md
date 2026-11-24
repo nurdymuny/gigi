@@ -124,3 +124,25 @@ CPU only and small: at most 108 origin functions plus 5 dome functions.
 - Two control couplings, no held-out couplings.
 - Floating point with a float64 eigensolve, not certified.
 - The second envelope is one specific dome shape. Its failure is evidence about that shape, not about the state.
+
+## Execution review, before the registered run
+
+The model, widths/grid, cutoffs, primary comparison and numerical thresholds above
+remain unchanged. Focused runner gates exposed and corrected an unreachable
+`UNRESOLVED_TRUNCATION` decision and top-cutoff checks that covered only the
+primary dome. All three dome sizes now receive both K-sensitivity and precision
+repeats. Origin and next-cutoff comparators are also repeated at high precision.
+An incomplete primary set cannot become SUPPORTED. D05 uses a disclosed 1e-12
+floating-point boundary tolerance, without silently clipping measured fractions.
+
+Every solve, including width selection, is logged and saved with its matrices,
+eigenvectors, residuals and source hashes. Verification replays the stored
+matrices, origin projections, comparison arithmetic, width choice and coverage;
+it is not an independent fresh physical assembly. A failure clears any prior
+verification PASS. The source revision and source snapshots are retained.
+
+Execution is CPU-only, one BLAS thread, with the preceding control run's fixed
+limits of 8 GiB worker memory and 45 minutes. A resource stop is NOT_EVALUATED,
+not evidence against the hypothesis. No scientific conclusion is inferred from
+the unregistered smoke check. Implementation and focused gates are committed
+and pushed before the registered run; all partial results are retained.

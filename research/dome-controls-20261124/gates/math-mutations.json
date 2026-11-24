@@ -1,0 +1,33 @@
+{
+ "baseline": {
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0
+ },
+ "haar_e3_minus6": {
+  "failures": 2,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "haar_e4_sign": {
+  "failures": 3,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "hamiltonian_T_coefficient": {
+  "failures": 3,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "mixed_width_exponent": {
+  "failures": 2,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "dome_factorial": {
+  "failures": 1,
+  "errors": 0,
+  "caught_by_assertion": true
+ },
+ "all_caught": true
+}

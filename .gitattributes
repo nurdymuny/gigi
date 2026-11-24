@@ -21,6 +21,8 @@
 /scripts/*quantum_order*.py -text
 /scripts/*sector_review*.py -text
 /research/sector-review-20261124/** -text whitespace=cr-at-eol,-blank-at-eol
+/research/dome-controls-20261124/** -text whitespace=cr-at-eol,-blank-at-eol
+/scripts/*dome_execution*.py -text
 /docs/research/sector-*.md -text whitespace=cr-at-eol
 /research/quantum-order-controls-20261123/** -text whitespace=cr-at-eol
 /research/quantum-order-controls-20261123/**/*.txt whitespace=cr-at-eol,-blank-at-eol

@@ -1,0 +1,21 @@
+test_all_top_cutoff_domes_are_repeated (test_dome_execution.ExecutionTests.test_all_top_cutoff_domes_are_repeated) ... ok
+test_each_registered_decision_has_its_own_fixture (test_dome_execution.ExecutionTests.test_each_registered_decision_has_its_own_fixture) ... ok
+test_empty_complete_receipt_rejected_and_stale_pass_cleared (test_dome_execution.ExecutionTests.test_empty_complete_receipt_rejected_and_stale_pass_cleared) ... FAIL
+test_incomplete_primary_cannot_be_supported (test_dome_execution.ExecutionTests.test_incomplete_primary_cannot_be_supported) ... ok
+test_numerical_failure_and_width_refusal_are_not_scientific_answers (test_dome_execution.ExecutionTests.test_numerical_failure_and_width_refusal_are_not_scientific_answers) ... ok
+test_refuses_reusing_output (test_dome_execution.ExecutionTests.test_refuses_reusing_output) ... ok
+test_truncation_has_its_registered_verdict (test_dome_execution.ExecutionTests.test_truncation_has_its_registered_verdict) ... ok
+
+======================================================================
+FAIL: test_empty_complete_receipt_rejected_and_stale_pass_cleared (test_dome_execution.ExecutionTests.test_empty_complete_receipt_rejected_and_stale_pass_cleared)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_dome_execution.py", line 44, in test_empty_complete_receipt_rejected_and_stale_pass_cleared
+    with self.assertRaises(ValueError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.169s
+
+FAILED (failures=1)

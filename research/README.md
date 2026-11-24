@@ -6,6 +6,7 @@ Published papers cite these folders by path, so **folders here are never renamed
 
 | folder | files | cited by |
 | --- | --- | --- |
+| [`dome-controls-20261124/`](dome-controls-20261124/) | gates and run receipts | [Dome-envelope registration](../docs/research/helike-dome-envelope-preregistration-2026-11-24.md): exact-moment checks, runner RED/GREEN, mutants, source-pinned solves and logs |
 | [`paper-sector-update-20261124/`](paper-sector-update-20261124/) | publication gates | [Helike quantum working paper](../docs/papers/helike-quantum-probe/README.md): behavioral RED/GREEN, exact formula checks, retained scope and visual verification |
 | [`sector-review-20261124/`](sector-review-20261124/) | run and TDD receipts | [Sector-solver results](../docs/research/sector-review-results-2026-11-24.md): 16 cases, four precision reassemblies, 36 matrix archives, full logs and targeted mutation evidence |
 | [`quantum-order-controls-20261123/`](quantum-order-controls-20261123/) | run and TDD receipts | [Next-level control results](../docs/research/quantum-order-controls-results-2026-11-23.md): six saved GPU cases, full-state replay, resource logs and mechanism-removal tests |

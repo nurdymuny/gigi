@@ -1,0 +1,29 @@
+{"utc": "2026-11-24T10:26:46Z", "phase": "startup", "source": "49f8fbcaa943858bc46c7f4d50e019edfcb52597", "smoke": true}
+{"utc": "2026-11-24T10:26:46Z", "phase": "solve", "role": "beta_selection", "cutoff": 6, "g2": 1.0, "n_d": 0, "beta": 0.9, "K": 16, "dps": 60}
+{"utc": "2026-11-24T10:26:46Z", "phase": "solve_complete", "role": "beta_selection", "cutoff": 6, "g2": 1.0, "seconds": 0.21899999999732245, "energies": [5.4356830012297905, 7.809155033619996, 9.91289881510645], "residuals": [0.2778543875584016, 0.9514115029221258, 1.9338706903719018]}
+{"utc": "2026-11-24T10:26:46Z", "phase": "solve", "role": "beta_selection", "cutoff": 6, "g2": 1.0, "n_d": 0, "beta": 1.1, "K": 16, "dps": 60}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve_complete", "role": "beta_selection", "cutoff": 6, "g2": 1.0, "seconds": 0.1559999999954016, "energies": [5.435662253296426, 7.809163543623775, 9.912099628824121], "residuals": [0.2770007491029432, 0.9593189277369673, 1.9378543371745962]}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve", "role": "beta_selection", "cutoff": 6, "g2": 1.0, "n_d": 0, "beta": 1.3, "K": 16, "dps": 60}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve_complete", "role": "beta_selection", "cutoff": 6, "g2": 1.0, "seconds": 0.15600000000267755, "energies": [5.435649997614053, 7.80723685536471, 9.907297407988336], "residuals": [0.27590074814430765, 0.9760754357899311, 1.9364146867243344]}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve", "role": "origin", "cutoff": 6, "g2": 1.0, "dps": 60}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve_complete", "role": "origin", "cutoff": 6, "g2": 1.0, "seconds": 0.030999999995401595, "energies": [5.435713060476828, 7.80926684116698, 9.912900415814018], "residuals": [0.27786594080700316, 0.9546392184957928, 1.93362015058614]}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve", "role": "next_cutoff", "cutoff": 8, "g2": 1.0, "dps": 60}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve_complete", "role": "next_cutoff", "cutoff": 8, "g2": 1.0, "seconds": 0.06199999999807915, "energies": [5.435085867832749, 7.755976011298181, 9.522522377897259], "residuals": [0.28288986960389473, 0.880350334064972, 0.9225209686172537]}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve", "role": "reference", "cutoff": 6, "g2": 1.0, "dps": 60, "nlev": 6}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve_complete", "role": "reference", "cutoff": 6, "g2": 1.0, "seconds": 0.030999999995401595, "energies": [5.435713060476828, 7.80926684116698, 9.912900415814018], "residuals": [0.27786594080700316, 0.9546392184957928, 1.93362015058614]}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve", "role": "dome", "cutoff": 6, "g2": 1.0, "n_d": 0, "beta": 1.1, "K": 16, "dps": 60}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve_complete", "role": "dome", "cutoff": 6, "g2": 1.0, "seconds": 0.1559999999954016, "energies": [5.435662253296426, 7.809163543623775, 9.912099628824121], "residuals": [0.2770007491029432, 0.9593189277369673, 1.9378543371745962]}
+{"utc": "2026-11-24T10:26:47Z", "phase": "solve", "role": "dome", "cutoff": 6, "g2": 1.0, "n_d": 4, "beta": 1.1, "K": 16, "dps": 60}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve_complete", "role": "dome", "cutoff": 6, "g2": 1.0, "seconds": 1.4840000000040163, "energies": [5.435638907471278, 7.794039984780934, 9.884921580441123], "residuals": [0.27590410574977237, 1.0138761434391306, 1.9029705070476763]}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve", "role": "precision_origin", "cutoff": 6, "g2": 1.0, "dps": 80}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve_complete", "role": "precision_origin", "cutoff": 6, "g2": 1.0, "seconds": 0.04700000000593718, "energies": [5.435713060476828, 7.80926684116698, 9.912900415814018], "residuals": [0.27786594080700316, 0.9546392184957928, 1.93362015058614]}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve", "role": "precision_next_cutoff", "cutoff": 8, "g2": 1.0, "dps": 80}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve_complete", "role": "precision_next_cutoff", "cutoff": 8, "g2": 1.0, "seconds": 0.07799999999406282, "energies": [5.435085867832749, 7.755976011298181, 9.522522377897259], "residuals": [0.28288986960389473, 0.880350334064972, 0.9225209686172537]}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve", "role": "K_sensitivity", "cutoff": 6, "g2": 1.0, "n_d": 0, "beta": 1.1, "K": 18, "dps": 60}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve_complete", "role": "K_sensitivity", "cutoff": 6, "g2": 1.0, "seconds": 0.2180000000007567, "energies": [5.435662253292196, 7.809163534375439, 9.912099259983096], "residuals": [0.2770007996848322, 0.9593188094228912, 1.9378518699816716]}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve", "role": "precision_dome", "cutoff": 6, "g2": 1.0, "n_d": 0, "beta": 1.1, "K": 16, "dps": 80}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve_complete", "role": "precision_dome", "cutoff": 6, "g2": 1.0, "seconds": 0.17199999999866122, "energies": [5.435662253296426, 7.809163543623775, 9.912099628824121], "residuals": [0.2770007491029432, 0.9593189277369673, 1.9378543371745962]}
+{"utc": "2026-11-24T10:26:49Z", "phase": "solve", "role": "K_sensitivity", "cutoff": 6, "g2": 1.0, "n_d": 4, "beta": 1.1, "K": 18, "dps": 60}
+{"utc": "2026-11-24T10:26:51Z", "phase": "solve_complete", "role": "K_sensitivity", "cutoff": 6, "g2": 1.0, "seconds": 2.2810000000026776, "energies": [5.435638912054388, 7.794043603411368, 9.884925764300881], "residuals": [0.2759044140329837, 1.0139068284884865, 1.902991251901792]}
+{"utc": "2026-11-24T10:26:51Z", "phase": "solve", "role": "precision_dome", "cutoff": 6, "g2": 1.0, "n_d": 4, "beta": 1.1, "K": 16, "dps": 80}
+{"utc": "2026-11-24T10:26:53Z", "phase": "solve_complete", "role": "precision_dome", "cutoff": 6, "g2": 1.0, "seconds": 1.5319999999992433, "energies": [5.435638907471278, 7.794039984780934, 9.884921580441123], "residuals": [0.27590410574977237, 1.0138761434391306, 1.9029705070476763]}

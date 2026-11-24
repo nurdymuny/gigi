@@ -1,0 +1,51 @@
+test_all_top_cutoff_domes_are_repeated (test_dome_execution.ExecutionTests.test_all_top_cutoff_domes_are_repeated) ... FAIL
+test_each_registered_decision_has_its_own_fixture (test_dome_execution.ExecutionTests.test_each_registered_decision_has_its_own_fixture) ... ok
+test_incomplete_primary_cannot_be_supported (test_dome_execution.ExecutionTests.test_incomplete_primary_cannot_be_supported) ... FAIL
+test_numerical_failure_and_width_refusal_are_not_scientific_answers (test_dome_execution.ExecutionTests.test_numerical_failure_and_width_refusal_are_not_scientific_answers) ... ok
+test_truncation_has_its_registered_verdict (test_dome_execution.ExecutionTests.test_truncation_has_its_registered_verdict) ... FAIL
+
+======================================================================
+FAIL: test_all_top_cutoff_domes_are_repeated (test_dome_execution.ExecutionTests.test_all_top_cutoff_domes_are_repeated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_dome_execution.py", line 20, in test_all_top_cutoff_domes_are_repeated
+    self.assertEqual(run.repeated_dome_sizes(run.DESIGN), [0, 3, 4])
+AssertionError: Lists differ: [4] != [0, 3, 4]
+
+First differing element 0:
+4
+0
+
+Second list contains 2 additional elements.
+First extra element 1:
+3
+
+- [4]
++ [0, 3, 4]
+
+======================================================================
+FAIL: test_incomplete_primary_cannot_be_supported (test_dome_execution.ExecutionTests.test_incomplete_primary_cannot_be_supported)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_dome_execution.py", line 17, in test_incomplete_primary_cannot_be_supported
+    self.assertEqual(run.decide(self.primary[:-1], self.gates, [], 8), "INVALID")
+AssertionError: 'SUPPORTED' != 'INVALID'
+- SUPPORTED
++ INVALID
+
+
+======================================================================
+FAIL: test_truncation_has_its_registered_verdict (test_dome_execution.ExecutionTests.test_truncation_has_its_registered_verdict)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_dome_execution.py", line 14, in test_truncation_has_its_registered_verdict
+    self.assertEqual(run.decide(self.primary, self.gates, [], 8), "UNRESOLVED_TRUNCATION")
+AssertionError: 'INVALID' != 'UNRESOLVED_TRUNCATION'
+- INVALID
++ UNRESOLVED_TRUNCATION
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+FAILED (failures=3)

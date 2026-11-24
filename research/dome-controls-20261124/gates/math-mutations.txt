@@ -1,0 +1,6 @@
+haar_e3_minus6 {'failures': 2, 'errors': 0, 'caught_by_assertion': True}
+haar_e4_sign {'failures': 3, 'errors': 0, 'caught_by_assertion': True}
+hamiltonian_T_coefficient {'failures': 3, 'errors': 0, 'caught_by_assertion': True}
+mixed_width_exponent {'failures': 2, 'errors': 0, 'caught_by_assertion': True}
+dome_factorial {'failures': 1, 'errors': 0, 'caught_by_assertion': True}
+ALL MUTANTS CAUGHT

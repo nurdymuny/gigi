@@ -118,6 +118,7 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | 23 Nov | [Next-level control results](quantum-order-controls-results-2026-11-23.md): six GPU cases and saved-state replay pass; next-level error prevents an overstatement at N=12; conditional tensor-lower at N=14, original convergence gate still open |
 | 24 Nov | [Sector-solver review and bounded execution](sector-review-protocol-2026-11-24.md): corrected full residuals, common sector allowance, mixed-precision disclosure and supervised evidence; existing controls only, through N=24 |
 | 24 Nov | [Sector-solver results](sector-review-results-2026-11-24.md): both controls pass the shared target-state residual check at N=20 and the stricter 0.01 check at N=22; 16 cases, four precision repeats and 36 matrix replays pass; wider scientific gates remain open |
+| 24 Nov | [Dome-envelope experiment](helike-dome-envelope-preregistration-2026-11-24.md): orbit-centered second envelope, frozen per-function comparisons and reviewed execution gates; measurement receipts in research/dome-controls-20261124 |
 | 23 Nov | [A geometric evidence atlas for Yang-Mills experiments in GIGI](ym-evidence-continuum-gigi-plan-2026-11-23.md): model bundles, projector/response comparisons, explicit cross-model maps and twelve proposed integration gates; not deployed |
 
 ## Where we were: status and strategy

@@ -169,6 +169,7 @@ def solve(N, g2, alpha, n_d=None, beta=None, K=30, dps=80, nlev=6):
                 Kmat[i, j] = Kmat[j, i] = Mo.inner(hs[i], ai, hs[j], aj)
         out = j0.finish(S, H, Kmat, dps, nlev)
         out["outside_origin_fraction"] = outside_origin(S, out["vectors"], n_origin, dps)
+        out["matrix_S"] = [[mp.nstr(S[i, j], dps) for j in range(n)] for i in range(n)]
     out.update({"cutoff": N, "g2": float(g2), "alpha": float(alpha), "beta": None if n_d is None else float(beta),
                 "n_d": n_d, "K": K, "n_origin": n_origin, "n_dome": n - n_origin,
                 "labels": [lab for _, _, lab in funcs]})

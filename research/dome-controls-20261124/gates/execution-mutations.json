@@ -1,0 +1,22 @@
+[
+  {
+    "name": "truncation_verdict",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_truncation_has_its_registered_verdict (test_dome_execution.ExecutionTests.test_truncation_has_its_registered_verdict)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_execution.py\", line 17, in test_truncation_has_its_registered_verdict\n    self.assertEqual(run.decide(self.primary, self.gates, [], 8), \"UNRESOLVED_TRUNCATION\")\nAssertionError: 'INVALID' != 'UNRESOLVED_TRUNCATION'\n- INVALID\n+ UNRESOLVED_TRUNCATION\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "complete_primary",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_incomplete_primary_cannot_be_supported (test_dome_execution.ExecutionTests.test_incomplete_primary_cannot_be_supported)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_execution.py\", line 20, in test_incomplete_primary_cannot_be_supported\n    self.assertEqual(run.decide(self.primary[:-1], self.gates, [], 8), \"INVALID\")\nAssertionError: 'SUPPORTED' != 'INVALID'\n- SUPPORTED\n+ INVALID\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "all_domes_repeated",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_all_top_cutoff_domes_are_repeated (test_dome_execution.ExecutionTests.test_all_top_cutoff_domes_are_repeated)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_execution.py\", line 23, in test_all_top_cutoff_domes_are_repeated\n    self.assertEqual(run.repeated_dome_sizes(run.DESIGN), [0, 3, 4])\nAssertionError: Lists differ: [4] != [0, 3, 4]\n\nFirst differing element 0:\n4\n0\n\nSecond list contains 2 additional elements.\nFirst extra element 1:\n3\n\n- [4]\n+ [0, 3, 4]\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+    "name": "receipt_contract",
+    "assertion_rejected": true,
+    "output": "F\n======================================================================\nFAIL: test_empty_complete_receipt_rejected_and_stale_pass_cleared (test_dome_execution.ExecutionTests.test_empty_complete_receipt_rejected_and_stale_pass_cleared)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_dome_execution.py\", line 44, in test_empty_complete_receipt_rejected_and_stale_pass_cleared\n    with self.assertRaises(ValueError):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.121s\n\nFAILED (failures=1)\n"
+  }
+]

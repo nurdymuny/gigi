@@ -1,0 +1,107 @@
+test_bad_state_cannot_replay (test_helike_residual_moments.Moments.test_bad_state_cannot_replay) ... ok
+test_completed_square_prefactor (test_helike_residual_moments.Moments.test_completed_square_prefactor) ... ok
+test_complex_norm_and_cross_terms (test_helike_residual_moments.Moments.test_complex_norm_and_cross_terms) ... ok
+test_derivative_keeps_raising_part (test_helike_residual_moments.Moments.test_derivative_keeps_raising_part) ... ok
+test_false_agreement_cancellation_fixture (test_helike_residual_moments.Moments.test_false_agreement_cancellation_fixture) ... ok
+test_high_degree_alias_is_recovered (test_helike_residual_moments.Moments.test_high_degree_alias_is_recovered) ... ok
+test_independent_unshifted_quadrature (test_helike_residual_moments.Moments.test_independent_unshifted_quadrature) ... ok
+test_invalid_inputs_refuse (test_helike_residual_moments.Moments.test_invalid_inputs_refuse) ... ok
+test_missing_control_cannot_replay (test_helike_residual_moments.Moments.test_missing_control_cannot_replay) ... ok
+test_nonzero_truncation_refuses (test_helike_residual_moments.Moments.test_nonzero_truncation_refuses) ... ok
+test_numerical_moments_never_certify (test_helike_residual_moments.Moments.test_numerical_moments_never_certify) ... ok
+test_operator_matches_cartesian_and_reduced (test_helike_residual_moments.Moments.test_operator_matches_cartesian_and_reduced) ... ok
+test_saved_control_provenance (test_helike_residual_moments.Moments.test_saved_control_provenance) ... ok
+test_tensor_replay_on_known_alias (test_helike_residual_moments.Moments.test_tensor_replay_on_known_alias) ... ok
+test_translation_coefficients (test_helike_residual_moments.Moments.test_translation_coefficients) ... ok
+test_translation_increment_preserves_tiny_change (test_helike_residual_moments.Moments.test_translation_increment_preserves_tiny_change) ... ok
+test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions) ... ok
+test_complex_norm_and_nonfinite_refusals (test_helike_quasimode.Construction.test_complex_norm_and_nonfinite_refusals) ... ok
+test_cutoff_derivatives_match_cartesian_in_both_shells (test_helike_quasimode.Construction.test_cutoff_derivatives_match_cartesian_in_both_shells) ... ok
+test_cutoff_is_invariant_and_shells_are_nontrivial (test_helike_quasimode.Construction.test_cutoff_is_invariant_and_shells_are_nontrivial) ... ok
+test_cutoff_state_has_zero_action_off_positive_support (test_helike_quasimode.Construction.test_cutoff_state_has_zero_action_off_positive_support) ... ok
+test_full_operator_matches_independent_cartesian_differentiation (test_helike_quasimode.Construction.test_full_operator_matches_independent_cartesian_differentiation) ... ok
+test_generator_sign_and_metric_on_known_covariant (test_helike_quasimode.Construction.test_generator_sign_and_metric_on_known_covariant) ... ok
+test_hermite_grid_norm_and_lowering (test_helike_quasimode.Construction.test_hermite_grid_norm_and_lowering) ... ok
+test_numerical_agreement_never_certifies (test_helike_quasimode.Construction.test_numerical_agreement_never_certifies) ... ok
+test_overlapping_shells_keep_mixed_laplacian_term (test_helike_quasimode.Construction.test_overlapping_shells_keep_mixed_laplacian_term) ... ok
+test_projector_bound_and_refusals (test_helike_quasimode.Construction.test_projector_bound_and_refusals) ... ok
+test_step_endpoints_and_derivatives (test_helike_quasimode.Construction.test_step_endpoints_and_derivatives) ... ok
+test_tensor_operator_matches_pointwise_action (test_helike_quasimode.Construction.test_tensor_operator_matches_pointwise_action) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_changed_parameters_reject (test_helike_cone_convergence.ConvergenceEvidence.test_changed_parameters_reject) ... ok
+START g2=0.004 Mq=6
+DONE g2=0.004 Mq=6: helike 1.0000000000 competitor 1.2000000000 (0.0s)
+START g2=0.004 Mq=8
+DONE g2=0.004 Mq=8: helike 1.0010000000 competitor 1.2010000000 (0.0s)
+START g2=0.002 Mq=6
+DONE g2=0.002 Mq=6: helike 1.0000000000 competitor 1.2000000000 (0.0s)
+START g2=0.002 Mq=8
+DONE g2=0.002 Mq=8: helike 1.0010000000 competitor 1.2010000000 (0.0s)
+CONVERGED {"0.004": {"helike": 0.0009999999999998899, "competitor": 0.0009999999999998899}, "0.002": {"helike": 0.0009999999999998899, "competitor": 0.0009999999999998899}}
+PASS receipt consistency only, not matrix replay or physical certification
+test_complete_planted_run_checkpoints_and_verifies (test_helike_cone_convergence.ConvergenceEvidence.test_complete_planted_run_checkpoints_and_verifies) ... ok
+test_consistency_does_not_release_dirty_or_negative_evidence (test_helike_cone_convergence.ConvergenceEvidence.test_consistency_does_not_release_dirty_or_negative_evidence) ... ok
+test_diagnostic_refusals (test_helike_cone_convergence.ConvergenceEvidence.test_diagnostic_refusals) ... ok
+test_empty_controls_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_empty_controls_refuse) ... ok
+test_extra_control_or_rung_refuses (test_helike_cone_convergence.ConvergenceEvidence.test_extra_control_or_rung_refuses) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_forged_provenance_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_forged_provenance_rejects) ... ok
+test_forged_statuses_never_release (test_helike_cone_convergence.ConvergenceEvidence.test_forged_statuses_never_release) ... ok
+test_gap_threshold_boundary (test_helike_cone_convergence.ConvergenceEvidence.test_gap_threshold_boundary) ... ok
+START g2=0.004 Mq=6
+MemoryError: planted before first solve
+test_initial_failure_retains_receipt (test_helike_cone_convergence.ConvergenceEvidence.test_initial_failure_retains_receipt) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_integrity_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_integrity_change_rejects) ... ok
+test_interrupted_verification_invalidates_pass_first (test_helike_cone_convergence.ConvergenceEvidence.test_interrupted_verification_invalidates_pass_first) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_invalid_json_clears_stale_pass (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_json_clears_stale_pass) ... ok
+test_invalid_measurements_refuse (test_helike_cone_convergence.ConvergenceEvidence.test_invalid_measurements_refuse) ... ok
+START g2=0.004 Mq=6
+DONE g2=0.004 Mq=6: helike 1.0000000000 competitor 1.2000000000 (0.0s)
+START g2=0.004 Mq=8
+KeyboardInterrupt: 
+test_later_interrupt_retains_completed_rung (test_helike_cone_convergence.ConvergenceEvidence.test_later_interrupt_retains_completed_rung) ... ok
+PASS receipt consistency only, not matrix replay or physical certification
+test_line_ending_changes_are_portable (test_helike_cone_convergence.ConvergenceEvidence.test_line_ending_changes_are_portable) ... ok
+test_missing_coupling_refuses (test_helike_cone_convergence.ConvergenceEvidence.test_missing_coupling_refuses) ... ok
+test_nonempty_output_is_unchanged (test_helike_cone_convergence.ConvergenceEvidence.test_nonempty_output_is_unchanged) ... ok
+START g2=0.004 Mq=6
+ValueError: nonfinite evidence
+test_nonfinite_output_is_logged_without_nan_json (test_helike_cone_convergence.ConvergenceEvidence.test_nonfinite_output_is_logged_without_nan_json) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+FAIL receipt consistency only, not matrix replay or physical certification
+test_resealed_empty_and_partial_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_empty_and_partial_reject) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_resealed_forged_changes_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_changes_reject) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_resealed_forged_decision_reject (test_helike_cone_convergence.ConvergenceEvidence.test_resealed_forged_decision_reject) ... ok
+FAIL receipt consistency only, not matrix replay or physical certification
+test_snapshot_change_rejects (test_helike_cone_convergence.ConvergenceEvidence.test_snapshot_change_rejects) ... ok
+test_unrepresentable_measurement_cannot_escape_release_hold (test_helike_cone_convergence.ConvergenceEvidence.test_unrepresentable_measurement_cannot_escape_release_hold) ... ok
+PASS receipt consistency only, not matrix replay or physical certification
+test_valid_converged_receipt (test_helike_cone_convergence.ConvergenceEvidence.test_valid_converged_receipt) ... ok
+PASS receipt consistency only, not matrix replay or physical certification
+test_valid_not_converged_receipt (test_helike_cone_convergence.ConvergenceEvidence.test_valid_not_converged_receipt) ... ok
+test_weight_threshold_boundary (test_helike_cone_convergence.ConvergenceEvidence.test_weight_threshold_boundary) ... ok
+
+----------------------------------------------------------------------
+Ran 56 tests in 13.193s
+
+OK

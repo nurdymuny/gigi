@@ -1,0 +1,604 @@
+{
+ "execution": "COMPLETE_DIAGNOSIS",
+ "status": "UNRESOLVED_INTEGRATION",
+ "certified": false,
+ "full_grid_released": false,
+ "source_revision": "d02970726220fd161fbdf98047610fae18a0cb47",
+ "source_dirty": false,
+ "sources": {
+  "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe",
+  "scripts/helike_condensate_fock.py": "49b93abceef77ca3a4d920c5463d9f628407e7844f3b357897db6ccd9e674094",
+  "scripts/helike_condensate_pt.py": "cf3f0392bc87479e797193455d8b5e9b431ab356adfefe7bc79be4f80d00db20",
+  "scripts/helike_berger_model.py": "3e78cc9e168b8ac9b8791fc587a2f46ab9c6664c5c6daec7cb4badcfa33ae0ce",
+  "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+  "scripts/run_helike_cone_convergence.py": "475f32db07f515d1478e39101c7752ad38f2beadad1a696d48fc54160d7155f0",
+  "scripts/run_helike_flux_background.py": "46297e8cb71ad58c11f8493494471569684e538a38291cfc83446ac4933734d3",
+  "docs/research/helike-quasimode-certification-spec-2026-11-24.md": "e06492459e07442f4ff950612e9b38b52c7e25f888259e4085c9d080826d7252",
+  "docs/research/helike-quasimode-evidence-amendment-2026-11-24.md": "c90fa3e3cb45b005dc046271e4a873318406882876eb6240c96a6d41042a3ddd",
+  "docs/research/helike-quasimode-construction-registration-2026-11-24.md": "8d0efa936b567d805e8b642aa43ab42bdde3a426d9e17cf4897c2c1b56b803ea",
+  "scripts/helike_quasimode.py": "cfd39191a61ad0c41c90ac4bf2fc0fa30ddf379d7ea1019f32bba2a8c1b41d7e",
+  "scripts/run_helike_quasimode.py": "67e0ebb5ccb73ab5c02f4fe1425415cd2c0e0e7acf2a90e786a7fbbec2f6b0aa",
+  "scripts/test_helike_quasimode.py": "a7b5bb4d498e395520d8b140140ffb967c424a06e9a7e372c2796e2befcbe09b",
+  "scripts/check_helike_quasimode_mutations.py": "d9223b05fec03ad3e1416ed1657f987ef2562ba2caa81363cfb462016b1d6c6c",
+  "scripts/helike_residual_moments.py": "e99583a6414363dd2f6dd1ddeee219223c2123d4b6550f9144ce914c917772f8",
+  "scripts/run_helike_residual_moments.py": "1ecde80e076700643e74ceb8e5613f0f402c4735b8150cfde18da7d04df3ac5a",
+  "scripts/test_helike_residual_moments.py": "e62e28a512399a3520df15d325241707144de10a2a593d9fcc714eb38e2ae1a7",
+  "scripts/check_helike_residual_mutations.py": "cd4b4ec37a7accfe57ec21e51862bba20fb3e75cf5ead8e508139d435aa18f5a",
+  "docs/research/helike-residual-integration-registration-2026-11-24.md": "9b3f3690655e2b4f015509b6e479a1b8e40aeac5e08ac83e4261b2901d9a976a",
+  "docs/research/helike-residual-centering-amendment-2026-11-24.md": "d1f32af88caf0da3627b30b27a413af152e00c99b45bc819608cbfc39f6bef07"
+ },
+ "parent_receipt_sha256": "e922d6bfffea50907d1c28d7cf7cdae622bb8eda0da5e4f97fdc1c13807045ab",
+ "controls": [
+  {
+   "g2": 0.004,
+   "Mq": 6,
+   "state_sha256": "e0a13f97eb2a862fe5adc1bc9fb9e0629b4c9f23ff4d04a42453475d7c40479a",
+   "group_count": 24,
+   "workspace_degree": 12,
+   "old_replay": {
+    "10": [
+     0.00022942235090607713,
+     0.0023741122455782707,
+     0.0023741122455782707,
+     0.006419695122420794
+    ],
+    "12": [
+     0.00022943991650945295,
+     0.002374112275226957,
+     0.002374112275226957,
+     0.00641974276821944
+    ]
+   },
+   "old_replay_checks": {
+    "10": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      1.43982048506075e-16,
+      8.673617379884035e-19,
+      8.673617379884035e-19,
+      4.649058915617843e-16
+     ]
+    },
+    "12": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      2.47984141901747e-16,
+      2.962040335230398e-16,
+      2.962040335230398e-16,
+      7.884318198314588e-16
+     ]
+    }
+   },
+   "point_errors": [
+    3.9029160627110024e-16,
+    3.8614114482955417e-19,
+    3.8614114482955417e-19,
+    2.1202928735669646e-17,
+    3.157823530658757e-17,
+    3.5230912826646535e-17,
+    3.5230912826646535e-17,
+    1.6151901864602802e-16,
+    5.755682050217169e-16,
+    1.4799945902863074e-16,
+    1.4799945902863074e-16,
+    3.3393426912553537e-17,
+    0.0,
+    4.060706939705039e-115,
+    4.060706939705039e-115,
+    1.5626780740187353e-102,
+    1.0419181638211301e-162,
+    8.682651365176084e-165,
+    8.682651365176084e-165,
+    2.2227587494850775e-162
+   ],
+   "moments": {
+    "value": [
+     0.00022943990995751714,
+     0.0023741123079180936,
+     0.0023741123079180936,
+     0.006419742749381369
+    ],
+    "pair_absolute_sum": [
+     24939.198948397407,
+     36734.965996420266,
+     36734.965996420266,
+     22456.848064859812
+    ],
+    "epsilon_times_pair_sum": [
+     5.5376145776436584e-12,
+     8.156801011609597e-12,
+     8.156801011609597e-12,
+     4.986421956423251e-12
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "taylor_translation"
+   },
+   "independent_moments": {
+    "value": [
+     0.00022943990570300306,
+     0.0023741123000470127,
+     0.0023741123000470127,
+     0.006419742766124821
+    ],
+    "pair_absolute_sum": [
+     24939.19894839742,
+     36734.96599642028,
+     36734.96599642028,
+     22456.84806485975
+    ],
+    "epsilon_times_pair_sum": [
+     5.537614577643662e-12,
+     8.1568010116096e-12,
+     8.1568010116096e-12,
+     4.986421956423237e-12
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "quadrature_translation"
+   },
+   "moment_check": {
+    "status": "UNRESOLVED_INTEGRATION",
+    "certified": false,
+    "full_grid_released": false,
+    "agreement": true,
+    "differences": [
+     4.254514085868036e-12,
+     7.871080957150278e-12,
+     7.871080957150278e-12,
+     1.674345211089001e-11
+    ]
+   },
+   "old_errors_vs_moments": {
+    "10": [
+     -1.7559051296029814e-08,
+     -6.23398221065441e-11,
+     -6.23398221065441e-11,
+     -4.762696103905589e-08
+    ],
+    "12": [
+     6.5521837901063446e-12,
+     -3.269143289408305e-11,
+     -3.269143289408305e-11,
+     1.8838860159353654e-11
+    ]
+   },
+   "seconds": 49.578000000008615
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "state_sha256": "745dd2f640d97753d91e9df64fe8ded5225a477108d80da2a9584bb93c9c3eee",
+   "group_count": 24,
+   "workspace_degree": 14,
+   "old_replay": {
+    "10": [
+     4.150096465741017e-05,
+     7.760122125128118e-05,
+     7.760122125128118e-05,
+     0.0002927992982788611
+    ],
+    "12": [
+     4.184010088130047e-05,
+     7.781801339372682e-05,
+     7.781801339372682e-05,
+     0.00031312888142617665
+    ]
+   },
+   "old_replay_checks": {
+    "10": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      1.005326464437184e-16,
+      7.6029677345546e-18,
+      7.6029677345546e-18,
+      7.632783294297951e-17
+     ]
+    },
+    "12": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      7.20316818345057e-17,
+      3.9641141931501256e-17,
+      3.9641141931501256e-17,
+      8.527250086598492e-17
+     ]
+    }
+   },
+   "point_errors": [
+    6.314588270133446e-16,
+    8.428242522976305e-19,
+    8.428242522976305e-19,
+    1.9784995581965947e-16,
+    2.866232438566464e-16,
+    1.9997283554208757e-16,
+    1.9997283554208757e-16,
+    3.432753484678558e-16,
+    9.400303885992445e-16,
+    1.5888473334837325e-16,
+    1.5888473334837325e-16,
+    5.513439097631911e-16,
+    2.678876698317832e-102,
+    1.3952482803738708e-103,
+    1.3952482803738708e-103,
+    4.286202717308531e-101,
+    1.0002414372682849e-161,
+    2.4311423822493035e-163,
+    2.4311423822493035e-163,
+    2.1338483995056744e-160
+   ],
+   "moments": {
+    "value": [
+     4.184025922217583e-05,
+     7.781804734463301e-05,
+     7.781804734463301e-05,
+     0.0003131698499500582
+    ],
+    "pair_absolute_sum": [
+     24987.431115270258,
+     36836.21745419764,
+     36836.21745419764,
+     22806.071070612685
+    ],
+    "epsilon_times_pair_sum": [
+     5.548324270081619e-12,
+     8.179283351549858e-12,
+     8.179283351549858e-12,
+     5.063965040766379e-12
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "taylor_translation"
+   },
+   "independent_moments": {
+    "value": [
+     4.184026578899846e-05,
+     7.781805638127856e-05,
+     7.781805638127856e-05,
+     0.00031316983334379406
+    ],
+    "pair_absolute_sum": [
+     24987.431115270265,
+     36836.21745419764,
+     36836.21745419764,
+     22806.07107061266
+    ],
+    "epsilon_times_pair_sum": [
+     5.54832427008162e-12,
+     8.179283351549858e-12,
+     8.179283351549858e-12,
+     5.063965040766374e-12
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "quadrature_translation"
+   },
+   "moment_check": {
+    "status": "UNRESOLVED_INTEGRATION",
+    "certified": false,
+    "full_grid_released": false,
+    "agreement": true,
+    "differences": [
+     6.566822633629135e-12,
+     9.036645550234389e-12,
+     9.036645550234389e-12,
+     1.6606264161087708e-11
+    ]
+   },
+   "old_errors_vs_moments": {
+    "10": [
+     -3.3929456466512463e-07,
+     -2.1682609334422898e-07,
+     -2.1682609334422898e-07,
+     -2.0370551671273465e-05
+    ],
+    "12": [
+     -1.5834080332571268e-10,
+     -3.395086654574362e-11,
+     -3.395086654574362e-11,
+     -4.0968523966843605e-08
+    ]
+   },
+   "seconds": 165.21899999999732
+  },
+  {
+   "g2": 0.002,
+   "Mq": 6,
+   "state_sha256": "8070693a6ca5599abcb7e867f5c62263d81298d2c2af4538a90899357569856a",
+   "group_count": 24,
+   "workspace_degree": 12,
+   "old_replay": {
+    "10": [
+     2.9099708246000693e-05,
+     0.0005709269395873564,
+     0.0005709269395873564,
+     0.0015224511524582066
+    ],
+    "12": [
+     2.910077438852746e-05,
+     0.0005709269401167986,
+     0.0005709269401167986,
+     0.0015224527431265758
+    ]
+   },
+   "old_replay_checks": {
+    "10": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      1.4297238523294786e-16,
+      4.593764604821082e-16,
+      4.593764604821082e-16,
+      1.885210737517795e-15
+     ]
+    },
+    "12": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      1.785104995679493e-16,
+      4.1535785227919675e-16,
+      4.1535785227919675e-16,
+      4.436555289810684e-16
+     ]
+    }
+   },
+   "point_errors": [
+    4.2290470408099575e-16,
+    5.891114148153659e-19,
+    5.891114148153659e-19,
+    5.778628172758288e-17,
+    3.947131182557677e-16,
+    1.4566381295487328e-16,
+    1.4566381295487328e-16,
+    1.415798630676618e-16,
+    9.811964015940403e-16,
+    1.6891276952985114e-16,
+    1.6891276952985114e-16,
+    2.3330336685993547e-16,
+    4.490640638886357e-193,
+    4.1537890799994455e-195,
+    4.1537890799994455e-195,
+    1.202070439846796e-192,
+    6.21214267805e-312,
+    5.450052765e-314,
+    5.450052765e-314,
+    8.174988784694e-312
+   ],
+   "moments": {
+    "value": [
+     2.91007682635351e-05,
+     0.0005709269474336147,
+     0.0005709269474336147,
+     0.0015224526830202886
+    ],
+    "pair_absolute_sum": [
+     49961.58626975832,
+     73756.00603997018,
+     73756.00603997018,
+     45249.04884886738
+    ],
+    "epsilon_times_pair_sum": [
+     1.1093700684696355e-11,
+     1.63771232219934e-11,
+     1.63771232219934e-11,
+     1.00473071748802e-11
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "taylor_translation"
+   },
+   "independent_moments": {
+    "value": [
+     2.910076142502144e-05,
+     0.0005709269484285051,
+     0.0005709269484285051,
+     0.0015224526955459044
+    ],
+    "pair_absolute_sum": [
+     49961.58626975831,
+     73756.00603997018,
+     73756.00603997018,
+     45249.04884886733
+    ],
+    "epsilon_times_pair_sum": [
+     1.1093700684696352e-11,
+     1.63771232219934e-11,
+     1.63771232219934e-11,
+     1.0047307174880189e-11
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "quadrature_translation"
+   },
+   "moment_check": {
+    "status": "UNRESOLVED_INTEGRATION",
+    "certified": false,
+    "full_grid_released": false,
+    "agreement": true,
+    "differences": [
+     6.8385136624076436e-12,
+     9.948904764259248e-13,
+     9.948904764259248e-13,
+     1.2525615744260477e-11
+    ]
+   },
+   "old_errors_vs_moments": {
+    "10": [
+     -1.0600173914359409e-09,
+     -7.845798880370958e-12,
+     -7.845798880370958e-12,
+     -1.5305639672336113e-09
+    ],
+    "12": [
+     6.125170869505014e-12,
+     -7.317231456166473e-12,
+     -7.317231456166473e-12,
+     6.010673079051565e-11
+    ]
+   },
+   "seconds": 94.5
+  },
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "state_sha256": "bf54a6600457995dbd67db0b5be8c2e47aabd0e036b757ea8dc72e405611cacc",
+   "group_count": 24,
+   "workspace_degree": 14,
+   "old_replay": {
+    "10": [
+     4.783340515025651e-06,
+     7.881837425504796e-06,
+     7.881837425504796e-06,
+     2.873986450382523e-05
+    ],
+    "12": [
+     4.804205250316088e-06,
+     7.895127666732078e-06,
+     7.895127666732078e-06,
+     3.0535129102784654e-05
+    ]
+   },
+   "old_replay_checks": {
+    "10": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      7.039436714746314e-17,
+      7.053582164965461e-17,
+      7.053582164965461e-17,
+      1.1114088707513126e-16
+     ]
+    },
+    "12": {
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "agreement": true,
+     "differences": [
+      6.184949877556176e-17,
+      6.757628853194808e-17,
+      6.757628853194808e-17,
+      2.3595627405073594e-16
+     ]
+    }
+   },
+   "point_errors": [
+    6.99251744221553e-16,
+    3.288636850578098e-18,
+    3.288636850578098e-18,
+    7.51233520919839e-17,
+    2.7443422798742022e-16,
+    3.3830499710340485e-16,
+    3.3830499710340485e-16,
+    2.1263576294693054e-16,
+    2.4481390933841097e-16,
+    1.9699716318141663e-16,
+    1.9699716318141663e-16,
+    1.8728067870382031e-16,
+    6.095969751929621e-192,
+    8.561755269564074e-194,
+    8.561755269564074e-194,
+    1.0739865810141175e-190,
+    6.7479466152696e-311,
+    1.314693222476e-312,
+    1.314693222476e-312,
+    1.80624281726964e-309
+   ],
+   "moments": {
+    "value": [
+     4.804272308169454e-06,
+     7.89507959009938e-06,
+     7.89507959009938e-06,
+     3.0536448034136925e-05
+    ],
+    "pair_absolute_sum": [
+     49985.955225639314,
+     73808.93849878809,
+     73808.93849878809,
+     45438.19318240093
+    ],
+    "epsilon_times_pair_sum": [
+     1.1099111679877386e-11,
+     1.6388876588899335e-11,
+     1.6388876588899335e-11,
+     1.0089305653693466e-11
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "taylor_translation"
+   },
+   "independent_moments": {
+    "value": [
+     4.8042854520548006e-06,
+     7.895094798277651e-06,
+     7.895094798277651e-06,
+     3.053644490661917e-05
+    ],
+    "pair_absolute_sum": [
+     49985.955225639314,
+     73808.93849878809,
+     73808.93849878809,
+     45438.193182400915
+    ],
+    "epsilon_times_pair_sum": [
+     1.1099111679877386e-11,
+     1.6388876588899335e-11,
+     1.6388876588899335e-11,
+     1.0089305653693462e-11
+    ],
+    "roundoff_bound_certified": false,
+    "accumulation": "centered_before_squaring",
+    "method": "quadrature_translation"
+   },
+   "moment_check": {
+    "status": "UNRESOLVED_INTEGRATION",
+    "certified": false,
+    "full_grid_released": false,
+    "agreement": true,
+    "differences": [
+     1.3143885346713225e-11,
+     1.520817827174606e-11,
+     1.520817827174606e-11,
+     3.12751775567938e-12
+    ]
+   },
+   "old_errors_vs_moments": {
+    "10": [
+     -2.0931793214197383e-08,
+     -1.3242164665119274e-08,
+     -1.3242164665119274e-08,
+     -1.7965835304228355e-06
+    ],
+    "12": [
+     -6.705791521533237e-11,
+     4.8076700274654865e-11,
+     4.8076700274654865e-11,
+     -1.318931116314195e-09
+    ]
+   },
+   "seconds": 179.07799999999406
+  }
+ ],
+ "started_utc": "2026-11-24T22:33:21Z",
+ "numerical_diagnosis_passed": true,
+ "finished_utc": "2026-11-24T22:41:30Z"
+}

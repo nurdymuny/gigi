@@ -257,3 +257,58 @@ both controls.
 
 The honest expectation from §7 is unchanged, with two updates. The base problem is now a concrete computation rather
 than an open question. Its margin of 0.11 is the tightest number in the chain.
+
+---
+
+## 9. Amendment, 25 November: the dry run's method, registered before it is run
+
+This section fixes how the floating-point dry run of §8.5 is done and judged. It is written before the run. The
+script is `scripts/dryrun_helike_sc_lehmann_homotopy.py`.
+
+### 9.1 The homotopy
+
+On the product tube B_u(5) × B_v(2), with the Neumann condition and the Robin term −β/2 on each block's sphere
+(as in the G-base script):
+
+    H_s = −½Δ + W₀ + v_J + s·D,    D = P − W₀,    0 ≤ s ≤ 1.
+
+- P(z) = V(x₀ + Nz) − V_bg is the exact quartic on the normal slice, fitted by least squares; the fit error is reported.
+- W₀ = ½ω²_s,red|u|² + ½ω²_t,red|v|² is the B3′ base; v_J is the sampled minimum of the Jacobian potential.
+- C₃ is the larger of the G-base script's value and a maximisation of the fitted cubic form.
+- D ≥ 0 on the tube makes every eigenvalue non-decreasing in s. Its sampled minimum is reported. A value below −10⁻⁹
+  means the monotonicity argument fails at this C₃, and the dry run is then reported as FAIL (model), not run.
+
+### 9.2 Basis and matrices
+
+- The basis is the products of exact block eigenfunctions of H₀, the lowest at most 2,000, cut at a level boundary.
+  Each block uses a radial Galerkin in r^l P_k(2r/L − 1), k < 44, times real spherical harmonics.
+- These functions satisfy the Robin condition, so they lie in D(H_s) for every s.
+- A₂ uses H_sφ_I = E_Iφ_I + sDφ_I with the exact moments of the degree-8 polynomial D², not products of truncated
+  matrices.
+- Checks reported: the base count below ρ_b reproduces §8.4 (87 and 32); block orthonormality; and radial convergence
+  (k < 44 against k < 56).
+
+### 9.3 The step rule
+
+- **Step 0.** The exact base spectrum supplies lower bounds ℓ_j = E_j at s = 0.
+- **Next pair.** After each step, the next pair is (N′, ρ′) = (j − 1, ℓ_j), with ℓ_{N+1} = ρ, for the candidate
+  j ≥ 11 that lets the next step go furthest in s.
+- **Admissibility.** A step to s′ is admissible while the Ritz value satisfies μ_{j−1}(H_s′) ≤ ℓ_j − Δ.
+  - Ritz values are tracked on 401 equally spaced s and up to index 200.
+  - **Δ = 0.02.**
+- **The step.** The step goes to the furthest admissible grid point. It applies Lehmann at (s′, ρ′, N′), with the N′
+  lowest Ritz vectors as trial functions. Positive definiteness of A₂ − 2ρA₁ + ρ²A₀ is checked by Cholesky.
+
+### 9.4 Verdict, per control
+
+- **PASS** as soon as a step gives ℓ₁₁ ≥ ρ_b. Monotonicity then gives λ₁₁(H₁) ≥ ρ_b.
+- **FAIL** in any of these cases:
+  - 40 steps are used;
+  - no candidate advances;
+  - s = 1 is reached without ℓ₁₁ ≥ ρ_b.
+- **Diagnostic, not a verdict.** If the Ritz value μ₁₁(H₁) is below ρ_b, then λ₁₁ of the inside model is below ρ_b.
+  B3′ at this tube then cannot pass by any homotopy. This is reported.
+- **Sensitivity.** Runs at Δ = 0.01 and 0.05 are reported as sensitivity only. The verdict is the Δ = 0.02 run.
+
+A PASS is floating-point feasibility only. The rigorous version still needs everything in §6.3, plus enclosed C₃,
+β and v_J.

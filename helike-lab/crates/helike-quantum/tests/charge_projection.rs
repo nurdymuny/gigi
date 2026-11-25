@@ -221,3 +221,21 @@ fn the_sector_bound_refuses_without_a_positive_projected_norm() {
     assert!(c_up > 3.0);
     assert!(projection::sector_bound(0.0, 0.0, 0.05, c_up).is_err());
 }
+
+/// Regression (2026-11-25): the default serde_json float parser read the Arb leakage endpoint
+/// 2.9219858911830733e-09 one ulp low, undercutting a rigorous upper bound. With float_roundtrip it parses exactly,
+/// and the projection uses the exact dyadic rounded upward, cross-checked against the decimal.
+#[test]
+fn arb_endpoints_parse_exactly_and_round_upward() {
+    let v: serde_json::Value = serde_json::from_str(r#"{"x": 2.9219858911830733e-09}"#).unwrap();
+    let x = v["x"].as_f64().unwrap();
+    assert_eq!(format!("{x:e}"), "2.9219858911830733e-9", "decimal parsing must be correctly rounded");
+    let d = serde_json::json!({"mantissa": "133452723881933096193407241680463805473", "exponent": -155});
+    let up = helike_quantum::projection::upward_dyadic(&d, x).unwrap();
+    assert_eq!(up.to_bits(), x.to_bits());
+    // one ulp low must refuse
+    assert!(helike_quantum::projection::upward_dyadic(&d, f64::from_bits(x.to_bits() - 1)).is_err());
+    // an exactly representable endpoint maps to itself
+    let exact = serde_json::json!({"mantissa": "3", "exponent": -2});
+    assert_eq!(helike_quantum::projection::upward_dyadic(&exact, 0.75).unwrap(), 0.75);
+}

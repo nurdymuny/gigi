@@ -265,6 +265,14 @@ cargo run --release -p helike-cli -- --out receipts/cone_sector_bounds_c31aab8e.
 | 0.002 | 8 | Helike ± | ±2 | 3.645e-4 | 0.999999934 | 0.0028104 |
 | 0.002 | 8 | competitor | 0 | 5.153e-4 | 0.999999867 | 0.0055267 |
 
+**Exact endpoints (2026-11-25).** The default `serde_json` float parser is not correctly rounded. It read some
+decimal endpoints one ulp off, including the Arb leakage endpoint 2.9219858911830733e-09, which came back one ulp
+below the rigorous upper bound. The workspace now enables `float_roundtrip`. The projection also computes every
+tail and leakage endpoint from the exact Arb dyadic, rounded upward in integer arithmetic (`upward_dyadic`), and
+refuses if the inputs file's decimal copy disagrees. The regenerated receipt differs from the superseded one in 15
+last-digit values (copied endpoints and reference diagnostics). No sector bound and no q changed. The earlier
+receipt is kept as `cone_sector_bounds_c31aab8e.SUPERSEDED.json`.
+
 **Deliberate faults**, each caught by a test:
 - reversed charge sign;
 - the density derivative dropped;

@@ -195,6 +195,43 @@ fn bits(v: &[u64]) -> Vec<f64> {
     v.iter().map(|&b| f64::from_bits(b)).collect()
 }
 
+/// The least binary64 ≥ m·2^e for a serialised Arb endpoint {"mantissa": "<decimal>", "exponent": e}, exactly
+/// (integer arithmetic, no decimal parsing). `decimal` is the inputs file's own binary64 copy: it must equal the
+/// result, otherwise the inputs disagree with their exact source and the bound refuses.
+pub fn upward_dyadic(d: &serde_json::Value, decimal: f64) -> Result<f64, String> {
+    let m: u128 = d["mantissa"]
+        .as_str()
+        .ok_or("dyadic mantissa must be a decimal string")?
+        .parse()
+        .map_err(|e| format!("dyadic mantissa: {e}"))?;
+    let e: i64 = d["exponent"].as_i64().ok_or("dyadic exponent must be an integer")?;
+    let x = if m == 0 {
+        0.0
+    } else {
+        // keep the top 53 bits of m and round up if anything below them is set
+        let bitlen = 128 - m.leading_zeros() as i64;
+        let shift = (bitlen - 53).max(0);
+        let mut top = (m >> shift) as u64;
+        if shift > 0 && m & ((1u128 << shift) - 1) != 0 {
+            top += 1; // may carry to 2^53, still exact
+        }
+        let exp = e + shift;
+        if !(-1000..=960).contains(&exp) {
+            return Err(format!("dyadic endpoint 2^{exp} outside the exact normal range"));
+        }
+        // top < 2^54 is exact in binary64; scaling by 2^exp in two steps is exact in the normal range
+        let half = exp / 2;
+        (top as f64) * 2f64.powi(half as i32) * 2f64.powi((exp - half) as i32)
+    };
+    if !(x.is_finite() && x >= 0.0) || (x != 0.0 && x < f64::MIN_POSITIVE) {
+        return Err("dyadic endpoint is not a normal binary64".into());
+    }
+    if x.to_bits() != decimal.to_bits() {
+        return Err(format!("inputs disagree with their exact Arb endpoint: decimal {decimal:e}, exact-upward {x:e}"));
+    }
+    Ok(x)
+}
+
 /// Charge defects ‖(L − m)ψ‖² and norms ‖ψ‖² for the given coefficients.
 pub fn charge_defects(
     c: &SavedControl,
@@ -229,6 +266,13 @@ pub fn project_control(saved: &SavedControl, arb: &ArbControl, mutation: Mutatio
     let charges: Vec<i64> = arb.states.iter().map(|s| s.charge).collect();
     let (charge_sq, norms, degree, ngroups) = charge_defects(saved, &coeff, &charges, mutation)?;
     let res = residual::enclose_control_with(saved, Some((&fre, &fim)), Mutation::None)?;
+    // the tail and leakage upper endpoints come from the exact Arb dyadics, rounded upward here; the decimal copy in
+    // the inputs file must agree with them (a parser that rounds to nearest-but-low would otherwise undercut a bound)
+    let ups: Vec<(f64, f64)> = arb
+        .states
+        .iter()
+        .map(|a| Ok((upward_dyadic(&a.tail_norm_upper_dyadic, a.tail_norm_upper)?, upward_dyadic(&a.leakage_norm_upper_dyadic, a.leakage_norm_upper)?)))
+        .collect::<Result<_, String>>()?;
     let states = arb
         .states
         .iter()
@@ -249,9 +293,9 @@ pub fn project_control(saved: &SavedControl, arb: &ArbControl, mutation: Mutatio
                 reference_charge_inside: inside,
                 r_lower: rs.r_lower,
                 r_upper: rs.r_upper,
-                tail_norm_upper: a.tail_norm_upper,
-                leakage_norm_upper: a.leakage_norm_upper,
-                sector: sector_bound(a.tail_norm_upper, a.leakage_norm_upper, rs.r_upper, c_up),
+                tail_norm_upper: ups[j].0,
+                leakage_norm_upper: ups[j].1,
+                sector: sector_bound(ups[j].0, ups[j].1, rs.r_upper, c_up),
             }
         })
         .collect();

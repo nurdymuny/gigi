@@ -1,0 +1,4014 @@
+{
+ "execution": "COMPLETE_CUTOFF_TAIL_BOUNDS",
+ "cutoff_tail_gate_passed": false,
+ "status": "UNRESOLVED_INTEGRATION",
+ "certified": false,
+ "full_grid_released": false,
+ "source_revision": "c31aab8ed623761c42ef6ad62af85dae120fa7c0",
+ "source_dirty": false,
+ "sources": {
+  "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe",
+  "scripts/helike_condensate_fock.py": "49b93abceef77ca3a4d920c5463d9f628407e7844f3b357897db6ccd9e674094",
+  "scripts/helike_condensate_pt.py": "cf3f0392bc87479e797193455d8b5e9b431ab356adfefe7bc79be4f80d00db20",
+  "scripts/helike_berger_model.py": "3e78cc9e168b8ac9b8791fc587a2f46ab9c6664c5c6daec7cb4badcfa33ae0ce",
+  "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+  "scripts/run_helike_cone_convergence.py": "475f32db07f515d1478e39101c7752ad38f2beadad1a696d48fc54160d7155f0",
+  "scripts/run_helike_flux_background.py": "46297e8cb71ad58c11f8493494471569684e538a38291cfc83446ac4933734d3",
+  "docs/research/helike-quasimode-certification-spec-2026-11-24.md": "e06492459e07442f4ff950612e9b38b52c7e25f888259e4085c9d080826d7252",
+  "docs/research/helike-quasimode-evidence-amendment-2026-11-24.md": "c90fa3e3cb45b005dc046271e4a873318406882876eb6240c96a6d41042a3ddd",
+  "docs/research/helike-quasimode-construction-registration-2026-11-24.md": "8d0efa936b567d805e8b642aa43ab42bdde3a426d9e17cf4897c2c1b56b803ea",
+  "scripts/helike_quasimode.py": "cfd39191a61ad0c41c90ac4bf2fc0fa30ddf379d7ea1019f32bba2a8c1b41d7e",
+  "scripts/run_helike_quasimode.py": "67e0ebb5ccb73ab5c02f4fe1425415cd2c0e0e7acf2a90e786a7fbbec2f6b0aa",
+  "scripts/test_helike_quasimode.py": "a7b5bb4d498e395520d8b140140ffb967c424a06e9a7e372c2796e2befcbe09b",
+  "scripts/check_helike_quasimode_mutations.py": "d9223b05fec03ad3e1416ed1657f987ef2562ba2caa81363cfb462016b1d6c6c",
+  "docs/research/helike-cutoff-tail-bounds-registration-2026-11-24.md": "8834e3e8f75d58756b93995af4702f41e566e1ef1f018b56a713575397a0fe95",
+  "scripts/helike_cutoff_bounds.py": "1dd1e3900576aa3f15a2bdbb7e3756a8ef53efd7e7b235ad6ecbfa65d88f27da",
+  "scripts/run_helike_cutoff_bounds.py": "9a78ff8c1886f464ac6b0e49bc67f5ce8e0f80173c5d81a1f3e6b6d3f7fc0d1a",
+  "scripts/test_helike_cutoff_bounds.py": "59103fbeeb9d9edeec70d5cc7b276a56bded854188985e1d0a9181524920f653",
+  "scripts/check_helike_cutoff_mutations.py": "a8ad63a41f6180b2598d4ef309c9ed108feb7fcdf1a30a4b02fc81ccc811f6b3",
+  "scripts/run_helike_residual_moments.py": "1ecde80e076700643e74ceb8e5613f0f402c4735b8150cfde18da7d04df3ac5a",
+  "docs/research/helike-cutoff-provenance-amendment-2026-11-24.md": "ae590fbf98bdd99effab66983e9aad2606d12c16e995201ea2d9c198f08e8385"
+ },
+ "parent_receipt_sha256": "e922d6bfffea50907d1c28d7cf7cdae622bb8eda0da5e4f97fdc1c13807045ab",
+ "controls": [
+  {
+   "g2": 0.004,
+   "Mq": 6,
+   "state_sha256": "e0a13f97eb2a862fe5adc1bc9fb9e0629b4c9f23ff4d04a42453475d7c40479a",
+   "trial_file": "trial-g2-0.004-Mq-6.npz",
+   "trial_sha256": "fd91f0d33c6e879513c7f1efdf5362de10469921f269510dc18f8d5328f70cb2",
+   "states": {
+    "ground": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469239604841333083134302389",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "170141183460469239604841333083134303211",
+       "exponent": -127
+      },
+      "display": "[1.00000000000000004627424042337466444 +/- 4.21e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "182196744023433766973018697530406419601",
+       "exponent": -222
+      },
+      "upper_display": "[2.7032211342677688433055477265369948324e-29 +/- 1.16e-67]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "104675594405074670385392870205897148695",
+       "exponent": -183
+      },
+      "upper_display": "[8.5380015482729387811975325354315586642e-18 +/- 2.23e-56]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "248994657174772308725277134634175013631",
+       "exponent": -175
+      },
+      "upper_display": "[5.1992510367049683777337133420696638956e-15 +/- 1.57e-53]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "133452723881933096193407241680463805473",
+       "exponent": -155
+      },
+      "upper_display": "[2.9219858911830732488235715305506828215e-9 +/- 3.70e-47]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607422569626595",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "206097330717321845073898524857491765803",
+        "exponent": -132
+       },
+       "upper": {
+        "mantissa": "206097330717321845073898524857491766187",
+        "exponent": -132
+       },
+       "display": "[0.0378541012465257088266403382243154228 +/- 3.96e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "134268770376544486487184322399918694339",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "134268770376544486487184322399918694603",
+         "exponent": -127
+        },
+        "display": "[0.78916090534741474490145899564743698 +/- 3.41e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "232713437133681109924148567731044360893",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "232713437133681109924148567731044361351",
+         "exponent": -127
+        },
+        "display": "[1.36776665355539845854529722397462526 +/- 6.26e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "116191576474919423977312500392020032881",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "58095788237459711988656250196010016555",
+         "exponent": -125
+        },
+        "display": "[1.36582541759403581457105739012079840 +/- 3.23e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "323322441266955953098646873076253457545",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "323322441266955953098646873076253458159",
+         "exponent": -133
+        },
+        "display": "[0.0296924768127638725832888895513900108 +/- 7.64e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "40415198265444674199570612952893191493",
+         "exponent": -130
+        },
+        "upper": {
+         "mantissa": "161660793061778696798282451811572766279",
+         "exponent": -132
+        },
+        "display": "[0.0296923982802455796405880828531076789 +/- 6.82e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "305603492139123003243972372082944900803",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "305603492139123003243972372082944901385",
+         "exponent": -133
+        },
+        "display": "[0.0280652483282111279879643761860404854 +/- 4.79e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "21376042968241414946475272969334801745",
+        "exponent": -197
+       },
+       "upper_display": "[1.0641875357726604253573443139984130543e-22 +/- 3.66e-60]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    },
+    "helike_plus": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "85070591730234622139683711630154982217",
+       "exponent": -126
+      },
+      "upper": {
+       "mantissa": "10633823966279327767460463953769372835",
+       "exponent": -123
+      },
+      "display": "[1.00000000000000007374863548224798894 +/- 4.04e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "126664514748924575587782771949007672687",
+       "exponent": -220
+      },
+      "upper_display": "[7.5171967548887782065293963746721077617e-29 +/- 1.67e-67]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "290619245178473892325636323733565919041",
+       "exponent": -183
+      },
+      "upper_display": "[2.3704738238118179326001128606259764669e-17 +/- 4.87e-55]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "207609491313995984475901521785231148701",
+       "exponent": -174
+      },
+      "upper_display": "[8.6701769041287607435234279054595153873e-15 +/- 2.36e-53]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "222365245285889527490998663671831844839",
+       "exponent": -155
+      },
+      "upper_display": "[4.8687511990363791155597110196686862844e-9 +/- 4.97e-47]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469231731687303703094258205",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "171842088809810683551065420547364007627",
+        "exponent": -131
+       },
+       "upper": {
+        "mantissa": "171842088809810683551065420547364008209",
+        "exponent": -131
+       },
+       "display": "[0.063124813946698214392336522661132939 +/- 2.54e-37]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "222966164003689414667938977847959362301",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "222966164003689414667938977847959363077",
+         "exponent": -127
+        },
+        "display": "[1.31047733105426288728455885914650785 +/- 3.12e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "96839417713378970333804999819245297389",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "96839417713378970333804999819245297727",
+         "exponent": -125
+        },
+        "display": "[2.27668376917993485001766615067125368 +/- 4.21e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "96701723731960689303996381393820337199",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "755482216655942885187471729639221387",
+         "exponent": -118
+        },
+        "display": "[2.27344659923394648245576726340375071 +/- 5.91e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "134687812210048919608089789236357784585",
+         "exponent": -131
+        },
+        "upper": {
+         "mantissa": "134687812210048919608089789236357785045",
+         "exponent": -131
+        },
+        "display": "[0.049476488242976757399648766499691204 +/- 4.75e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "269411934251972656366421615032228941597",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "269411934251972656366421615032228942517",
+         "exponent": -132
+        },
+        "display": "[0.0494831573058280315541112231089962519 +/- 9.11e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "255684406320799958719460395755109072791",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "255684406320799958719460395755109073665",
+         "exponent": -132
+        },
+        "display": "[0.046961808628664176914836780775150018 +/- 4.70e-37]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "118671661799547384417642684718464401725",
+        "exponent": -198
+       },
+       "upper_display": "[2.9539822577110152093922696897710365926e-22 +/- 2.23e-60]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    },
+    "helike_minus": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "85070591730234622139683711630154982217",
+       "exponent": -126
+      },
+      "upper": {
+       "mantissa": "10633823966279327767460463953769372835",
+       "exponent": -123
+      },
+      "display": "[1.00000000000000007374863548224798894 +/- 4.04e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "126664514748924575587782771949007672687",
+       "exponent": -220
+      },
+      "upper_display": "[7.5171967548887782065293963746721077617e-29 +/- 1.67e-67]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "290619245178473892325636323733565919041",
+       "exponent": -183
+      },
+      "upper_display": "[2.3704738238118179326001128606259764669e-17 +/- 4.87e-55]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "207609491313995984475901521785231148701",
+       "exponent": -174
+      },
+      "upper_display": "[8.6701769041287607435234279054595153873e-15 +/- 2.36e-53]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "222365245285889527490998663671831844839",
+       "exponent": -155
+      },
+      "upper_display": "[4.8687511990363791155597110196686862844e-9 +/- 4.97e-47]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469231731687303703094258205",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "171842088809810683551065420547364007627",
+        "exponent": -131
+       },
+       "upper": {
+        "mantissa": "171842088809810683551065420547364008209",
+        "exponent": -131
+       },
+       "display": "[0.063124813946698214392336522661132939 +/- 2.54e-37]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "222966164003689414667938977847959362301",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "222966164003689414667938977847959363077",
+         "exponent": -127
+        },
+        "display": "[1.31047733105426288728455885914650785 +/- 3.12e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "96839417713378970333804999819245297389",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "96839417713378970333804999819245297727",
+         "exponent": -125
+        },
+        "display": "[2.27668376917993485001766615067125368 +/- 4.21e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "96701723731960689303996381393820337199",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "755482216655942885187471729639221387",
+         "exponent": -118
+        },
+        "display": "[2.27344659923394648245576726340375071 +/- 5.91e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "134687812210048919608089789236357784585",
+         "exponent": -131
+        },
+        "upper": {
+         "mantissa": "134687812210048919608089789236357785045",
+         "exponent": -131
+        },
+        "display": "[0.049476488242976757399648766499691204 +/- 4.75e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "269411934251972656366421615032228941597",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "269411934251972656366421615032228942517",
+         "exponent": -132
+        },
+        "display": "[0.0494831573058280315541112231089962519 +/- 9.11e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "255684406320799958719460395755109072791",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "255684406320799958719460395755109073665",
+         "exponent": -132
+        },
+        "display": "[0.046961808628664176914836780775150018 +/- 4.70e-37]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "118671661799547384417642684718464401725",
+        "exponent": -198
+       },
+       "upper_display": "[2.9539822577110152093922696897710365926e-22 +/- 2.23e-60]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    },
+    "competitor": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "5316911983139663385164728854612457171",
+       "exponent": -122
+      },
+      "upper": {
+       "mantissa": "170141183460469228325271323347598630281",
+       "exponent": -127
+      },
+      "display": "[0.99999999999999997997888629263158098 +/- 4.12e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "21736640883168384699824988221665276925",
+       "exponent": -219
+      },
+      "upper_display": "[2.5800218258922187459589584331474317758e-29 +/- 1.16e-67]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "24950595792688764244865862248085592769",
+       "exponent": -181
+      },
+      "upper_display": "[8.1405117102628590561383748270179021303e-18 +/- 1.35e-56]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "243254526924124907276817590782916309267",
+       "exponent": -175
+      },
+      "upper_display": "[5.0793915244763508444365662374640455094e-15 +/- 2.87e-54]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "260618461240545913106913736721295262257",
+       "exponent": -156
+      },
+      "upper_display": "[2.8531581993052644356796824870570499908e-9 +/- 2.39e-47]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607422988852117",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "201346122253447847080088373680936640551",
+        "exponent": -132
+       },
+       "upper": {
+        "mantissa": "201346122253447847080088373680936641227",
+        "exponent": -132
+       },
+       "display": "[0.0369814420732658770889475122418070049 +/- 6.93e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "32752441150931430891394344989891316689",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "131009764603725723565577379959565267209",
+         "exponent": -127
+        },
+        "display": "[0.77000619097118634928283239238648382 +/- 5.05e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "113717793946121878981664405390410422909",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "113717793946121878981664405390410423301",
+         "exponent": -126
+        },
+        "display": "[1.33674624371639194549989096246444481 +/- 2.50e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "56778229456132371409436918981139885789",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "28389114728066185704718459490569942993",
+         "exponent": -124
+        },
+        "display": "[1.33484975950750408500509667769890872 +/- 6.58e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "315126358822337024083122764054257945325",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "315126358822337024083122764054257946395",
+         "exponent": -133
+        },
+        "display": "[0.0289397855149104917106879784829905410 +/- 9.62e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "78798003241537001605939659224842163369",
+         "exponent": -131
+        },
+        "upper": {
+         "mantissa": "157596006483074003211879318449684327273",
+         "exponent": -132
+        },
+        "display": "[0.0289458148957822013819121501746138459 +/- 8.97e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "298155241290729107701153063644784997745",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "298155241290729107701153063644784998759",
+         "exponent": -133
+        },
+        "display": "[0.0273812345160396956118763977332964739 +/- 5.32e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "5094546660565240908675338885959773793",
+        "exponent": -195
+       },
+       "upper_display": "[1.0145101344791665356248396129771446009e-22 +/- 3.80e-60]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    }
+   },
+   "metric_contributions": 164,
+   "seconds": 0.8280000000086147
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "state_sha256": "745dd2f640d97753d91e9df64fe8ded5225a477108d80da2a9584bb93c9c3eee",
+   "trial_file": "trial-g2-0.004-Mq-8.npz",
+   "trial_sha256": "2399e9407e9cd04ffac00579025c3ac8fffb9000d14331177dd39f15fa9629e3",
+   "states": {
+    "ground": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938420291535111457362246733",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "340282366920938420291535111457362252459",
+       "exponent": -128
+      },
+      "display": "[0.9999999999999998731293663946889343 +/- 4.26e-35]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "94443558516549678867563519733261841827",
+       "exponent": -215
+      },
+      "upper_display": "[1.7935904160890545536254691869250775352e-27 +/- 3.01e-65]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "54654153525951795707786426258857703181",
+       "exponent": -176
+      },
+      "upper_display": "[5.7061598751611290518550874040438891725e-16 +/- 3.75e-54]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "253525058455560485236420320500246666895",
+       "exponent": -172
+      },
+      "upper_display": "[4.2350801835255192174219244789881966939e-14 +/- 3.53e-52]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "8523369694705375062513048226921462145",
+       "exponent": -148
+      },
+      "upper_display": "[2.3887569728126653972555443275431238592e-8 +/- 5.18e-47]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "85070591730234615865843651705360254845",
+       "exponent": -126
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "279335593093673714510766547795723617107",
+        "exponent": -136
+       },
+       "upper": {
+        "mantissa": "279335593093673714510766547795723619405",
+        "exponent": -136
+       },
+       "display": "[0.0032066153482930336023719244380454466 +/- 5.09e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "22816567774364836191737444325840848219",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "91266271097459344766949777303363393633",
+         "exponent": -130
+        },
+        "display": "[0.067051866309799296094112812515168764 +/- 3.85e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "316807586352077234806274503078100173061",
+         "exponent": -131
+        },
+        "upper": {
+         "mantissa": "316807586352077234806274503078100175681",
+         "exponent": -131
+        },
+        "display": "[0.116376727517034631551699662739411979 +/- 4.91e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "316359933158016293155241757678863923739",
+         "exponent": -131
+        },
+        "upper": {
+         "mantissa": "316359933158016293155241757678863926359",
+         "exponent": -131
+        },
+        "display": "[0.116212285704301447146747387488417616 +/- 9.25e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "109620948862419373738968809878276049933",
+         "exponent": -135
+        },
+        "upper": {
+         "mantissa": "54810474431209686869484404939138025419",
+         "exponent": -134
+        },
+        "display": "[0.0025167735570225163676160808997354030 +/- 4.10e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "219352716926635648156301461380917082275",
+         "exponent": -136
+        },
+        "upper": {
+         "mantissa": "219352716926635648156301461380917084085",
+         "exponent": -136
+        },
+        "display": "[0.0025180456990701227332431172382381445 +/- 2.44e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "207216793343045395807950803226516891533",
+         "exponent": -136
+        },
+        "upper": {
+         "mantissa": "207216793343045395807950803226516893245",
+         "exponent": -136
+        },
+        "display": "[0.0023787321286158130387996614005363279 +/- 4.35e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "89371214796785953540523237257458837039",
+        "exponent": -193
+       },
+       "upper_display": "[7.1188279690420316142250424021382400795e-21 +/- 1.23e-59]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    },
+    "helike_plus": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "85070591730234677116168953144563338201",
+       "exponent": -126
+      },
+      "upper": {
+       "mantissa": "85070591730234677116168953144563339703",
+       "exponent": -126
+      },
+      "display": "[1.0000000000000007199941137768984841 +/- 4.23e-35]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "95140143800174556857263141508935449913",
+       "exponent": -208
+      },
+      "upper_display": "[2.3127287828374697204666706937587006838e-25 +/- 3.93e-63]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "220375876306106994962629593826886737353",
+       "exponent": -171
+      },
+      "upper_display": "[7.3626608143325703741261577803663417676e-14 +/- 2.70e-52]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "179929189742859252573990146898033225219",
+       "exponent": -168
+      },
+      "upper_display": "[4.8090838866019687268462362385880544671e-13 +/- 4.68e-51]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "193636288956535790924236679950362712371",
+       "exponent": -149
+      },
+      "upper_display": "[2.7134223435235013878656088145267261050e-7 +/- 1.13e-45]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469231731687264366842892221",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "99123588093947273421958292946155973931",
+        "exponent": -131
+       },
+       "upper": {
+        "mantissa": "12390448511743409177744786618269496837",
+        "exponent": -128
+       },
+       "display": "[0.036412255574271992918783926885192296 +/- 1.63e-37]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "258828826783736848995656023186334798291",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "258828826783736848995656023186334800305",
+         "exponent": -128
+        },
+        "display": "[0.76062955928560762211916893223863167 +/- 7.92e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "112364089306408645188187047975058760859",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "112364089306408645188187047975058761733",
+         "exponent": -126
+        },
+        "display": "[1.32083352214974368190811884395723864 +/- 9.01e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "224410474804823484249324288232886582281",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "224410474804823484249324288232886584029",
+         "exponent": -127
+        },
+        "display": "[1.31896622699208644285866966426392505 +/- 9.11e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "311394059876331924957841100609514653377",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "311394059876331924957841100609514655783",
+         "exponent": -133
+        },
+        "display": "[0.028597027989394165781604899384260523 +/- 2.54e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "311371515400095450031673574548762192821",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "311371515400095450031673574548762195229",
+         "exponent": -133
+        },
+        "display": "[0.028594957606233367064354153649476039 +/- 3.65e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "147732365507379548198305905652906482041",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "147732365507379548198305905652906483183",
+         "exponent": -132
+        },
+        "display": "[0.027134150169927815764382957914791551 +/- 2.53e-37]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "45049037062337472483042910670755112987",
+        "exponent": -185
+       },
+       "upper_display": "[9.1862088381844323458285784240245926023e-19 +/- 4.93e-57]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    },
+    "helike_minus": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "85070591730234677116168953144563338201",
+       "exponent": -126
+      },
+      "upper": {
+       "mantissa": "85070591730234677116168953144563339703",
+       "exponent": -126
+      },
+      "display": "[1.0000000000000007199941137768984841 +/- 4.23e-35]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "95140143800174556857263141508935449913",
+       "exponent": -208
+      },
+      "upper_display": "[2.3127287828374697204666706937587006838e-25 +/- 3.93e-63]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "220375876306106994962629593826886737353",
+       "exponent": -171
+      },
+      "upper_display": "[7.3626608143325703741261577803663417676e-14 +/- 2.70e-52]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "179929189742859252573990146898033225219",
+       "exponent": -168
+      },
+      "upper_display": "[4.8090838866019687268462362385880544671e-13 +/- 4.68e-51]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "193636288956535790924236679950362712371",
+       "exponent": -149
+      },
+      "upper_display": "[2.7134223435235013878656088145267261050e-7 +/- 1.13e-45]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469231731687264366842892221",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "99123588093947273421958292946155973931",
+        "exponent": -131
+       },
+       "upper": {
+        "mantissa": "12390448511743409177744786618269496837",
+        "exponent": -128
+       },
+       "display": "[0.036412255574271992918783926885192296 +/- 1.63e-37]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "258828826783736848995656023186334798291",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "258828826783736848995656023186334800305",
+         "exponent": -128
+        },
+        "display": "[0.76062955928560762211916893223863167 +/- 7.92e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "112364089306408645188187047975058760859",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "112364089306408645188187047975058761733",
+         "exponent": -126
+        },
+        "display": "[1.32083352214974368190811884395723864 +/- 9.01e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "224410474804823484249324288232886582281",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "224410474804823484249324288232886584029",
+         "exponent": -127
+        },
+        "display": "[1.31896622699208644285866966426392505 +/- 9.11e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "311394059876331924957841100609514653377",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "311394059876331924957841100609514655783",
+         "exponent": -133
+        },
+        "display": "[0.028597027989394165781604899384260523 +/- 2.54e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "311371515400095450031673574548762192821",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "311371515400095450031673574548762195229",
+         "exponent": -133
+        },
+        "display": "[0.028594957606233367064354153649476039 +/- 3.65e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "147732365507379548198305905652906482041",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "147732365507379548198305905652906483183",
+         "exponent": -132
+        },
+        "display": "[0.027134150169927815764382957914791551 +/- 2.53e-37]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "45049037062337472483042910670755112987",
+        "exponent": -185
+       },
+       "upper_display": "[9.1862088381844323458285784240245926023e-19 +/- 4.93e-57]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    },
+    "competitor": {
+     "cutoff_tail_gate_passed": false,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "39",
+        "exponent": -2
+       },
+       "display": "9.7500000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "9773842893029659883004851093383280913",
+        "exponent": -106
+       },
+       "upper": {
+        "mantissa": "9773842893029673895674390736156883217",
+        "exponent": -106
+       },
+       "display": "[120471.914876302 +/- 2.10e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "79817979113691997682871519065232504683",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "79817979113692004568342094971342550891",
+        "exponent": -115
+       },
+       "display": "[1921.547950944180 +/- 2.26e-13]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "upper": {
+        "mantissa": "219256981786983182720038018771367752283",
+        "exponent": -107
+       },
+       "display": "[1351275.4775664566572982593310888839223 +/- 4.84e-32]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "upper": {
+        "mantissa": "157679515615356859631967891393456433853",
+        "exponent": -116
+       },
+       "display": "[1897.9981296255657746861118124507473810 +/- 2.73e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469342539426144651877612631",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "170141183460469342539426144651877615447",
+       "exponent": -127
+      },
+      "display": "[1.00000000000000065126935517455814258 +/- 9.18e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "152881741411589805182209712437509234253",
+       "exponent": -210
+      },
+      "upper_display": "[9.2908731690462865849285020210109444464e-26 +/- 8.88e-65]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "88582514238444213259590385497326244709",
+       "exponent": -171
+      },
+      "upper_display": "[2.9595027248469142580114235911430734812e-14 +/- 5.82e-53]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "57021356101535893516327495451290603575",
+       "exponent": -167
+      },
+      "upper_display": "[3.0480933661957086751669732375703304817e-13 +/- 2.25e-51]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "122766175335198761741051404944202794471",
+       "exponent": -149
+      },
+      "upper_display": "[1.7203205296824525944332557713418972968e-7 +/- 5.13e-46]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "42535295865117307932921821977070635525",
+       "exponent": -125
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "251306035350664715816553981617118199039",
+        "exponent": -133
+       },
+       "upper": {
+        "mantissa": "251306035350664715816553981617118200663",
+        "exponent": -133
+       },
+       "display": "[0.0230788144439259731041184484602529803 +/- 8.58e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "329070749265103965331068494755752698455",
+         "exponent": -129
+        },
+        "upper": {
+         "mantissa": "329070749265103965331068494755752700601",
+         "exponent": -129
+        },
+        "display": "[0.48352600847748391220984271867562167 +/- 5.92e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "285482250195540286630201308109834134695",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "285482250195540286630201308109834136555",
+         "exponent": -128
+        },
+        "display": "[0.83895693091223122553445087087443834 +/- 4.57e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "285079516164529077028738686549458610255",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "285079516164529077028738686549458612117",
+         "exponent": -128
+        },
+        "display": "[0.83777340196638731344465218391625301 +/- 6.60e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "197155672777791041536663957445959205523",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "197155672777791041536663957445959206803",
+         "exponent": -133
+        },
+        "display": "[0.0181058890299110016919775987561688900 +/- 6.35e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "197109170233732325327670016353668455455",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "197109170233732325327670016353668456735",
+         "exponent": -133
+        },
+        "display": "[0.0181016184457047606425249389854784064 +/- 9.19e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "186323173038672606632817033051992156217",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "186323173038672606632817033051992157429",
+         "exponent": -133
+        },
+        "display": "[0.0171110810417377498618317753662043599 +/- 7.73e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "289748788543319579565074854457728342595",
+        "exponent": -189
+       },
+       "upper_display": "[3.6927716103103182568157112037122386796e-19 +/- 1.57e-57]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "166854009759588068374006595555286309445",
+        "exponent": -119
+       },
+       "upper": {
+        "mantissa": "166854009759588068374006595555286309449",
+        "exponent": -119
+       },
+       "display": "[251.05401073208652874350253781034461036 +/- 6.41e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "331681900797648847157512063881832214753",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "331681900797648847157512063881832214773",
+        "exponent": -111
+       },
+       "display": "[127759.22095149370466726751409881553903 +/- 4.45e-33]"
+      }
+     }
+    }
+   },
+   "metric_contributions": 164,
+   "seconds": 0.46900000001187436
+  },
+  {
+   "g2": 0.002,
+   "Mq": 6,
+   "state_sha256": "8070693a6ca5599abcb7e867f5c62263d81298d2c2af4538a90899357569856a",
+   "trial_file": "trial-g2-0.002-Mq-6.npz",
+   "trial_sha256": "4e2136190941b17d79043b6552b922720f02e390bcee4bbe8023b5a891c80bab",
+   "states": {
+    "ground": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "85070591730234619382340011630543020405",
+       "exponent": -126
+      },
+      "upper": {
+       "mantissa": "21267647932558654845585002907635755207",
+       "exponent": -124
+      },
+      "display": "[1.00000000000000004133621605599830751 +/- 3.93e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "104590627044567757268856010041173088343",
+       "exponent": -351
+      },
+      "upper_display": "[2.2801545707368442343214803691031325802e-68 +/- 1.80e-107]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "242293573752309124364710477050691700289",
+       "exponent": -306
+      },
+      "upper_display": "[1.8585028118610835650456307502078229248e-54 +/- 2.43e-92]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "266797099416281642804556588407493559471",
+       "exponent": -240
+      },
+      "upper_display": "[1.5100180696722950918773077537725857856e-34 +/- 3.41e-72]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "71784499879051500535742697321209499521",
+       "exponent": -215
+      },
+      "upper_display": "[1.3632691633940392055542900352004686583e-27 +/- 4.23e-65]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "12618542079572187428394186273458604315",
+        "exponent": -129
+       },
+       "upper": {
+        "mantissa": "100948336636577499427153490187668834725",
+        "exponent": -132
+       },
+       "display": "[0.0185412811626880328250355599041088706 +/- 6.73e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "183976717545185151927497324034528137575",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "183976717545185151927497324034528137969",
+         "exponent": -128
+        },
+        "display": "[0.540658980392981930972907851897057214 +/- 5.98e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "319641103968658575700405678700781564171",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "319641103968658575700405678700781564855",
+         "exponent": -128
+        },
+        "display": "[0.93934078001439404910409562645008888 +/- 3.68e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "159705837965424495642414822920255647687",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "159705837965424495642414822920255648027",
+         "exponent": -127
+        },
+        "display": "[0.93866655160848052743952992931173523 +/- 4.32e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "157872703469252049113780043782192469785",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "157872703469252049113780043782192470111",
+         "exponent": -133
+        },
+        "display": "[0.0144983180529021823727491815085819744 +/- 3.80e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "315745149181407461548565337759587970857",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "315745149181407461548565337759587971509",
+         "exponent": -134
+        },
+        "display": "[0.0144983062172767534363975507778485747 +/- 5.14e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "149380153619803329321828076382730547291",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "9336259601237708082614254773920659225",
+         "exponent": -129
+        },
+        "display": "[0.0137184005238315856241416682582023118 +/- 1.64e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "125077491831801677467645737681679013777",
+        "exponent": -320
+       },
+       "upper_display": "[5.8557233601315248922863419048100109190e-59 +/- 4.79e-97]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    },
+    "helike_plus": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469256302111546153603671205",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "170141183460469256302111546153603672131",
+       "exponent": -127
+      },
+      "display": "[1.00000000000000014441197447146261248 +/- 6.20e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "311597979804274841890879723198043325571",
+       "exponent": -352
+      },
+      "upper_display": "[3.3965355116397390974761951804893210783e-68 +/- 3.47e-106]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "90143179629298949598243286960490933943",
+       "exponent": -304
+      },
+      "upper_display": "[2.7657580878709413385014042381878027762e-54 +/- 2.10e-92]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "81406118510673625245657268572659650047",
+       "exponent": -238
+      },
+      "upper_display": "[1.8429692107139877819679951754836272228e-34 +/- 3.93e-72]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "175140328097320780456238456130503091713",
+       "exponent": -216
+      },
+      "upper_display": "[1.6630568504627078257388812974697166349e-27 +/- 2.48e-65]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "246413841040165423118422153058041832485",
+        "exponent": -133
+       },
+       "upper": {
+        "mantissa": "246413841040165423118422153058041833417",
+        "exponent": -133
+       },
+       "display": "[0.0226295373521199688452333301227416919 +/- 8.85e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "56013022469284414727759631936500115063",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "112026044938568829455519263873000230561",
+         "exponent": -127
+        },
+        "display": "[0.65842991485125686715602962386125421 +/- 5.92e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "48718972052820533975284846270374039451",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "48718972052820533975284846270374039641",
+         "exponent": -125
+        },
+        "display": "[1.14537752851918882744085387831731516 +/- 5.04e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "194735880347055263011767141188705559109",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "194735880347055263011767141188705559863",
+         "exponent": -127
+        },
+        "display": "[1.14455463625184191285387193698241432 +/- 4.93e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "192596391111573288941420627986014792691",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "192596391111573288941420627986014793427",
+         "exponent": -133
+        },
+        "display": "[0.0176871851359698615040988397491695711 +/- 7.74e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "24076202291343086210387840908851414927",
+         "exponent": -130
+        },
+        "upper": {
+         "mantissa": "24076202291343086210387840908851415019",
+         "exponent": -130
+        },
+        "display": "[0.0176883998642052575846084432349109980 +/- 3.77e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "182626537347199704768954617784618329501",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "182626537347199704768954617784618330199",
+         "exponent": -133
+        },
+        "display": "[0.0167715986688959969970126911462846433 +/- 5.43e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "186135254589242394153214443970662739507",
+        "exponent": -320
+       },
+       "upper_display": "[8.7142502018506861133285364318520820224e-59 +/- 1.96e-97]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    },
+    "helike_minus": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469256302111546153603671205",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "170141183460469256302111546153603672131",
+       "exponent": -127
+      },
+      "display": "[1.00000000000000014441197447146261248 +/- 6.20e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "311597979804274841890879723198043325571",
+       "exponent": -352
+      },
+      "upper_display": "[3.3965355116397390974761951804893210783e-68 +/- 3.47e-106]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "90143179629298949598243286960490933943",
+       "exponent": -304
+      },
+      "upper_display": "[2.7657580878709413385014042381878027762e-54 +/- 2.10e-92]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "81406118510673625245657268572659650047",
+       "exponent": -238
+      },
+      "upper_display": "[1.8429692107139877819679951754836272228e-34 +/- 3.93e-72]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "175140328097320780456238456130503091713",
+       "exponent": -216
+      },
+      "upper_display": "[1.6630568504627078257388812974697166349e-27 +/- 2.48e-65]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "246413841040165423118422153058041832485",
+        "exponent": -133
+       },
+       "upper": {
+        "mantissa": "246413841040165423118422153058041833417",
+        "exponent": -133
+       },
+       "display": "[0.0226295373521199688452333301227416919 +/- 8.85e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "56013022469284414727759631936500115063",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "112026044938568829455519263873000230561",
+         "exponent": -127
+        },
+        "display": "[0.65842991485125686715602962386125421 +/- 5.92e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "48718972052820533975284846270374039451",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "48718972052820533975284846270374039641",
+         "exponent": -125
+        },
+        "display": "[1.14537752851918882744085387831731516 +/- 5.04e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "194735880347055263011767141188705559109",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "194735880347055263011767141188705559863",
+         "exponent": -127
+        },
+        "display": "[1.14455463625184191285387193698241432 +/- 4.93e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "192596391111573288941420627986014792691",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "192596391111573288941420627986014793427",
+         "exponent": -133
+        },
+        "display": "[0.0176871851359698615040988397491695711 +/- 7.74e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "24076202291343086210387840908851414927",
+         "exponent": -130
+        },
+        "upper": {
+         "mantissa": "24076202291343086210387840908851415019",
+         "exponent": -130
+        },
+        "display": "[0.0176883998642052575846084432349109980 +/- 3.77e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "182626537347199704768954617784618329501",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "182626537347199704768954617784618330199",
+         "exponent": -133
+        },
+        "display": "[0.0167715986688959969970126911462846433 +/- 5.43e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "186135254589242394153214443970662739507",
+        "exponent": -320
+       },
+       "upper_display": "[8.7142502018506861133285364318520820224e-59 +/- 1.96e-97]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    },
+    "competitor": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "170141183460469193502234857944365868899",
+       "exponent": -127
+      },
+      "upper": {
+       "mantissa": "21267647932558649187779357243045733717",
+       "exponent": -124
+      },
+      "display": "[0.99999999999999977530747307483148870 +/- 4.79e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "216107050767229696431664183337036915121",
+       "exponent": -353
+      },
+      "upper_display": "[1.1778241834361173292835953220320427376e-68 +/- 2.58e-106]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "125076926073814256946065952972880888401",
+       "exponent": -306
+      },
+      "upper_display": "[9.5939737570076312260864786127302887479e-55 +/- 3.16e-93]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "191751686750568548479015930143929197591",
+       "exponent": -240
+      },
+      "upper_display": "[1.0852760862730355624960517667043238192e-34 +/- 9.21e-73]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "103152160001127409875947787369607834335",
+       "exponent": -216
+      },
+      "upper_display": "[9.7948832341215947882146034797121877159e-28 +/- 4.66e-66]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "18138328590414448075914416329332045925",
+        "exponent": -130
+       },
+       "upper": {
+        "mantissa": "145106628723315584607315330634656367907",
+        "exponent": -133
+       },
+       "display": "[0.0133259392446191055543348435709247003 +/- 7.28e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "264276473932901947321737401617445656555",
+         "exponent": -129
+        },
+        "upper": {
+         "mantissa": "264276473932901947321737401617445657505",
+         "exponent": -129
+        },
+        "display": "[0.38831937770419970168218831443836189 +/- 2.01e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "114888045678922308782091120379147796301",
+         "exponent": -127
+        },
+        "upper": {
+         "mantissa": "114888045678922308782091120379147796715",
+         "exponent": -127
+        },
+        "display": "[0.67525124336293046419511444232599195 +/- 5.62e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "57402799365392183223925042238085016953",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "114805598730784366447850084476170034319",
+         "exponent": -127
+        },
+        "display": "[0.67476666375403701754486381478962183 +/- 5.05e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "226646416631585523316433912464092016475",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "226646416631585523316433912464092017275",
+         "exponent": -134
+        },
+        "display": "[0.0104070930618962238797770229881487543 +/- 6.48e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "226670939101647343069945853351268118003",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "226670939101647343069945853351268118803",
+         "exponent": -134
+        },
+        "display": "[0.0104082190784987972310179624758104733 +/- 5.60e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "214569034883083792509875023380314833205",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "214569034883083792509875023380314833963",
+         "exponent": -134
+        },
+        "display": "[0.0098525268893146619395780578614252433 +/- 5.22e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "258269701991405966844472536650284439443",
+        "exponent": -322
+       },
+       "upper_display": "[3.0228378923664147046594150768460301984e-59 +/- 4.40e-97]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    }
+   },
+   "metric_contributions": 164,
+   "seconds": 0.2970000000059372
+  },
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "state_sha256": "bf54a6600457995dbd67db0b5be8c2e47aabd0e036b757ea8dc72e405611cacc",
+   "trial_file": "trial-g2-0.002-Mq-8.npz",
+   "trial_sha256": "3571dc895051e61a0cd49dc1ad2dcdaf597b2d36c535766be104d7f0bc88b610",
+   "states": {
+    "ground": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938303782067327129850187447",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "340282366920938303782067327129850193261",
+       "exponent": -128
+      },
+      "display": "[0.9999999999999995307388134002182121 +/- 1.03e-35]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "55275505708552226025466704872075890525",
+       "exponent": -344
+      },
+      "upper_display": "[1.5424610857330714746811647988931417419e-66 +/- 3.36e-104]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "128543312591606429621138645704938706711",
+       "exponent": -299
+      },
+      "upper_display": "[1.2620622717023561897730509497202274366e-52 +/- 3.15e-91]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "274293856404098100980313948654646246579",
+       "exponent": -237
+      },
+      "upper_display": "[1.2419585684446448049639993289662094185e-33 +/- 4.00e-73]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "295773638651350767733975364183796912615",
+       "exponent": -214
+      },
+      "upper_display": "[1.1234154492895120363834491519928064702e-26 +/- 4.03e-64]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "279512555990550776057691021198797180255",
+        "exponent": -138
+       },
+       "upper": {
+        "mantissa": "279512555990550776057691021198797183043",
+        "exponent": -138
+       },
+       "display": "[0.00080216169568064153748870363346370989 +/- 8.56e-39]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "127544996170237482472934850257317102423",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "15943124521279685309116856282164637963",
+         "exponent": -129
+        },
+        "display": "[0.023426316011525696228103995216590397 +/- 3.73e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "221757554041590524899625171110057814667",
+         "exponent": -132
+        },
+        "upper": {
+         "mantissa": "221757554041590524899625171110057816899",
+         "exponent": -132
+        },
+        "display": "[0.040730430004384030237366499655830596 +/- 2.66e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "110799370044661874798248725864992065845",
+         "exponent": -131
+        },
+        "upper": {
+         "mantissa": "55399685022330937399124362932496033479",
+         "exponent": -130
+        },
+        "display": "[0.040701260488177568551337392780708460 +/- 6.32e-37]"
+       },
+       {
+        "lower": {
+         "mantissa": "218624827211193056360399404150269508571",
+         "exponent": -138
+        },
+        "upper": {
+         "mantissa": "218624827211193056360399404150269510759",
+         "exponent": -138
+        },
+        "display": "[0.00062742248373109413783805815965745760 +/- 7.63e-39]"
+       },
+       {
+        "lower": {
+         "mantissa": "54670419423303647490047958228997317327",
+         "exponent": -136
+        },
+        "upper": {
+         "mantissa": "27335209711651823745023979114498658937",
+         "exponent": -135
+        },
+        "display": "[0.00062758563661307127838024436451601243 +/- 3.59e-39]"
+       },
+       {
+        "lower": {
+         "mantissa": "206859874079570423303845880230015222897",
+         "exponent": -138
+        },
+        "upper": {
+         "mantissa": "206859874079570423303845880230015224967",
+         "exponent": -138
+        },
+        "display": "[0.00059365872410240423187596622704269179 +/- 6.45e-39]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "132715811321965481153348690292049972125",
+        "exponent": -314
+       },
+       "upper_display": "[3.9765278448629563936259907652324143004e-57 +/- 1.47e-95]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    },
+    "helike_plus": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938308141409881101251867239",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "340282366920938308141409881101251873245",
+       "exponent": -128
+      },
+      "display": "[0.9999999999999995435497697639496763 +/- 5.71e-35]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "109304632968584594478166475774054417807",
+       "exponent": -337
+      },
+      "upper_display": "[3.9041817903696579353969522227695951150e-64 +/- 3.69e-102]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "127145701453249697973108397337042722165",
+       "exponent": -291
+      },
+      "upper_display": "[3.1957510765815999834502671089971381827e-50 +/- 4.65e-88]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "34092905797052563927124357704101156811",
+       "exponent": -230
+      },
+      "upper_display": "[1.9759002480817846021623312994337820210e-32 +/- 3.78e-70]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "147080658542064620012332549508639478019",
+       "exponent": -209
+      },
+      "upper_display": "[1.7876663773147382164897110900011109671e-25 +/- 4.81e-63]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "277932444143123099601974709537344814909",
+        "exponent": -134
+       },
+       "upper": {
+        "mantissa": "277932444143123099601974709537344817111",
+        "exponent": -134
+       },
+       "display": "[0.0127620319531434442115123936793275277 +/- 7.38e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "15845099707908144301521618142713588789",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "63380398831632577206086472570854355663",
+         "exponent": -127
+        },
+        "display": "[0.37251650389723802995510603430583874 +/- 5.55e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "220449819630268439840165162079261261543",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "220449819630268439840165162079261263311",
+         "exponent": -128
+        },
+        "display": "[0.64784379403793193207839985781962411 +/- 2.93e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "55072975867206011906653968405580684799",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "110145951734412023813307936811161370481",
+         "exponent": -127
+        },
+        "display": "[0.64737972014872837364571665788094867 +/- 4.67e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "217458974543038550324428792756884387589",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "217458974543038550324428792756884389319",
+         "exponent": -134
+        },
+        "display": "[0.0099852264105839627344136250234738576 +/- 6.94e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "217451602659729483631699694271789874157",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "217451602659729483631699694271789875887",
+         "exponent": -134
+        },
+        "display": "[0.0099848879103033092575139574405132038 +/- 8.38e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "103084139639667855953119284996694397321",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "103084139639667855953119284996694398141",
+         "exponent": -133
+        },
+        "display": "[0.0094667831098285469410085403473785836 +/- 4.11e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "131273022774643427914655444499076421701",
+        "exponent": -306
+       },
+       "upper_display": "[1.0069242785513776316659234030348532682e-54 +/- 3.19e-92]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    },
+    "helike_minus": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938308141409881101251867239",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "340282366920938308141409881101251873245",
+       "exponent": -128
+      },
+      "display": "[0.9999999999999995435497697639496763 +/- 5.71e-35]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "109304632968584594478166475774054417807",
+       "exponent": -337
+      },
+      "upper_display": "[3.9041817903696579353969522227695951150e-64 +/- 3.69e-102]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "127145701453249697973108397337042722165",
+       "exponent": -291
+      },
+      "upper_display": "[3.1957510765815999834502671089971381827e-50 +/- 4.65e-88]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "34092905797052563927124357704101156811",
+       "exponent": -230
+      },
+      "upper_display": "[1.9759002480817846021623312994337820210e-32 +/- 3.78e-70]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "147080658542064620012332549508639478019",
+       "exponent": -209
+      },
+      "upper_display": "[1.7876663773147382164897110900011109671e-25 +/- 4.81e-63]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "277932444143123099601974709537344814909",
+        "exponent": -134
+       },
+       "upper": {
+        "mantissa": "277932444143123099601974709537344817111",
+        "exponent": -134
+       },
+       "display": "[0.0127620319531434442115123936793275277 +/- 7.38e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "15845099707908144301521618142713588789",
+         "exponent": -125
+        },
+        "upper": {
+         "mantissa": "63380398831632577206086472570854355663",
+         "exponent": -127
+        },
+        "display": "[0.37251650389723802995510603430583874 +/- 5.55e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "220449819630268439840165162079261261543",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "220449819630268439840165162079261263311",
+         "exponent": -128
+        },
+        "display": "[0.64784379403793193207839985781962411 +/- 2.93e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "55072975867206011906653968405580684799",
+         "exponent": -126
+        },
+        "upper": {
+         "mantissa": "110145951734412023813307936811161370481",
+         "exponent": -127
+        },
+        "display": "[0.64737972014872837364571665788094867 +/- 4.67e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "217458974543038550324428792756884387589",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "217458974543038550324428792756884389319",
+         "exponent": -134
+        },
+        "display": "[0.0099852264105839627344136250234738576 +/- 6.94e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "217451602659729483631699694271789874157",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "217451602659729483631699694271789875887",
+         "exponent": -134
+        },
+        "display": "[0.0099848879103033092575139574405132038 +/- 8.38e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "103084139639667855953119284996694397321",
+         "exponent": -133
+        },
+        "upper": {
+         "mantissa": "103084139639667855953119284996694398141",
+         "exponent": -133
+        },
+        "display": "[0.0094667831098285469410085403473785836 +/- 4.11e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "131273022774643427914655444499076421701",
+        "exponent": -306
+       },
+       "upper_display": "[1.0069242785513776316659234030348532682e-54 +/- 3.19e-92]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    },
+    "competitor": {
+     "cutoff_tail_gate_passed": true,
+     "status": "UNRESOLVED_INTEGRATION",
+     "certified": false,
+     "full_grid_released": false,
+     "method": "analytic_gaussian_majorant_arb128",
+     "rigorous_scope": "saved_trial_cutoff_tail_and_normalization_only",
+     "plateau": {
+      "rho": {
+       "lower": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "upper": {
+        "mantissa": "55",
+        "exponent": -2
+       },
+       "display": "13.750000000000000000000000000000000000"
+      },
+      "Ds": {
+       "lower": {
+        "mantissa": "4444629163585731725099007",
+        "exponent": -62
+       },
+       "upper": {
+        "mantissa": "4444629163585733287387137",
+        "exponent": -62
+       },
+       "display": "[963775.319010416 +/- 5.01e-10]"
+      },
+      "R": {
+       "lower": {
+        "mantissa": "159635958227384033144674917428432480867",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "159635958227384034054543135887395400291",
+        "exponent": -115
+       },
+       "display": "[3843.0959018883605 +/- 4.15e-14]"
+      },
+      "det_lower": {
+       "lower": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "upper": {
+        "mantissa": "220603323601224223856730142794851370667",
+        "exponent": -104
+       },
+       "display": "[10876583.596926596198029817914573245996 +/- 4.88e-31]"
+      },
+      "norm_upper": {
+       "lower": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "upper": {
+        "mantissa": "157098616432414718713184703075870162993",
+        "exponent": -115
+       },
+       "display": "[3782.0116201124021968022444379755952763 +/- 3.06e-35]"
+      }
+     },
+     "norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938133610219173510111592995",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "340282366920938133610219173510111598707",
+       "exponent": -128
+      },
+      "display": "[0.99999999999999903064869796629791282 +/- 9.23e-36]"
+     },
+     "tail_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "90191183511949929060384057515749529799",
+       "exponent": -338
+      },
+      "upper_display": "[1.6107403993591340853315561245688812785e-64 +/- 4.03e-102]"
+     },
+     "leakage_sq": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "13118362624267998758603175520403104957",
+       "exponent": -289
+      },
+      "upper_display": "[1.3188970134364153446578314880780512224e-50 +/- 3.54e-88]"
+     },
+     "tail_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "175186955567037128346990656614881141401",
+       "exponent": -233
+      },
+      "upper_display": "[1.2691494787294103779316673308100527425e-32 +/- 2.70e-71]"
+     },
+     "leakage_norm": {
+      "lower": {
+       "mantissa": "0",
+       "exponent": 0
+      },
+      "upper": {
+       "mantissa": "188975077381396266573891028172670886627",
+       "exponent": -210
+      },
+      "upper_display": "[1.1484324157025590265859233441441528269e-25 +/- 4.47e-63]"
+     },
+     "cut_norm_sq": {
+      "lower": {
+       "mantissa": "340282366920938463463374607431768211453",
+       "exponent": -128
+      },
+      "upper": {
+       "mantissa": "1",
+       "exponent": 0
+      }
+     },
+     "majorants": {
+      "polynomial": {
+       "lower": {
+        "mantissa": "89260026397758558891535146803280792433",
+        "exponent": -133
+       },
+       "upper": {
+        "mantissa": "89260026397758558891535146803280793105",
+        "exponent": -133
+       },
+       "display": "[0.0081972388113135502585139337935500874 +/- 4.00e-38]"
+      },
+      "derivatives": [
+       {
+        "lower": {
+         "mantissa": "326175227602941852169970353718234432443",
+         "exponent": -130
+        },
+        "upper": {
+         "mantissa": "326175227602941852169970353718234434921",
+         "exponent": -130
+        },
+        "display": "[0.23963571089089500354443368279115329 +/- 2.55e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "283505605392519934234745518596828160943",
+         "exponent": -129
+        },
+        "upper": {
+         "mantissa": "283505605392519934234745518596828163103",
+         "exponent": -129
+        },
+        "display": "[0.41657404695669979088587267802391307 +/- 6.43e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "141651370848081077177720070934395183657",
+         "exponent": -128
+        },
+        "upper": {
+         "mantissa": "141651370848081077177720070934395184735",
+         "exponent": -128
+        },
+        "display": "[0.41627596554538041824836953109869253 +/- 5.31e-36]"
+       },
+       {
+        "lower": {
+         "mantissa": "279206757108820935900781320215475184519",
+         "exponent": -135
+        },
+        "upper": {
+         "mantissa": "279206757108820935900781320215475186629",
+         "exponent": -135
+        },
+        "display": "[0.0064102727674380776137524469656395304 +/- 5.43e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "139585936896998603630137440746994932473",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "17448242112124825453767180093374366691",
+         "exponent": -131
+        },
+        "display": "[0.0064094718858069594813918103920929888 +/- 3.57e-38]"
+       },
+       {
+        "lower": {
+         "mantissa": "132084466705563049286297461802718744523",
+         "exponent": -134
+        },
+        "upper": {
+         "mantissa": "66042233352781524643148730901359372761",
+         "exponent": -133
+        },
+        "display": "[0.0060650212673345267567777808786944733 +/- 5.78e-38]"
+       }
+      ],
+      "gradient_sq": {
+       "lower": {
+        "mantissa": "0",
+        "exponent": 0
+       },
+       "upper": {
+        "mantissa": "216707490249539760604424833184076036681",
+        "exponent": -308
+       },
+       "upper_display": "[4.1556145479104938755581151618368402563e-55 +/- 3.79e-93]"
+      },
+      "cutoff_gradient": {
+       "lower": {
+        "mantissa": "235967203538342263504162264100764454755",
+        "exponent": -120
+       },
+       "upper": {
+        "mantissa": "235967203538342263504162264100764454761",
+        "exponent": -120
+       },
+       "display": "[177.52199343273870264015938134846825068 +/- 6.32e-36]"
+      },
+      "cutoff_laplacian": {
+       "lower": {
+        "mantissa": "165840950398824497874784924760012944629",
+        "exponent": -111
+       },
+       "upper": {
+        "mantissa": "165840950398824497874784924760012944639",
+        "exponent": -111
+       },
+       "display": "[63879.61047574688095142311579731802969 +/- 3.92e-33]"
+      }
+     }
+    }
+   },
+   "metric_contributions": 164,
+   "seconds": 0.4850000000005821
+  }
+ ],
+ "started_utc": "2026-11-25T01:33:46Z",
+ "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "numpy": "2.4.0",
+ "python_flint": "0.9.0",
+ "precision_bits": 128,
+ "design": {
+  "s": 1.15,
+  "t": 3.0,
+  "g2": [
+   0.004,
+   0.002
+  ],
+  "Mq": [
+   6,
+   8
+  ],
+  "delta": 0.01,
+  "R_factor": 4.0,
+  "epsilon": "1/16",
+  "radius_candidates": "1/4 through 64/4",
+  "leakage_norm_limit": "1e-10",
+  "squared_width_limit": "1e-12",
+  "norm_width_limit": "1e-10"
+ },
+ "missing_gates": [
+  "rigorous_residual_and_charge_norms",
+  "projected_quasimode_bound",
+  "separation_and_target_identification"
+ ],
+ "finished_utc": "2026-11-25T01:33:49Z"
+}

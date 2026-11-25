@@ -1,0 +1,19 @@
+SOURCE_PIN c31aab8ed623761c42ef6ad62af85dae120fa7c0
+RECEIPT_SHA256 93e7096f8051cb89c59b8eafe74db26d196d0d48fee78941058baaa8c4958ae8
+{"g2": 0.004, "Mq": 6, "state": "ground", "gradient_part_upper": "[2.5898597601927368685868384227222081849e-9 +/- 6.85e-48]", "laplacian_part_upper": "[3.3212613099033638023673310782847463656e-10 +/- 2.38e-48]", "passed": false}
+{"g2": 0.004, "Mq": 6, "state": "helike_plus", "gradient_part_upper": "[4.3149036756448171181650969980048839957e-9 +/- 2.40e-47]", "laplacian_part_upper": "[5.5384752339156199739461402166380228878e-10 +/- 3.67e-48]", "passed": false}
+{"g2": 0.004, "Mq": 6, "state": "helike_minus", "gradient_part_upper": "[4.3149036756448171181650969980048839957e-9 +/- 2.40e-47]", "laplacian_part_upper": "[5.5384752339156199739461402166380228878e-10 +/- 3.67e-48]", "passed": false}
+{"g2": 0.004, "Mq": 6, "state": "competitor", "gradient_part_upper": "[2.5286886472679051599741426255444774779e-9 +/- 9.10e-49]", "laplacian_part_upper": "[3.2446955203735927570553986151257251294e-10 +/- 2.94e-48]", "passed": false}
+{"g2": 0.004, "Mq": 8, "state": "ground", "gradient_part_upper": "[2.1182217003555007379063128439868061856e-8 +/- 4.88e-46]", "laplacian_part_upper": "[2.7053527245716465934923148355631767355e-9 +/- 3.73e-47]", "passed": false}
+{"g2": 0.004, "Mq": 8, "state": "helike_plus", "gradient_part_upper": "[2.4062199381021768787031903897855265582e-7 +/- 2.97e-45]", "laplacian_part_upper": "[3.0720240542132450916241842474119954677e-8 +/- 2.89e-46]", "passed": false}
+{"g2": 0.004, "Mq": 8, "state": "helike_minus", "gradient_part_upper": "[2.4062199381021768787031903897855265582e-7 +/- 2.97e-45]", "laplacian_part_upper": "[3.0720240542132450916241842474119954677e-8 +/- 2.89e-46]", "passed": false}
+{"g2": 0.004, "Mq": 8, "state": "competitor", "gradient_part_upper": "[1.5256095127561627160033343763244385688e-7 +/- 3.80e-45]", "laplacian_part_upper": "[1.9471101692628987842992139501745872796e-8 +/- 1.95e-46]", "passed": false}
+{"g2": 0.002, "Mq": 6, "state": "ground", "gradient_part_upper": "[1.3584461950889389342992440503845297596e-27 +/- 4.73e-66]", "laplacian_part_upper": "[4.8229683051002712550459848159388986479e-30 +/- 1.75e-68]", "passed": true}
+{"g2": 0.002, "Mq": 6, "state": "helike_plus", "gradient_part_upper": "[1.6571704426977476150017029808348568428e-27 +/- 2.54e-66]", "laplacian_part_upper": "[5.8864077649602107371783166348597921219e-30 +/- 3.34e-68]", "passed": true}
+{"g2": 0.002, "Mq": 6, "state": "helike_minus", "gradient_part_upper": "[1.6571704426977476150017029808348568428e-27 +/- 2.54e-66]", "laplacian_part_upper": "[5.8864077649602107371783166348597921219e-30 +/- 3.34e-68]", "passed": true}
+{"g2": 0.002, "Mq": 6, "state": "competitor", "gradient_part_upper": "[9.7602197272967124990826321467693700871e-28 +/- 9.34e-67]", "laplacian_part_upper": "[3.4663506824882289131971332942817628685e-30 +/- 4.88e-68]", "passed": true}
+{"g2": 0.002, "Mq": 8, "state": "ground", "gradient_part_upper": "[1.1194486578105490297865461194565447213e-26 +/- 3.16e-64]", "laplacian_part_upper": "[3.9667914789630065969030325362617489036e-29 +/- 2.84e-67]", "passed": true}
+{"g2": 0.002, "Mq": 8, "state": "helike_plus", "gradient_part_upper": "[1.7813553904054184150604017370039080291e-25 +/- 2.54e-63]", "laplacian_part_upper": "[6.3109869093198014293093529972029379589e-28 +/- 2.10e-66]", "passed": true}
+{"g2": 0.002, "Mq": 8, "state": "helike_minus", "gradient_part_upper": "[1.7813553904054184150604017370039080291e-25 +/- 2.54e-63]", "laplacian_part_upper": "[6.3109869093198014293093529972029379589e-28 +/- 2.10e-66]", "passed": true}
+{"g2": 0.002, "Mq": 8, "state": "competitor", "gradient_part_upper": "[1.1443787769857224297639798932067640086e-25 +/- 1.61e-63]", "laplacian_part_upper": "[4.0536387168365968219434509373888182377e-28 +/- 9.21e-67]", "passed": true}
+EXACT_SERIALIZED_REPLAYS 16 MATCHED; CUTOFF GATE OPEN; FULL GRID HELD

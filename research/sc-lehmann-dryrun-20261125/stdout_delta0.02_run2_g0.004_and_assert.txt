@@ -1,0 +1,32 @@
+Lehmann homotopy dry run on B3' (L_u = 5.0, L_v = 2.0), DELTA = 0.02; floating point, not a bound
+
+=== control g2 = 0.004: E0 - V_bg = 5.40626, rho_b - V_bg = 7.7263
+  quartic fit: max error on fresh points 7.67e-13; linear terms max 5.02e-14
+  w2 = [1.18833 1.18833 1.22469 5.90333 5.90333 7.17031]; C3 (script) = 0.07496, C3 (fitted cubic) = 0.07496, used 0.07496
+  V_J in [-1.06e-03, -5.71e-04], beta = 0.0581; reduced w2 soft 0.3810, stiff 5.0960
+  min of D = P - W0 on the product tube (sampled + local search): 2.486e-14
+  basis: 1986 product functions (soft 454 with l <= 13, stiff 35), cut at E = 12.4288 (rho_b + 4.703); base lambda_1 = 4.2885, lambda_11 = 6.1281, levels below rho_b = 87
+  radial convergence (K = 44 vs 56): soft max |dE| over levels < cut = 1.2e-04
+  block orthonormality: soft 3.6e-10, stiff 4.4e-14
+  operators built (116 s); min eig of the D matrix 5.04e-01
+  Ritz at s = 1 minus E0: -0.0107 1.0769 1.0769 1.0856 2.1561 2.1626 2.1626 2.1712 2.1712 2.1763 2.3528 2.3528 2.6278
+  Ritz mu_11(1) - rho_b = +0.0328 (the margin the homotopy must keep)
+  step  1: s = 0.1225  N =  23  rho - E0 = 1.2926  l_11 - E0 = +1.1247  (mu_11 - E0 = 1.1249)  max resid 6.1e-03  neg tau 23
+  step  2: s = 0.1475  N =  20  rho - E0 = 1.2302  l_11 - E0 = +1.1990  (mu_11 - E0 = 1.2009)  max resid 7.7e-03  neg tau 20
+  VERDICT g2 = 0.004: FAIL (stuck at s = 0.1475)  [2 steps, 1986 basis functions, 451 s]
+
+=== control g2 = 0.002: E0 - V_bg = 5.40917, rho_b - V_bg = 7.7292
+  quartic fit: max error on fresh points 1.78e-12; linear terms max 5.71e-14
+  w2 = [1.18833 1.18833 1.22469 5.90333 5.90333 7.17031]; C3 (script) = 0.05301, C3 (fitted cubic) = 0.05301, used 0.05301
+  V_J in [-4.75e-04, -3.09e-04], beta = 0.0386; reduced w2 soft 0.6174, stiff 5.3324
+  min of D = P - W0 on the product tube (sampled + local search): 1.700e-14
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\claude\c1f45fde8580c2d1\b37c5552-3973-44ff-8ddd-a1bb403cae11\scratchpad\wt-flux\scripts\dryrun_helike_sc_lehmann_homotopy.py", line 367, in <module>
+    main()
+  File "C:\Users\nurdm\AppData\Local\Temp\claude\c1f45fde8580c2d1\b37c5552-3973-44ff-8ddd-a1bb403cae11\scratchpad\wt-flux\scripts\dryrun_helike_sc_lehmann_homotopy.py", line 360, in main
+    res = [run_control(g2, E0, a.delta, log) for g2, E0 in gb.CONTROLS if str(g2) in a.controls.split(",")]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\claude\c1f45fde8580c2d1\b37c5552-3973-44ff-8ddd-a1bb403cae11\scratchpad\wt-flux\scripts\dryrun_helike_sc_lehmann_homotopy.py", line 272, in run_control
+    assert cut < ecut + min(ub.E.min(), vb.E.min())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

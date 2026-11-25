@@ -332,3 +332,68 @@ limits of 40 steps and 2,000 functions.
 - the model checks: quartic fit 7.7 × 10⁻¹³; minimum of D on the tube 2.5 × 10⁻¹⁴;
 - the basis: 1,986 functions;
 - the s = 1 Ritz value μ₁₁ − ρ_b = +0.033 at g² = 0.004. This is the whole margin the final Lehmann bound has to fit inside.
+
+---
+
+## 10. Results, 25 November: dry run FAIL at both controls under the registered rule
+
+**Sources.**
+- Script `scripts/dryrun_helike_sc_lehmann_homotopy.py` (sha256 aa87ad32…, at commit 81b46182).
+- Logs in `research/sc-lehmann-dryrun-20261125/`.
+- **The g² = 0.004 verdict run** was made at 6ef30399. The later basis-cut fix does not touch that control: its basis
+  is the same 1,986 functions, and the sensitivity runs reproduce it.
+- **Run order.** Run 1 crashed (§9.5). Run 2 gave the g² = 0.004 verdict, then stopped at an assertion that the
+  g² = 0.002 basis was incomplete, before any step. The block cut was widened, and that control was rerun.
+
+### 10.1 Model checks (both controls)
+
+| | g² = 0.004 | g² = 0.002 |
+| --- | --- | --- |
+| quartic fit, max error on fresh points | 7.7e-13 | (same order) |
+| C₃ (script = fitted cubic) | 0.07496 | 0.0530 |
+| min of D on the tube | 2.5e-14 (origin) | 1.7e-14 |
+| basis (cut, levels of H₀ below ρ_b) | 1,986 (ρ_b + 4.70; 87) | 1,938 (ρ_b + 6.26; 32) |
+| radial convergence, block orthonormality | 1.2e-4, 3.6e-10 | 2.8e-4, 8.3e-10 |
+| Ritz at s = 1 minus E₀, μ₁ … μ₁₃ | −0.011 · 1.077 ×2, 1.086 · 2.156 … 2.176 (six) · **2.353 ×2** · 2.628 | −0.011 · 1.078 ×2, 1.091 · 2.163 … 2.190 (six) · **2.356 ×2** · 2.626 |
+| **μ₁₁(H₁) − ρ_b** | **+0.033** | **+0.036** |
+
+The inside model's levels sit about 0.08 below the harmonic levels of §8.1, because of the Neumann/Robin walls and
+v_J. So the whole margin for λ₁₁ ≥ ρ_b is about 0.03, not 0.11 as §8.1 estimated. The inside model passes
+its necessary condition, but narrowly.
+
+### 10.2 Homotopy
+
+| Δ | g² = 0.004 | g² = 0.002 |
+| --- | --- | --- |
+| **0.02 (verdict)** | **FAIL: stuck at s = 0.1475 after 2 steps** (N 23 → 20, ρ − E₀ 1.29 → 1.23) | **FAIL: stuck at s = 0.610 after 3 steps** (N 23 → 13 → 12, ρ − E₀ 2.22 → 2.17 → 2.04) |
+| 0.01 (sensitivity) | stuck at s = 0.155 after 2 steps | stuck at s = 0.590 after 2 steps |
+| 0.05 (sensitivity) | stuck at s = 0.130 after 2 steps | stuck at s = 0.598 after 3 steps |
+
+The Lehmann step itself behaves well:
+- the right-hand matrix was positive definite at every step;
+- every trial state gave a negative τ;
+- ℓ₁₁ sat 10⁻⁴ to 4 × 10⁻² below μ₁₁, with residuals of 5 × 10⁻³ to 5 × 10⁻².
+
+**Verdict, by §8.5 and §9.4: FAIL at both controls. B4 stands. S_C stays a stated hypothesis**, and the ordering
+stays proved conditional on S_C.
+
+### 10.3 What failed: the step rule, not (yet shown) the base
+
+The steps fail the same way at every Δ, and the cause is structural:
+- The new ρ′ = ℓ_j needs a Lehmann bound at index j. That exists only while N ≥ j.
+- The greedy "reach the largest s" rule drops the index at once (87 → 23 at step 1), and then to 13 and 12.
+- Once N = 12, the only candidate left is j = 13 with ρ′ = ρ. ρ is then frozen, and the homotopy stops as soon as
+  μ₁₂ climbs to ρ − Δ.
+- At g² = 0.004 a dense band near E₀ + 1.2 leaves no clean gap above any index, so the rule stalls even earlier.
+
+A homotopy that reaches s = 1 has to keep N well above 12 until late, giving up reach per step for ρ that keeps rising.
+The registered rule never makes that trade. So this FAIL settles the rule as registered. It does not show that no
+admissible path exists for B3′.
+
+**Not done here; would need its own registration before any run:**
+1. A planner over the Ritz curves (dynamic programming over (s, N)) that decides whether any admissible index path to
+   ℓ₁₁ ≥ ρ_b exists, using μ as a proxy for ℓ and Δ as the margin. If none exists even with exact proxies, B3′ is
+   ruled out, not just this rule.
+2. A larger margin at the end. The 0.03 margin of §10.1 is the binding number. It could be widened by a larger tube
+   (smaller wall effect) or by a sharper base than the block-isotropic reduction, for example keeping the
+   anisotropic w² in the soft block.

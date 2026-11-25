@@ -1,0 +1,31 @@
+Lehmann homotopy dry run on B3' (L_u = 5.0, L_v = 2.0), DELTA = 0.01; floating point, not a bound
+
+=== control g2 = 0.004: E0 - V_bg = 5.40626, rho_b - V_bg = 7.7263
+  quartic fit: max error on fresh points 1.05e-12; linear terms max 5.62e-14
+  w2 = [1.18833 1.18833 1.22469 5.90333 5.90333 7.17031]; C3 (script) = 0.07496, C3 (fitted cubic) = 0.07496, used 0.07496
+  V_J in [-1.06e-03, -5.71e-04], beta = 0.0581; reduced w2 soft 0.3810, stiff 5.0960
+  min of D = P - W0 on the product tube (sampled + local search): 8.801e-15
+  basis: 1986 product functions (soft 454 with l <= 13, stiff 35), cut at E = 12.4288 (rho_b + 4.703); base lambda_1 = 4.2885, lambda_11 = 6.1281, levels below rho_b = 87
+  radial convergence (K = 44 vs 56): soft max |dE| over levels < cut = 1.2e-04
+  block orthonormality: soft 3.6e-10, stiff 4.4e-14
+  operators built (189 s); min eig of the D matrix 5.04e-01
+  Ritz at s = 1 minus E0: -0.0107 1.0769 1.0769 1.0856 2.1561 2.1626 2.1626 2.1712 2.1712 2.1763 2.3528 2.3528 2.6278
+  Ritz mu_11(1) - rho_b = +0.0328 (the margin the homotopy must keep)
+  step  1: s = 0.1300  N =  23  rho - E0 = 1.2926  l_11 - E0 = +1.1476  (mu_11 - E0 = 1.1479)  max resid 6.6e-03  neg tau 23
+  step  2: s = 0.1550  N =  20  rho - E0 = 1.2415  l_11 - E0 = +1.2198  (mu_11 - E0 = 1.2234)  max resid 8.2e-03  neg tau 20
+  VERDICT g2 = 0.004: FAIL (stuck at s = 0.1550)  [2 steps, 1986 basis functions, 750 s]
+
+=== control g2 = 0.002: E0 - V_bg = 5.40917, rho_b - V_bg = 7.7292
+  quartic fit: max error on fresh points 1.56e-12; linear terms max 5.80e-14
+  w2 = [1.18833 1.18833 1.22469 5.90333 5.90333 7.17031]; C3 (script) = 0.05301, C3 (fitted cubic) = 0.05301, used 0.05301
+  V_J in [-4.75e-04, -3.09e-04], beta = 0.0386; reduced w2 soft 0.6174, stiff 5.3324
+  min of D = P - W0 on the product tube (sampled + local search): 8.922e-16
+  basis: 1938 product functions (soft 427 with l <= 12, stiff 35), cut at E = 13.9865 (rho_b + 6.257); base lambda_1 = 4.6231, lambda_11 = 6.8417, levels below rho_b = 32
+  radial convergence (K = 44 vs 56): soft max |dE| over levels < cut = 2.8e-04
+  block orthonormality: soft 8.3e-10, stiff 5.4e-14
+  operators built (161 s); min eig of the D matrix 3.48e-01
+  Ritz at s = 1 minus E0: -0.0105 1.0779 1.0779 1.0906 2.1626 2.1659 2.1659 2.1786 2.1786 2.1895 2.3560 2.3560 2.6257
+  Ritz mu_11(1) - rho_b = +0.0360 (the margin the homotopy must keep)
+  step  1: s = 0.3325  N =  23  rho - E0 = 2.2183  l_11 - E0 = +1.7648  (mu_11 - E0 = 1.7652)  max resid 2.1e-02  neg tau 23
+  step  2: s = 0.5900  N =  13  rho - E0 = 2.1802  l_11 - E0 = +1.9268  (mu_11 - E0 = 2.0030)  max resid 5.1e-02  neg tau 13
+  VERDICT g2 = 0.002: FAIL (stuck at s = 0.5900)  [2 steps, 1938 basis functions, 538 s]

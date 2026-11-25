@@ -285,7 +285,40 @@ Targeting the wrong Helike sector gives c > 3, and the bound refuses.
 quotient. There is no separation hypothesis, no Temple bound, no gate verdict and no level identification beyond
 the exact charge sector.
 
-**Not built yet:** Temple bounds under the stated separation hypothesis S, and viewer scene 4.
+### Kato–Temple ordering (`temple`)
+
+This follows the registration `docs/research/helike-temple-ordering-registration-2026-11-25.md`, which was written
+with its predictions before any of this code existed. The pieces:
+- The linear moment s = ⟨ψ, (H−E)ψ⟩ uses the same exact centred moment sum, linear rather than squared. It is
+  cross-checked against the polarization of two residual enclosures, with centres shifted by an exact 1/8, and the
+  run refuses unless the two overlap.
+- Lemma 1 encloses the Rayleigh quotient of the trimmed, projected state.
+- Lemma 3 checks that the ground and competitor Weinstein windows are disjoint and lie below ρ_C.
+- Lemma 2 is the Kato–Temple lower bound for the largest charge-0 eigenvalue below the frozen
+  ρ_C = E₀ᶜ + ω_H⁺ + ω_H⁻ − ω_min/4.
+- The verdict is ORDERED only with an explicit `--assume S_C`, and is then conditional on (A) and S_C. The reverse
+  order is never claimed.
+
+```sh
+cargo run --release -p helike-cli -- --out receipts/cone_temple_c31aab8e.json cone-temple --assume S_C
+```
+
+| g² | Mq | s/‖ψ‖² (enclosure) | margin L_C − U_H ≥ | verdict | as predicted |
+| --- | --- | --- | --- | --- | --- |
+| 0.004 | 6 | within ±1.0e-11 | −0.001055 | UNRESOLVED | yes |
+| 0.004 | 8 | within ±1.0e-11 | +0.007179 | ORDERED | yes |
+| 0.002 | 6 | within ±1.6e-11 | +0.010042 | ORDERED | yes |
+| 0.002 | 8 | within ±1.6e-11 | +0.012061 | ORDERED | yes |
+
+The linear moments are consistent with zero, as expected for Ritz vectors. The polarization route agrees, with
+wider enclosures (about ±1e-8). μ is dominated by the charge term c(r + ℓ). Under (A), S_0, S_H and S_C the receipt
+also reports gap values. At g² = 0.004, Mq = 8, Helike's exact excitation gap lies in [1.08786, 1.08804], and the
+competitor's is at least 1.09516.
+
+Tests: RED (missing module), then GREEN with 7 tests. All nine registered faults are caught, plus the linear
+moment's own two. The receipt replays with no differences.
+
+**Not built yet:** a proof of (A) written out, any test of S_C itself, and viewer scene 4.
 
 ## Status
 

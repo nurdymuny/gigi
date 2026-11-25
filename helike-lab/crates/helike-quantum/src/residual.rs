@@ -410,7 +410,7 @@ pub fn build_residual(
 }
 
 /// The Hermite workspace (saved degree + `headroom`) with the coefficients placed in it.
-pub(crate) fn embed(w: [f64; 6], basis: &[State], coeff: &[Cx], ncol: usize, headroom: usize) -> Result<(Space, Vec<Cx>), String> {
+pub fn embed(w: [f64; 6], basis: &[State], coeff: &[Cx], ncol: usize, headroom: usize) -> Result<(Space, Vec<Cx>), String> {
     if coeff.len() != basis.len() * ncol {
         return Err("coefficient shape mismatch".into());
     }
@@ -655,7 +655,9 @@ pub struct SavedControl {
     pub names: Vec<String>,
     pub python_potential: Vec<PotentialTerm>,
     pub python_metric: Vec<MetricTerm>,
-    pub reference_centered_moments: ReferenceMoments,
+    /// floating reference moments of the Python construction; absent for Rust-solved exports
+    #[serde(default)]
+    pub reference_centered_moments: Option<ReferenceMoments>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -681,11 +683,11 @@ pub struct StateEnclosure {
     /// r = ‖(H − E)ψ‖ / ‖ψ‖
     pub r_lower: f64,
     pub r_upper: f64,
-    /// the reference's centred floating-point value of residual_sq (not an enclosure)
-    pub reference_residual_sq: f64,
-    pub reference_inside: bool,
+    /// the reference's centred floating-point value of residual_sq (not an enclosure); absent for Rust exports
+    pub reference_residual_sq: Option<f64>,
+    pub reference_inside: Option<bool>,
     /// distance from the reference value to the enclosure (0 if inside)
-    pub reference_outside_by: f64,
+    pub reference_outside_by: Option<f64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -777,11 +779,11 @@ pub fn enclose_control_with(
         .map(|j| {
             let v = values[j];
             let nn = norms[j];
-            let refv = c.reference_centered_moments.value[j];
+            let refv = c.reference_centered_moments.as_ref().map(|m| m.value[j]);
             let lo = Iv::point(v.lo.max(0.0));
             let r_lower = if v.lo > 0.0 { (lo / nn).sqrt().lo } else { 0.0 };
             let r_upper = (Iv::point(v.hi.max(0.0)) / nn).sqrt().hi;
-            let outside = if v.contains(refv) { 0.0 } else { (v.lo - refv).max(refv - v.hi) };
+            let outside = refv.map(|r| if v.contains(r) { 0.0 } else { (v.lo - r).max(r - v.hi) });
             StateEnclosure {
                 name: c.names.get(j).cloned().unwrap_or_default(),
                 center: centers[j],
@@ -790,7 +792,7 @@ pub fn enclose_control_with(
                 r_lower,
                 r_upper,
                 reference_residual_sq: refv,
-                reference_inside: v.contains(refv),
+                reference_inside: refv.map(|r| v.contains(r)),
                 reference_outside_by: outside,
             }
         })

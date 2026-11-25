@@ -9,8 +9,9 @@ usage:
   per-point domain-validity gate (relative leakage gate at the final rung) passes.
 - Identification, switch definition, tolerance and decision rule: verbatim from the registration
   (docs/research/helike-flux-background-registration-2026-11-24.md); switch_point is reused from the original runner.
-- The domain gate needs a per-point state export and the Arb/interval bounds of those states. That stage is not
-  implemented: `domain_gate` answers OPEN, so no point can be called converged and the runner refuses to start.
+- The domain gate (helike_domain_gate): Rust cone-export of the final-rung states, Arb tail/leakage bounds, Rust
+  interval residual/charge bounds, then the registered relative leakage gate on Helike and the competitor.
+- The registered grid only starts with an explicit --registered-grid, and only if every release condition holds.
 """
 import argparse
 import hashlib
@@ -54,10 +55,24 @@ def sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
-def domain_gate(final_rung):
+def domain_stage_ready():
+    """The domain stage needs the Rust binary and python-flint (Arb)."""
+    try:
+        import helike_domain_gate  # noqa: F401  (imports helike_cutoff_bounds, hence flint)
+    except ImportError:
+        return False
+    return HELIKE_BIN.exists()
+
+
+def domain_gate(s, t, g2, mq):
     """Per-point domain validity (amendment 3.3): the relative leakage gate on the final rung's Helike and competitor
-    states. Not implemented: it needs the state export and the Arb/interval bounds per point. Never PASS until then."""
-    return "OPEN"
+    states. Returns (verdict, details). Any refusal inside the stage is OPEN, never PASS."""
+    import helike_domain_gate as dg
+    try:
+        r = dg.domain_gate_point(s, t, g2, mq)
+    except (ValueError, KeyError, subprocess.CalledProcessError, ArithmeticError) as exc:
+        return "OPEN", {"error": f"{type(exc).__name__}: {exc}"}
+    return r["verdict"], r
 
 
 def assess_point(point, D):
@@ -80,6 +95,8 @@ def assess_point(point, D):
 
 
 def assess_case(case, D):
+    if any(p.get("refused") for p in case["points"]):
+        return {"status": "UNRESOLVED", "measured_switch": None}
     pts = [assess_point(p, D) for p in case["points"]]
     if not all(a["converged"] and a["identified"] for a in pts):
         return {"status": "UNRESOLVED", "measured_switch": None}
@@ -127,7 +144,7 @@ def unmet_release_conditions(pins=None):
         unmet.append("certificate")
     if not (ROOT / AMENDMENT).exists():
         unmet.append("method_amendment")
-    if domain_gate({"Mq": DESIGN["ladder"][-1]}) != "PASS":
+    if not domain_stage_ready():
         unmet.append("domain_gate_stage")
     return unmet
 
@@ -149,6 +166,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out_dir", nargs="?")
     ap.add_argument("--check-release", action="store_true")
+    ap.add_argument("--registered-grid", action="store_true", help="explicitly start the registered grid")
     a = ap.parse_args()
     unmet = unmet_release_conditions()
     if a.check_release or not a.out_dir:
@@ -156,6 +174,9 @@ def main():
         return 0
     if unmet:
         print("HOLD: unmet release conditions " + ", ".join(unmet))
+        return 2
+    if not a.registered_grid:
+        print("refusing: the registered grid starts only with --registered-grid (run it on the big machine)")
         return 2
     out = Path(a.out_dir)
     if out.exists() and any(out.iterdir()):
@@ -169,8 +190,15 @@ def main():
             case = {"block": label, "t": block["t"], "g2": g2, "points": []}
             rec["cases"].append(case)
             for s in block["s"]:
-                p = {"s": s, "ladder": [solve(s, block["t"], g2, mq) for mq in DESIGN["ladder"]]}
-                p["domain_gate"] = domain_gate(p["ladder"][-1])
+                try:
+                    p = {"s": s, "ladder": [solve(s, block["t"], g2, mq) for mq in DESIGN["ladder"]]}
+                except (subprocess.CalledProcessError, ValueError, KeyError) as exc:
+                    # a solver refusal is a failed point (UNRESOLVED under the registered rule), never a crash
+                    p = {"s": s, "ladder": [], "refused": f"{type(exc).__name__}", "converged": False, "identified": False}
+                    case["points"].append(p)
+                    (out / "receipt.json").write_text(json.dumps(rec, indent=1))
+                    continue
+                p["domain_gate"], p["domain"] = domain_gate(s, block["t"], g2, DESIGN["ladder"][-1])
                 p.update(assess_point(p, DESIGN))
                 case["points"].append(p)
                 (out / "receipt.json").write_text(json.dumps(rec, indent=1))

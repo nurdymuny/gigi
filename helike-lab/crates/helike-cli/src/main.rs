@@ -150,6 +150,20 @@ enum Cmd {
     /// (docs/research/helike-temple-ordering-registration-2026-11-25.md): the linear moment s (two routes), Lemma 1's
     /// Rayleigh-quotient enclosure, Lemma 3's windows and the Temple lower bound under the frozen ρ_C. ORDERED is
     /// only possible with `--assume S_C`, and is then conditional on (A) and S_C.
+    /// Solve one point with exact moments and export its four quasimode trial states (ground, Helike pair with its
+    /// chiral mixing, competitor) as bit patterns, for the per-point domain-validity gate. Writes `--states-out`.
+    ConeExport {
+        #[arg(long)]
+        s: f64,
+        #[arg(long)]
+        t: f64,
+        #[arg(long)]
+        g2: f64,
+        #[arg(long)]
+        mq: usize,
+        #[arg(long)]
+        states_out: PathBuf,
+    },
     ConeTemple {
         #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
         states: PathBuf,
@@ -281,6 +295,14 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                     "arithmetic": "binary64 intervals, round-to-nearest then one ulp outward; exp by Cody-Waite reduction and Taylor with explicit remainder",
                     "scope": "uncut residual of each saved trial state under the registered operator; no cutoff leakage, no gate, no spectral statement"}),
              json!({"controls": rows}))
+        }
+        Cmd::ConeExport { s, t, g2, mq, states_out } => {
+            let e = helike_quantum::export::export_point(*s, *t, *g2, *mq, &SolveSettings::default())?;
+            std::fs::write(states_out, serde_json::to_string(&e).unwrap()).map_err(|x| x.to_string())?;
+            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "states_out": states_out}),
+             json!({"compressed_charges": e.compressed_charges, "pair_weights": e.pair_weights,
+                    "competitor_weight": e.competitor_weight, "level_indices": e.level_indices,
+                    "states_sha256_lf": helike_stream::text_sha256(states_out)}))
         }
         Cmd::ConeTemple { states, inputs, assume, delta, g2, mq } => {
             let sep = match assume.as_deref() {

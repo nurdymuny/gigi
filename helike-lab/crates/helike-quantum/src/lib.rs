@@ -17,6 +17,7 @@
 //! operator; the quasimode certificates are a separate layer.
 
 pub mod basis;
+pub mod export;
 pub mod chart;
 pub mod grid;
 pub mod hermite;

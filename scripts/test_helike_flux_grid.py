@@ -2,6 +2,9 @@
 The solver is mocked: these tests fix the decision logic, not physics. No grid point is computed here."""
 import copy
 import json
+import sys
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 import unittest
 
@@ -86,6 +89,12 @@ class Case(unittest.TestCase):
         c["points"][3]["domain_gate"] = "OPEN"
         self.assertEqual(grid.assess_case(c, grid.DESIGN)["status"], "UNRESOLVED")
 
+    def test_a_refused_point_makes_the_case_unresolved(self):
+        diffs = [-0.02, -0.012, -0.006, -0.0005, 0.007, 0.015, 0.02]
+        c = case(S, diffs)
+        c["points"][2] = {"s": S[2], "ladder": [], "refused": "CalledProcessError", "converged": False, "identified": False}
+        self.assertEqual(grid.assess_case(c, grid.DESIGN)["status"], "UNRESOLVED")
+
     def test_overall_rule(self):
         o = grid.overall
         self.assertEqual(o(["SUPPORTED"] * 3), "SUPPORTED")
@@ -97,15 +106,38 @@ class Case(unittest.TestCase):
 
 
 class Release(unittest.TestCase):
-    def test_domain_gate_is_open_until_implemented(self):
-        self.assertEqual(grid.domain_gate({"Mq": 10}), "OPEN")
+    def test_domain_gate_passes_the_stage_verdict_through(self):
+        import helike_domain_gate as dg
+        for v in ("PASS", "FAIL", "OPEN"):
+            with patch.object(dg, "domain_gate_point", lambda *a, v=v: {"verdict": v}):
+                self.assertEqual(grid.domain_gate(1.15, 3.0, 0.05, 10)[0], v)
+        def refuse(*a):
+            raise ValueError("planted refusal")
+        with patch.object(dg, "domain_gate_point", refuse):
+            self.assertEqual(grid.domain_gate(1.15, 3.0, 0.05, 10)[0], "OPEN")
 
     def test_release_conditions_read_the_pinned_control_receipts(self):
         unmet = grid.unmet_release_conditions()
         self.assertNotIn("convergence", unmet)
         self.assertNotIn("certificate", unmet)
         self.assertNotIn("method_amendment", unmet)
-        self.assertIn("domain_gate_stage", unmet)      # the per-point domain gate is not implemented yet
+        with patch.object(grid, "domain_stage_ready", lambda: False):
+            self.assertIn("domain_gate_stage", grid.unmet_release_conditions())
+
+    def test_the_grid_needs_an_explicit_flag(self):
+        """Never reaches the real solver: solve and the domain gate are stubs that record whether the grid started."""
+        started = []
+        def fake_solve(s, t, g2, mq):
+            started.append((s, t, g2, mq))
+            return rung(mq, 1.08, 1.09)
+        with tempfile.TemporaryDirectory() as d, \
+                patch.object(grid, "unmet_release_conditions", lambda *a: []), \
+                patch.object(grid, "solve", fake_solve), \
+                patch.object(grid, "domain_gate", lambda *a: ("OPEN", {})), \
+                patch.object(sys, "argv", ["runner", str(Path(d) / "out")]):
+            code = grid.main()
+        self.assertEqual(code, 2)
+        self.assertEqual(started, [], "the grid started without --registered-grid")
 
     def test_a_changed_certificate_receipt_is_refused(self):
         pins = copy.deepcopy(grid.PINNED)
@@ -115,3 +147,33 @@ class Release(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DomainStage(unittest.TestCase):
+    """The domain gate's aggregation, and an end-to-end parity run at a control (Mq 6) against the archived
+    Python-construction sector bounds."""
+
+    def test_verdict_aggregation(self):
+        import helike_domain_gate as dg
+        ok = {"state_passed": True, "relative_gate": "PASS"}
+        rows = {n: dict(ok) for n in dg.NAMES}
+        self.assertEqual(dg.verdict(rows), "PASS")
+        rows["ground"] = {"state_passed": False, "relative_gate": "FAIL"}      # the ground state is not gated
+        self.assertEqual(dg.verdict(rows), "PASS")
+        rows["competitor"] = {"state_passed": False, "relative_gate": "FAIL"}
+        self.assertEqual(dg.verdict(rows), "FAIL")
+        rows["competitor"] = {"state_passed": False, "relative_gate": "OPEN"}
+        self.assertEqual(dg.verdict(rows), "OPEN")
+
+    def test_control_reproduces_the_archived_bounds(self):
+        import helike_domain_gate as dg
+        r = dg.domain_gate_point(1.15, 3.0, 0.004, 6)
+        self.assertEqual(r["verdict"], "PASS")
+        arch = json.loads((ROOT / "research/leakage-gate-20261125/inputs/cone_sector_bounds_c31aab8e.json").read_text())
+        ref = {s["name"]: s for c in arch["results"]["controls"] if (c["g2"], c["Mq"]) == (0.004, 6) for s in c["states"]}
+        for name in dg.NAMES:
+            got, want = r["states"][name], ref[name]
+            for key in ("r_lower", "r_upper", "charge_upper"):
+                self.assertAlmostEqual(got[key], want[key], delta=1e-6 * abs(want[key]) + 1e-12, msg=(name, key))
+            self.assertAlmostEqual(got["leakage_norm_upper"], want["leakage_norm_upper"], delta=1e-3 * want["leakage_norm_upper"])
+        self.assertTrue(all(abs(abs(c) - 2) < 0.01 for c in r["compressed_charges"]))

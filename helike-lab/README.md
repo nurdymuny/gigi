@@ -114,13 +114,26 @@ A port of the positive-cone Ritz solver (`scripts/helike_positive_cone.py`, `Con
 homogeneous condensate. It never forms a moment matrix.
 - The Python code builds H from an exact Laurent expansion, one dense moment matrix per term (5,005 × 5,005 at
   Mq = 8).
-- Here each moment integral ∫ φ_n φ_m f is evaluated pointwise on a Gauss–Hermite grid, between a separable
-  forward transform and its exact adjoint, one (q0, q1, q2) sub-slab at a time. Memory stays at megabytes.
-- The integrands are entire functions times polynomials, so the quadrature error falls by about 1000x per extra
-  node. It reaches roundoff at 4 extra nodes per axis on the controls. Every result also records the change in
-  the levels at 6 extra nodes (`quadrature_check`).
+- Here the moments are **exact** (`ConeOperator::exact`, modules `laurent` and `kron`). The cometric and potential
+  are exact Laurent polynomials in the Cholesky entries; the cometric comes from running the closed-form triangular
+  solves on polynomials. They fall into 24 exponential groups with (a, b, c) degree at most 4. Each group is applied
+  as F[exp(α·z) q] = E(α)·q(U):
+  - E(α) = ⊗_k E_k(α_k) uses the exact one-dimensional moments on shifted Gauss–Hermite nodes, as in
+    `one_dimensional_moments`;
+  - q(U) uses the exact Hermite position operators.
+
+  E(α) is applied axis by axis on (output prefix, total ≤ Mq + 1) × (input suffix, total ≤ Mq + 5): two independent
+  constraints, so every intermediate is a small dense product set. No grid, no dense matrix, no quadrature error.
+  A component leaving the exact degree window is a refusal, never a silent drop.
+- The original grid operator (`ConeOperator::new`) is kept as an independent implementation. Each moment integral is
+  evaluated pointwise on a Gauss–Hermite grid, between a separable forward transform and its exact adjoint. Every
+  solve is cross-checked against it (`quadrature_cross_check`).
+- Exact against the Python dense matrices: 8.3e-13 entrywise at Mq = 4 (entries up to 16). Exact against the grid
+  operator: 7.4e-13. Mq = 6 controls: 7 s exact against 25 s on the grid, on the same machine.
 - The lowest levels come from block Lanczos (block 4, for the Helike doublet). Convergence is judged on true
-  residuals ‖Hx − θx‖.
+  residuals ‖Hx − θx‖ inside the trial space. Receipts call these `in_space_lanczos_residuals` and
+  `max_in_space_lanczos_residual`, because they are not the full-operator residuals ‖(H − E)ψ‖ of the quasimode
+  certificate. Those are about 10⁻² to 10⁻³ at the controls, versus about 10⁻¹⁴ to 10⁻¹⁰ here.
 
 The model and chart are general: any helicities ω, coupling g and per-row sources, and any stationary positive
 definite background G0 (`Background::from_stationary`). The Helike/competitor identification is a layer on top.
@@ -148,7 +161,7 @@ Each of these deliberate faults breaks entrywise parity of H:
 ```sh
 cargo run --release -p helike-cli -- cone --g2 0.004 --mq 8
 cargo run --release -p helike-cli -- cone-controls --mq 6
-cargo run --release -p helike-cli -- --out receipts/cone_convergence_mq6_mq8.json cone-convergence --from 6 --to 8
+cargo run --release -p helike-cli -- --out receipts/cone_convergence_mq6_mq8_exact.json cone-convergence --from 6 --to 8
 ```
 
 `cone-controls` and `cone-convergence` apply the decision rules of `run_helike_positive_cone_controls.py` and

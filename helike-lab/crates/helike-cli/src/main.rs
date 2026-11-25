@@ -110,7 +110,7 @@ enum Cmd {
         g2: f64,
         #[arg(long, default_value_t = 6)]
         mq: usize,
-        /// quadrature order per axis is (Mq + 2) + extra; a second order (extra + 2) is always checked
+        /// solves use exact Kronecker moments; the independent grid cross-check uses order (Mq + 2) + extra + 2 per axis
         #[arg(long, default_value_t = 4)]
         extra: usize,
     },

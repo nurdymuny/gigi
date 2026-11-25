@@ -4,8 +4,9 @@
 //! - `convergence`: `run_helike_cone_convergence.py` (both identified gaps change by ≤ 0.003 from the lower to
 //!   the higher cutoff at both couplings, weights ≥ 0.95; otherwise NOT_CONVERGED, or UNRESOLVED on refusal).
 //!
-//! Every point also records a second quadrature order (extra + 2): the largest change of a Ritz value's Rayleigh
-//! quotient when the operator is re-applied on the finer grid.
+//! Every point is solved with exact Kronecker moments (`ConeOperator::exact`) and cross-checked against the
+//! independent Gauss–Hermite grid operator at order (Mq + 2) + extra + 2: the largest change of a Ritz value's
+//! Rayleigh quotient when the grid operator is applied to the exact Ritz vectors.
 
 use crate::model::Background;
 use crate::operator::{ConeOperator, Mutation, Part};
@@ -30,13 +31,17 @@ pub struct PointResult {
     #[serde(rename = "Mq")]
     pub mq: usize,
     pub dimension: usize,
-    pub quadrature_order: usize,
+    /// "exact" (Kronecker moments) for every solve made here
+    pub moments: String,
+    /// order per axis of the grid operator used for the cross-check
+    pub cross_check_quadrature_order: usize,
     pub frequencies: [f64; 6],
     pub background_gradient: f64,
     pub result: HelikeCompetitor,
-    /// max over returned levels of |θ − ⟨x, H_fine x⟩| with H_fine on quadrature order + 2
-    pub quadrature_check: f64,
-    pub max_residual: f64,
+    /// max over returned levels of |θ − ⟨x, H_grid x⟩|: exact operator against the independent grid operator
+    pub quadrature_cross_check: f64,
+    /// max ‖Hx − θx‖ inside the finite trial space (Lanczos convergence), NOT a full-operator residual
+    pub max_in_space_lanczos_residual: f64,
     pub applications: usize,
     pub seconds: f64,
 }
@@ -47,12 +52,12 @@ pub fn solve_point(s: f64, t: f64, g2: f64, mq: usize, extra: usize, set: &Solve
         return Err("g^2 must be positive".into());
     }
     let bg = Background::maurer_cartan(s, t, g2.sqrt())?;
-    let op = ConeOperator::new(bg.clone(), mq, extra, Mutation::None)?;
+    let op = ConeOperator::exact(bg.clone(), mq, Mutation::None)?;
     let eigs = ritz::spectrum(&op, set);
     let result = ritz::helike_and_competitor(&op, &eigs, ritz::helike_frequency(s, t))?;
     let fine = ConeOperator::new(bg.clone(), mq, extra + 2, Mutation::None)?;
     let hx = fine.apply(&eigs.vectors, Part::Full);
-    let quadrature_check = eigs
+    let quadrature_cross_check = eigs
         .vectors
         .iter()
         .zip(&hx)
@@ -65,13 +70,14 @@ pub fn solve_point(s: f64, t: f64, g2: f64, mq: usize, extra: usize, set: &Solve
         g2,
         mq,
         dimension: op.dim(),
-        quadrature_order: op.grid.q,
+        moments: op.moments().into(),
+        cross_check_quadrature_order: fine.grid.q,
         frequencies: bg.w,
         background_gradient: bg.grad_norm,
-        max_residual: eigs.residuals.iter().cloned().fold(0.0, f64::max),
+        max_in_space_lanczos_residual: eigs.residuals.iter().cloned().fold(0.0, f64::max),
         applications: eigs.applications,
         result,
-        quadrature_check,
+        quadrature_cross_check,
         seconds: t0.elapsed().as_secs_f64(),
     })
 }

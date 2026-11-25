@@ -174,3 +174,69 @@ fn mutations_are_caught() {
         assert!(d > 1e-3, "{m:?} was not caught (diff {d})");
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Exact Kronecker moments (`ConeOperator::exact`): the same oracle, no quadrature.
+
+#[test]
+fn exact_dense_operators_entrywise() {
+    let o = oracle();
+    let c = &o["controls"][0];
+    let bg = python_background(c);
+    let d = &c["dense"];
+    for (mq, key, part) in [(2usize, "H2", Part::Full), (2, "T2", Part::Kinetic), (4, "H4", Part::Full)] {
+        let op = ConeOperator::exact(bg.clone(), mq, Mutation::None).unwrap();
+        assert_eq!(op.moments(), "exact");
+        let mine = op.dense(part);
+        let want = vecf(&d[key]);
+        let scale = want.iter().fold(1.0f64, |a, b| a.max(b.abs()));
+        let diff = max_diff(&mine, &want);
+        println!("exact {key}: N = {}, max |diff| = {diff:.3e} (scale {scale:.3})", op.dim());
+        assert!(diff < 1e-12 * scale, "exact {key} differs by {diff}");
+        // the grid operator is an independent implementation of the same matrix
+        let grid = ConeOperator::new(bg.clone(), mq, EXTRA, Mutation::None).unwrap().dense(part);
+        let dg = max_diff(&mine, &grid);
+        println!("exact vs grid {key}: {dg:.3e}");
+        assert!(dg < 1e-11 * scale, "exact and grid {key} differ by {dg}");
+        if mq == 4 {
+            let mass = op.dense(Part::Mass);
+            let n = op.dim();
+            let err = (0..n * n).map(|k| (mass[k] - if k % (n + 1) == 0 { 1.0 } else { 0.0 }).abs()).fold(0.0, f64::max);
+            assert!(err < 1e-13, "exact mass is not the identity: {err}");
+        }
+    }
+}
+
+#[test]
+fn exact_controls_at_mq4_and_mq6() {
+    let o = oracle();
+    for c in o["controls"].as_array().unwrap() {
+        let g = c["g"].as_f64().unwrap();
+        let g2 = c["g2"].as_f64().unwrap();
+        let bg = Background::maurer_cartan(S, T, g).unwrap();
+        for mq in [4usize, 6] {
+            let want = &c["results"][mq.to_string()];
+            let op = ConeOperator::exact(bg.clone(), mq, Mutation::None).unwrap();
+            let t0 = std::time::Instant::now();
+            let eigs: Eigs = ritz::spectrum(&op, &SolveSettings::default());
+            let ds = max_diff(&eigs.values, &vecf(&want["spectrum12"]));
+            println!("exact g2={g2} Mq={mq}: N={} levels diff {ds:.2e}, {} applications, {:.1}s", op.dim(), eigs.applications, t0.elapsed().as_secs_f64());
+            assert!(ds < 1e-9, "exact levels differ by {ds}");
+            let r = ritz::helike_and_competitor(&op, &eigs, ritz::helike_frequency(S, T)).unwrap();
+            check_result(&r, want, &format!("exact g2={g2} Mq={mq}"));
+        }
+    }
+}
+
+#[test]
+fn exact_mutations_are_caught() {
+    let o = oracle();
+    let c = &o["controls"][0];
+    let bg = python_background(c);
+    let want = vecf(&c["dense"]["H4"]);
+    for m in [Mutation::DropMeasureDrift, Mutation::FlipCubic, Mutation::FlatMetric] {
+        let d = max_diff(&ConeOperator::exact(bg.clone(), 4, m).unwrap().dense(Part::Full), &want);
+        println!("exact {m:?}: max |H4 diff| = {d:.3e}");
+        assert!(d > 1e-3, "exact {m:?} was not caught (diff {d})");
+    }
+}

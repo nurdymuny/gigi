@@ -168,7 +168,9 @@ pub struct HelikeCompetitor {
     pub helike: Channel,
     pub competitor: Channel,
     pub levels: Vec<f64>,
-    pub residuals: Vec<f64>,
+    /// ‖Hx − θx‖ of the Ritz pairs INSIDE the finite trial space (Lanczos convergence). These are not the
+    /// full-operator residuals ‖(H − E)ψ‖ of the physical quasimode certificate, which are orders of magnitude larger.
+    pub in_space_lanczos_residuals: Vec<f64>,
 }
 
 /// Helike's charge-2 doublet frequency on the Maurer–Cartan line.
@@ -231,6 +233,6 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
         helike: chan(&hel),
         competitor: chan(&[comp]),
         levels: eigs.values.clone(),
-        residuals: eigs.residuals.clone(),
+        in_space_lanczos_residuals: eigs.residuals.clone(),
     })
 }

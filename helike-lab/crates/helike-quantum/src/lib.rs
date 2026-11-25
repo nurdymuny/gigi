@@ -3,6 +3,7 @@
 //! - `model`: the sourced potential on colour singlets, its stationary background and harmonic normal frame;
 //! - `chart`: the positive-cone (log-Cholesky) chart, its cometric and measure;
 //! - `hermite`, `basis`, `grid`: Hermite functions, occupation simplices, slab-wise separable transforms;
+//! - `laurent`, `kron`: exact Laurent expansions and exact Kronecker moments on the occupation simplex;
 //! - `operator`: the Ritz operator H = T + V applied matrix-free (no moment matrix is ever formed);
 //! - `lanczos`: block Lanczos for the lowest levels, with true residuals;
 //! - `ritz`: levels, reference weights and the Helike / competitor identification;
@@ -15,6 +16,8 @@ pub mod basis;
 pub mod chart;
 pub mod grid;
 pub mod hermite;
+pub mod kron;
+pub mod laurent;
 pub mod lanczos;
 pub mod model;
 pub mod operator;

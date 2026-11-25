@@ -14,6 +14,7 @@
 use crate::basis::{self, State};
 use crate::chart::{ConeChart, Point, MEASURE_POWERS};
 use crate::grid::SlabGrid;
+use crate::kron::Kron;
 use crate::model::*;
 use rayon::prelude::*;
 use serde::Serialize;
@@ -54,6 +55,8 @@ pub struct ConeOperator {
     zq: [Vec<f64>; 6],
     /// Dz_j as (row in ext, col in basis, value)
     dz: [Vec<(usize, usize, f64)>; 6],
+    /// exact Kronecker moments (`ConeOperator::exact`); None means the Gauss–Hermite grid operator
+    pub kron: Option<Kron>,
 }
 
 impl ConeOperator {
@@ -91,7 +94,20 @@ impl ConeOperator {
             model.g = -model.g;
         }
         let energy_shift = model.potential(&chart.factor(&[0.0; 6]));
-        Ok(ConeOperator { bg, chart, mq, basis, ext, energy_shift, grid, mutation, model, zq, dz })
+        Ok(ConeOperator { bg, chart, mq, basis, ext, energy_shift, grid, mutation, model, zq, dz, kron: None })
+    }
+
+    /// The same operator with exact moments: Laurent terms applied as E(α)·q(U) on the occupation simplex
+    /// (`kron`). No quadrature error; the grid operator of `new` remains available as an independent cross-check.
+    pub fn exact(bg: Background, mq: usize, mutation: Mutation) -> Result<Self, String> {
+        let mut op = Self::new(bg, mq, 0, mutation)?;
+        op.kron = Some(Kron::new(&op.chart, &op.bg.w, &op.model, mq, mutation == Mutation::FlatMetric)?);
+        Ok(op)
+    }
+
+    /// "exact" (Kronecker moments) or "quadrature" (Gauss–Hermite grid).
+    pub fn moments(&self) -> &'static str {
+        if self.kron.is_some() { "exact" } else { "quadrature" }
     }
 
     pub fn dim(&self) -> usize {
@@ -99,7 +115,7 @@ impl ConeOperator {
     }
 
     /// Channels on the extended space for one trial vector: D_0 v .. D_5 v, and E v.
-    fn channels(&self, v: &[f64]) -> Vec<Vec<f64>> {
+    pub(crate) fn channels(&self, v: &[f64]) -> Vec<Vec<f64>> {
         let ne = self.ext.len();
         let mut dzv = vec![vec![0.0; ne]; 6];
         for j in 0..6 {
@@ -129,7 +145,7 @@ impl ConeOperator {
     }
 
     /// Adjoint of `channels`, applied to the 7 accumulated channels of one vector.
-    fn gather(&self, r: &[Vec<f64>]) -> Vec<f64> {
+    pub(crate) fn gather(&self, r: &[Vec<f64>]) -> Vec<f64> {
         let n = self.dim();
         let drift = if self.mutation == Mutation::DropMeasureDrift { 0.0 } else { 0.5 };
         let mut out = vec![0.0; n];
@@ -171,6 +187,19 @@ impl ConeOperator {
 
     /// Apply H (or a part of it) to several trial vectors at once.
     pub fn apply(&self, vs: &[Vec<f64>], part: Part) -> Vec<Vec<f64>> {
+        if let Some(k) = &self.kron {
+            return vs
+                .par_iter()
+                .map(|v| {
+                    let ch = self.channels(v);
+                    match part {
+                        Part::Mass => k.mass(&ch[6])[..self.dim()].to_vec(),
+                        Part::Kinetic => self.gather(&k.channels_out(&ch, true, false, 0.0)),
+                        Part::Full => self.gather(&k.channels_out(&ch, true, true, self.energy_shift)),
+                    }
+                })
+                .collect();
+        }
         let nb = vs.len();
         let ne = self.ext.len();
         let chans: Vec<Vec<f64>> = vs.iter().flat_map(|v| self.channels(v)).collect();

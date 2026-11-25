@@ -397,3 +397,46 @@ admissible path exists for B3′.
 2. A larger margin at the end. The 0.03 margin of §10.1 is the binding number. It could be widened by a larger tube
    (smaller wall effect) or by a sharper base than the block-isotropic reduction, for example keeping the
    anisotropic w² in the soft block.
+
+---
+
+## 11. Registration, 25 November: exhaustive path search, before it is run
+
+This follows item 1 of §10.3. Script: `scripts/plan_helike_sc_lehmann_path.py`. The model and basis are imported
+unchanged from the dry-run script.
+
+### 11.1 What is searched
+
+The step rule is replaced by a search over every index path on an 801-point s-grid.
+- **State (N, k).** The last Lehmann step was at s_k with N trial states, and ρ = ℓ_{N+1}(s_k). At k = 0, ρ is the
+  exact base level E_{N+1}.
+- **Move.** From (N, k), a step to k′ > k is admissible when μ_N(s_k′) ≤ ρ − Δ.
+  - It yields ℓ₁ … ℓ_N.
+  - The next state is (N′, k′) for any 12 ≤ N′ ≤ N − 1.
+  - Keeping ρ (j = N + 1) is dominated and is left out. N therefore decreases strictly.
+- **Proxy.** ℓ_i(s_k) = μ_i(s_k) − LOSS.
+- **Goal.** A step at k′ with μ₁₁(s_k′) − LOSS ≥ ρ_b, within 40 steps.
+- **Method.** Dynamic programming in decreasing N, minimising the number of steps.
+
+**Configurations (Δ, LOSS).**
+- (0, 0) is the most optimistic proxy.
+- (0.02, 0) adds the registered margin.
+- (0.02, 0.01) adds a Lehmann loss of the size seen in §10.2.
+
+### 11.2 Validation
+
+Every path found is executed with real Lehmann steps:
+- the real ℓ_{N′+1} is the next ρ;
+- admissibility is checked against the real ρ;
+- the path is judged by the real ℓ₁₁ ≥ ρ_b.
+
+### 11.3 Verdict, per control
+
+- **PASS** if any configuration's path validates to a real ℓ₁₁ ≥ ρ_b within 40 steps (on the same basis of at most
+  2,000 functions). This would reverse §10 for that control: B3′ is feasible in floating point, and the rigorous
+  build of §6.3 becomes the next step.
+- **RULED OUT (under the proxy)** if (0, 0) finds no path. Then no index path exists on this grid even with exact
+  Ritz proxies, and B3′ at L_u = 5, L_v = 2 is set aside. This is a floating-point statement about the proxy, not a
+  proof of impossibility. Ritz values are upper bounds, so the stand-in bounds are optimistic, but admissibility uses
+  them too.
+- **UNRESOLVED** otherwise: paths exist under the proxy but none validates.

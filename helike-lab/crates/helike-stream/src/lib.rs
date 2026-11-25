@@ -123,8 +123,11 @@ impl Receipt {
     }
 }
 
-/// Compare two JSON values: numbers within `rel_tol * max(1, |a|)`, everything else exactly. Returns the paths where
-/// they differ.
+/// Wall-clock fields: recorded in receipts, never compared on replay.
+pub const TIMING_KEYS: [&str; 1] = ["seconds"];
+
+/// Compare two JSON values: numbers within `rel_tol * max(1, |a|)`, everything else exactly, skipping the wall-clock
+/// fields in `TIMING_KEYS`. Returns the paths where they differ.
 pub fn compare(a: &Value, b: &Value, rel_tol: f64) -> Vec<String> {
     fn go(a: &Value, b: &Value, tol: f64, path: String, out: &mut Vec<String>) {
         match (a, b) {
@@ -145,6 +148,9 @@ pub fn compare(a: &Value, b: &Value, rel_tol: f64) -> Vec<String> {
             }
             (Value::Object(x), Value::Object(y)) => {
                 for (k, u) in x {
+                    if TIMING_KEYS.contains(&k.as_str()) {
+                        continue;
+                    }
                     match y.get(k) {
                         Some(v) => go(u, v, tol, format!("{path}.{k}"), out),
                         None => out.push(format!("{path}.{k}: missing")),

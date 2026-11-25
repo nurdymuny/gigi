@@ -312,3 +312,23 @@ On the product tube B_u(5) × B_v(2), with the Neumann condition and the Robin t
 
 A PASS is floating-point feasibility only. The rigorous version still needs everything in §6.3, plus enclosed C₃,
 β and v_J.
+
+### 9.5 Correction after a crashed first run (no verdict reached)
+
+The first run at g² = 0.004 stopped at step 1 on an indexing error in a log line, so no verdict was reached. The run
+showed a defect in the rule of §9.3.
+
+**The defect.** Choosing the candidate that reaches furthest in s picked j = 11 at step 0 (N′ = 10). N′ < 11 can never
+yield ℓ₁₁, and the index only decreases, so the rule could steer the homotopy into a dead end that has nothing to do
+with whether the base problem is feasible.
+
+**The floor.** §8.1 already records λ₁₁ = λ₁₂ as a degenerate pair. The run's Ritz values at s = 1 confirm it
+(μ₁₁ = μ₁₂ = E₀ + 2.3528, μ₁₃ = E₀ + 2.6278). So a useful final ρ must sit above λ₁₂, which needs N′ ≥ 12.
+
+**Amended:** candidates are restricted to j ≥ 13. Nothing else changes: Δ = 0.02, the same verdict rule, and the same
+limits of 40 steps and 2,000 functions.
+
+**Seen before this amendment** (reported, not a verdict):
+- the model checks: quartic fit 7.7 × 10⁻¹³; minimum of D on the tube 2.5 × 10⁻¹⁴;
+- the basis: 1,986 functions;
+- the s = 1 Ritz value μ₁₁ − ρ_b = +0.033 at g² = 0.004. This is the whole margin the final Lehmann bound has to fit inside.

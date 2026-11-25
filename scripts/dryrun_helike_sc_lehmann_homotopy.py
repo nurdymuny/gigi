@@ -48,6 +48,7 @@ LU, LV = 5.0, 2.0                 # amended product tube (section 8.4)
 NBASIS = 2000                     # registered ceiling on basis functions
 MAX_STEPS = 40                    # registered ceiling on homotopy steps
 TARGET_INDEX = 11                 # N + 1 = 11 (section 8.1)
+MIN_J = 13                        # section 9.5: keep N' >= 12 (lambda_11 = lambda_12 is a degenerate pair)
 KMAX = 200                        # Ritz values tracked on the s-grid
 S_GRID = np.linspace(0.0, 1.0, 401)
 K_RAD = 44                        # radial Galerkin size per angular momentum
@@ -312,10 +313,8 @@ def run_control(g2, E0rel, delta, log):
     while True:
         cands = []
         top = KMAX if N is None else N + 1
-        for j in range(TARGET_INDEX, top + 1):
-            rnew = lo_known[j - 1] if j - 1 < len(lo_known) else (rho if j == N + 1 else -np.inf)
-            if N is not None and j == N + 1:
-                rnew = rho
+        for j in range(MIN_J, top + 1):
+            rnew = rho if (N is not None and j == N + 1) else lo_known[j - 1]
             if not np.isfinite(rnew):
                 continue
             cands.append((reach(j, rnew, s), j, rnew))
@@ -335,7 +334,7 @@ def run_control(g2, E0rel, delta, log):
                           mu11_rel=float(mu[TARGET_INDEX - 1] - E0rel) if N >= TARGET_INDEX else None,
                           max_resid=float(resid.max()), n_neg_tau=nneg))
         log(f"  step {steps:2d}: s = {s:.4f}  N = {N:3d}  rho - E0 = {rho - E0rel:.4f}  "
-            f"l_11 - E0 = {l11 - E0rel:+.4f}  (mu_11 - E0 = {mu[TARGET_INDEX - 1] - E0rel:.4f})  "
+            f"l_11 - E0 = {l11 - E0rel:+.4f}  (mu_11 - E0 = {mu[min(TARGET_INDEX, N) - 1] - E0rel:.4f})  "
             f"max resid {resid.max():.1e}  neg tau {nneg}")
         if l11 >= rhob:
             verdict = f"PASS (lambda_11 >= rho_b at s = {s:.4f}, step {steps})"; break

@@ -484,3 +484,36 @@ Script: `scripts/replan_helike_sc_lehmann_path.py`. It uses the same cached oper
     for that control, and the rigorous build of §6.3 is next.
   - **FAIL** if every LOSS ends with no plan from its real state or with 40 steps used. Item 2 of §10.3, widening the
     margin, is then the remaining route; otherwise B4 stands.
+
+### 12.1 Results: FAIL at both controls
+
+Run at commit 677acc39. Logs are in `research/sc-lehmann-replan-20261125/`.
+
+| control | LOSS 0.01 | LOSS 0.03 | LOSS 0.06 |
+| --- | --- | --- | --- |
+| g² = 0.002 | 4 real steps to s = 0.758, ℓ₁₁ = ρ_b − 0.173; no plan | 4 real steps to **s = 0.994**, ℓ₁₁ = ρ_b − 0.150; no plan | no plan at s = 0 |
+| g² = 0.004 | 5 real steps to s = 0.606, ℓ₁₁ = ρ_b − 0.434; no plan | 4 real steps to s = 0.368, ℓ₁₁ = ρ_b − 0.739; no plan | no plan at s = 0 |
+
+**Verdict by §12: FAIL at both controls.**
+
+**The binding constraint is the trial-function quality near s = 1, not the index path.**
+- At g² = 0.002 with LOSS 0.03, replanning reached s = 0.994 with N = 13.
+  - There μ₁₁ = ρ_b + 0.031, but the real ℓ₁₁ = ρ_b − 0.150. Lehmann lost 0.18 at the last step.
+- The trial residuals ‖(H − μ)u‖ grow steadily along the homotopy, from 1 × 10⁻² near s = 0.05 to 1.2 × 10⁻¹ at s ≈ 1.
+  - D multiplies the base functions out of the span of the 2,000 functions.
+  - The quartic and cubic terms couple to levels far above the cut.
+- With a margin of 0.03, the final Lehmann step needs residuals of order 10⁻² or below at s ≈ 1. Within this basis
+  that is about an order of magnitude out of reach.
+
+**What this settles.** B3′ with a basis of at most 2,000 product base eigenfunctions does not reach λ₁₁ ≥ ρ_b in
+floating point at either control. The index path is not the obstacle (§11.4). The obstacle is the approximation
+quality of the final trial space against a margin of 0.03.
+
+**Remaining options. Each changes a registered parameter and needs its own registration.**
+1. **Better final trial functions.** Keep the base basis for the early steps. For the last one or two steps, use a
+   trial space built for H₁: for example, Hermite functions of the true (anisotropic) frequencies, cut to the tube.
+   They stay in D(H₁), and A₂ stays exact through the D² moments.
+2. **Raise the basis ceiling** above 2,000. This is a change to §8.5's criterion.
+3. **Widen the margin** (§10.3, item 2), with a larger tube or a sharper base.
+
+Until one of these passes, B4 stands: S_C is a stated hypothesis, and the ordering is proved conditional on it.

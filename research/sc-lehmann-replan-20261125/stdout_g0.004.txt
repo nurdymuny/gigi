@@ -1,0 +1,18 @@
+Receding-horizon Lehmann homotopy on B3' (L_u = 5, L_v = 2), DELTA = 0.02; floating point, not a bound
+
+=== control g2 = 0.004
+  [planning LOSS = 0.01]
+    real step  1: s = 0.0537  N = 186  rho = 8.8341  l_11 = 6.3122 (mu_11 6.3122, rho_b 7.7263)  max resid 1.9e-02  plan said 7 steps
+    real step  2: s = 0.0975  N = 115  rho = 8.4778  l_11 = 6.4534 (mu_11 6.4534, rho_b 7.7263)  max resid 2.6e-02  plan said 6 steps
+    real step  3: s = 0.1875  N =  86  rho = 8.2855  l_11 = 6.7254 (mu_11 6.7254, rho_b 7.7263)  max resid 3.8e-02  plan said 5 steps
+    real step  4: s = 0.3862  N =  47  rho = 8.1326  l_11 = 7.0123 (mu_11 7.0127, rho_b 7.7263)  max resid 6.3e-02  plan said 4 steps
+    real step  5: s = 0.6063  N =  23  rho = 7.8390  l_11 = 7.2928 (mu_11 7.2962, rho_b 7.7263)  max resid 7.0e-02  plan said 3 steps
+  [planning LOSS = 0.01] FAIL (no plan from the real state after 5 steps)
+  [planning LOSS = 0.03]
+    real step  1: s = 0.0500  N = 186  rho = 8.8341  l_11 = 6.2998 (mu_11 6.2998, rho_b 7.7263)  max resid 1.8e-02  plan said 10 steps
+    real step  2: s = 0.0963  N = 115  rho = 8.4646  l_11 = 6.4494 (mu_11 6.4495, rho_b 7.7263)  max resid 2.5e-02  plan said 8 steps
+    real step  3: s = 0.1787  N =  86  rho = 8.2784  l_11 = 6.6999 (mu_11 6.6999, rho_b 7.7263)  max resid 3.6e-02  plan said 7 steps
+    real step  4: s = 0.3675  N =  47  rho = 8.0962  l_11 = 6.9871 (mu_11 6.9874, rho_b 7.7263)  max resid 5.8e-02  plan said 6 steps
+  [planning LOSS = 0.03] FAIL (no plan from the real state after 4 steps)
+  [planning LOSS = 0.06]
+  [planning LOSS = 0.06] FAIL (no plan from the real state after 0 steps)

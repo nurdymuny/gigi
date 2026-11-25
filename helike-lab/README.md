@@ -71,7 +71,7 @@ Each receipt records:
 - the git revision and dirty flag;
 - a SHA-256 of the solver sources;
 - the platform and thread count;
-- a status label: `COMPUTED`, `DISPLAY_GRADE`, `PASS_CERTIFIED_FP` or `PASS_CERTIFIED_INTERVAL`.
+- a status label: `COMPUTED`, `DISPLAY_GRADE`, `INTERVAL_ENCLOSURE`, `PASS_CERTIFIED_FP` or `PASS_CERTIFIED_INTERVAL`.
 
 `verify` re-runs the recorded command and compares the results.
 
@@ -168,7 +168,51 @@ cargo run --release -p helike-cli -- --out receipts/cone_convergence_mq6_mq8_exa
 `run_helike_cone_convergence.py` as written there. The tolerances are unchanged: coefficients within 0.03,
 weights at least 0.95, and gap changes at most 0.003.
 
-**Not built yet:** the quasimode certificates (cutoff residuals, Weinstein and Temple bounds, exact SO(2) charge
+### Residual enclosures (`interval`, `residual`)
+
+These are rigorous bounds on r = ‖(H − E)ψ‖ / ‖ψ‖ for the saved trial states of the quasimode construction
+(feat/leakage-gate-amendment, `research/quasimode-construction-20261124/controls-e21087a1`). The code is an interval
+port of the centred moment sum `helike_residual_moments.norm_squared` (d0297072):
+- (H − E)ψ / f is a finite sum of exp(α·z) times a polynomial (24 groups at every control);
+- each pairwise integral is exact by completing the square and translating the polynomial by its finite Taylor sum;
+- everything is evaluated in outward-rounded binary64 intervals. That means round to nearest, then one ulp outward,
+  with exact zeros kept exact.
+
+The exponential does not use the platform's `exp`. It uses a Cody–Waite reduction and a Taylor polynomial with an
+explicit remainder. Both parts of ln 2 are checked against 50 published digits in exact integer arithmetic. Long
+sums are added in a balanced tree.
+
+**What is taken as given.** The saved binary64 data define the state exactly:
+- the chart (u0, S), which the reference's `ConeChart` rebuilds bit for bit from the saved G0 and M;
+- the frequencies w, the coefficients `coeff · mixing` (multiplied here in intervals) and the centres E.
+
+**What is enclosed:**
+- S⁻¹: a verified inverse, X + XR + a bounded tail.
+- The potential's coefficients: the hull of three readings, namely the declared decimals (s = 1.15, t = 3,
+  g² = 0.004 or 0.002), exact arithmetic on the binary64 inputs, and the reference's own binary64 coefficients.
+- The u-cometric: an exact integer Laurent polynomial, checked term by term against the reference's sympy expansion.
+
+`oracle/export_quasimode_states.py` writes the states as IEEE bit patterns. It checks the parent receipt and the
+SHA-256 of every NPZ file.
+
+```sh
+cargo run --release -p helike-cli -- --out receipts/cone_residual_enclosures_e21087a1.json cone-residuals
+```
+
+The receipt status is `INTERVAL_ENCLOSURE`: bounds, not the pass or fail of any gate. The four controls take 4 s
+(Mq = 6) and 11 s (Mq = 8) each on 16 threads. Every reference value lies inside its interval, from both of the
+reference's moment paths, for all 16 states. The relative width of r is 6e-7 to 5e-4. The deliberate faults, each
+caught by a test, are:
+- the density drift dropped;
+- the translation cross terms dropped;
+- the exponential factor dropped;
+- the complex conjugate dropped.
+
+**Scope.** This is the uncut residual of each saved state under the registered operator. It does not include the
+cutoff leakage (Arb, `helike_cutoff_bounds.py`). It does not evaluate the relative leakage gate, and it makes no
+spectral statement.
+
+**Not built yet:** the rest of the quasimode certificate (Weinstein and Temple bounds, exact SO(2) charge
 projection) of `docs/research/helike-quasimode-certification-spec-2026-11-24.md`, and viewer scene 4.
 
 ## Status
@@ -180,10 +224,12 @@ projection) of `docs/research/helike-quasimode-certification-spec-2026-11-24.md`
 - the edge functions and edges;
 - positive-cone Ritz levels of the sourced condensate (interior trial values; no boundary certificate).
 
+**Enclosed (outward-rounded intervals):** the full-operator residual norms of the 16 saved quasimode control states.
+
 **Not yet built:**
 - the viewer's remote stream (WebSocket) and scenes 4–5;
 - GPU batched blocks (M2);
 - the quasimode certificates and scene 4 (the rest of M3);
-- interval enclosures (`inari`).
+- interval enclosures beyond the residuals (the rest of the certificate).
 
 Nothing here is a proof.

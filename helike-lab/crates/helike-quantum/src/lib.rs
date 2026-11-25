@@ -7,6 +7,8 @@
 //! - `operator`: the Ritz operator H = T + V applied matrix-free (no moment matrix is ever formed);
 //! - `lanczos`: block Lanczos for the lowest levels, with true residuals;
 //! - `ritz`: levels, reference weights and the Helike / competitor identification;
+//! - `interval`, `residual`: outward-rounded interval arithmetic, and rigorous enclosures of the full-operator
+//!   residuals ‖(H − E)ψ‖ of saved trial states (exact centred moment sum);
 //! - `run`: the controls and convergence runners with the frozen decision rules of the Python scripts.
 //!
 //! Scope: interior trial values on the positive cone. Nothing here certifies the physical (boundary-complete)
@@ -16,10 +18,12 @@ pub mod basis;
 pub mod chart;
 pub mod grid;
 pub mod hermite;
+pub mod interval;
 pub mod kron;
 pub mod laurent;
 pub mod lanczos;
 pub mod model;
 pub mod operator;
+pub mod residual;
 pub mod ritz;
 pub mod run;

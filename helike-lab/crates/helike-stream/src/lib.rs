@@ -23,6 +23,9 @@ pub enum Status {
     PassCertifiedFp,
     /// An interval certificate passed.
     PassCertifiedInterval,
+    /// Outward-rounded interval bounds on quantities. Rigorous bounds, but not by themselves the pass or fail of any
+    /// gate or certificate.
+    IntervalEnclosure,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -102,6 +105,22 @@ pub fn hash_sources(root: &Path) -> Option<String> {
         h.update([0u8]);
     }
     Some(format!("{:x}", h.finalize()))
+}
+
+/// SHA-256 of one text file with CRLF normalised to LF (the same policy as `hash_sources`).
+pub fn text_sha256(path: &Path) -> Option<String> {
+    let bytes = std::fs::read(path).ok()?;
+    let mut norm = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == 13 && bytes.get(i + 1) == Some(&10) {
+            i += 1;
+            continue;
+        }
+        norm.push(bytes[i]);
+        i += 1;
+    }
+    Some(format!("{:x}", Sha256::digest(&norm)))
 }
 
 impl Provenance {

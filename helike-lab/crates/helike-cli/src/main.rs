@@ -6,7 +6,7 @@ use helike_core::helike::{self, Member, SectorData, Spectrum};
 use helike_core::problem::Problem;
 use helike_core::roots;
 use helike_quantum::ritz::SolveSettings;
-use helike_quantum::run;
+use helike_quantum::{residual, run};
 use helike_stream::{compare, Provenance, Receipt, Status};
 use rayon::prelude::*;
 use serde_json::{json, Value};
@@ -130,6 +130,19 @@ enum Cmd {
         #[arg(long, default_value_t = 4)]
         extra: usize,
     },
+    /// Rigorous enclosures of the full-operator residuals ‖(H − E)ψ‖/‖ψ‖ of saved trial states (exact centred moment
+    /// sum in outward-rounded interval arithmetic). Bounds only: no gate is evaluated here.
+    ConeResiduals {
+        /// saved states exported by oracle/export_quasimode_states.py
+        #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
+        states: PathBuf,
+        /// restrict to one coupling
+        #[arg(long)]
+        g2: Option<f64>,
+        /// restrict to one cutoff
+        #[arg(long)]
+        mq: Option<usize>,
+    },
     /// Replay a receipt's command and compare its results (relative tolerance).
     Verify {
         receipt: PathBuf,
@@ -211,6 +224,29 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
             let r = run::convergence([*from, *to], *extra, &SolveSettings::default());
             (json!({"ladder": [from, to], "extra": extra, "solver": SolveSettings::default()}), serde_json::to_value(&r).unwrap())
         }
+        Cmd::ConeResiduals { states, g2, mq } => {
+            let path = if states.is_absolute() { states.clone() } else { source_root().join(states) };
+            let saved = residual::load_saved_states(&path)?;
+            let mut rows = vec![];
+            for c in &saved.controls {
+                if g2.is_some_and(|g| g != c.g2) || mq.is_some_and(|m| m != c.mq) {
+                    continue;
+                }
+                eprintln!("enclosing g2 = {}, Mq = {} ...", c.g2, c.mq);
+                let r = residual::enclose_control(c, residual::Mutation::None)?;
+                eprintln!("  {} groups, {} pairs, {:.1} s", r.group_count, r.moments.pairs, r.seconds);
+                rows.push(r);
+            }
+            if rows.is_empty() {
+                return Err("no saved control matches the selection".into());
+            }
+            (json!({"states": states, "states_sha256_lf": helike_stream::text_sha256(&path),
+                    "parent_receipt_sha256": saved.parent_receipt_sha256,
+                    "residual_receipt_sha256": saved.residual_receipt_sha256, "g2": g2, "Mq": mq,
+                    "arithmetic": "binary64 intervals, round-to-nearest then one ulp outward; exp by Cody-Waite reduction and Taylor with explicit remainder",
+                    "scope": "uncut residual of each saved trial state under the registered operator; no cutoff leakage, no gate, no spectral statement"}),
+             json!({"controls": rows}))
+        }
         Cmd::Verify { .. } => unreachable!(),
     })
 }
@@ -238,7 +274,8 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&results).unwrap());
     if let Some(out) = &cli.out {
         let prov = Provenance::collect("helike", env!("CARGO_PKG_VERSION"), &source_root(), rayon::current_num_threads());
-        let receipt = Receipt::new(prov, std::env::args().collect(), Status::Computed, params, results);
+        let status = if matches!(cli.cmd, Cmd::ConeResiduals { .. }) { Status::IntervalEnclosure } else { Status::Computed };
+        let receipt = Receipt::new(prov, std::env::args().collect(), status, params, results);
         receipt.write(out).unwrap_or_else(|e| panic!("cannot write receipt: {e}"));
         eprintln!("receipt: {}", out.display());
     }

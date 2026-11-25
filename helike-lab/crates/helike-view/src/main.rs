@@ -150,6 +150,7 @@ fn status_chip(ui: &mut egui::Ui, f: Option<&Frame>) {
         Some(Status::DisplayGrade) => ("DISPLAY-GRADE · do not quote", RIVAL),
         Some(Status::PassCertifiedFp) => ("PASS_CERTIFIED_FP", PROVED),
         Some(Status::PassCertifiedInterval) => ("PASS_CERTIFIED_INTERVAL", PROVED),
+        Some(Status::IntervalEnclosure) => ("INTERVAL_ENCLOSURE · bounds, not a pass", PROVED),
         None => ("waiting for the solver", MUTED),
     };
     ui.label(egui::RichText::new(txt).color(col).monospace().size(11.0));

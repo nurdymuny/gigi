@@ -1,0 +1,65 @@
+{
+ "execution": "FAILED",
+ "cutoff_tail_gate_passed": false,
+ "status": "UNRESOLVED_INTEGRATION",
+ "certified": false,
+ "full_grid_released": false,
+ "source_revision": "517ab5adba62f4a19c8e7f97f937f0e4f99ad797",
+ "source_dirty": false,
+ "sources": {
+  "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe",
+  "scripts/helike_condensate_fock.py": "49b93abceef77ca3a4d920c5463d9f628407e7844f3b357897db6ccd9e674094",
+  "scripts/helike_condensate_pt.py": "cf3f0392bc87479e797193455d8b5e9b431ab356adfefe7bc79be4f80d00db20",
+  "scripts/helike_berger_model.py": "3e78cc9e168b8ac9b8791fc587a2f46ab9c6664c5c6daec7cb4badcfa33ae0ce",
+  "scripts/ym_two_grain_molien.py": "131437bef64f9b1a76fffe910cb237790313b15438b63273f62080607e886e35",
+  "scripts/run_helike_cone_convergence.py": "475f32db07f515d1478e39101c7752ad38f2beadad1a696d48fc54160d7155f0",
+  "scripts/run_helike_flux_background.py": "46297e8cb71ad58c11f8493494471569684e538a38291cfc83446ac4933734d3",
+  "docs/research/helike-quasimode-certification-spec-2026-11-24.md": "e06492459e07442f4ff950612e9b38b52c7e25f888259e4085c9d080826d7252",
+  "docs/research/helike-quasimode-evidence-amendment-2026-11-24.md": "c90fa3e3cb45b005dc046271e4a873318406882876eb6240c96a6d41042a3ddd",
+  "docs/research/helike-quasimode-construction-registration-2026-11-24.md": "8d0efa936b567d805e8b642aa43ab42bdde3a426d9e17cf4897c2c1b56b803ea",
+  "scripts/helike_quasimode.py": "cfd39191a61ad0c41c90ac4bf2fc0fa30ddf379d7ea1019f32bba2a8c1b41d7e",
+  "scripts/run_helike_quasimode.py": "67e0ebb5ccb73ab5c02f4fe1425415cd2c0e0e7acf2a90e786a7fbbec2f6b0aa",
+  "scripts/test_helike_quasimode.py": "a7b5bb4d498e395520d8b140140ffb967c424a06e9a7e372c2796e2befcbe09b",
+  "scripts/check_helike_quasimode_mutations.py": "d9223b05fec03ad3e1416ed1657f987ef2562ba2caa81363cfb462016b1d6c6c",
+  "docs/research/helike-cutoff-tail-bounds-registration-2026-11-24.md": "8834e3e8f75d58756b93995af4702f41e566e1ef1f018b56a713575397a0fe95",
+  "scripts/helike_cutoff_bounds.py": "1dd1e3900576aa3f15a2bdbb7e3756a8ef53efd7e7b235ad6ecbfa65d88f27da",
+  "scripts/run_helike_cutoff_bounds.py": "22e5ee5c904de51201faddfddc77a56d2a2cef710d12c7a7993503ca934a0783",
+  "scripts/test_helike_cutoff_bounds.py": "a6f5ff59afd02b211abc11f5fbdc7d391a4faf564f6c04604b45f70175319cf9",
+  "scripts/check_helike_cutoff_mutations.py": "f87df2fc5b03467184371e8394f30529132f072d62cb2c927269c34dba8cc6af",
+  "scripts/run_helike_residual_moments.py": "1ecde80e076700643e74ceb8e5613f0f402c4735b8150cfde18da7d04df3ac5a"
+ },
+ "parent_receipt_sha256": "e922d6bfffea50907d1c28d7cf7cdae622bb8eda0da5e4f97fdc1c13807045ab",
+ "controls": [],
+ "started_utc": "2026-11-25T01:32:08Z",
+ "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+ "platform": "Windows-11-10.0.26200-SP0",
+ "numpy": "2.4.0",
+ "python_flint": "0.9.0",
+ "precision_bits": 128,
+ "design": {
+  "s": 1.15,
+  "t": 3.0,
+  "g2": [
+   0.004,
+   0.002
+  ],
+  "Mq": [
+   6,
+   8
+  ],
+  "delta": 0.01,
+  "R_factor": 4.0,
+  "epsilon": "1/16",
+  "radius_candidates": "1/4 through 64/4",
+  "leakage_norm_limit": "1e-10",
+  "squared_width_limit": "1e-12",
+  "norm_width_limit": "1e-10"
+ },
+ "missing_gates": [
+  "rigorous_residual_and_charge_norms",
+  "projected_quasimode_bound",
+  "separation_and_target_identification"
+ ],
+ "error": "ValueError: original model or cutoff source changed: scripts/helike_quasimode.py",
+ "finished_utc": "2026-11-25T01:32:08Z"
+}

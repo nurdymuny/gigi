@@ -19,10 +19,19 @@ from run_helike_quasimode import SOURCES as BASE_SOURCES,utc,event
 
 REG='docs/research/helike-cutoff-tail-bounds-registration-2026-11-24.md'
 SOURCES=tuple(BASE_SOURCES)+(REG,'scripts/helike_cutoff_bounds.py','scripts/run_helike_cutoff_bounds.py',
-    'scripts/test_helike_cutoff_bounds.py','scripts/check_helike_cutoff_mutations.py','scripts/run_helike_residual_moments.py')
+    'scripts/test_helike_cutoff_bounds.py','scripts/check_helike_cutoff_mutations.py','scripts/run_helike_residual_moments.py',
+    'docs/research/helike-cutoff-provenance-amendment-2026-11-24.md')
 NAMES=('ground','helike_plus','helike_minus','competitor')
 MODEL=('scripts/helike_berger_model.py','scripts/helike_positive_cone.py',
        'scripts/helike_condensate_pt.py','scripts/helike_condensate_fock.py','scripts/helike_quasimode.py')
+
+
+def verify_model_sources(parent):
+    for source in MODEL:
+        expected=('cfd39191a61ad0c41c90ac4bf2fc0fa30ddf379d7ea1019f32bba2a8c1b41d7e'
+                  if source=='scripts/helike_quasimode.py' else parent['sources'][source])
+        if sha(ROOT/source)!=expected:
+            raise ValueError('original model or cutoff source changed: '+source)
 
 
 def decode(endpoint):
@@ -79,8 +88,7 @@ def main():
         if report['source_dirty']: raise ValueError('commit frozen bounds before control measurement')
         if flint.__version__!='0.9.0': raise ValueError('unregistered ball arithmetic version')
         parent=load_controls(OLD)
-        for source in MODEL:
-            if sha(ROOT/source)!=parent['sources'][source]: raise ValueError('original model or cutoff source changed: '+source)
+        verify_model_sources(parent)
         for source in SOURCES:
             dest=out/'sources'/source; dest.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(ROOT/source,dest)
             if sha(dest)!=report['sources'][source]: raise ValueError('source changed during snapshot')

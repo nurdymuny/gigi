@@ -1,0 +1,46 @@
+test_bad_inputs_refuse (test_helike_cutoff_bounds.Bounds.test_bad_inputs_refuse) ... ok
+test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm) ... ok
+test_complete_bound_is_scale_invariant (test_helike_cutoff_bounds.Bounds.test_complete_bound_is_scale_invariant) ... ok
+test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization) ... ok
+test_cutoff_constants_keep_mixed_term (test_helike_cutoff_bounds.Bounds.test_cutoff_constants_keep_mixed_term) ... ok
+test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse) ... ok
+test_derivative_majorants_cover_nonzero_shells (test_helike_cutoff_bounds.Bounds.test_derivative_majorants_cover_nonzero_shells) ... C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py:153: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\torch\csrc\autograd\generated\python_variable_methods.cpp:837.)
+  self.assertGreater(float(torch.linalg.vector_norm(grad)),0)
+ok
+test_failure_clears_stale_pass (test_helike_cutoff_bounds.Bounds.test_failure_clears_stale_pass) ... ok
+test_finalization_requires_all_controls_and_verified_flags (test_helike_cutoff_bounds.Bounds.test_finalization_requires_all_controls_and_verified_flags) ... ok
+test_infinite_tail_does_not_underflow (test_helike_cutoff_bounds.Bounds.test_infinite_tail_does_not_underflow) ... ok
+test_majorant_bounds_explicit_polynomial (test_helike_cutoff_bounds.Bounds.test_majorant_bounds_explicit_polynomial) ... ok
+test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent) ... ok
+test_outward_endpoint_serialization (test_helike_cutoff_bounds.Bounds.test_outward_endpoint_serialization) ... ok
+test_plateau_whole_ball_and_refusal (test_helike_cutoff_bounds.Bounds.test_plateau_whole_ball_and_refusal) ... ok
+test_precision_cannot_silently_change (test_helike_cutoff_bounds.Bounds.test_precision_cannot_silently_change) ... ok
+test_radial_tail_independent_gamma (test_helike_cutoff_bounds.Bounds.test_radial_tail_independent_gamma) ... ok
+test_reviewed_zero_extension_and_model_identity (test_helike_cutoff_bounds.Bounds.test_reviewed_zero_extension_and_model_identity) ... FAIL
+test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed) ... ok
+test_symbolic_metric_matches_cartesian_gram_map (test_helike_cutoff_bounds.Bounds.test_symbolic_metric_matches_cartesian_gram_map) ... ok
+
+======================================================================
+FAIL: test_reviewed_zero_extension_and_model_identity (test_helike_cutoff_bounds.Bounds.test_reviewed_zero_extension_and_model_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 204, in test_reviewed_zero_extension_and_model_identity
+    try: run.verify_model_sources(parent)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\run_helike_cutoff_bounds.py", line 31, in verify_model_sources
+    raise ValueError('original model or cutoff source changed: '+source)
+ValueError: original model or cutoff source changed: scripts/helike_quasimode.py
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 205, in test_reviewed_zero_extension_and_model_identity
+    except ValueError as exc: self.fail('reviewed, previously committed zero extension rejected: '+str(exc))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: reviewed, previously committed zero extension rejected: original model or cutoff source changed: scripts/helike_quasimode.py
+
+----------------------------------------------------------------------
+Ran 19 tests in 2.880s
+
+FAILED (failures=1)

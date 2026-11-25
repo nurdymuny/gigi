@@ -3,6 +3,7 @@ import math
 import copy
 import unittest
 from fractions import Fraction
+from unittest.mock import patch
 from flint import arb, ctx
 import mpmath as mp
 import numpy as np
@@ -196,6 +197,16 @@ class Bounds(unittest.TestCase):
         self.assertFalse(report['cutoff_tail_gate_passed']); self.assertFalse(report['certified'])
         self.assertFalse(report['full_grid_released']); self.assertEqual(report['execution'],'FAILED')
         self.assertIn('planted invalid evidence',report['error'])
+
+    def test_reviewed_zero_extension_and_model_identity(self):
+        import run_helike_cutoff_bounds as run
+        parent=run.load_controls(run.OLD)
+        try: run.verify_model_sources(parent)
+        except ValueError as exc: self.fail('reviewed, previously committed zero extension rejected: '+str(exc))
+        original=run.sha
+        for source in run.MODEL:
+            with patch.object(run,'sha',side_effect=lambda p:'0'*64 if p==run.ROOT/source else original(p)):
+                with self.assertRaises(ValueError): run.verify_model_sources(parent)
 
 
 if __name__=='__main__': unittest.main()

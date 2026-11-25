@@ -36,10 +36,11 @@ def main():
          'if False:','test_finalization_requires_all_controls_and_verified_flags'),
         ('forged_pass','finalize',"if state['cutoff_tail_gate_passed'] is not passed:",
          'if False:','test_finalization_requires_all_controls_and_verified_flags'),
-        ('stale_pass','failure',"cutoff_tail_gate_passed=False","cutoff_tail_gate_passed=True",'test_failure_clears_stale_pass')]
+        ('stale_pass','failure',"cutoff_tail_gate_passed=False","cutoff_tail_gate_passed=True",'test_failure_clears_stale_pass'),
+        ('source_guard','verify_model_sources','if sha(ROOT/source)!=expected:','if False:','test_reviewed_zero_extension_and_model_identity')]
     rows=[]
     for name,func,old,new,test in mutations:
-        owner=run if func in ('finalize','failure') else cb
+        owner=run if func in ('finalize','failure','verify_model_sources') else cb
         source=textwrap.dedent(inspect.getsource(getattr(owner,func)))
         if source.count(old)!=1: raise ValueError('nonunique mutation '+name)
         namespace=dict(vars(owner)); exec(source.replace(old,new),namespace)

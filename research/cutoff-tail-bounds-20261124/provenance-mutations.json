@@ -1,0 +1,152 @@
+{
+ "all_caught": true,
+ "mutants": [
+  {
+   "name": "radial_normalization",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_radial_tail_independent_gamma (test_helike_cutoff_bounds.Bounds.test_radial_tail_independent_gamma) ... FAIL\n\n======================================================================\nFAIL: test_radial_tail_independent_gamma (test_helike_cutoff_bounds.Bounds.test_radial_tail_independent_gamma)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 26, in test_radial_tail_independent_gamma\n    self.assertTrue(actual.contains(arb(str(expected))))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "finite_exterior",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_infinite_tail_does_not_underflow (test_helike_cutoff_bounds.Bounds.test_infinite_tail_does_not_underflow) ... FAIL\n\n======================================================================\nFAIL: test_infinite_tail_does_not_underflow (test_helike_cutoff_bounds.Bounds.test_infinite_tail_does_not_underflow)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 30, in test_infinite_tail_does_not_underflow\n    self.assertTrue(actual>0)\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "inward_endpoint",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_outward_endpoint_serialization (test_helike_cutoff_bounds.Bounds.test_outward_endpoint_serialization) ... FAIL\n\n======================================================================\nFAIL: test_outward_endpoint_serialization (test_helike_cutoff_bounds.Bounds.test_outward_endpoint_serialization)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 39, in test_outward_endpoint_serialization\n    self.assertTrue(relation(f))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "complex_part",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization) ... FAIL\n\n======================================================================\nFAIL: test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 48, in test_complex_polynomial_majorant_and_normalization\n    self.assertTrue(a.contains(expected))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "hermite_lowering",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization) ... FAIL\n\n======================================================================\nFAIL: test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 49, in test_complex_polynomial_majorant_and_normalization\n    self.assertTrue(b[0].contains(8*arb(2).sqrt()))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "plateau_condition",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_plateau_whole_ball_and_refusal (test_helike_cutoff_bounds.Bounds.test_plateau_whole_ball_and_refusal) ... FAIL\n\n======================================================================\nFAIL: test_plateau_whole_ball_and_refusal (test_helike_cutoff_bounds.Bounds.test_plateau_whole_ball_and_refusal)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 65, in test_plateau_whole_ball_and_refusal\n    with self.assertRaises(ValueError): cb.plateau(np.zeros(6),np.eye(6)*100,np.ones(6),np.eye(3))\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "density_derivative",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse) ... FAIL\n\n======================================================================\nFAIL: test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 69, in test_derivative_density_gaussian_and_inverse\n    self.assertTrue(result[0].contains(arb('2.875')))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "inverse_chart",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse) ... FAIL\n\n======================================================================\nFAIL: test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 69, in test_derivative_density_gaussian_and_inverse\n    self.assertTrue(result[0].contains(arb('2.875')))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "gaussian_derivative",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse) ... FAIL\n\n======================================================================\nFAIL: test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 69, in test_derivative_density_gaussian_and_inverse\n    self.assertTrue(result[0].contains(arb('2.875')))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "cutoff_mixed_term",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_cutoff_constants_keep_mixed_term (test_helike_cutoff_bounds.Bounds.test_cutoff_constants_keep_mixed_term) ... FAIL\n\n======================================================================\nFAIL: test_cutoff_constants_keep_mixed_term (test_helike_cutoff_bounds.Bounds.test_cutoff_constants_keep_mixed_term)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 78, in test_cutoff_constants_keep_mixed_term\n    self.assertTrue(l.contains(128*ga**2+8*la+128*gb**2+8*lb+128*ga*gb))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "metric_cross_terms",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent) ... FAIL\n\n======================================================================\nFAIL: test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 87, in test_metric_tail_keeps_ordered_terms_and_exponent\n    self.assertTrue(result.contains(expected))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "metric_exponential",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent) ... FAIL\n\n======================================================================\nFAIL: test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 87, in test_metric_tail_keeps_ordered_terms_and_exponent\n    self.assertTrue(result.contains(expected))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "gradient_commutator",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm) ... FAIL\n\n======================================================================\nFAIL: test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 92, in test_combination_keeps_both_terms_and_norm\n    self.assertTrue(result['leakage_sq'].contains(arb(144)/100))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "laplacian_commutator",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm) ... FAIL\n\n======================================================================\nFAIL: test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 92, in test_combination_keeps_both_terms_and_norm\n    self.assertTrue(result['leakage_sq'].contains(arb(144)/100))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "normalization",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm) ... FAIL\n\n======================================================================\nFAIL: test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 91, in test_combination_keeps_both_terms_and_norm\n    self.assertTrue(result['tail_sq'].contains(arb(4)/100))\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "looser_threshold",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed) ... FAIL\n\n======================================================================\nFAIL: test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 101, in test_status_is_only_partial_and_thresholds_fixed\n    self.assertFalse(no['cutoff_tail_gate_passed'])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "full_certificate",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed) ... FAIL\n\n======================================================================\nFAIL: test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 99, in test_status_is_only_partial_and_thresholds_fixed\n    self.assertFalse(yes['certified']); self.assertFalse(yes['full_grid_released'])\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "missing_controls",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_finalization_requires_all_controls_and_verified_flags (test_helike_cutoff_bounds.Bounds.test_finalization_requires_all_controls_and_verified_flags) ... FAIL\n\n======================================================================\nFAIL: test_finalization_requires_all_controls_and_verified_flags (test_helike_cutoff_bounds.Bounds.test_finalization_requires_all_controls_and_verified_flags)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 185, in test_finalization_requires_all_controls_and_verified_flags\n    with self.assertRaises(ValueError): run.finalize(bad)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.643s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "forged_pass",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_finalization_requires_all_controls_and_verified_flags (test_helike_cutoff_bounds.Bounds.test_finalization_requires_all_controls_and_verified_flags) ... FAIL\n\n======================================================================\nFAIL: test_finalization_requires_all_controls_and_verified_flags (test_helike_cutoff_bounds.Bounds.test_finalization_requires_all_controls_and_verified_flags)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 190, in test_finalization_requires_all_controls_and_verified_flags\n    with self.assertRaises(ValueError): run.finalize(bad)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.024s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "stale_pass",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_failure_clears_stale_pass (test_helike_cutoff_bounds.Bounds.test_failure_clears_stale_pass) ... FAIL\n\n======================================================================\nFAIL: test_failure_clears_stale_pass (test_helike_cutoff_bounds.Bounds.test_failure_clears_stale_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 197, in test_failure_clears_stale_pass\n    self.assertFalse(report['cutoff_tail_gate_passed']); self.assertFalse(report['certified'])\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.005s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "source_guard",
+   "caught_by_assertion": true,
+   "failures": 1,
+   "errors": 0,
+   "log": "test_reviewed_zero_extension_and_model_identity (test_helike_cutoff_bounds.Bounds.test_reviewed_zero_extension_and_model_identity) ... FAIL\n\n======================================================================\nFAIL: test_reviewed_zero_extension_and_model_identity (test_helike_cutoff_bounds.Bounds.test_reviewed_zero_extension_and_model_identity)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-helike-review-57d20b67\\scripts\\test_helike_cutoff_bounds.py\", line 209, in test_reviewed_zero_extension_and_model_identity\n    with self.assertRaises(ValueError): run.verify_model_sources(parent)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: ValueError not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.023s\n\nFAILED (failures=1)\n"
+  }
+ ]
+}

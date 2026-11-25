@@ -16,6 +16,22 @@ class Operators(unittest.TestCase):
             np.testing.assert_allclose(Dall.conj().T @ Dall, curl.conj().T @ curl, atol=1e-12)
             np.testing.assert_allclose(H, curl @ curl + Phi, atol=1e-11)
 
+    def test_operator_is_the_papers_general_builder(self):
+        """H and G here are the By Enough general builder's H and G (built from Q, no curl), entry for entry."""
+        import sys
+        argv, sys.argv = sys.argv, sys.argv[:1]
+        import ricci_su3_test2_family as T2
+        sys.argv = argv
+        S, C2, eps = T2.su2_data()
+        rng = np.random.default_rng(7)
+        for _ in range(6):
+            x, y, t, j = rng.uniform(-3, 1), rng.uniform(0, 3), rng.uniform(0.5, 10), int(rng.integers(0, 6))
+            _, H, _, _, _ = hc.operators(x, y, t, j)
+            M = [x * np.eye(3)[0], y * np.eye(3)[1], y * np.eye(3)[2]]
+            Hr, Gr = T2.hessian_and_gauge(C2, [t, 1, 1], eps, M, S.spin_rep(j))
+            np.testing.assert_allclose(H, Hr, atol=1e-12)
+            np.testing.assert_allclose(hc.gauge_map(x, y, t, j), Gr, atol=1e-12)
+
     def test_berger_point_is_the_levi_civita_field(self):
         import ricci_su2_spin_sector as rs
         for t in (2.5, 4., 9.):

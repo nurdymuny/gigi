@@ -1,0 +1,12 @@
+[package]
+name = "helike-stream"
+description = "Receipts and frames for helike-lab: what was computed, from which source, on which machine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"

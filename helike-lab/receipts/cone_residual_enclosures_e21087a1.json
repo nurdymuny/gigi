@@ -1,0 +1,463 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795589819,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "476cb1980465310ec7bd6561361887b49774aa43",
+    "git_dirty": false,
+    "source_sha256": "b37ae14d24753b3a444f5bff49feea7cb86a452dc1da6d4247c2c3761178b47a",
+    "source_hash_policy": "sha256-universal-newline-v1",
+    "platform": "windows-x86_64",
+    "threads": 16
+  },
+  "command": [
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-lab\\helike-lab\\target\\release\\helike.exe",
+    "--out",
+    "receipts/cone_residual_enclosures_e21087a1.json",
+    "cone-residuals"
+  ],
+  "status": "INTERVAL_ENCLOSURE",
+  "params": {
+    "Mq": null,
+    "arithmetic": "binary64 intervals, round-to-nearest then one ulp outward; exp by Cody-Waite reduction and Taylor with explicit remainder",
+    "g2": null,
+    "parent_receipt_sha256": "e922d6bfffea50907d1c28d7cf7cdae622bb8eda0da5e4f97fdc1c13807045ab",
+    "residual_receipt_sha256": "8a03da68a27ec6dec2987723c4f08a4fb12119ea4025885e50873214045bc5b9",
+    "scope": "uncut residual of each saved trial state under the registered operator; no cutoff leakage, no gate, no spectral statement",
+    "states": "oracle/quasimode_states_e21087a1.json",
+    "states_sha256_lf": "68de58774a5693d24046da3abddc1ad22aa3dbd6c42b8a0aae045fbf4227a9a5"
+  },
+  "results": {
+    "controls": [
+      {
+        "Mq": 6,
+        "g2": 0.004,
+        "group_count": 24,
+        "moments": {
+          "largest_exponent": 0.050349956896678864,
+          "pair_absolute_sum": [
+            24939.1989483987,
+            36734.965996421786,
+            36734.965996421786,
+            22456.84806486383
+          ],
+          "pairs": 300,
+          "value": [
+            [
+              0.00022943863439017773,
+              0.00022944120345114174
+            ],
+            [
+              0.0023741107801180657,
+              0.0023741137733708233
+            ],
+            [
+              0.0023741107801180657,
+              0.0023741137733708233
+            ],
+            [
+              0.006419738732812873,
+              0.006419746791308968
+            ]
+          ]
+        },
+        "seconds": 5.5580134,
+        "state_file": "states-g2-0.004-Mq-6.npz",
+        "state_sha256": "e0a13f97eb2a862fe5adc1bc9fb9e0629b4c9f23ff4d04a42453475d7c40479a",
+        "states": [
+          {
+            "center": -42.12098595059472,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999987,
+              1.0000000000000016
+            ],
+            "r_lower": 0.015147231905208862,
+            "r_upper": 0.015147316707956632,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.00022943990995751712,
+            "residual_sq": [
+              0.00022943863439017773,
+              0.00022944120345114174
+            ]
+          },
+          {
+            "center": -41.0327850304981,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999983,
+              1.0000000000000018
+            ],
+            "r_lower": 0.04872484766644284,
+            "r_upper": 0.04872487838230926,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.0023741123079180936,
+            "residual_sq": [
+              0.0023741107801180657,
+              0.0023741137733708233
+            ]
+          },
+          {
+            "center": -41.0327850304981,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999983,
+              1.0000000000000018
+            ],
+            "r_lower": 0.04872484766644284,
+            "r_upper": 0.04872487838230926,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.0023741123079180936,
+            "residual_sq": [
+              0.0023741107801180657,
+              0.0023741137733708233
+            ]
+          },
+          {
+            "center": -41.0247418016354,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999984,
+              1.0000000000000016
+            ],
+            "r_lower": 0.08012327210500617,
+            "r_upper": 0.08012332239310213,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.006419742749381369,
+            "residual_sq": [
+              0.006419738732812873,
+              0.006419746791308968
+            ]
+          }
+        ],
+        "workspace_degree": 12
+      },
+      {
+        "Mq": 8,
+        "g2": 0.004,
+        "group_count": 24,
+        "moments": {
+          "largest_exponent": 0.050349956896678864,
+          "pair_absolute_sum": [
+            24987.4311152716,
+            36836.21745419921,
+            36836.21745419921,
+            22806.071070616825
+          ],
+          "pairs": 300,
+          "value": [
+            [
+              0.00004183889819664443,
+              0.00004184155897890563
+            ],
+            [
+              0.00007781648295468456,
+              0.00007781958714980776
+            ],
+            [
+              0.00007781648295468456,
+              0.00007781958714980776
+            ],
+            [
+              0.0003131656942096938,
+              0.00031317398842034555
+            ]
+          ]
+        },
+        "seconds": 13.865707,
+        "state_file": "states-g2-0.004-Mq-8.npz",
+        "state_sha256": "745dd2f640d97753d91e9df64fe8ded5225a477108d80da2a9584bb93c9c3eee",
+        "states": [
+          {
+            "center": -42.121003336986305,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999982,
+              1.0000000000000016
+            ],
+            "r_lower": 0.0064682994826031626,
+            "r_upper": 0.0064685051579871,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.00004184025922217583,
+            "residual_sq": [
+              0.00004183889819664443,
+              0.00004184155897890563
+            ]
+          },
+          {
+            "center": -41.033031852939914,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999989,
+              1.0000000000000024
+            ],
+            "r_lower": 0.008821365141217334,
+            "r_upper": 0.00882154108701013,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.00007781804734463301,
+            "residual_sq": [
+              0.00007781648295468456,
+              0.00007781958714980776
+            ]
+          },
+          {
+            "center": -41.033031852939914,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999989,
+              1.0000000000000024
+            ],
+            "r_lower": 0.008821365141217334,
+            "r_upper": 0.00882154108701013,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.00007781804734463301,
+            "residual_sq": [
+              0.00007781648295468456,
+              0.00007781958714980776
+            ]
+          },
+          {
+            "center": -41.02542539167373,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999989,
+              1.0000000000000024
+            ],
+            "r_lower": 0.01769648818861225,
+            "r_upper": 0.0176967225332926,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.0003131698499500582,
+            "residual_sq": [
+              0.0003131656942096938,
+              0.00031317398842034555
+            ]
+          }
+        ],
+        "workspace_degree": 14
+      },
+      {
+        "Mq": 6,
+        "g2": 0.002,
+        "group_count": 24,
+        "moments": {
+          "largest_exponent": 0.025174978448339415,
+          "pair_absolute_sum": [
+            49961.58626976081,
+            73756.00603997306,
+            73756.00603997306,
+            45249.04884887525
+          ],
+          "pairs": 300,
+          "value": [
+            [
+              0.00002909835111086778,
+              0.000029103214510772805
+            ],
+            [
+              0.0005709240897564526,
+              0.0005709297973934825
+            ],
+            [
+              0.0005709240897564526,
+              0.0005709297973934825
+            ],
+            [
+              0.0015224449509521063,
+              0.0015224605118921988
+            ]
+          ]
+        },
+        "seconds": 5.623146,
+        "state_file": "states-g2-0.002-Mq-6.npz",
+        "state_sha256": "8070693a6ca5599abcb7e867f5c62263d81298d2c2af4538a90899357569856a",
+        "states": [
+          {
+            "center": -89.6455129616408,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999987,
+              1.0000000000000016
+            ],
+            "r_lower": 0.0053942887493040005,
+            "r_upper": 0.005394739522050425,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.0000291007682635351,
+            "residual_sq": [
+              0.00002909835111086778,
+              0.000029103214510772805
+            ]
+          },
+          {
+            "center": -88.55641380084245,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999986,
+              1.000000000000002
+            ],
+            "r_lower": 0.023894017865492004,
+            "r_upper": 0.023894137301720762,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.0005709269474336147,
+            "residual_sq": [
+              0.0005709240897564526,
+              0.0005709297973934825
+            ]
+          },
+          {
+            "center": -88.55641380084245,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999986,
+              1.000000000000002
+            ],
+            "r_lower": 0.023894017865492004,
+            "r_upper": 0.023894137301720762,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.0005709269474336147,
+            "residual_sq": [
+              0.0005709240897564526,
+              0.0005709297973934825
+            ]
+          },
+          {
+            "center": -88.54421060367426,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999983,
+              1.0000000000000016
+            ],
+            "r_lower": 0.039018520614601766,
+            "r_upper": 0.03901872001862955,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.0015224526830202886,
+            "residual_sq": [
+              0.0015224449509521063,
+              0.0015224605118921988
+            ]
+          }
+        ],
+        "workspace_degree": 12
+      },
+      {
+        "Mq": 8,
+        "g2": 0.002,
+        "group_count": 24,
+        "moments": {
+          "largest_exponent": 0.025174978448339415,
+          "pair_absolute_sum": [
+            49985.95522564172,
+            73808.93849879106,
+            73808.93849879106,
+            45438.19318240899
+          ],
+          "pairs": 300,
+          "value": [
+            [
+              4.80171552075248e-6,
+              4.806722304184775e-6
+            ],
+            [
+              7.892167106060553e-6,
+              7.898081235691025e-6
+            ],
+            [
+              7.892167106060553e-6,
+              7.898081235691025e-6
+            ],
+            [
+              0.000030528418510478155,
+              0.000030544451171010685
+            ]
+          ]
+        },
+        "seconds": 14.148678,
+        "state_file": "states-g2-0.002-Mq-8.npz",
+        "state_sha256": "bf54a6600457995dbd67db0b5be8c2e47aabd0e036b757ea8dc72e405611cacc",
+        "states": [
+          {
+            "center": -89.64551517414542,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999979,
+              1.000000000000001
+            ],
+            "r_lower": 0.002191281707301111,
+            "r_upper": 0.002192423842277033,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 4.804272308169454e-6,
+            "residual_sq": [
+              4.80171552075248e-6,
+              4.806722304184775e-6
+            ]
+          },
+          {
+            "center": -88.55647257488128,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999976,
+              1.0000000000000013
+            ],
+            "r_lower": 0.002809300109646625,
+            "r_upper": 0.0028103525109300876,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 7.89507959009938e-6,
+            "residual_sq": [
+              7.892167106060553e-6,
+              7.898081235691025e-6
+            ]
+          },
+          {
+            "center": -88.55647257488128,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999976,
+              1.0000000000000013
+            ],
+            "r_lower": 0.002809300109646625,
+            "r_upper": 0.0028103525109300876,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 7.89507959009938e-6,
+            "residual_sq": [
+              7.892167106060553e-6,
+              7.898081235691025e-6
+            ]
+          },
+          {
+            "center": -88.5443696013949,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999972,
+              1.0000000000000007
+            ],
+            "r_lower": 0.005525252800594568,
+            "r_upper": 0.005526703463278158,
+            "reference_inside": true,
+            "reference_outside_by": 0.0,
+            "reference_residual_sq": 0.000030536448034136925,
+            "residual_sq": [
+              0.000030528418510478155,
+              0.000030544451171010685
+            ]
+          }
+        ],
+        "workspace_degree": 14
+      }
+    ]
+  }
+}

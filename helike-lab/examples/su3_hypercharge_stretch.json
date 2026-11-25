@@ -1,0 +1,8 @@
+{
+  "frame": {"kind": "su_n", "n": 3},
+  "metric": [1, 1, 1, 1, 1, 1, 1, 2.5],
+  "gauge": {"kind": "su_n", "n": 3},
+  "field": {"kind": "maurer_cartan", "s": 0.5},
+  "rep": {"kind": "su_n", "n": 3, "p": 1, "q": 1},
+  "circle": {"frame_gen": [0, 0, 0, 0, 0, 0, 0, 1], "gauge_gen": [0, 0, 0, 0, 0, 0, 0, 1]}
+}

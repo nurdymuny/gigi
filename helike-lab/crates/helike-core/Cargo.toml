@@ -1,0 +1,14 @@
+[package]
+name = "helike-core"
+description = "Yang-Mills Hessians at left-invariant fields on compact groups: sector operators, gauge slices, charge blocks, edges"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+faer = { workspace = true }
+num-complex = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

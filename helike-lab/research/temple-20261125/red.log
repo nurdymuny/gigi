@@ -1,0 +1,9 @@
+   Compiling helike-quantum v0.1.0 (/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hlab4/helike-lab/crates/helike-quantum)
+error[E0432]: unresolved import `helike_quantum::temple`
+ --> crates/helike-quantum/tests/temple.rs:6:21
+  |
+6 | use helike_quantum::temple::{self, Separation, StateBounds, TempleMutation as M};
+  |                     ^^^^^^ could not find `temple` in `helike_quantum`
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `helike-quantum` (test "temple") due to 1 previous error

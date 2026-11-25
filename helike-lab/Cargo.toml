@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["crates/helike-core", "crates/helike-quantum", "crates/helike-stream", "crates/helike-cli", "crates/helike-view"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "LicenseRef-DavisGeometric"
+authors = ["Bee Rosa Davis"]
+
+[workspace.dependencies]
+faer = "0.24"
+num-complex = "0.4"
+rayon = "1.11"
+serde = { version = "1", features = ["derive"] }
+# float_roundtrip: decimal floats parse correctly rounded (the default parser can land one ulp low)
+serde_json = { version = "1", features = ["float_roundtrip"] }
+clap = { version = "4.5", features = ["derive"] }
+
+[profile.release]
+debug = 1

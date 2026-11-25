@@ -1,0 +1,8 @@
+{
+  "frame": {"kind": "su2_frame"},
+  "metric": [3.0, 1.0, 1.0],
+  "gauge": {"kind": "so3_cross"},
+  "field": {"kind": "su2_family", "x": -0.5, "y": 1.5},
+  "rep": {"kind": "spin", "j": 4},
+  "circle": {"frame_gen": [0.5, 0.0, 0.0], "gauge_gen": [1.0, 0.0, 0.0]}
+}

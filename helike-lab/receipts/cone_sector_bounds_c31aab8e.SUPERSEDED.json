@@ -1,0 +1,600 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795601560,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "5544e3263d66969baa66bcb4d9f877902173d912",
+    "git_dirty": false,
+    "source_sha256": "0dd165607140c95bfbe5b2697bad5cf9ae6de9d4d57220521c57a65ea827b727",
+    "source_hash_policy": "sha256-universal-newline-v1",
+    "platform": "windows-x86_64",
+    "threads": 16
+  },
+  "command": [
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-lab\\helike-lab\\target\\release\\helike.exe",
+    "--out",
+    "receipts/cone_sector_bounds_c31aab8e.json",
+    "cone-sectors"
+  ],
+  "status": "INTERVAL_ENCLOSURE",
+  "params": {
+    "Mq": null,
+    "arithmetic": "binary64 intervals, round-to-nearest then one ulp outward; tail and leakage are the Arb receipt's upper endpoints rounded upward to binary64",
+    "bound": "q^2 = (1 - t)^2 - c^2 > 0 gives ||P_m eta psi|| >= q and ||(H - E) P_m eta psi|| / ||P_m eta psi|| <= (r + l)/q; E is the saved centre",
+    "construction_receipt_sha256": "e922d6bfffea50907d1c28d7cf7cdae622bb8eda0da5e4f97fdc1c13807045ab",
+    "cutoff_receipt_sha256": "93e7096f8051cb89c59b8eafe74db26d196d0d48fee78941058baaa8c4958ae8",
+    "cutoff_source_revision": "c31aab8ed623761c42ef6ad62af85dae120fa7c0",
+    "g2": null,
+    "inputs": "oracle/projection_inputs_c31aab8e.json",
+    "inputs_sha256_lf": "0f15e9eeecb396e0cf64916b774a7a24bc8af90a54e81b617076e6e9fbee8e22",
+    "scope": "charge-sector projection of each saved trial state; no separation hypothesis, no Temple bound, no gate, no level identification",
+    "states": "oracle/quasimode_states_e21087a1.json",
+    "states_sha256_lf": "68de58774a5693d24046da3abddc1ad22aa3dbd6c42b8a0aae045fbf4227a9a5",
+    "trial": "the binary64 product coeff @ mixing frozen in the Arb run's trial NPZ; each coefficient is the interval hull of that value and the exact product"
+  },
+  "results": {
+    "controls": [
+      {
+        "Mq": 6,
+        "charge_group_count": 4,
+        "charge_workspace_degree": 8,
+        "g2": 0.004,
+        "residual_group_count": 24,
+        "seconds": 4.7404393,
+        "states": [
+          {
+            "center": -42.12098595059472,
+            "charge": 0,
+            "charge_sq": [
+              2.5306911235478675e-6,
+              2.530691395330465e-6
+            ],
+            "charge_upper": 0.0015908146954722506,
+            "leakage_norm_upper": 2.921985891183073e-9,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999987,
+              1.0000000000000016
+            ],
+            "r_lower": 0.015147231905208862,
+            "r_upper": 0.015147316707956632,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 2.530691259643906e-6,
+              "12": 2.5306912596633665e-6
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999987346534962,
+                "residual_upper": 0.015147338796574714
+              }
+            },
+            "tail_norm_upper": 5.199251036704969e-15
+          },
+          {
+            "center": -41.0327850304981,
+            "charge": 2,
+            "charge_sq": [
+              0.00006779015041225021,
+              0.0000677901513523871
+            ],
+            "charge_upper": 0.008233477476278613,
+            "leakage_norm_upper": 4.868751199036381e-9,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999983,
+              1.0000000000000018
+            ],
+            "r_lower": 0.04872484766644284,
+            "r_upper": 0.04872487838230926,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 0.0000677901508814089,
+              "12": 0.00006779015088150531
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999661043498572,
+                "residual_upper": 0.04872653486863905
+              }
+            },
+            "tail_norm_upper": 8.670176904128761e-15
+          },
+          {
+            "center": -41.0327850304981,
+            "charge": -2,
+            "charge_sq": [
+              0.00006779015041225021,
+              0.0000677901513523871
+            ],
+            "charge_upper": 0.008233477476278613,
+            "leakage_norm_upper": 4.868751199036381e-9,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999983,
+              1.0000000000000018
+            ],
+            "r_lower": 0.04872484766644284,
+            "r_upper": 0.04872487838230926,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 0.0000677901508814089,
+              "12": 0.00006779015088150531
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999661043498572,
+                "residual_upper": 0.04872653486863905
+              }
+            },
+            "tail_norm_upper": 8.670176904128761e-15
+          },
+          {
+            "center": -41.0247418016354,
+            "charge": 0,
+            "charge_sq": [
+              0.00009407452158760597,
+              0.00009407452211962487
+            ],
+            "charge_upper": 0.009699202138301123,
+            "leakage_norm_upper": 2.8531581993052646e-9,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999984,
+              1.0000000000000016
+            ],
+            "r_lower": 0.08012327210500617,
+            "r_upper": 0.08012332239310213,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 0.00009407452185285784,
+              "12": 0.00009407452185448264
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999529616326307,
+                "residual_upper": 0.08012709429395799
+              }
+            },
+            "tail_norm_upper": 5.0793915244763506e-15
+          }
+        ],
+        "trial_file": "trial-g2-0.004-Mq-6.npz",
+        "trial_sha256": "fd91f0d33c6e879513c7f1efdf5362de10469921f269510dc18f8d5328f70cb2"
+      },
+      {
+        "Mq": 8,
+        "charge_group_count": 4,
+        "charge_workspace_degree": 10,
+        "g2": 0.004,
+        "residual_group_count": 24,
+        "seconds": 12.1390839,
+        "states": [
+          {
+            "center": -42.121003336986305,
+            "charge": 0,
+            "charge_sq": [
+              3.3011123279358396e-7,
+              3.301115139020539e-7
+            ],
+            "charge_upper": 0.0005745533168488845,
+            "leakage_norm_upper": 2.3887569728126657e-8,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999982,
+              1.0000000000000016
+            ],
+            "r_lower": 0.0064682994826031626,
+            "r_upper": 0.0064685051579871,
+            "reference_charge_inside": {
+              "10": false,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 3.301110875659059e-7,
+              "12": 3.301113735462728e-7
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999998349441868,
+                "residual_upper": 0.006468530113225328
+              }
+            },
+            "tail_norm_upper": 4.23508018352552e-14
+          },
+          {
+            "center": -41.033031852939914,
+            "charge": 2,
+            "charge_sq": [
+              1.3920463382000035e-6,
+              1.392047299209054e-6
+            ],
+            "charge_upper": 0.0011798505410470668,
+            "leakage_norm_upper": 2.713422343523502e-7,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999989,
+              1.0000000000000024
+            ],
+            "r_lower": 0.008821365141217334,
+            "r_upper": 0.00882154108701013,
+            "reference_charge_inside": {
+              "10": false,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 1.3920451803437676e-6,
+              "12": 1.392046818119836e-6
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999993039756269,
+                "residual_upper": 0.008821818569445226
+              }
+            },
+            "tail_norm_upper": 4.809083886601969e-13
+          },
+          {
+            "center": -41.033031852939914,
+            "charge": -2,
+            "charge_sq": [
+              1.3920463382000035e-6,
+              1.392047299209054e-6
+            ],
+            "charge_upper": 0.0011798505410470668,
+            "leakage_norm_upper": 2.713422343523502e-7,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999989,
+              1.0000000000000024
+            ],
+            "r_lower": 0.008821365141217334,
+            "r_upper": 0.00882154108701013,
+            "reference_charge_inside": {
+              "10": false,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 1.3920451803437676e-6,
+              "12": 1.392046818119836e-6
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999993039756269,
+                "residual_upper": 0.008821818569445226
+              }
+            },
+            "tail_norm_upper": 4.809083886601969e-13
+          },
+          {
+            "center": -41.02542539167373,
+            "charge": 0,
+            "charge_sq": [
+              2.9864377373289837e-6,
+              2.9864382868893817e-6
+            ],
+            "charge_upper": 0.0017281314437534508,
+            "leakage_norm_upper": 1.7203205296824529e-7,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999989,
+              1.0000000000000024
+            ],
+            "r_lower": 0.01769648818861225,
+            "r_upper": 0.0176967225332926,
+            "reference_charge_inside": {
+              "10": false,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 2.9863544403770747e-6,
+              "12": 2.9864380135975297e-6
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999985067794366,
+                "residual_upper": 0.017696920990751906
+              }
+            },
+            "tail_norm_upper": 3.048093366195709e-13
+          }
+        ],
+        "trial_file": "trial-g2-0.004-Mq-8.npz",
+        "trial_sha256": "2399e9407e9cd04ffac00579025c3ac8fffb9000d14331177dd39f15fa9629e3"
+      },
+      {
+        "Mq": 6,
+        "charge_group_count": 4,
+        "charge_workspace_degree": 8,
+        "g2": 0.002,
+        "residual_group_count": 24,
+        "seconds": 4.7974071,
+        "states": [
+          {
+            "center": -89.6455129616408,
+            "charge": 0,
+            "charge_sq": [
+              3.1331340566431715e-7,
+              3.133136694533079e-7
+            ],
+            "charge_upper": 0.0005597442893440794,
+            "leakage_norm_upper": 1.3632691633940392e-27,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999987,
+              1.0000000000000016
+            ],
+            "r_lower": 0.0053942887493040005,
+            "r_upper": 0.005394739522050425,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 3.133135370766642e-7,
+              "12": 3.133135370770966e-7
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999998433431526,
+                "residual_upper": 0.005394740367173446
+              }
+            },
+            "tail_norm_upper": 1.5100180696722951e-34
+          },
+          {
+            "center": -88.55641380084245,
+            "charge": 2,
+            "charge_sq": [
+              0.000015465731451946848,
+              0.000015465732352337728
+            ],
+            "charge_upper": 0.003932649533372859,
+            "leakage_norm_upper": 1.663056850462708e-27,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999986,
+              1.000000000000002
+            ],
+            "r_lower": 0.023894017865492004,
+            "r_upper": 0.023894137301720762,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 0.000015465731902031808,
+              "12": 0.000015465731902031577
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999922671039246,
+                "residual_upper": 0.02389432207403016
+              }
+            },
+            "tail_norm_upper": 1.8429692107139878e-34
+          },
+          {
+            "center": -88.55641380084245,
+            "charge": -2,
+            "charge_sq": [
+              0.000015465731451946848,
+              0.000015465732352337728
+            ],
+            "charge_upper": 0.003932649533372859,
+            "leakage_norm_upper": 1.663056850462708e-27,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999986,
+              1.000000000000002
+            ],
+            "r_lower": 0.023894017865492004,
+            "r_upper": 0.023894137301720762,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 0.000015465731902031808,
+              "12": 0.000015465731902031577
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999922671039246,
+                "residual_upper": 0.02389432207403016
+              }
+            },
+            "tail_norm_upper": 1.8429692107139878e-34
+          },
+          {
+            "center": -88.54421060367426,
+            "charge": 0,
+            "charge_sq": [
+              0.00002087749122714477,
+              0.00002087749174806142
+            ],
+            "charge_upper": 0.004569189397263093,
+            "leakage_norm_upper": 9.794883234121596e-28,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999983,
+              1.0000000000000016
+            ],
+            "r_lower": 0.039018520614601766,
+            "r_upper": 0.03901872001862955,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 0.00002087749148706729,
+              "12": 0.000020877491487090382
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999895611996413,
+                "residual_upper": 0.039019127331509945
+              }
+            },
+            "tail_norm_upper": 1.0852760862730355e-34
+          }
+        ],
+        "trial_file": "trial-g2-0.002-Mq-6.npz",
+        "trial_sha256": "4e2136190941b17d79043b6552b922720f02e390bcee4bbe8023b5a891c80bab"
+      },
+      {
+        "Mq": 8,
+        "charge_group_count": 4,
+        "charge_workspace_degree": 10,
+        "g2": 0.002,
+        "residual_group_count": 24,
+        "seconds": 13.1279913,
+        "states": [
+          {
+            "center": -89.64551517414542,
+            "charge": 0,
+            "charge_sq": [
+              3.5913976237367244e-8,
+              3.5914248019963686e-8
+            ],
+            "charge_upper": 0.00018951054857174515,
+            "leakage_norm_upper": 1.1234154492895122e-26,
+            "name": "ground",
+            "norm_sq": [
+              0.9999999999999979,
+              1.000000000000001
+            ],
+            "r_lower": 0.002191281707301111,
+            "r_upper": 0.002192423842277033,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 3.5914106406184354e-8,
+              "12": 3.5914111157326125e-8
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999999820428755,
+                "residual_upper": 0.0021924238816466626
+              }
+            },
+            "tail_norm_upper": 1.2419585684446449e-33
+          },
+          {
+            "center": -88.55647257488128,
+            "charge": 2,
+            "charge_sq": [
+              1.3282950650506106e-7,
+              1.3283043998058022e-7
+            ],
+            "charge_upper": 0.000364459106047003,
+            "leakage_norm_upper": 1.7876663773147383e-25,
+            "name": "helike_plus",
+            "norm_sq": [
+              0.9999999999999976,
+              1.0000000000000013
+            ],
+            "r_lower": 0.002809300109646625,
+            "r_upper": 0.0028103525109300876,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 1.328299243578304e-7,
+              "12": 1.328299750139609e-7
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999999335847775,
+                "residual_upper": 0.002810352697580288
+              }
+            },
+            "tail_norm_upper": 1.9759002480817847e-32
+          },
+          {
+            "center": -88.55647257488128,
+            "charge": -2,
+            "charge_sq": [
+              1.3282950650506106e-7,
+              1.3283043998058022e-7
+            ],
+            "charge_upper": 0.000364459106047003,
+            "leakage_norm_upper": 1.7876663773147383e-25,
+            "name": "helike_minus",
+            "norm_sq": [
+              0.9999999999999976,
+              1.0000000000000013
+            ],
+            "r_lower": 0.002809300109646625,
+            "r_upper": 0.0028103525109300876,
+            "reference_charge_inside": {
+              "10": true,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 1.328299243578304e-7,
+              "12": 1.328299750139609e-7
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999999335847775,
+                "residual_upper": 0.002810352697580288
+              }
+            },
+            "tail_norm_upper": 1.9759002480817847e-32
+          },
+          {
+            "center": -88.5443696013949,
+            "charge": 0,
+            "charge_sq": [
+              2.654569688509411e-7,
+              2.654575093075096e-7
+            ],
+            "charge_upper": 0.0005152256877403441,
+            "leakage_norm_upper": 1.1484324157025592e-25,
+            "name": "competitor",
+            "norm_sq": [
+              0.9999999999999972,
+              1.0000000000000007
+            ],
+            "r_lower": 0.005525252800594568,
+            "r_upper": 0.005526703463278158,
+            "reference_charge_inside": {
+              "10": false,
+              "12": true
+            },
+            "reference_charge_sq": {
+              "10": 2.654544911906581e-7,
+              "12": 2.654572397271524e-7
+            },
+            "sector": {
+              "Ok": {
+                "q_lower": 0.9999998672712362,
+                "residual_upper": 0.005526704196830775
+              }
+            },
+            "tail_norm_upper": 1.2691494787294106e-32
+          }
+        ],
+        "trial_file": "trial-g2-0.002-Mq-8.npz",
+        "trial_sha256": "3571dc895051e61a0cd49dc1ad2dcdaf597b2d36c535766be104d7f0bc88b610"
+      }
+    ]
+  }
+}

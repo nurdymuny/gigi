@@ -1,0 +1,35 @@
+{
+ "all_caught": true,
+ "mutants": [
+  {
+   "name": "relax_convergence_tol",
+   "caught_by_assertion": true,
+   "log": "test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... FAIL\n\n======================================================================\nFAIL: test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 35, in test_frozen_design_is_the_registration_with_the_amended_ladder\n    self.assertEqual(grid.DESIGN[key], old.DESIGN[key], key)\nAssertionError: 0.004 != 0.003 : convergence_tol\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "relax_weight_min",
+   "caught_by_assertion": true,
+   "log": "test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... FAIL\n\n======================================================================\nFAIL: test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 35, in test_frozen_design_is_the_registration_with_the_amended_ladder\n    self.assertEqual(grid.DESIGN[key], old.DESIGN[key], key)\nAssertionError: 0.85 != 0.9 : weight_min\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "relax_s_tolerance",
+   "caught_by_assertion": true,
+   "log": "test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... FAIL\n\n======================================================================\nFAIL: test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 35, in test_frozen_design_is_the_registration_with_the_amended_ladder\n    self.assertEqual(grid.DESIGN[key], old.DESIGN[key], key)\nAssertionError: 0.03 != 0.015 : s_tolerance\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "drop_domain_gate",
+   "caught_by_assertion": true,
+   "log": "test_domain_gate_must_pass (test_helike_flux_grid.Point.test_domain_gate_must_pass) ... FAIL\n\n======================================================================\nFAIL: test_domain_gate_must_pass (test_helike_flux_grid.Point.test_domain_gate_must_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 53, in test_domain_gate_must_pass\n    self.assertFalse(grid.assess_point(point(1.18, 0.002, domain=g), grid.DESIGN)[\"converged\"])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "any_point_suffices",
+   "caught_by_assertion": true,
+   "log": "test_unresolved_if_any_point_fails (test_helike_flux_grid.Case.test_unresolved_if_any_point_fails) ... FAIL\n\n======================================================================\nFAIL: test_unresolved_if_any_point_fails (test_helike_flux_grid.Case.test_unresolved_if_any_point_fails)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 87, in test_unresolved_if_any_point_fails\n    self.assertEqual(grid.assess_case(c, grid.DESIGN)[\"status\"], \"UNRESOLVED\")\nAssertionError: 'SUPPORTED' != 'UNRESOLVED'\n- SUPPORTED\n+ UNRESOLVED\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "gate_always_passes",
+   "caught_by_assertion": true,
+   "log": "test_domain_gate_is_open_until_implemented (test_helike_flux_grid.Release.test_domain_gate_is_open_until_implemented) ... FAIL\n\n======================================================================\nFAIL: test_domain_gate_is_open_until_implemented (test_helike_flux_grid.Release.test_domain_gate_is_open_until_implemented)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 101, in test_domain_gate_is_open_until_implemented\n    self.assertEqual(grid.domain_gate({\"Mq\": 10}), \"OPEN\")\nAssertionError: 'PASS' != 'OPEN'\n- PASS\n+ OPEN\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  }
+ ]
+}

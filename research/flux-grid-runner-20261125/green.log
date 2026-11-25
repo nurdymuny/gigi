@@ -1,0 +1,18 @@
+test_not_supported_outside_tolerance_or_without_switch (test_helike_flux_grid.Case.test_not_supported_outside_tolerance_or_without_switch) ... ok
+test_overall_rule (test_helike_flux_grid.Case.test_overall_rule) ... ok
+test_supported_when_the_switch_is_within_tolerance (test_helike_flux_grid.Case.test_supported_when_the_switch_is_within_tolerance) ... ok
+test_unresolved_if_any_point_fails (test_helike_flux_grid.Case.test_unresolved_if_any_point_fails) ... ok
+test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... ok
+test_converged_identified_point (test_helike_flux_grid.Point.test_converged_identified_point) ... ok
+test_domain_gate_must_pass (test_helike_flux_grid.Point.test_domain_gate_must_pass) ... ok
+test_identification_threshold (test_helike_flux_grid.Point.test_identification_threshold) ... ok
+test_incomplete_or_reordered_ladder_refuses (test_helike_flux_grid.Point.test_incomplete_or_reordered_ladder_refuses) ... ok
+test_last_step_change_above_tolerance_is_not_converged (test_helike_flux_grid.Point.test_last_step_change_above_tolerance_is_not_converged) ... ok
+test_a_changed_certificate_receipt_is_refused (test_helike_flux_grid.Release.test_a_changed_certificate_receipt_is_refused) ... ok
+test_domain_gate_is_open_until_implemented (test_helike_flux_grid.Release.test_domain_gate_is_open_until_implemented) ... ok
+test_release_conditions_read_the_pinned_control_receipts (test_helike_flux_grid.Release.test_release_conditions_read_the_pinned_control_receipts) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.004s
+
+OK

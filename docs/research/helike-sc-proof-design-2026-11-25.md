@@ -71,3 +71,28 @@ This is sharper and more expensive. It reuses the interval moment machinery for 
 - **The depth.** D_L near the rank-two fold, and on the mirror sheet, must be computed and not assumed. The signed
   cubic separates the sheets, which helps.
 - **Route 1 may simply fail** at g² = 0.004 because of large C₃. Then Route 2 is the path, and the timeline grows.
+
+## Feasibility estimate, 25 November (floating point; not a bound)
+
+The first step of the plan was run (`scripts/estimate_helike_sc_route1.py`, CPU only). **Route 1 in its simple
+form is not viable at the controls.**
+
+| g² | C₃ | best inside margin (over L) | L needed outside |
+| --- | --- | --- | --- |
+| 0.004 | 0.075 | −2.24 (L = 5) | about 7–8 |
+| 0.002 | 0.053 | −1.65 (L = 5) | about 7 |
+
+**Why.** The cubic constant is small. The uniform bound |P₃| ≤ C₃L|z|², however, charges the cubic as a frequency
+reduction everywhere in the tube. At L = 5 it takes ω² from about 1.19 down to about 0.44, which costs far more than
+the 0.27 slack. Yet the cubic only matters far out, where the states have negligible weight. Meanwhile, the
+outside region needs L ≈ 7–8 to clear ρ_C.
+
+**A positive by-product.** Global minimisation from 200 starts, on both sheets and at scales from 0.05|q_bg| to
+2|q_bg|, found no well below V_bg + 20 other than the background orbit. This is evidence, not proof, for the
+"nothing from outside the well" part of S_C.
+
+**Consequence.** Proceed with Route 2 (Lehmann–Goerisch with a homotopy), or a radially graded Route 1 in which the
+cubic is handled by the trial-space bounds near the centre rather than by a uniform frequency reduction. These are
+essentially the same thing. Next: a short registration of Route 2's base problem and homotopy steps, before any
+implementation.
+

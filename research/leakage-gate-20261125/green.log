@@ -1,0 +1,15 @@
+test_absolute_diagnostic_is_reported_not_gating (test_helike_leakage_gate.Gate.test_absolute_diagnostic_is_reported_not_gating) ... ok
+test_dyadic_decoding_is_exact (test_helike_leakage_gate.Gate.test_dyadic_decoding_is_exact) ... ok
+test_kappa_and_boundary (test_helike_leakage_gate.Gate.test_kappa_and_boundary) ... ok
+test_open_without_a_rigorous_lower_bound (test_helike_leakage_gate.Gate.test_open_without_a_rigorous_lower_bound) ... ok
+test_overall_requires_every_state (test_helike_leakage_gate.Gate.test_overall_requires_every_state) ... ok
+test_residual_bound_and_temple_enlargement (test_helike_leakage_gate.Gate.test_residual_bound_and_temple_enlargement) ... ok
+test_tail_and_normalisation_budgets_still_gate (test_helike_leakage_gate.Gate.test_tail_and_normalisation_budgets_still_gate) ... ok
+test_historical_receipt_is_not_relabelled (test_helike_leakage_gate.Runner.test_historical_receipt_is_not_relabelled) ... ok
+test_pairing_refuses_mismatched_leakage (test_helike_leakage_gate.Runner.test_pairing_refuses_mismatched_leakage) ... ok
+test_r_lower_is_the_lower_endpoint (test_helike_leakage_gate.Runner.test_r_lower_is_the_lower_endpoint) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.002s
+
+OK

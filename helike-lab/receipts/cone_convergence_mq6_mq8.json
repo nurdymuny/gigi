@@ -1,0 +1,357 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795571476,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "a4cec8c4500ffab8596c0a90bc5f44ad2d8343a5",
+    "git_dirty": true,
+    "source_sha256": "3bad1b5e5ed2030b7b246b89b950922ef8835a10908cc967e50393cc0657c909",
+    "platform": "windows-x86_64",
+    "threads": 16
+  },
+  "command": [
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-lab\\helike-lab\\target\\release\\helike.exe",
+    "--out",
+    "receipts/cone_convergence_mq6_mq8.json",
+    "cone-convergence",
+    "--from",
+    "6",
+    "--to",
+    "8"
+  ],
+  "status": "COMPUTED",
+  "params": {
+    "extra": 4,
+    "ladder": [
+      6,
+      8
+    ],
+    "solver": {
+      "block": 4,
+      "max_dim": 1600,
+      "nev": 12,
+      "tol": 1e-10
+    }
+  },
+  "results": {
+    "changes": [
+      {
+        "competitor": 0.0006662036466922316,
+        "g2": 0.004,
+        "helike": 0.0001805266153098728
+      },
+      {
+        "competitor": 0.00015678521628270659,
+        "g2": 0.002,
+        "helike": 0.00004460957739027549
+      }
+    ],
+    "decision": "CONVERGED",
+    "gap_tol": 0.003,
+    "ladder": [
+      6,
+      8
+    ],
+    "rows": [
+      {
+        "Ok": {
+          "Mq": 6,
+          "applications": 316,
+          "background_gradient": 2.220446049250313e-16,
+          "dimension": 924,
+          "frequencies": [
+            1.0901070283845222,
+            1.0901070283845224,
+            1.106656600042022,
+            2.4296776192189222,
+            2.4296776192189222,
+            2.677743671373985
+          ],
+          "g2": 0.004,
+          "max_residual": 2.0028699275320468e-11,
+          "quadrature_check": 2.4868995751603507e-14,
+          "quadrature_order": 12,
+          "result": {
+            "E0": 5.406357799405459,
+            "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+            "competitor": {
+              "gap": 1.0962441489594044,
+              "level_index": 3,
+              "log_basis_weight": 0.9425922076139907,
+              "weight": 0.9808081919195069
+            },
+            "energy_shift": -47.527343749999986,
+            "helike": {
+              "gap": 1.0881506933024427,
+              "level_index": 1,
+              "log_basis_weight": 0.9765881045524794,
+              "weight": 0.9885333264400769
+            },
+            "levels": [
+              5.406357799405459,
+              6.494508492707902,
+              6.4946089462962915,
+              6.502601948364863,
+              7.573563950951587,
+              7.5824404391011475,
+              7.582470902569735,
+              7.589047702361965,
+              7.589426990580171,
+              7.594699404261321,
+              7.833619059414928,
+              7.833619085884041
+            ],
+            "overlap_orders": [
+              10,
+              12
+            ],
+            "reference_weight_error": 2.798057900932349e-7,
+            "residuals": [
+              1.5879444993772735e-14,
+              2.3078279194976018e-14,
+              4.551822217382982e-14,
+              1.6853379015408715e-14,
+              2.688929976558532e-14,
+              2.9129464961593436e-14,
+              3.358414698928861e-14,
+              4.41963904329768e-14,
+              4.1337033538247395e-14,
+              2.0577179717736495e-14,
+              3.225111989090436e-12,
+              2.0028699275320468e-11
+            ],
+            "scope": "positive-cone interior trial values; no boundary or sector convergence certificate"
+          },
+          "s": 1.15,
+          "seconds": 30.0556086,
+          "t": 3.0
+        }
+      },
+      {
+        "Ok": {
+          "Mq": 8,
+          "applications": 396,
+          "background_gradient": 2.220446049250313e-16,
+          "dimension": 3003,
+          "frequencies": [
+            1.0901070283845222,
+            1.0901070283845224,
+            1.106656600042022,
+            2.4296776192189222,
+            2.4296776192189222,
+            2.677743671373985
+          ],
+          "g2": 0.004,
+          "max_residual": 2.0277362365625622e-10,
+          "quadrature_check": 3.108624468950438e-14,
+          "quadrature_order": 14,
+          "result": {
+            "E0": 5.406340413013998,
+            "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+            "competitor": {
+              "gap": 1.0955779453127121,
+              "level_index": 3,
+              "log_basis_weight": 0.9420061520583842,
+              "weight": 0.9811986591438465
+            },
+            "energy_shift": -47.527343749999986,
+            "helike": {
+              "gap": 1.0879701666871329,
+              "level_index": 1,
+              "log_basis_weight": 0.97644486710698,
+              "weight": 0.9886875768436877
+            },
+            "levels": [
+              5.406340413013998,
+              6.494310579701131,
+              6.494313214419474,
+              6.50191835832671,
+              7.573139300194265,
+              7.582062185545037,
+              7.5820670883715335,
+              7.588150230228075,
+              7.5882439321949295,
+              7.5926115387461515,
+              7.833385333643915,
+              7.833385339618142
+            ],
+            "overlap_orders": [
+              10,
+              12
+            ],
+            "reference_weight_error": 8.363198527039373e-7,
+            "residuals": [
+              2.308722192993664e-14,
+              3.315638734870927e-14,
+              3.514989554660363e-14,
+              4.074935846946527e-14,
+              2.7735898359780233e-14,
+              4.550709257499595e-14,
+              3.3221875831399724e-14,
+              4.686702218392848e-14,
+              3.4148727444424765e-14,
+              3.6290656381427505e-14,
+              1.9103961998132217e-10,
+              2.0277362365625622e-10
+            ],
+            "scope": "positive-cone interior trial values; no boundary or sector convergence certificate"
+          },
+          "s": 1.15,
+          "seconds": 103.4096988,
+          "t": 3.0
+        }
+      },
+      {
+        "Ok": {
+          "Mq": 6,
+          "applications": 300,
+          "background_gradient": 2.220446049250313e-16,
+          "dimension": 924,
+          "frequencies": [
+            1.0901070283845216,
+            1.0901070283845216,
+            1.106656600042023,
+            2.4296776192189222,
+            2.4296776192189222,
+            2.677743671373985
+          ],
+          "g2": 0.002,
+          "max_residual": 4.229778068671971e-10,
+          "quadrature_check": 3.108624468950438e-14,
+          "quadrature_order": 12,
+          "result": {
+            "E0": 5.4091745383582035,
+            "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+            "competitor": {
+              "gap": 1.101302357966702,
+              "level_index": 3,
+              "log_basis_weight": 0.9710147181818213,
+              "weight": 0.9905908650892601
+            },
+            "energy_shift": -95.0546874999999,
+            "helike": {
+              "gap": 1.0890870744499344,
+              "level_index": 1,
+              "log_basis_weight": 0.9882565668351294,
+              "weight": 0.9943433989747551
+            },
+            "levels": [
+              5.4091745383582035,
+              6.498261612808138,
+              6.4982857855052,
+              6.510476896324906,
+              7.5827325239281675,
+              7.587210942141035,
+              7.587218179976328,
+              7.598628578951517,
+              7.598716209407,
+              7.609293088752647,
+              7.837592163814441,
+              7.837592169319318
+            ],
+            "overlap_orders": [
+              10,
+              12
+            ],
+            "reference_weight_error": 3.163591932864307e-8,
+            "residuals": [
+              1.991448255064951e-14,
+              3.506140332330957e-14,
+              2.4157837639023336e-14,
+              1.8049747048840386e-14,
+              3.763648632452043e-14,
+              3.6808661209412535e-14,
+              3.0551732844199255e-14,
+              2.842399285218228e-14,
+              4.216895935055577e-14,
+              3.8443981501842316e-14,
+              4.229778068671971e-10,
+              2.12681698033385e-10
+            ],
+            "scope": "positive-cone interior trial values; no boundary or sector convergence certificate"
+          },
+          "s": 1.15,
+          "seconds": 28.1365106,
+          "t": 3.0
+        }
+      },
+      {
+        "Ok": {
+          "Mq": 8,
+          "applications": 396,
+          "background_gradient": 2.220446049250313e-16,
+          "dimension": 3003,
+          "frequencies": [
+            1.0901070283845216,
+            1.0901070283845216,
+            1.106656600042023,
+            2.4296776192189222,
+            2.4296776192189222,
+            2.677743671373985
+          ],
+          "g2": 0.002,
+          "max_residual": 9.72043410183976e-11,
+          "quadrature_check": 3.4638958368304884e-14,
+          "quadrature_order": 14,
+          "result": {
+            "E0": 5.409172325854017,
+            "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+            "competitor": {
+              "gap": 1.1011455727504194,
+              "level_index": 3,
+              "log_basis_weight": 0.9708962554699643,
+              "weight": 0.9907002546154051
+            },
+            "energy_shift": -95.0546874999999,
+            "helike": {
+              "gap": 1.089042464872544,
+              "level_index": 1,
+              "log_basis_weight": 0.9882263450841949,
+              "weight": 0.9943831154865254
+            },
+            "levels": [
+              5.409172325854017,
+              6.4982147907265615,
+              6.498215059510278,
+              6.510317898604437,
+              7.582633480513511,
+              7.587126739203644,
+              7.587127386869518,
+              7.598433795628941,
+              7.59844600976341,
+              7.6088300484066345,
+              7.837536609533851,
+              7.837536609612879
+            ],
+            "overlap_orders": [
+              10,
+              12
+            ],
+            "reference_weight_error": 8.940703255522209e-8,
+            "residuals": [
+              1.6958556656038535e-14,
+              3.2422688336440945e-14,
+              5.519118047430954e-14,
+              2.6564627939333992e-14,
+              4.0872448745740646e-14,
+              3.305236989106051e-14,
+              3.5732151196332334e-14,
+              3.472226055496902e-14,
+              4.5455291795010964e-14,
+              3.9864611000341876e-14,
+              2.1606440670025195e-11,
+              9.72043410183976e-11
+            ],
+            "scope": "positive-cone interior trial values; no boundary or sector convergence certificate"
+          },
+          "s": 1.15,
+          "seconds": 113.7266704,
+          "t": 3.0
+        }
+      }
+    ],
+    "rule": "CONVERGED if both identified gaps change by at most 0.003 between the two cutoffs at both couplings and every identification weight is at least 0.95; NOT_CONVERGED if a change exceeds 0.003; UNRESOLVED if identification or numerics refuse. Interior trial family only; not a boundary or spectral certificate.",
+    "weight_min": 0.95
+  }
+}

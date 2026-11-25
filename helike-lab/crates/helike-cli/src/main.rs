@@ -6,7 +6,7 @@ use helike_core::helike::{self, Member, SectorData, Spectrum};
 use helike_core::problem::Problem;
 use helike_core::roots;
 use helike_quantum::ritz::SolveSettings;
-use helike_quantum::{residual, run};
+use helike_quantum::{projection, residual, run};
 use helike_stream::{compare, Provenance, Receipt, Status};
 use rayon::prelude::*;
 use serde_json::{json, Value};
@@ -143,6 +143,21 @@ enum Cmd {
         #[arg(long)]
         mq: Option<usize>,
     },
+    /// The exact SO(2) charge projector by its norm bound (quasimode construction registration §2): enclosed charge
+    /// defects ‖(L − m)ψ‖/‖ψ‖ and residuals of the frozen binary64 trial, combined with the Arb tail and leakage
+    /// endpoints into q ≤ ‖P_m ηψ‖ and (r + ℓ)/q ≥ the projected-sector residual. Bounds only: no gate is evaluated.
+    ConeSectors {
+        /// saved states exported by oracle/export_quasimode_states.py
+        #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
+        states: PathBuf,
+        /// frozen trial and Arb endpoints exported by oracle/export_projection_inputs.py
+        #[arg(long, default_value = "oracle/projection_inputs_c31aab8e.json")]
+        inputs: PathBuf,
+        #[arg(long)]
+        g2: Option<f64>,
+        #[arg(long)]
+        mq: Option<usize>,
+    },
     /// Replay a receipt's command and compare its results (relative tolerance).
     Verify {
         receipt: PathBuf,
@@ -247,6 +262,39 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                     "scope": "uncut residual of each saved trial state under the registered operator; no cutoff leakage, no gate, no spectral statement"}),
              json!({"controls": rows}))
         }
+        Cmd::ConeSectors { states, inputs, g2, mq } => {
+            let root = |p: &PathBuf| if p.is_absolute() { p.clone() } else { source_root().join(p) };
+            let (spath, ipath) = (root(states), root(inputs));
+            let saved = residual::load_saved_states(&spath)?;
+            let arb = projection::load_projection_inputs(&ipath)?;
+            let states_sha = helike_stream::text_sha256(&spath);
+            if Some(&arb.states_file_sha256) != states_sha.as_ref() {
+                return Err("projection inputs were exported from a different saved-state file".into());
+            }
+            let mut rows = vec![];
+            for c in &saved.controls {
+                if g2.is_some_and(|g| g != c.g2) || mq.is_some_and(|m| m != c.mq) {
+                    continue;
+                }
+                let a = arb.controls.iter().find(|a| a.g2 == c.g2 && a.mq == c.mq).ok_or("no Arb inputs for this control")?;
+                eprintln!("projecting g2 = {}, Mq = {} ...", c.g2, c.mq);
+                let r = projection::project_control(c, a, residual::Mutation::None)?;
+                eprintln!("  {:.1} s", r.seconds);
+                rows.push(r);
+            }
+            if rows.is_empty() {
+                return Err("no saved control matches the selection".into());
+            }
+            (json!({"states": states, "states_sha256_lf": states_sha, "inputs": inputs,
+                    "inputs_sha256_lf": helike_stream::text_sha256(&ipath),
+                    "cutoff_receipt_sha256": arb.cutoff_receipt_sha256, "cutoff_source_revision": arb.cutoff_source_revision,
+                    "construction_receipt_sha256": arb.construction_receipt_sha256, "g2": g2, "Mq": mq,
+                    "trial": "the binary64 product coeff @ mixing frozen in the Arb run's trial NPZ; each coefficient is the interval hull of that value and the exact product",
+                    "arithmetic": "binary64 intervals, round-to-nearest then one ulp outward; tail and leakage are the Arb receipt's upper endpoints rounded upward to binary64",
+                    "bound": "q^2 = (1 - t)^2 - c^2 > 0 gives ||P_m eta psi|| >= q and ||(H - E) P_m eta psi|| / ||P_m eta psi|| <= (r + l)/q; E is the saved centre",
+                    "scope": "charge-sector projection of each saved trial state; no separation hypothesis, no Temple bound, no gate, no level identification"}),
+             json!({"controls": rows}))
+        }
         Cmd::Verify { .. } => unreachable!(),
     })
 }
@@ -274,7 +322,7 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&results).unwrap());
     if let Some(out) = &cli.out {
         let prov = Provenance::collect("helike", env!("CARGO_PKG_VERSION"), &source_root(), rayon::current_num_threads());
-        let status = if matches!(cli.cmd, Cmd::ConeResiduals { .. }) { Status::IntervalEnclosure } else { Status::Computed };
+        let status = if matches!(cli.cmd, Cmd::ConeResiduals { .. } | Cmd::ConeSectors { .. }) { Status::IntervalEnclosure } else { Status::Computed };
         let receipt = Receipt::new(prov, std::env::args().collect(), status, params, results);
         receipt.write(out).unwrap_or_else(|e| panic!("cannot write receipt: {e}"));
         eprintln!("receipt: {}", out.display());

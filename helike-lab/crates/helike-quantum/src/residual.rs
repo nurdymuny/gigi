@@ -48,6 +48,12 @@ pub enum Mutation {
     DropExponential,
     /// Re(A·B) in place of Re(conj(A)·B)
     NoConjugate,
+    /// charge operator: omit the density derivative −½ p_i of 1/√ν
+    DropDensityDerivative,
+    /// charge operator: target −m in place of m
+    ReverseCharge,
+    /// charge operator: omit −e^{2u2 − u1} from the velocity of c
+    DropGeneratorTerm,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -360,31 +366,9 @@ pub fn build_residual(
     if coeff.len() != basis.len() * ncol {
         return Err("coefficient shape mismatch".into());
     }
-    let degree = basis.iter().map(|n| n.iter().map(|&x| x as usize).sum::<usize>()).max().unwrap_or(0) + 6;
-    let space = Space::new(w, degree, ncol)?;
-    let mut p = space.zeros();
-    for (n, row) in basis.iter().zip(coeff.chunks(ncol)) {
-        let i = space.index[n];
-        p[i * ncol..(i + 1) * ncol].copy_from_slice(row);
-    }
-    let d = |c: &[Cx], i: usize| -> Result<Vec<Cx>, String> {
-        let m = Iv::point(-0.5 * MEASURE_POWERS[i] as f64);
-        let mut out: Vec<Cx> = c.iter().map(|v| v.scale(m)).collect();
-        for k in 0..6 {
-            let f = chart.inv_s[k][i];
-            if f.is_zero() {
-                continue;
-            }
-            let ph = space.op(c, k, Kind::Physical)?;
-            for (o, v) in out.iter_mut().zip(&ph) {
-                if !v.is_zero() {
-                    *o = *o + v.scale(f);
-                }
-            }
-        }
-        Ok(out)
-    };
-    let first: Vec<Vec<Cx>> = (0..6).map(|i| d(&p, i)).collect::<Result<_, _>>()?;
+    let (space, p) = embed(w, basis, coeff, ncol, 6)?;
+    let first = physical_gradient(&space, chart, &p, true)?;
+    let d = |c: &[Cx], i: usize| derivative(&space, chart, c, i, true);
     let mut second: HashMap<(usize, usize), Vec<Cx>> = HashMap::new();
     for i in 0..6 {
         for j in i..6 {
@@ -393,47 +377,13 @@ pub fn build_residual(
     }
     let mut groups: BTreeMap<[i32; 3], Vec<Cx>> = BTreeMap::new();
     let mut g0 = p.clone();
-    for (s, row) in g0.chunks_mut(ncol).enumerate() {
-        let _ = s;
+    for row in g0.chunks_mut(ncol) {
         for (j, v) in row.iter_mut().enumerate() {
             *v = v.scale(Iv::point(-centers[j]));
         }
     }
     groups.insert([0, 0, 0], g0);
-    let mut add = |key: [i32; 6], c: &[Cx], factor: Iv| -> Result<(), String> {
-        if factor.is_zero() {
-            return Ok(());
-        }
-        let mut value = c.to_vec();
-        for axis in 3..6 {
-            for _ in 0..key[axis] {
-                let mut out: Vec<Cx> = value.iter().map(|v| v.scale(Iv::point(chart.u0[axis]))).collect();
-                for k in 0..6 {
-                    if chart.s[axis][k] == 0.0 {
-                        continue;
-                    }
-                    let co = space.op(&value, k, Kind::Coordinate)?;
-                    let f = Iv::point(chart.s[axis][k]);
-                    for (o, v) in out.iter_mut().zip(&co) {
-                        if !v.is_zero() {
-                            *o = *o + v.scale(f);
-                        }
-                    }
-                }
-                value = out;
-            }
-        }
-        let prefix = [key[0], key[1], key[2]];
-        let ex = tree_sum(&(0..3).map(|i| Iv::int(prefix[i] as i64) * Iv::point(chart.u0[i])).collect::<Vec<_>>()).exp();
-        let f = factor * ex;
-        let slot = groups.entry(prefix).or_insert_with(|| space.zeros());
-        for (o, v) in slot.iter_mut().zip(&value) {
-            if !v.is_zero() {
-                *o = *o + v.scale(f);
-            }
-        }
-        Ok(())
-    };
+    let mut add = |key: [i32; 6], c: &[Cx], factor: Iv| accumulate(&space, chart, &mut groups, key, c, factor);
     let half = Iv::point(-0.5);
     for i in 0..6 {
         for j in 0..6 {
@@ -456,7 +406,98 @@ pub fn build_residual(
     for (key, c) in potential {
         add(*key, &p, *c)?;
     }
-    let out = groups
+    Ok((space, finish_groups(chart, groups)))
+}
+
+/// The Hermite workspace (saved degree + `headroom`) with the coefficients placed in it.
+pub(crate) fn embed(w: [f64; 6], basis: &[State], coeff: &[Cx], ncol: usize, headroom: usize) -> Result<(Space, Vec<Cx>), String> {
+    if coeff.len() != basis.len() * ncol {
+        return Err("coefficient shape mismatch".into());
+    }
+    let degree = basis.iter().map(|n| n.iter().map(|&x| x as usize).sum::<usize>()).max().unwrap_or(0) + headroom;
+    let space = Space::new(w, degree, ncol)?;
+    let mut p = space.zeros();
+    for (n, row) in basis.iter().zip(coeff.chunks(ncol)) {
+        let i = *space.index.get(n).ok_or("basis state outside the workspace")?;
+        p[i * ncol..(i + 1) * ncol].copy_from_slice(row);
+    }
+    Ok((space, p))
+}
+
+/// ∂ψ/∂u_i divided by f, as coefficients: Σ_k (S⁻¹)_{ki} (∂_{z_k} of the Gaussian factor and P) − ½ p_i (the
+/// density 1/√ν). `density = false` drops the density derivative (a deliberate fault for the mutation tests).
+pub(crate) fn derivative(space: &Space, chart: &ChartIv, c: &[Cx], i: usize, density: bool) -> Result<Vec<Cx>, String> {
+    let m = Iv::point(if density { -0.5 * MEASURE_POWERS[i] as f64 } else { 0.0 });
+    let mut out: Vec<Cx> = c.iter().map(|v| v.scale(m)).collect();
+    for k in 0..6 {
+        let f = chart.inv_s[k][i];
+        if f.is_zero() {
+            continue;
+        }
+        let ph = space.op(c, k, Kind::Physical)?;
+        for (o, v) in out.iter_mut().zip(&ph) {
+            if !v.is_zero() {
+                *o = *o + v.scale(f);
+            }
+        }
+    }
+    Ok(out)
+}
+
+pub(crate) fn physical_gradient(space: &Space, chart: &ChartIv, p: &[Cx], density: bool) -> Result<Vec<Vec<Cx>>, String> {
+    (0..6).map(|i| derivative(space, chart, p, i, density)).collect()
+}
+
+/// Add factor · (Laurent monomial `key` in u) · c to the exponential groups. The polynomial part u_3..u_5 is
+/// applied exactly as (u0 + S z) on the Hermite coefficients; the exponential part splits into exp(key · u0) and the
+/// group's exp(α · z).
+pub(crate) fn accumulate(
+    space: &Space,
+    chart: &ChartIv,
+    groups: &mut BTreeMap<[i32; 3], Vec<Cx>>,
+    key: [i32; 6],
+    c: &[Cx],
+    factor: Iv,
+) -> Result<(), String> {
+    if factor.is_zero() {
+        return Ok(());
+    }
+    let mut value = c.to_vec();
+    for axis in 3..6 {
+        if key[axis] < 0 {
+            return Err("negative polynomial power in a Laurent key".into());
+        }
+        for _ in 0..key[axis] {
+            let mut out: Vec<Cx> = value.iter().map(|v| v.scale(Iv::point(chart.u0[axis]))).collect();
+            for k in 0..6 {
+                if chart.s[axis][k] == 0.0 {
+                    continue;
+                }
+                let co = space.op(&value, k, Kind::Coordinate)?;
+                let f = Iv::point(chart.s[axis][k]);
+                for (o, v) in out.iter_mut().zip(&co) {
+                    if !v.is_zero() {
+                        *o = *o + v.scale(f);
+                    }
+                }
+            }
+            value = out;
+        }
+    }
+    let prefix = [key[0], key[1], key[2]];
+    let ex = tree_sum(&(0..3).map(|i| Iv::int(prefix[i] as i64) * Iv::point(chart.u0[i])).collect::<Vec<_>>()).exp();
+    let f = factor * ex;
+    let slot = groups.entry(prefix).or_insert_with(|| space.zeros());
+    for (o, v) in slot.iter_mut().zip(&value) {
+        if !v.is_zero() {
+            *o = *o + v.scale(f);
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn finish_groups(chart: &ChartIv, groups: BTreeMap<[i32; 3], Vec<Cx>>) -> Vec<Group> {
+    groups
         .into_iter()
         .filter(|(_, v)| v.iter().any(|x| !x.is_zero()))
         .map(|(key, coeffs)| {
@@ -465,8 +506,7 @@ pub fn build_residual(
             });
             Group { key, alpha, coeffs }
         })
-        .collect();
-    Ok((space, out))
+        .collect()
 }
 
 /// Per column: Σ over states of f(state, column), tree-summed.
@@ -662,22 +702,36 @@ pub struct ControlEnclosure {
     pub seconds: f64,
 }
 
-/// Enclose the residuals of one saved control.
-pub fn enclose_control(c: &SavedControl, mutation: Mutation) -> Result<ControlEnclosure, String> {
-    let t0 = std::time::Instant::now();
+/// The saved chart, enclosed.
+pub fn saved_chart(c: &SavedControl) -> Result<(ChartIv, [f64; 6]), String> {
+    let u0: [f64; 6] = f(&c.u0).try_into().map_err(|_| "u0 must have six entries")?;
+    let sv = f(&c.s_mat);
+    if sv.len() != 36 {
+        return Err("S must have 36 entries".into());
+    }
+    let s: [[f64; 6]; 6] = std::array::from_fn(|i| std::array::from_fn(|j| sv[i * 6 + j]));
+    let w: [f64; 6] = f(&c.w).try_into().map_err(|_| "w must have six entries")?;
+    Ok((ChartIv::new(u0, s)?, w))
+}
+
+pub fn saved_basis(c: &SavedControl) -> Result<Vec<State>, String> {
+    c.basis
+        .iter()
+        .map(|b| <State>::try_from(b.as_slice()).map_err(|_| "basis rows must have six entries".to_string()))
+        .collect()
+}
+
+/// The trial coefficients C = coeff · mixing, formed exactly in intervals. With `frozen` (the binary64 product
+/// another evaluator stored, as (re, im) arrays), each coefficient is the hull of both, so every bound computed from
+/// them holds for the exact product and for the stored one alike.
+pub fn trial_coefficients(c: &SavedControl, frozen: Option<(&[f64], &[f64])>) -> Result<Vec<Cx>, String> {
     let ncol = c.centers.len();
     let (rows, cols) = (c.coeff_shape[0], c.coeff_shape[1]);
     if cols != ncol || c.basis.len() != rows || c.coeff.len() != rows * cols || c.mixing_re.len() != ncol * ncol {
         return Err("saved state shape mismatch".into());
     }
-    let u0: [f64; 6] = f(&c.u0).try_into().map_err(|_| "u0 must have six entries")?;
-    let sv = f(&c.s_mat);
-    let s: [[f64; 6]; 6] = std::array::from_fn(|i| std::array::from_fn(|j| sv[i * 6 + j]));
-    let w: [f64; 6] = f(&c.w).try_into().map_err(|_| "w must have six entries")?;
-    let chart = ChartIv::new(u0, s)?;
     let coeff = f(&c.coeff);
     let (mre, mim) = (f(&c.mixing_re), f(&c.mixing_im));
-    // C = coeff · mixing, in intervals
     let mut cm = vec![CZERO; rows * ncol];
     for n in 0..rows {
         for j in 0..ncol {
@@ -686,11 +740,40 @@ pub fn enclose_control(c: &SavedControl, mutation: Mutation) -> Result<ControlEn
             cm[n * ncol + j] = Cx::new(re, im);
         }
     }
-    let basis: Vec<State> = c
-        .basis
-        .iter()
-        .map(|b| <State>::try_from(b.as_slice()).map_err(|_| "basis rows must have six entries".to_string()))
-        .collect::<Result<_, _>>()?;
+    if let Some((fre, fim)) = frozen {
+        if fre.len() != cm.len() || fim.len() != cm.len() {
+            return Err("frozen trial coefficients have the wrong shape".into());
+        }
+        for (i, v) in cm.iter_mut().enumerate() {
+            let (a, b) = (Iv::point(fre[i]), Iv::point(fim[i]));
+            // the stored product must be a rounding of the exact one, not a different vector
+            let tol = 4.0 * f64::EPSILON * v.re.mag().max(v.im.mag()).max(f64::MIN_POSITIVE);
+            if (a.mid() - v.re.mid()).abs() > tol + v.re.width() || (b.mid() - v.im.mid()).abs() > tol + v.im.width() {
+                return Err(format!("frozen trial coefficient {i} is not a rounding of coeff · mixing"));
+            }
+            *v = Cx::new(v.re.hull(&a), v.im.hull(&b));
+        }
+    }
+    Ok(cm)
+}
+
+/// Enclose the residuals of one saved control.
+pub fn enclose_control(c: &SavedControl, mutation: Mutation) -> Result<ControlEnclosure, String> {
+    enclose_control_with(c, None, mutation)
+}
+
+/// As `enclose_control`, with the coefficients hulled with a frozen binary64 product (see `trial_coefficients`).
+pub fn enclose_control_with(
+    c: &SavedControl,
+    frozen: Option<(&[f64], &[f64])>,
+    mutation: Mutation,
+) -> Result<ControlEnclosure, String> {
+    let t0 = std::time::Instant::now();
+    let ncol = c.centers.len();
+    let rows = c.coeff_shape[0];
+    let cm = trial_coefficients(c, frozen)?;
+    let (chart, w) = saved_chart(c)?;
+    let basis = saved_basis(c)?;
     let centers = f(&c.centers);
     let python_v: BTreeMap<laurent::Key, f64> = c
         .python_potential

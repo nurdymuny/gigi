@@ -212,8 +212,72 @@ caught by a test, are:
 cutoff leakage (Arb, `helike_cutoff_bounds.py`). It does not evaluate the relative leakage gate, and it makes no
 spectral statement.
 
-**Not built yet:** the rest of the quasimode certificate (Weinstein and Temple bounds, exact SO(2) charge
-projection) of `docs/research/helike-quasimode-certification-spec-2026-11-24.md`, and viewer scene 4.
+### Charge sectors (`projection`)
+
+This is the exact SO(2) charge projector of the quasimode construction registration (§2), by its norm bound rather
+than a finite angular sum. For an integer charge m on this representation, ‖(I − P_m)ψ‖ ≤ ‖(L − m)ψ‖. Take genuine
+upper bounds for normalised ψ:
+- t ≥ ‖(1 − η)ψ‖;
+- c ≥ ‖(L − m)ψ‖;
+- r ≥ ‖(H − E)ψ‖;
+- ℓ ≥ ‖[H, η]ψ‖.
+
+If t < 1 and q² = (1 − t)² − c² > 0, then:
+- ‖P_m ηψ‖ ≥ q;
+- the projected state's residual is at most (r + ℓ)/q.
+
+**The generator.** R_θ = diag(1, rot θ) acts by G ↦ R_θ G R_θᵀ, with L = −i d/dθ. In the log-Cholesky chart its
+velocity is an exact Laurent field:
+
+    u̇ = (0, −c e^{−u1}, c e^{−u1}, −b, a, e^{u1} − e^{2u2−u1})
+
+This is the same field as `velocity` in `helike_quasimode.geometry`. So (L − m)ψ/f has four exponential groups, and
+the residual's centred moment sum encloses its norm. Three checks tie the field to the rotation:
+- J_u(L)u̇ = JG − GJ at sample points;
+- finite differences of the saved trial function under the actual rotation (Cholesky of R_θGR_θᵀ, back to z)
+  agree with the group sum to about 1e-12 in every column;
+- the construction receipt's order-12 quadrature `charge_sq` lies inside the enclosure for all 16 states. Order 10
+  misses at Mq = 8, by up to 2.8e-5 relative.
+
+**Which trial.** The Arb cutoff run (`helike_cutoff_bounds.py`, receipt c31aab8e) froze the binary64 product
+`coeff @ mixing`. Each coefficient here is the interval hull of that stored value and the exact product, so r and c
+hold for the same vector as the Arb bounds on t and ℓ. `oracle/export_projection_inputs.py` carries over:
+- the stored trial, with its NPZ hash checked against the Arb receipt;
+- the Arb upper endpoints of the tail and leakage norms (exact dyadics, rounded upward to binary64);
+- the quadrature references.
+
+```sh
+cargo run --release -p helike-cli -- --out receipts/cone_sector_bounds_c31aab8e.json cone-sectors
+```
+
+| g² | Mq | state | m | c ≤ | q ≥ | (r + ℓ)/q ≤ |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0.004 | 6 | ground | 0 | 1.591e-3 | 0.999998735 | 0.0151473 |
+| 0.004 | 6 | Helike ± | ±2 | 8.234e-3 | 0.999966104 | 0.0487265 |
+| 0.004 | 6 | competitor | 0 | 9.700e-3 | 0.999952962 | 0.0801271 |
+| 0.004 | 8 | ground | 0 | 5.746e-4 | 0.999999835 | 0.0064685 |
+| 0.004 | 8 | Helike ± | ±2 | 1.180e-3 | 0.999999304 | 0.0088218 |
+| 0.004 | 8 | competitor | 0 | 1.729e-3 | 0.999998507 | 0.0176969 |
+| 0.002 | 6 | ground | 0 | 5.598e-4 | 0.999999843 | 0.0053947 |
+| 0.002 | 6 | Helike ± | ±2 | 3.933e-3 | 0.999992267 | 0.0238943 |
+| 0.002 | 6 | competitor | 0 | 4.570e-3 | 0.999989561 | 0.0390191 |
+| 0.002 | 8 | ground | 0 | 1.896e-4 | 0.999999982 | 0.0021924 |
+| 0.002 | 8 | Helike ± | ±2 | 3.645e-4 | 0.999999934 | 0.0028104 |
+| 0.002 | 8 | competitor | 0 | 5.153e-4 | 0.999999867 | 0.0055267 |
+
+**Deliberate faults**, each caught by a test:
+- reversed charge sign;
+- the density derivative dropped;
+- the e^{2u2−u1} generator term dropped;
+- plain complex squares.
+
+Targeting the wrong Helike sector gives c > 3, and the bound refuses.
+
+**Scope.** These are bounds, with status `INTERVAL_ENCLOSURE`. E is the saved centre, not the projected Rayleigh
+quotient. There is no separation hypothesis, no Temple bound, no gate verdict and no level identification beyond
+the exact charge sector.
+
+**Not built yet:** Temple bounds under the stated separation hypothesis S, and viewer scene 4.
 
 ## Status
 
@@ -224,12 +288,14 @@ projection) of `docs/research/helike-quasimode-certification-spec-2026-11-24.md`
 - the edge functions and edges;
 - positive-cone Ritz levels of the sourced condensate (interior trial values; no boundary certificate).
 
-**Enclosed (outward-rounded intervals):** the full-operator residual norms of the 16 saved quasimode control states.
+**Enclosed (outward-rounded intervals):** for the 16 saved quasimode control states:
+- the full-operator residual norms;
+- the charge defects;
+- the projected-sector residual bound, using the Arb tail and leakage endpoints.
 
 **Not yet built:**
 - the viewer's remote stream (WebSocket) and scenes 4–5;
 - GPU batched blocks (M2);
-- the quasimode certificates and scene 4 (the rest of M3);
-- interval enclosures beyond the residuals (the rest of the certificate).
+- Temple bounds under S, and scene 4 (the rest of M3).
 
 Nothing here is a proof.

@@ -9,6 +9,8 @@
 //! - `ritz`: levels, reference weights and the Helike / competitor identification;
 //! - `interval`, `residual`: outward-rounded interval arithmetic, and rigorous enclosures of the full-operator
 //!   residuals ‖(H − E)ψ‖ of saved trial states (exact centred moment sum);
+//! - `projection`: the exact SO(2) charge projector by its norm bound: enclosed charge defects ‖(L − m)ψ‖ and the
+//!   projected-sector residual bound (r + ℓ)/q;
 //! - `run`: the controls and convergence runners with the frozen decision rules of the Python scripts.
 //!
 //! Scope: interior trial values on the positive cone. Nothing here certifies the physical (boundary-complete)
@@ -24,6 +26,7 @@ pub mod laurent;
 pub mod lanczos;
 pub mod model;
 pub mod operator;
+pub mod projection;
 pub mod residual;
 pub mod ritz;
 pub mod run;

@@ -23,7 +23,7 @@ Lehmann step at (s, rho, N), rho <= lambda_{N+1}(H_s): trial functions = the N l
 pencil (A1 - rho A0) x = tau (A2 - 2 rho A1 + rho^2 A0) x; lambda_{N+1-i} >= rho + 1/tau_i for tau_i < 0.
 
 Homotopy (registered in section 9): start from the exact base spectrum at s = 0; after each step, the next
-(N', rho') = (j - 1, l_j) is the candidate j >= 11 that lets the next step reach the largest s, where a step to s' is
+(N', rho') = (j - 1, l_j) is the candidate j >= 13 (section 9.5) that lets the next step reach the largest s, where a step to s' is
 admissible when the Ritz value mu_{j-1}(H_s') <= l_j - DELTA. PASS as soon as a step gives l_11 >= rho_b (then
 lambda_11(H_1) >= lambda_11(H_s) >= rho_b by monotonicity). FAIL if 40 steps are used, if no candidate advances, or if
 s = 1 is reached without l_11 >= rho_b.
@@ -265,11 +265,14 @@ def run_control(g2, E0rel, delta, log):
 
     # block bases: generous cut, then the product basis cut at a level boundary
     ecut = rhob + 5.0
-    ub = Block(ws, LU, beta, vlo, ecut); vb = Block(wt, LV, beta, 0.0, ecut)
-    pairs = sorted(((a + b, i, j) for i, a in enumerate(ub.E) for j, b in enumerate(vb.E)), key=lambda x: x[0])
+    while True:   # widen the block cut until every product level below the basis cut is present
+        ub = Block(ws, LU, beta, vlo, ecut); vb = Block(wt, LV, beta, 0.0, ecut)
+        pairs = sorted(((a + b, i, j) for i, a in enumerate(ub.E) for j, b in enumerate(vb.E)), key=lambda x: x[0])
+        if len(pairs) > NBASIS and pairs[NBASIS][0] <= ecut + min(ub.E.min(), vb.E.min()):
+            break
+        ecut += 3.0
     cut = pairs[NBASIS][0]
     pairs = [p for p in pairs if p[0] < cut - 1e-12]
-    assert cut < ecut + min(ub.E.min(), vb.E.min())
     E = np.array([p[0] for p in pairs]); I = [p[1] for p in pairs]; J = [p[2] for p in pairs]
     uidx = sorted(set(I)); vidx = sorted(set(J))
     upos = {k: n for n, k in enumerate(uidx)}; vpos = {k: n for n, k in enumerate(vidx)}
@@ -357,10 +360,14 @@ def main():
     def log(s):
         print(s, flush=True); lines.append(s)
     log(f"Lehmann homotopy dry run on B3' (L_u = {LU}, L_v = {LV}), DELTA = {a.delta}; floating point, not a bound")
-    res = [run_control(g2, E0, a.delta, log) for g2, E0 in gb.CONTROLS if str(g2) in a.controls.split(",")]
-    if a.out:
-        json.dump(res, open(a.out + ".json", "w"), indent=1)
-        open(a.out + ".log", "w").write("\n".join(lines) + "\n")
+    res = []
+    for g2, E0 in gb.CONTROLS:
+        if str(g2) not in a.controls.split(","):
+            continue
+        res.append(run_control(g2, E0, a.delta, log))
+        if a.out:   # written after each control
+            json.dump(res, open(a.out + ".json", "w"), indent=1)
+            open(a.out + ".log", "w").write("\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":

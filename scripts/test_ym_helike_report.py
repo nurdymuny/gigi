@@ -180,3 +180,42 @@ class SectorReportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class FluxReportTests(unittest.TestCase):
+    """Pages 11-14: the four flux receipts are read faithfully and no promoted or reversed claim is accepted."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = {k: json.loads((ROOT / path).read_text()) for k, (path, _) in report.FLUX_RECEIPTS.items()}
+
+    def payload(self, **override):
+        d = copy.deepcopy(self.data)
+        d.update(override)
+        return report.make_flux_payload(d["convergence"], d["sectors"], d["leakage"], d["temple"])
+
+    def test_flux_rows_are_the_recorded_results(self):
+        p = self.payload()
+        self.assertEqual(p["ordered"], 3)
+        self.assertEqual([r["verdict"] for r in p["controls"]], ["UNRESOLVED", "ORDERED", "ORDERED", "ORDERED"])
+        self.assertAlmostEqual(p["controls"][1]["margin"], 0.007179373217930162, places=15)
+        self.assertLessEqual(max(s["leakage_over_r"] for r in p["controls"] for s in r["states"]), 1e-3)
+
+    def test_rejects_reversed_or_promoted_claims(self):
+        t = copy.deepcopy(self.data["temple"])
+        t["results"]["controls"][1]["decision"]["verdict"] = "COMPETITOR_BELOW"
+        with self.assertRaisesRegex(ValueError, "never reported"):
+            self.payload(temple=t)
+        t = copy.deepcopy(self.data["temple"])
+        t["results"]["controls"][0]["decision"]["verdict"] = "ORDERED"
+        with self.assertRaisesRegex(ValueError, "positive margin"):
+            self.payload(temple=t)
+
+    def test_rejects_released_grid_and_missing_hypothesis(self):
+        leak = dict(self.data["leakage"], full_grid_released=True)
+        with self.assertRaisesRegex(ValueError, "grid held"):
+            self.payload(leakage=leak)
+        t = copy.deepcopy(self.data["temple"])
+        t["params"]["assume"] = None
+        with self.assertRaisesRegex(ValueError, "separation hypothesis"):
+            self.payload(temple=t)

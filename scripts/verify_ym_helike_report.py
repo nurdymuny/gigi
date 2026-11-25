@@ -37,6 +37,11 @@ def main():
         _, payload = report.load_evidence()
         if json.loads((report.OUT/"plot-data.json").read_text()) != payload:
             raise ValueError("plot data differs from the authoritative receipt")
+        for name, (path, expected) in report.FLUX_RECEIPTS.items():
+            if manifest["flux_receipts_sha256"][name] != expected or report.digest(report.ROOT/path) != expected:
+                raise ValueError("flux receipt changed: " + name)
+        if json.loads((report.OUT/"flux-plot-data.json").read_text()) != json.loads(json.dumps(report.load_flux_evidence())):
+            raise ValueError("flux plot data differs from the authoritative receipts")
         _, sectors = report.load_sector_evidence()
         if json.loads((report.OUT/"sector-plot-data.json").read_text()) != json.loads(json.dumps(sectors)):
             raise ValueError("sector plot data differs from authoritative receipt")
@@ -58,6 +63,12 @@ def main():
             ("sector_certification_promoted", "make_sector_payload",
              'verification.get("certified") is not False or', 'False or',
              "SectorReportTests.test_rejects_false_certification_and_failed_precision"),
+            ("flux_reverse_order_accepted", "make_flux_payload",
+             'if verdict not in ("ORDERED", "UNRESOLVED"):', 'if False:',
+             "FluxReportTests.test_rejects_reversed_or_promoted_claims"),
+            ("flux_grid_release_accepted", "make_flux_payload",
+             'leak.get("full_grid_released") is not False or', 'False or',
+             "FluxReportTests.test_rejects_released_grid_and_missing_hypothesis"),
             ("sector_arithmetic_unchecked", "make_sector_payload",
              'not math.isclose(m[key], value, rel_tol=0, abs_tol=1e-13)', 'False',
              "SectorReportTests.test_rejects_nonfinite_residual_and_changed_gap"),
@@ -80,21 +91,23 @@ def main():
         with fitz.open(report.OUT/"report.pdf") as pdf:
             if pdf.metadata.get("author"):
                 raise ValueError("report has an author metadata field")
-            if len(pdf) != 15:
+            if len(pdf) != 21:
                 raise ValueError(f"unexpected pagination: {len(pdf)}")
             text = "\n".join(page.get_text() for page in pdf)
             if "UNRESOLVED" not in text or "99.154" not in text:
                 raise ValueError("result or qualification missing from PDF")
-            if any(f"Figure {n}:" not in text for n in range(1, 9)):
+            if any(f"Figure {n}:" not in text for n in range(1, 14)):
                 raise ValueError("a required figure caption is missing")
             if "0.002774" not in text or "0.004552" not in text or "FULL-OPERATOR ERROR" not in text:
                 raise ValueError("new numerical result or mathematical derivation missing")
+            if "FLUX BACKGROUND" not in text or "+0.007179" not in text or "THE ORDERING" not in text:
+                raise ValueError("flux-background pages or their ordering result missing")
             for page in pdf:
                 for word in page.get_text("words"):
                     if not page.rect.contains(fitz.Rect(*word[:4])):
                         raise ValueError("text outside the page")
         result.update(status="PASS", scientific_status="UNRESOLVED", tested_cases=tested.testsRun,
-                      rejected_mutations=rejected, pages=15, figures=8, sector_cases=16, empty_author_metadata=True,
+                      rejected_mutations=rejected, pages=21, figures=13, sector_cases=16, empty_author_metadata=True,
                       artifact_manifest_sha256=report.digest(report.OUT/"artifact-manifest.json"),
                       verifier_sha256=report.digest(Path(__file__)), test_output=stream.getvalue(),
                       disclosure="Report integrity PASS is not scientific convergence PASS; visual review is separate.")

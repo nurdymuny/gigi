@@ -17,7 +17,7 @@
 \hypersetup{pdftitle={Helike as a Probe of a Quantum Yang-Mills Model},pdfauthor={},pdfsubject={Geometric probes, invariant-sector construction and verified full-operator residuals}}
 \pagestyle{fancy}\fancyhf{}
 \fancyhead[L]{\sffamily\scriptsize\color{muted} GIGI / COMPUTATIONAL RESEARCH}
-\fancyhead[R]{\sffamily\scriptsize\color{muted} UPDATED 24 NOVEMBER 2026}
+\fancyhead[R]{\sffamily\scriptsize\color{muted} UPDATED 25 NOVEMBER 2026}
 \fancyfoot[L]{\sffamily\scriptsize\color{muted} HELIKE QUANTUM PROBE / WORKING PAPER}
 \fancyfoot[R]{\sffamily\small\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
@@ -27,6 +27,7 @@
 \newcommand{\eyebrow}[1]{{\sffamily\small\color{teal}#1}\par}
 \newcommand{\pagetitle}[2]{\eyebrow{#1}\vspace{3pt}{\LARGE #2}\par\vspace{5pt}}
 \newcommand{\fig}[2]{\begin{center}\includegraphics[width=\linewidth]{figures/#1.pdf}\captionof{figure}{#2}\end{center}}
+\newcommand{\figw}[3]{\begin{center}\includegraphics[width=#1\linewidth]{figures/#2.pdf}\captionof{figure}{#3}\end{center}}
 \newcommand{\Htwo}{\mathrm{H2}}\newcommand{\Hzero}{\mathrm{H0}}
 \newcommand{\runid}{\texttt{20261124T021903Z-c326a3c5}}
 \begin{document}
@@ -605,7 +606,170 @@ claim of priority for that structure. It does not determine the quantum
 excitation gap from the action alone.
 
 \newpage
-\pagetitle{11 / CONTRIBUTION AND CONTEXT}{What is distinctive, and what is inherited}
+\pagetitle{11 / FLUX BACKGROUND}{Hold Helike's field, then ask which excitation is lowest}
+{\small\color{teal}\textbf{Update, 25 November 2026.} Pages 11--14 are new. They follow the same Helike
+channel around a held flux background, with rigorous bounds on the physical operator, a proved
+discrete-spectrum theorem and a Kato--Temple argument.}\par\vspace{2pt}
+\textbf{The question.} The edge paper's classical theorem says Helike's
+eigenvalue is helicity squared minus the flux along her circle. Its quantum
+counterpart asks: around a background that carries flux along the long circle,
+does the lowest vibration switch to Helike's channel where that mechanism says
+it should? We hold the background with external sources and study the
+fluctuations around it.
+
+\textbf{The model, unchanged in form.} With $q\in\mathbb R^{3\times3}$ (rows are
+frame indices, columns colour), $\omega=(\sqrt t,1/\sqrt t,1/\sqrt t)$ and
+sources $\mathrm{src}=(a,b,b)$,
+\[
+ H_{\rm src}=-\tfrac12\Delta_q+\tfrac12\|\omega\circ q-g\operatorname{cof}q\|^2
+ -\tfrac12\textstyle\sum_k\mathrm{src}_k\|q_k\|^2 .
+\]
+The sources $a=(1-s)(t-2s)$ and $b=(1-s)((1-s)/t-s)$ hold the Maurer--Cartan-line
+background $q_{\rm bg}=\operatorname{diag}(2s/\sqrt t,2s,2s)/(2g)$ stationary.
+Its harmonic frequencies split by locked charge: Helike's doublet at charge
+$\pm2$, a competitor at charge $0$, a charge-$\pm1$ pair and a second charge-$0$
+mode. At the controls ($s=1.15$, $t=3$) they are $1.0901$ ($\times2$), $1.1067$,
+$2.4297$ ($\times2$) and $2.6777$.
+
+\textbf{The window is the stability condition.} Expanding the square shows that
+the quadratic part of $H_{\rm src}$ has coefficients
+\[
+ \omega_0^2-a=s(2+t-2s),\qquad \omega_1^2-b=\frac{s\,[(2+t)-s(1+t)]}{t}.
+\]
+The second is positive exactly when $s<(t+2)/(t+1)$, the registered window.
+Figure~9 shows it against every registered point.
+
+\textbf{The registered grid is held.} The full flux-edge grid runs at
+$g^2=0.03$--$0.07$. Everything below is at the two weak-coupling controls,
+$g^2=0.004$ and $0.002$, where every bound can be checked. The grid is released
+only through a recorded method amendment, which is not yet written.
+
+\figw{0.8}{12-flux-window}{Why the window is the stability condition. The quadratic
+coefficient $\omega_1^2-b$ (teal) is positive exactly for $s<(t+2)/(t+1)$
+(shaded); $\omega_0^2-a$ is far larger throughout. Dots are the registered grid
+points, the square is the controls. Closed forms; nothing is fitted.}
+
+\newpage
+\pagetitle{12 / A DOMAIN THAT RESPECTS THE GEOMETRY}{Two sheets, one fold, and a basis that stays inside}
+\textbf{The domain was the first problem.} A local Fock continuation of the
+reduced operator turned out not to be bounded below: it reached matrices that
+are not Gram matrices. The repair keeps every trial point positive definite.
+The Gram matrix is written $G=LL^T$ with $L$ lower triangular, logarithmic
+diagonal and free off-diagonal entries. The chart's exact volume and
+co-metric are carried in full, and trial functions are $\psi=\chi/\sqrt\nu$.
+
+\textbf{The interface is a fold, not a wall.} The positive and negative
+determinant sheets meet at rank two. There the original Cartesian operator
+imposes matched values and a vanishing conormal sum: an orientation double
+cover. It imposes no Dirichlet, Neumann or Robin wall. The signed cubic
+distinguishes the two sheets, $V(w)-V(-w)=-2g(\Sigma\omega)r_0r_1w$.
+
+\textbf{Cutoff quasimodes avoid the fold.} Each Ritz state is multiplied by a
+smooth cutoff that equals one where the state lives and vanishes well before
+rank loss. The result is a smooth, compactly supported function of $q$. It lies
+in the domain of the physical operator whatever happens at the interface, so
+every bound below is a bound for the physical operator.
+
+\textbf{Two independent solvers agree.} The Python reference forms dense moment
+matrices. The Rust solver applies $H$ matrix-free with exact Kronecker moments:
+each Laurent term factorises into one-dimensional moments, and the operator acts
+on the occupation simplex without ever forming a matrix. From 924 to 3{,}003
+trial functions, the identified gaps change by at most $6.7\times10^{-4}$, under
+the registered $0.003$. The two implementations agree on every gap to about
+$10^{-13}$ (Figure~10, lines).
+
+\fig{11-flux-convergence}{Basis refinement and rigorous bounds together. Lines:
+Ritz gaps of Helike (teal) and the competitor (gold) at $M_q=6$ and $8$.
+Bars: rigorous enclosure of Helike's exact gap. Arrows: rigorous lower bound on
+the competitor's exact gap. Bounds are conditional on the stated separation
+hypotheses; the Ritz values lie inside them.}
+
+\newpage
+\pagetitle{13 / RIGOROUS BOUNDS}{Every number an enclosure, every error accounted}
+\textbf{What is enclosed.} For each saved state, and with outward-rounded
+arithmetic throughout:
+\begin{itemize}
+\item the full-operator residual $r=\|(H-E)\psi\|$, from an exact finite
+ exponential-polynomial moment sum, with no quadrature;
+\item the charge defect $c=\|(L-m)\psi\|$, through the exact Laurent velocity of
+ the rotation, and from it $q\leq\|P_m\eta\psi\|$;
+\item the cutoff tail $t$ and leakage $\ell=\|[H,\eta]\psi\|$, by Gaussian
+ majorants integrated to infinity in 128-bit ball arithmetic;
+\item the linear moment $s=\langle\psi,(H-E)\psi\rangle$, by the same moment
+ sum, checked against an independent polarization of two residual enclosures.
+\end{itemize}
+The projected state then satisfies $\|(H-E)\phi\|\leq R=(r+\ell)/q$.
+
+\textbf{The leakage is negligible, and now we know it.} An absolute $10^{-10}$
+line on the leakage was never derived. It was replaced, before any further run,
+by the rule the certificate actually needs: $\ell\leq10^{-3}\,r_{\rm lower}$.
+All sixteen states pass. The worst ratio is $3.1\times10^{-5}$, as predicted in
+advance (Figure~11).
+
+\textbf{One defect found and fixed on the way.} The first gate evaluation
+refused at its endpoint-pairing check. A JSON parser that is not correctly
+rounded had read three Arb upper bounds one ulp low. Parsing was made exact, and
+endpoints are now computed upward from the exact dyadics. No bound changed.
+
+\begin{center}\small\input{generated/flux-bounds.tex}\end{center}
+
+\textbf{Evidence identity.} Pages 11--14 read four hash-pinned receipts: the
+$M_q$ $6\to8$ convergence run, the interval sector bounds, the relative
+leakage gate and the Kato--Temple ordering. The builder refuses any of them
+that promotes a certificate, releases the grid or reports a reversed order.
+The Rust interval code and its receipts are on \texttt{feat/helike-lab}.
+
+\fig{10-flux-bounds}{Where the error lives. Filled: rigorous lower bound on the
+full-operator residual. Open: rigorous upper bound on the cutoff leakage. The
+leakage is at least four orders of magnitude below the residual at every state,
+and far smaller at the weaker coupling.}
+
+\newpage
+\pagetitle{14 / THE ORDERING}{Helike sits below the competitor at weak coupling}
+\textbf{Theorem A (discrete spectrum).} On the window $t>1$, $1<s<(t+2)/(t+1)$,
+and for every $g>0$,
+\[
+ V(q)\ \geq\ \tfrac\kappa2\|q\|^2-\frac{S^4}{2g^2},\qquad
+ \kappa=\min_k(\omega_k^2-\mathrm{src}_k)>0,\quad S=\textstyle\sum\omega .
+\]
+The proof pairs the cubic term against one quartic term by AM--GM in singular
+values. Hence $H$ has compact resolvent and discrete spectrum in every
+colour-singlet charge sector.
+
+\textbf{Three lemmas.} (1) The Rayleigh quotient of the trimmed, projected state
+lies within $(s\pm e)/[q^2,1]$ of the saved centre, with
+$e=2tr+\ell+c(r+\ell)$. (2) Kato--Temple bounds the largest eigenvalue below any
+threshold $\rho$ from below. (3) The ground and competitor Weinstein windows are
+disjoint, so two charge-0 eigenvalues lie below
+$\rho_C=E_0+2\omega_H-\omega_{\min}/4$.
+
+\textbf{One stated hypothesis, $S_C$.} In charge $0$, at most two eigenvalues
+lie below $\rho_C$. The trial spectrum puts the third level more than $0.25$
+above it. Helike's side needs no hypothesis: her level is bounded above by
+min--max.
+
+\figw{0.9}{13-flux-chain}{The certificate chain, from a trial state to a verdict about
+the physical operator. Each box is computed in outward-rounded arithmetic or
+proved; the last step is the only one that uses a hypothesis.}
+
+\begin{center}\small\input{generated/flux-ordering.tex}\end{center}
+
+\textbf{Result.} At three of the four controls the exact charge-$\pm2$ ground
+level lies strictly below the exact second charge-$0$ level, conditional on
+$S_C$. At $M_q=6$, $g^2=0.004$, the rule is UNRESOLVED: a residual of $0.08$
+cannot separate levels $0.008$ apart. Every verdict and margin matches a
+prediction recorded before computation.
+
+\textbf{Not established.} $S_C$ itself; anything at the registered grid
+couplings; the location of the switch; any continuum statement.
+
+\fig{09-flux-ordering}{The ordering, control by control. Shaded: Weinstein
+windows, each containing a true eigenvalue. Ticks: Helike's upper bound and the
+competitor's Kato--Temple lower bound under $S_C$. ORDERED means the gold tick
+lies right of the teal one.}
+
+\newpage
+\pagetitle{15 / CONTRIBUTION AND CONTEXT}{What is distinctive, and what is inherited}
 \textbf{The research question is geometric.}
 Instead of starting from a low eigenvalue and naming it, we start from a
 specified classical field direction. Its quadratic observable has the exact
@@ -668,7 +832,7 @@ Field: A Floor Law Across the Berger Spheres}, version 3.3, November 2026,
 }
 
 \newpage
-\pagetitle{12 / NEXT EXPERIMENTAL LAYER}{Use GIGI to connect evidence across models}
+\pagetitle{16 / NEXT EXPERIMENTAL LAYER}{Use GIGI to connect evidence across models}
 \textbf{Plan, not a deployed capability.}
 The model supplies observations. GIGI can organize those observations into
 versioned bundles, compare compatible geometric signatures and expose which

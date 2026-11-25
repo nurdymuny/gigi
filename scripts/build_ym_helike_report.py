@@ -11,6 +11,8 @@ import subprocess
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.patches
+import matplotlib.transforms
 from matplotlib import font_manager
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 import numpy as np
@@ -415,17 +417,221 @@ def write_tables(payload):
     (OUT/"plot-data.json").write_text(json.dumps(payload, indent=2, allow_nan=False)+"\n", encoding="utf-8")
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Flux-background section (25 November 2026): four hash-pinned receipts, refused on any promoted or forged claim.
+
+FLUX_RECEIPTS = {
+    "convergence": ("research/cone-convergence-20261124/controls-59534df9/receipt.json",
+                    "f1eec3b8d49a9a93c95ca0cb98bbe3a344ae51e561b5d47543c438bc6abeeb74"),
+    "sectors": ("research/leakage-gate-20261125/inputs/cone_sector_bounds_c31aab8e.json",
+                "4ead4c2dcd51e851b8654bfed9018061cfcfbdb257edfa9ca2a611a291e557a7"),
+    "leakage": ("research/leakage-gate-20261125/controls-fbfa958/receipt.json",
+                "2203e230a7cda2629b996c9c21b06d984c43ee874778544896e336702f60c82f"),
+    "temple": ("research/temple-20261125/cone_temple_c31aab8e.json",
+               "938e9b3f9027070aa112c55968f50ac4165779aaa400bdd906c845fe90569484"),
+}
+FLUX_CONTROLS = [(0.004, 6), (0.004, 8), (0.002, 6), (0.002, 8)]
+
+
+def make_flux_payload(conv, sectors, leak, temple):
+    """Rows for the flux-background pages. Refuses any receipt that promotes, forges or reverses a claim."""
+    if conv.get("decision") != "CONVERGED" or conv.get("status") != "COMPLETE":
+        raise ValueError("flux convergence receipt is not a completed CONVERGED run")
+    if (leak.get("relative_leakage_gate") != "PASS" or leak.get("certified") is not False or
+            leak.get("full_grid_released") is not False or leak.get("historical_cutoff_gate_passed_unchanged") is not False):
+        raise ValueError("leakage receipt is not the registered PASS with the grid held and history unchanged")
+    if sectors.get("status") != "INTERVAL_ENCLOSURE" or temple.get("status") != "INTERVAL_ENCLOSURE":
+        raise ValueError("bounds must be interval enclosures")
+    if temple["params"].get("assume") != "S_C":
+        raise ValueError("ordering receipt must state its separation hypothesis")
+    sec = {(c["g2"], c["Mq"]): {s["name"]: s for s in c["states"]} for c in sectors["results"]["controls"]}
+    tem = {(c["g2"], c["Mq"]): c for c in temple["results"]["controls"]}
+    lk = {(s["g2"], s["Mq"], s["state"]): s for s in leak["states"]}
+    rows = []
+    for key in FLUX_CONTROLS:
+        g2, mq = key
+        d = tem[key]["decision"]
+        verdict, margin = d["verdict"], d["margin_lower"]
+        if verdict not in ("ORDERED", "UNRESOLVED"):
+            raise ValueError("an ordering verdict other than ORDERED or UNRESOLVED is never reported")
+        if verdict == "ORDERED" and not (d["lemma3"] and margin > 0):
+            raise ValueError("ORDERED requires Lemma 3 and a positive margin")
+        if verdict == "UNRESOLVED" and d["lemma3"] and margin > 0:
+            raise ValueError("a positive margin with Lemma 3 must be reported as ORDERED")
+        gaps = conv["rows"][str(g2)][str(mq)]
+        e0 = tem[key]["states"][0]["center"]
+        states = []
+        for name in ("ground", "helike_plus", "competitor"):
+            s = sec[key][name]
+            sb = s["sector"]["Ok"]
+            ratio = lk[(g2, mq, name)]["leakage_over_r_lower_upper"]
+            if not (s["r_lower"] <= s["r_upper"] and ratio <= 1e-3):
+                raise ValueError("residual enclosure or leakage ratio inconsistent")
+            states.append({"state": name, "r_lower": s["r_lower"], "r_upper": s["r_upper"], "charge_upper": s["charge_upper"],
+                           "leakage_upper": s["leakage_norm_upper"], "leakage_over_r": ratio,
+                           "q_lower": sb["q_lower"], "residual_bound": sb["residual_upper"],
+                           "window": [s["center"] - e0 - sb["residual_upper"], s["center"] - e0 + sb["residual_upper"]]})
+        rows.append({"g2": g2, "Mq": mq, "ritz_gap_helike": gaps["helike"]["gap"], "ritz_gap_competitor": gaps["competitor"]["gap"],
+                     "helike_upper": max(d["helike_upper"]) - e0, "competitor_lower": d["competitor_lower"] - e0,
+                     "margin": margin, "verdict": verdict, "states": states,
+                     "helike_gap": d["gap_report"]["helike_gap"], "competitor_gap_lower": d["gap_report"]["competitor_gap_lower"]})
+    return {"controls": rows, "hypothesis": "S_C", "theorem_A": "proved (helike-discrete-spectrum-lemma-2026-11-25)",
+            "ordered": sum(r["verdict"] == "ORDERED" for r in rows)}
+
+
+def load_flux_evidence():
+    data = {}
+    for name, (path, expected) in FLUX_RECEIPTS.items():
+        if digest(ROOT/path) != expected:
+            raise ValueError("flux receipt changed: " + name)
+        data[name] = json.loads((ROOT/path).read_text())
+    return make_flux_payload(data["convergence"], data["sectors"], data["leakage"], data["temple"])
+
+
+def flux_figure(payload):
+    fig, ax = plt.subplots(figsize=(7.2, 3.6))
+    for i, r in enumerate(payload["controls"]):
+        y = len(payload["controls"]) - 1 - i
+        h, c = r["states"][1], r["states"][2]
+        ax.plot(h["window"], [y + 0.12] * 2, color=TEAL, lw=5, alpha=0.25, solid_capstyle="butt")
+        ax.plot(c["window"], [y - 0.12] * 2, color=GOLD, lw=5, alpha=0.25, solid_capstyle="butt")
+        ax.plot([r["helike_upper"]], [y + 0.12], marker="|", ms=16, mew=2.2, color=TEAL)
+        ax.plot([r["competitor_lower"]], [y - 0.12], marker="|", ms=16, mew=2.2, color=GOLD)
+        label = f"{r['verdict']}\nmargin {r['margin']:+.4f}"
+        ax.text(1.02, y, label, va="center", fontsize=8.5, color=INK if r["verdict"] == "ORDERED" else RED,
+                transform=matplotlib.transforms.blended_transform_factory(ax.transAxes, ax.transData))
+    ax.set_yticks(range(len(payload["controls"])))
+    ax.set_yticklabels([f"g$^2$ = {r['g2']}, Mq = {r['Mq']}" for r in reversed(payload["controls"])])
+    ax.set_xlim(1.0, 1.21)
+    ax.set_xlabel("energy above the saved ground centre")
+    ax.set_title("Helike's level (teal) against the competitor's (gold)")
+    ax.plot([], [], color=TEAL, lw=5, alpha=0.25, label="Weinstein window")
+    ax.plot([], [], marker="|", ms=12, mew=2, color=TEAL, ls="none", label="Helike upper bound")
+    ax.plot([], [], marker="|", ms=12, mew=2, color=GOLD, ls="none", label="competitor lower bound (S$_C$)")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=8, frameon=False)
+    save(fig, "09-flux-ordering")
+
+
+def flux_bounds_figure(payload):
+    fig, ax = plt.subplots(figsize=(7.2, 4.4))
+    colors = {"ground": GRAY, "helike_plus": TEAL, "competitor": GOLD}
+    labels, y = [], 0
+    for r in payload["controls"]:
+        for st in r["states"]:
+            ax.plot([st["leakage_upper"], st["r_lower"]], [y, y], color=colors[st["state"]], lw=1, alpha=0.5)
+            ax.plot(st["r_lower"], y, "o", ms=6, color=colors[st["state"]])
+            ax.plot(st["leakage_upper"], y, "o", ms=6, mfc="white", mec=colors[st["state"]], mew=1.4)
+            name = {"ground": "ground", "helike_plus": "Helike", "competitor": "competitor"}[st["state"]]
+            labels.append(f"{name}  (g$^2$={r['g2']}, Mq={r['Mq']})")
+            y += 1
+    ax.set_xscale("log")
+    ax.set_yticks(range(y)); ax.set_yticklabels(labels, fontsize=8); ax.invert_yaxis()
+    ax.set_xlabel("norm (relative to the trial state)")
+    ax.set_title("Residual r (filled) against cutoff leakage \u2113 (open)")
+    ax.text(1.0, -0.16, "worst \u2113 / r = {:.1e}; registered limit 1e-3".format(max(s["leakage_over_r"] for r in payload["controls"] for s in r["states"])),
+            transform=ax.transAxes, ha="right", fontsize=9, color=INK)
+    save(fig, "10-flux-bounds")
+
+
+def flux_convergence_figure(payload):
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.4), sharey=False)
+    for ax, g2 in zip(axes, (0.004, 0.002)):
+        rows = [r for r in payload["controls"] if r["g2"] == g2]
+        mqs = [r["Mq"] for r in rows]
+        ax.plot(mqs, [r["ritz_gap_helike"] for r in rows], "-o", color=TEAL, label="Helike (Ritz)")
+        ax.plot(mqs, [r["ritz_gap_competitor"] for r in rows], "-o", color=GOLD, label="competitor (Ritz)")
+        for r in rows:
+            if r["helike_gap"]:
+                lo, hi = r["helike_gap"]
+                ax.plot([r["Mq"] + 0.12] * 2, [lo, hi], color=TEAL, lw=3, alpha=0.5)
+            ax.annotate("", xy=(r["Mq"] + 0.24, r["competitor_gap_lower"]), xytext=(r["Mq"] + 0.24, r["competitor_gap_lower"] - 0.003),
+                        arrowprops=dict(arrowstyle="-|>", color=GOLD, lw=1.2))
+        ax.set_xticks([6, 8]); ax.set_xlim(5.5, 8.7)
+        ax.set_title(f"g$^2$ = {g2}"); ax.set_xlabel("basis cutoff Mq")
+    axes[0].set_ylabel("excitation gap")
+    axes[1].legend(*axes[0].get_legend_handles_labels(), fontsize=8, frameon=False, loc="center right")
+    fig.text(0.5, -0.06, "Bars: rigorous enclosure of Helike's gap; arrows: rigorous lower bound on the competitor's (both under S$_0$, S$_H$, S$_C$).",
+             ha="center", fontsize=8, color=INK)
+    save(fig, "11-flux-convergence")
+
+
+def flux_window_figure():
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.2), sharey=True)
+    grids = {3: [1.12, 1.15, 1.165, 1.18, 1.195, 1.22, 1.24], 4: [1.09, 1.12, 1.14, 1.16, 1.18]}
+    for ax, t in zip(axes, (3.0, 4.0)):
+        smax = (t + 2) / (t + 1)
+        s = np.linspace(1.0, smax + 0.06, 400)
+        k1 = s * ((2 + t) - s * (1 + t)) / t
+        k0 = s * (2 + t - 2 * s)
+        ax.axvspan(1.0, smax, color=TEAL, alpha=0.08, lw=0)
+        ax.axhline(0, color=GRAY, lw=0.8)
+        ax.axvline(smax, color=GRAY, lw=0.8, ls="--")
+        ax.plot(s, k1, color=TEAL, lw=2, label="$\\omega_1^2-b$")
+        ax.text(1.005, 0.46, f"$\\omega_0^2-a\\geq{k0[s <= smax].min():.2f}$ (off scale)", fontsize=8, color=GOLD)
+        pts = np.array(grids[int(t)])
+        ax.plot(pts, pts * ((2 + t) - pts * (1 + t)) / t, "o", ms=4, color=INK, label="registered points")
+        if t == 3:
+            ax.plot([1.15], [1.15 * ((2 + t) - 1.15 * (1 + t)) / t], "s", ms=6, mfc="white", mec=RED, mew=1.4, label="controls")
+        ax.set_ylim(-0.08, 0.5); ax.set_title(f"t = {t:g}: window ends at s = {smax:.3f}")
+        ax.set_xlabel("s")
+    axes[0].set_ylabel("quadratic coefficient")
+    axes[1].legend(*axes[0].get_legend_handles_labels(), fontsize=7.5, frameon=False, loc="lower left")
+    save(fig, "12-flux-window")
+
+
+def flux_chain_figure():
+    fig, ax = plt.subplots(figsize=(7.2, 2.3)); ax.axis("off")
+    steps = [("trial state\n$\\psi$ (Ritz)", "two solvers\nagree to 1e-13"),
+             ("cutoff $\\eta$", "Arb: tail $t$,\nleakage $\\ell$"),
+             ("charge\nprojection $P_m$", "interval: $c$,\n$q$"),
+             ("residual\n$R=(r+\\ell)/q$", "interval: $r$,\nlinear $s$"),
+             ("Lemmas 1\u20133", "Rayleigh quotient,\nwindows"),
+             ("Kato\u2013Temple", "under S$_C$\n(A) proved")]
+    n = len(steps)
+    for i, (top, bottom) in enumerate(steps):
+        x = i / n + 0.01
+        ax.add_patch(matplotlib.patches.FancyBboxPatch((x, 0.42), 1 / n - 0.03, 0.46, boxstyle="round,pad=0.01",
+                     fc="white", ec=TEAL if i < n - 1 else GOLD, lw=1.4, transform=ax.transAxes))
+        ax.text(x + (1 / n - 0.03) / 2, 0.65, top, ha="center", va="center", fontsize=8.5, transform=ax.transAxes)
+        ax.text(x + (1 / n - 0.03) / 2, 0.2, bottom, ha="center", va="center", fontsize=7.5, color=GRAY, transform=ax.transAxes)
+        if i < n - 1:
+            ax.annotate("", xy=(x + 1 / n - 0.005, 0.65), xytext=(x + 1 / n - 0.03, 0.65), xycoords="axes fraction",
+                        arrowprops=dict(arrowstyle="-|>", color=INK, lw=1))
+    save(fig, "13-flux-chain")
+
+
+def write_flux_tables(payload):
+    generated = OUT/"generated"
+    generated.mkdir(parents=True, exist_ok=True)
+    header = r"\begin{tabular}{@{}rrrrrrl@{}}\toprule $g^2$&Mq&Ritz gaps H / C&$U_H-E_0$&$L_C-E_0$&margin&verdict\\\midrule" + "\n"
+    lines = [f"{r['g2']}&{r['Mq']}&{r['ritz_gap_helike']:.6f} / {r['ritz_gap_competitor']:.6f}&{r['helike_upper']:.6f}&"
+             f"{r['competitor_lower']:.6f}&{r['margin']:+.6f}&{r['verdict']}\\\\" for r in payload["controls"]]
+    (generated/"flux-ordering.tex").write_text(header+"\n".join(lines)+"\n"+r"\bottomrule\end{tabular}"+"\n", encoding="ascii")
+    header = r"\begin{tabular}{@{}rrlrrrrr@{}}\toprule $g^2$&Mq&state&$r$ (lower)&$c\leq$&$\ell\leq$&$\ell/r\leq$&$R\leq$\\\midrule" + "\n"
+    lines = []
+    for r in payload["controls"]:
+        for s in r["states"]:
+            name = {"ground": "ground", "helike_plus": "Helike", "competitor": "competitor"}[s["state"]]
+            lines.append(f"{r['g2']}&{r['Mq']}&{name}&{s['r_lower']:.6f}&{s['charge_upper']:.2e}&{s['leakage_upper']:.1e}&"
+                         f"{s['leakage_over_r']:.1e}&{s['residual_bound']:.6f}\\\\")
+    (generated/"flux-bounds.tex").write_text(header+"\n".join(lines)+"\n"+r"\bottomrule\end{tabular}"+"\n", encoding="ascii")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", action="store_true", help="also compile the paper-ready LaTeX report")
     args = parser.parse_args()
     receipt, payload = load_evidence()
     sector_receipt, sectors = load_sector_evidence()
+    flux = load_flux_evidence()
     OUT.mkdir(parents=True, exist_ok=True)
     style()
     response_figure(payload); geometry_figure(); spectrum_figure(payload)
     cutoff_figure(payload); gate_figure(payload); write_tables(payload)
     sector_figures(sectors); write_sector_tables(sectors)
+    flux_figure(flux); flux_bounds_figure(flux); flux_convergence_figure(flux)
+    flux_window_figure(); flux_chain_figure(); write_flux_tables(flux)
+    (OUT/"flux-plot-data.json").write_text(json.dumps(flux, indent=2)+"\n", encoding="utf-8")
     if args.pdf:
         logs = ROOT/"tmp/pdfs/helike-report"
         logs.mkdir(parents=True, exist_ok=True)
@@ -437,7 +643,7 @@ def main():
                 raise RuntimeError(f"LaTeX pass {pass_number} failed; see {logs}")
     paths = list((OUT/"figures").glob("*")) + list((OUT/"generated").glob("*.tex"))
     paths += [OUT/"plot-data.json", OUT/"case-summary.csv", OUT/"level-weights.csv",
-              OUT/"sector-plot-data.json", OUT/"sector-summary.csv"]
+              OUT/"sector-plot-data.json", OUT/"sector-summary.csv", OUT/"flux-plot-data.json"]
     if args.pdf:
         paths += [OUT/"report.pdf"]
     manifest = {"source_run": RUN_ID, "source_status": receipt["status"],
@@ -447,9 +653,10 @@ def main():
                 "sector_source_revision": sector_receipt["source_revision"],
                 "sector_receipt_sha256": digest(SECTOR_RUN/"receipt.json"),
                 "sector_verification_sha256": digest(SECTOR_RUN/"verification.json"),
+                "flux_receipts_sha256": {k: v[1] for k, v in FLUX_RECEIPTS.items()},
                 "outputs": {str(p.relative_to(OUT)).replace("\\", "/"): digest(p) for p in paths}}
     (OUT/"artifact-manifest.json").write_text(json.dumps(manifest, indent=2)+"\n", encoding="utf-8")
-    print(json.dumps({"status": "BUILT", "source_status": receipt["status"], "figures": 8,
+    print(json.dumps({"status": "BUILT", "source_status": receipt["status"], "figures": 13,
                       "cases": len(payload["cases"]), "sector_cases": len(sectors["cases"]), "output": str(OUT)}, indent=2))
 
 

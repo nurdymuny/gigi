@@ -1813,6 +1813,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "helike-core",
+ "helike-quantum",
  "helike-stream",
  "rayon",
  "serde",
@@ -1825,6 +1826,16 @@ version = "0.1.0"
 dependencies = [
  "faer",
  "num-complex",
+ "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "helike-quantum"
+version = "0.1.0"
+dependencies = [
+ "faer",
  "rayon",
  "serde",
  "serde_json",

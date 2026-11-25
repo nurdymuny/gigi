@@ -1,0 +1,191 @@
+//! Runners with the decision rules of the Python scripts, frozen as written there:
+//! - `controls`: `run_helike_positive_cone_controls.py` (O(g²) coefficients within 0.03 of the exact values,
+//!   identification weights ≥ 0.95);
+//! - `convergence`: `run_helike_cone_convergence.py` (both identified gaps change by ≤ 0.003 from the lower to
+//!   the higher cutoff at both couplings, weights ≥ 0.95; otherwise NOT_CONVERGED, or UNRESOLVED on refusal).
+//!
+//! Every point also records a second quadrature order (extra + 2): the largest change of a Ritz value's Rayleigh
+//! quotient when the operator is re-applied on the finer grid.
+
+use crate::model::Background;
+use crate::operator::{ConeOperator, Mutation, Part};
+use crate::ritz::{self, HelikeCompetitor, SolveSettings};
+use serde::Serialize;
+use std::time::Instant;
+
+pub const CONTROL_S: f64 = 1.15;
+pub const CONTROL_T: f64 = 3.0;
+pub const CONTROL_G2: [f64; 2] = [0.004, 0.002];
+/// exact O(g²) coefficients (Helike, competitor) that the controls must reproduce
+pub const EXACT_COEFFICIENTS: [f64; 2] = [-0.5300, -2.7379];
+pub const COEFFICIENT_TOL: f64 = 0.03;
+pub const WEIGHT_MIN: f64 = 0.95;
+pub const GAP_TOL: f64 = 0.003;
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PointResult {
+    pub s: f64,
+    pub t: f64,
+    pub g2: f64,
+    #[serde(rename = "Mq")]
+    pub mq: usize,
+    pub dimension: usize,
+    pub quadrature_order: usize,
+    pub frequencies: [f64; 6],
+    pub background_gradient: f64,
+    pub result: HelikeCompetitor,
+    /// max over returned levels of |θ − ⟨x, H_fine x⟩| with H_fine on quadrature order + 2
+    pub quadrature_check: f64,
+    pub max_residual: f64,
+    pub applications: usize,
+    pub seconds: f64,
+}
+
+pub fn solve_point(s: f64, t: f64, g2: f64, mq: usize, extra: usize, set: &SolveSettings) -> Result<PointResult, String> {
+    let t0 = Instant::now();
+    if !(g2 > 0.0) {
+        return Err("g^2 must be positive".into());
+    }
+    let bg = Background::maurer_cartan(s, t, g2.sqrt())?;
+    let op = ConeOperator::new(bg.clone(), mq, extra, Mutation::None)?;
+    let eigs = ritz::spectrum(&op, set);
+    let result = ritz::helike_and_competitor(&op, &eigs, ritz::helike_frequency(s, t))?;
+    let fine = ConeOperator::new(bg.clone(), mq, extra + 2, Mutation::None)?;
+    let hx = fine.apply(&eigs.vectors, Part::Full);
+    let quadrature_check = eigs
+        .vectors
+        .iter()
+        .zip(&hx)
+        .zip(&eigs.values)
+        .map(|((x, h), th)| (x.iter().zip(h).map(|(a, b)| a * b).sum::<f64>() - th).abs())
+        .fold(0.0, f64::max);
+    Ok(PointResult {
+        s,
+        t,
+        g2,
+        mq,
+        dimension: op.dim(),
+        quadrature_order: op.grid.q,
+        frequencies: bg.w,
+        background_gradient: bg.grad_norm,
+        max_residual: eigs.residuals.iter().cloned().fold(0.0, f64::max),
+        applications: eigs.applications,
+        result,
+        quadrature_check,
+        seconds: t0.elapsed().as_secs_f64(),
+    })
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Controls {
+    pub status: String,
+    pub scope: String,
+    #[serde(rename = "Mq")]
+    pub mq: usize,
+    pub rows: Vec<PointResult>,
+    pub coefficients: Vec<[f64; 2]>,
+    pub extrapolated_coefficients: [f64; 2],
+    pub coefficient_errors: [f64; 2],
+    pub coefficient_pass: bool,
+    pub weight_pass: bool,
+}
+
+/// The two weak-coupling controls at one cutoff (s = 1.15, t = 3, g² = 0.004, 0.002).
+pub fn controls(mq: usize, extra: usize, set: &SolveSettings) -> Result<Controls, String> {
+    let wh = ritz::helike_frequency(CONTROL_S, CONTROL_T);
+    let mut rows = vec![];
+    let mut coefficients = vec![];
+    for g2 in CONTROL_G2 {
+        let r = solve_point(CONTROL_S, CONTROL_T, g2, mq, extra, set)?;
+        let w = r.frequencies;
+        let wc = w
+            .iter()
+            .cloned()
+            .filter(|&x| w.iter().filter(|&&y| (y - x).abs() < 1e-6).count() == 1)
+            .fold(f64::INFINITY, f64::min);
+        coefficients.push([(r.result.helike.gap - wh) / g2, (r.result.competitor.gap - wc) / g2]);
+        rows.push(r);
+    }
+    let ex = [2.0 * coefficients[1][0] - coefficients[0][0], 2.0 * coefficients[1][1] - coefficients[0][1]];
+    let err = [(ex[0] - EXACT_COEFFICIENTS[0]).abs(), (ex[1] - EXACT_COEFFICIENTS[1]).abs()];
+    let coefficient_pass = err[0].max(err[1]) <= COEFFICIENT_TOL;
+    let weight_pass = rows.iter().all(|r| r.result.helike.weight > WEIGHT_MIN && r.result.competitor.weight > WEIGHT_MIN);
+    Ok(Controls {
+        status: if coefficient_pass && weight_pass { "PASS_CONTROLS" } else { "FAIL_CONTROLS" }.into(),
+        scope: "interior trial controls, no physical boundary certificate".into(),
+        mq,
+        rows,
+        coefficients,
+        extrapolated_coefficients: ex,
+        coefficient_errors: err,
+        coefficient_pass,
+        weight_pass,
+    })
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Change {
+    pub g2: f64,
+    pub helike: f64,
+    pub competitor: f64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Convergence {
+    pub decision: String,
+    pub rule: String,
+    pub ladder: [usize; 2],
+    pub gap_tol: f64,
+    pub weight_min: f64,
+    pub rows: Vec<Result<PointResult, String>>,
+    pub changes: Vec<Change>,
+}
+
+/// Basis convergence of the controls from `ladder[0]` to `ladder[1]` at the frozen 0.003 rule.
+pub fn convergence(ladder: [usize; 2], extra: usize, set: &SolveSettings) -> Convergence {
+    let mut rows = vec![];
+    let mut changes = vec![];
+    let mut decision = "CONVERGED".to_string();
+    for g2 in CONTROL_G2 {
+        let a = solve_point(CONTROL_S, CONTROL_T, g2, ladder[0], extra, set);
+        let b = solve_point(CONTROL_S, CONTROL_T, g2, ladder[1], extra, set);
+        match (&a, &b) {
+            (Ok(ra), Ok(rb)) => {
+                let wmin = [&ra.result, &rb.result]
+                    .iter()
+                    .flat_map(|r| [r.helike.weight, r.competitor.weight])
+                    .fold(f64::INFINITY, f64::min);
+                if wmin < WEIGHT_MIN {
+                    if decision != "UNRESOLVED" {
+                        decision = "UNRESOLVED".into();
+                    }
+                } else {
+                    let ch = Change {
+                        g2,
+                        helike: (rb.result.helike.gap - ra.result.helike.gap).abs(),
+                        competitor: (rb.result.competitor.gap - ra.result.competitor.gap).abs(),
+                    };
+                    if ch.helike.max(ch.competitor) > GAP_TOL && decision == "CONVERGED" {
+                        decision = "NOT_CONVERGED".into();
+                    }
+                    changes.push(ch);
+                }
+            }
+            _ => decision = "UNRESOLVED".into(),
+        }
+        rows.push(a);
+        rows.push(b);
+    }
+    Convergence {
+        decision,
+        rule: "CONVERGED if both identified gaps change by at most 0.003 between the two cutoffs at both couplings and \
+               every identification weight is at least 0.95; NOT_CONVERGED if a change exceeds 0.003; UNRESOLVED if \
+               identification or numerics refuse. Interior trial family only; not a boundary or spectral certificate."
+            .into(),
+        ladder,
+        gap_tol: GAP_TOL,
+        weight_min: WEIGHT_MIN,
+        rows,
+        changes,
+    }
+}

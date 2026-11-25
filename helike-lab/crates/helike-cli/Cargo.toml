@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 helike-core = { path = "../helike-core" }
 helike-stream = { path = "../helike-stream" }
+helike-quantum = { path = "../helike-quantum" }
 clap = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }

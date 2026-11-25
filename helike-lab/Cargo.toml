@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/helike-core", "crates/helike-stream", "crates/helike-cli", "crates/helike-view"]
+members = ["crates/helike-core", "crates/helike-quantum", "crates/helike-stream", "crates/helike-cli", "crates/helike-view"]
 
 [workspace.package]
 version = "0.1.0"

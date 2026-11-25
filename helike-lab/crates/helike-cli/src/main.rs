@@ -5,6 +5,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 use helike_core::helike::{self, Member, SectorData, Spectrum};
 use helike_core::problem::Problem;
 use helike_core::roots;
+use helike_quantum::ritz::SolveSettings;
+use helike_quantum::run;
 use helike_stream::{compare, Provenance, Receipt, Status};
 use rayon::prelude::*;
 use serde_json::{json, Value};
@@ -98,6 +100,36 @@ enum Cmd {
         #[arg(long, default_value_t = 12)]
         jmax: usize,
     },
+    /// The sourced condensate at one point by positive-cone Ritz (matrix-free): levels, Helike and competitor.
+    Cone {
+        #[arg(long, default_value_t = 1.15)]
+        s: f64,
+        #[arg(long, default_value_t = 3.0)]
+        t: f64,
+        #[arg(long)]
+        g2: f64,
+        #[arg(long, default_value_t = 6)]
+        mq: usize,
+        /// quadrature order per axis is (Mq + 2) + extra; a second order (extra + 2) is always checked
+        #[arg(long, default_value_t = 4)]
+        extra: usize,
+    },
+    /// The two weak-coupling controls (s = 1.15, t = 3, g^2 = 0.004, 0.002) at one cutoff, with the frozen rule.
+    ConeControls {
+        #[arg(long, default_value_t = 6)]
+        mq: usize,
+        #[arg(long, default_value_t = 4)]
+        extra: usize,
+    },
+    /// Basis convergence of the controls between two cutoffs at the frozen 0.003 rule.
+    ConeConvergence {
+        #[arg(long, default_value_t = 6)]
+        from: usize,
+        #[arg(long, default_value_t = 8)]
+        to: usize,
+        #[arg(long, default_value_t = 4)]
+        extra: usize,
+    },
     /// Replay a receipt's command and compare its results (relative tolerance).
     Verify {
         receipt: PathBuf,
@@ -166,6 +198,18 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
             let ta = roots::brent(|t| helike::phi(&Member::berger(t), Spectrum::A, *jmax), 2.70, 2.76, 1e-13, 200);
             let ts = roots::brent(|t| helike::phi(&Member::berger(t), Spectrum::S, *jmax), 2.68, 2.72, 1e-13, 200);
             (json!({"jmax": jmax, "bracket_A": [2.70, 2.76], "bracket_S": [2.68, 2.72]}), json!({"t_A": ta, "t_star": ts}))
+        }
+        Cmd::Cone { s, t, g2, mq, extra } => {
+            let r = run::solve_point(*s, *t, *g2, *mq, *extra, &SolveSettings::default())?;
+            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "extra": extra, "solver": SolveSettings::default()}), serde_json::to_value(&r).unwrap())
+        }
+        Cmd::ConeControls { mq, extra } => {
+            let r = run::controls(*mq, *extra, &SolveSettings::default())?;
+            (json!({"Mq": mq, "extra": extra, "solver": SolveSettings::default()}), serde_json::to_value(&r).unwrap())
+        }
+        Cmd::ConeConvergence { from, to, extra } => {
+            let r = run::convergence([*from, *to], *extra, &SolveSettings::default());
+            (json!({"ladder": [from, to], "extra": extra, "solver": SolveSettings::default()}), serde_json::to_value(&r).unwrap())
         }
         Cmd::Verify { .. } => unreachable!(),
     })

@@ -21,11 +21,11 @@ fn control(g2: f64, mq: usize) -> &'static SavedControl {
 }
 
 fn check_encloses(r: &ControlEnclosure, c: &SavedControl) {
-    assert_eq!(r.group_count, c.reference_centered_moments.group_count, "group count");
-    assert_eq!(r.workspace_degree, c.reference_centered_moments.workspace_degree, "workspace degree");
+    assert_eq!(r.group_count, c.reference_centered_moments.as_ref().expect("controls carry reference moments").group_count, "group count");
+    assert_eq!(r.workspace_degree, c.reference_centered_moments.as_ref().expect("controls carry reference moments").workspace_degree, "workspace degree");
     for s in &r.states {
-        assert!(s.reference_inside, "g2 {} Mq {} {}: reference {} outside [{}, {}]", r.g2, r.mq, s.name,
-                s.reference_residual_sq, s.residual_sq[0], s.residual_sq[1]);
+        assert!(s.reference_inside == Some(true), "g2 {} Mq {} {}: reference {} outside [{}, {}]", r.g2, r.mq, s.name,
+                s.reference_residual_sq.expect("controls carry a reference value"), s.residual_sq[0], s.residual_sq[1]);
         assert!(s.r_lower > 0.0 && s.r_lower <= s.r_upper);
         // the enclosure must be useful, not merely valid: relative width of the residual square below 1e-2
         let w = s.residual_sq[1] - s.residual_sq[0];
@@ -34,7 +34,7 @@ fn check_encloses(r: &ControlEnclosure, c: &SavedControl) {
         assert!(s.norm_sq[0] <= 1.0 + 1e-11 && s.norm_sq[1] >= 1.0 - 1e-11);
     }
     // the reference's second (independent quadrature-translation) path also lies inside
-    for (s, v) in r.states.iter().zip(&c.reference_centered_moments.independent) {
+    for (s, v) in r.states.iter().zip(&c.reference_centered_moments.as_ref().expect("controls carry reference moments").independent) {
         assert!(s.residual_sq[0] <= *v && *v <= s.residual_sq[1], "{}: independent reference {v} outside", s.name);
     }
 }
@@ -66,7 +66,7 @@ fn every_fault_moves_the_reference_outside() {
         // caught: some state's reference lies outside by more than 100 times its clean enclosure width
         let caught = r.states.iter().zip(&clean.states).any(|(s, k)| {
             let w = k.residual_sq[1] - k.residual_sq[0];
-            !s.reference_inside && s.reference_outside_by > 100.0 * w
+            s.reference_inside == Some(false) && s.reference_outside_by.expect("reference present") > 100.0 * w
         });
         assert!(caught, "{m:?} was not caught");
     }

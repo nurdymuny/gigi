@@ -517,3 +517,52 @@ quality of the final trial space against a margin of 0.03.
 3. **Widen the margin** (§10.3, item 2), with a larger tube or a sharper base.
 
 Until one of these passes, B4 stands: S_C is a stated hypothesis, and the ordering is proved conditional on it.
+
+## 13. Registration, 25 November: block-adapted trial functions (option 1 of §12.1), before the homotopy is run
+
+Script: `scripts/vscf_helike_sc_lehmann.py`.
+
+### 13.1 Trial functions
+
+At each step s, the trial functions are Ritz vectors of H_s in a product basis of eigenfunctions of the real block
+operators:
+- h_u(s) = h⁰_u + s(P(u, 0) − ½ω²_s,red|u|²), and h_v(s) likewise.
+- Each is diagonalised in the full span of its block's base eigenfunctions: 683 soft (E_u < 13.03) and 78 stiff at
+  g² = 0.002, sized the same way at g² = 0.004.
+- The Galerkin trial space is the lowest 2,000 block products. The registered ceiling now applies to this space.
+- The representation span is the full tensor product of the two blocks: 53,274 functions at g² = 0.002. **This is a
+  deliberate change to §8.5's "at most 2,000 basis functions", stated here.**
+
+### 13.2 Why the bounds stay valid
+
+Every trial function is a finite combination of products of Robin base eigenfunctions, so it lies in D(H_s).
+
+A₀, A₁ and A₂ are exact polynomial moments, contracted as coefficient tensors:
+- A₂ = ⟨H₀u, H₀w⟩ + s(⟨H₀u, Dw⟩ + ⟨Du, H₀w⟩) + s²⟨u, D²w⟩;
+- D² is the degree-8 polynomial, taken over all 165 of its u-monomial groups.
+
+A₀ is computed, not assumed to be the identity.
+
+### 13.3 Driver and verdict
+
+The §12 receding-horizon driver is unchanged:
+- planning on the cached isotropic Ritz curves;
+- Δ = 0.02;
+- LOSS ∈ {0.01, 0.03, 0.06};
+- 40 real steps.
+
+Only the real Lehmann step is replaced.
+
+- **PASS** per control if any LOSS reaches a real ℓ₁₁ ≥ ρ_b. That supersedes §10 and §12 for that control, and makes
+  B3′ feasible in floating point.
+- **FAIL** otherwise.
+
+### 13.4 Seen before this registration: component check only (g² = 0.002, s = 1)
+
+These come from a check run with 13 trial vectors and no homotopy.
+
+- **Ritz values minus E₀:** −0.0106, 1.0778 ×2, 1.0905, 2.1620 … 2.1888, 2.3555 ×2, 2.6241. Each is at or below its
+  §10.1 value.
+- **Residuals:** 3.8 × 10⁻³ for λ₁–λ₄, 4.4–4.7 × 10⁻³ for the six-level cluster, 1.1 × 10⁻² for λ₁₁ = λ₁₂, and
+  1.5 × 10⁻² for λ₁₃.
+- **Comparison:** the isotropic basis gave 0.12 at the same point, so this is about ten times smaller.

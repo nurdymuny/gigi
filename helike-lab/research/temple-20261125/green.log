@@ -1,0 +1,24 @@
+   Compiling helike-quantum v0.1.0 (/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hlab4/helike-lab/crates/helike-quantum)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.95s
+     Running tests/temple.rs (target/release/deps/temple-42aa93d1172856a5)
+
+running 7 tests
+test every_registered_fault_is_caught ... DropTailTerm: caught
+DropLeakageTerm: caught
+DropChargeTerm: caught
+CentreForQuotient: caught
+NoQSquared: caught
+LowerMuInDenominator: caught
+SkipLemma3: caught
+IgnoreMissingSeparation: caught
+ClaimReverse: caught
+ok
+test lemma1_keeps_every_term ... ok
+test ordered_only_with_the_separation_hypothesis ... ok
+test overlapping_windows_are_unresolved ... ok
+test planted_linear_moment_is_enclosed ... ok
+test temple_lower_bound_and_refusal ... ok
+test the_reverse_order_is_never_claimed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

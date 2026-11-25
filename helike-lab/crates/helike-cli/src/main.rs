@@ -146,6 +146,26 @@ enum Cmd {
     /// The exact SO(2) charge projector by its norm bound (quasimode construction registration §2): enclosed charge
     /// defects ‖(L − m)ψ‖/‖ψ‖ and residuals of the frozen binary64 trial, combined with the Arb tail and leakage
     /// endpoints into q ≤ ‖P_m ηψ‖ and (r + ℓ)/q ≥ the projected-sector residual. Bounds only: no gate is evaluated.
+    /// Kato–Temple ordering of Helike against the competitor at the saved controls
+    /// (docs/research/helike-temple-ordering-registration-2026-11-25.md): the linear moment s (two routes), Lemma 1's
+    /// Rayleigh-quotient enclosure, Lemma 3's windows and the Temple lower bound under the frozen ρ_C. ORDERED is
+    /// only possible with `--assume S_C`, and is then conditional on (A) and S_C.
+    ConeTemple {
+        #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
+        states: PathBuf,
+        #[arg(long, default_value = "oracle/projection_inputs_c31aab8e.json")]
+        inputs: PathBuf,
+        /// the separation hypothesis to assume (only "S_C" is registered)
+        #[arg(long)]
+        assume: Option<String>,
+        /// exact centre shift for the polarization cross-check
+        #[arg(long, default_value_t = 0.125)]
+        delta: f64,
+        #[arg(long)]
+        g2: Option<f64>,
+        #[arg(long)]
+        mq: Option<usize>,
+    },
     ConeSectors {
         /// saved states exported by oracle/export_quasimode_states.py
         #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
@@ -262,6 +282,40 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                     "scope": "uncut residual of each saved trial state under the registered operator; no cutoff leakage, no gate, no spectral statement"}),
              json!({"controls": rows}))
         }
+        Cmd::ConeTemple { states, inputs, assume, delta, g2, mq } => {
+            let sep = match assume.as_deref() {
+                None => None,
+                Some("S_C") => Some(helike_quantum::temple::Separation::SC),
+                Some(o) => return Err(format!("unregistered separation hypothesis {o:?}; only S_C is registered")),
+            };
+            let root = |p: &PathBuf| if p.is_absolute() { p.clone() } else { source_root().join(p) };
+            let (spath, ipath) = (root(states), root(inputs));
+            let saved = residual::load_saved_states(&spath)?;
+            let arb = projection::load_projection_inputs(&ipath)?;
+            let states_sha = helike_stream::text_sha256(&spath);
+            if Some(&arb.states_file_sha256) != states_sha.as_ref() {
+                return Err("projection inputs were exported from a different saved-state file".into());
+            }
+            let mut rows = vec![];
+            for c in &saved.controls {
+                if g2.is_some_and(|g| g != c.g2) || mq.is_some_and(|m| m != c.mq) {
+                    continue;
+                }
+                let a = arb.controls.iter().find(|a| a.g2 == c.g2 && a.mq == c.mq).ok_or("no Arb inputs for this control")?;
+                eprintln!("temple g2 = {}, Mq = {} ...", c.g2, c.mq);
+                let r = helike_quantum::temple::temple_control(c, a, *delta, sep, helike_quantum::temple::TempleMutation::None)?;
+                eprintln!("  {} (margin {:.6}), {:.1} s", r.decision.verdict, r.decision.margin_lower, r.seconds);
+                rows.push(r);
+            }
+            if rows.is_empty() {
+                return Err("no saved control matches the selection".into());
+            }
+            (json!({"states": states, "states_sha256_lf": states_sha, "inputs": inputs,
+                    "inputs_sha256_lf": helike_stream::text_sha256(&ipath), "assume": assume, "delta": delta,
+                    "registration": "docs/research/helike-temple-ordering-registration-2026-11-25.md",
+                    "scope": "bounds are interval enclosures; each verdict is conditional on (A) and S_C; the reverse order is never claimed; no grid release"}),
+             json!({"controls": rows}))
+        }
         Cmd::ConeSectors { states, inputs, g2, mq } => {
             let root = |p: &PathBuf| if p.is_absolute() { p.clone() } else { source_root().join(p) };
             let (spath, ipath) = (root(states), root(inputs));
@@ -322,7 +376,7 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&results).unwrap());
     if let Some(out) = &cli.out {
         let prov = Provenance::collect("helike", env!("CARGO_PKG_VERSION"), &source_root(), rayon::current_num_threads());
-        let status = if matches!(cli.cmd, Cmd::ConeResiduals { .. } | Cmd::ConeSectors { .. }) { Status::IntervalEnclosure } else { Status::Computed };
+        let status = if matches!(cli.cmd, Cmd::ConeResiduals { .. } | Cmd::ConeSectors { .. } | Cmd::ConeTemple { .. }) { Status::IntervalEnclosure } else { Status::Computed };
         let receipt = Receipt::new(prov, std::env::args().collect(), status, params, results);
         receipt.write(out).unwrap_or_else(|e| panic!("cannot write receipt: {e}"));
         eprintln!("receipt: {}", out.display());

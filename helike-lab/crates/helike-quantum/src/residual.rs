@@ -770,27 +770,9 @@ pub fn enclose_control_with(
 ) -> Result<ControlEnclosure, String> {
     let t0 = std::time::Instant::now();
     let ncol = c.centers.len();
-    let rows = c.coeff_shape[0];
-    let cm = trial_coefficients(c, frozen)?;
-    let (chart, w) = saved_chart(c)?;
-    let basis = saved_basis(c)?;
     let centers = f(&c.centers);
-    let python_v: BTreeMap<laurent::Key, f64> = c
-        .python_potential
-        .iter()
-        .map(|p| (p.key.as_slice().try_into().expect("six-entry key"), f64::from_bits(p.c)))
-        .collect();
-    let (sv_, tv_, g2v_) = (f64::from_bits(c.s_bits), f64::from_bits(c.t_bits), f64::from_bits(c.g2_bits));
-    if sv_ != c.s || tv_ != c.t || g2v_ != c.g2 || !c.saved_s_equals_chart_s {
-        return Err("saved constants or chart disagree with their bit patterns".into());
-    }
-    let potential = potential_enclosure(sv_, tv_, g2v_, f64::from_bits(c.g_bits), &python_v)?;
-    let pm: Vec<(usize, usize, laurent::Key, f64)> =
-        c.python_metric.iter().map(|m| (m.i, m.j, m.key.as_slice().try_into().expect("six-entry key"), m.c)).collect();
-    let metric = verified_cometric(&pm)?;
-    let (space, groups) = build_residual(&chart, &basis, w, &cm, &centers, &metric, &potential, mutation)?;
+    let (space, groups, _, norms) = residual_parts(c, frozen, 0.0, mutation)?;
     let (values, moments) = norm_squared(&space, &groups, mutation)?;
-    let norms: Vec<Iv> = (0..ncol).map(|j| tree_sum(&(0..rows).map(|n| cm[n * ncol + j].norm_sq()).collect::<Vec<_>>())).collect();
     let states = (0..ncol)
         .map(|j| {
             let v = values[j];
@@ -824,6 +806,52 @@ pub fn enclose_control_with(
         states,
         seconds: t0.elapsed().as_secs_f64(),
     })
+}
+
+/// The exponential-polynomial (H − E')ψ/f of one saved control, with every centre shifted by an exact `shift`
+/// (E' = E + shift; 0 for the registered centres), together with the embedded P = ψ/f and the norms ‖ψ‖². Shared by
+/// the residual enclosure and the linear moment (`temple`).
+pub fn residual_parts(
+    c: &SavedControl,
+    frozen: Option<(&[f64], &[f64])>,
+    shift: f64,
+    mutation: Mutation,
+) -> Result<(Space, Vec<Group>, Vec<Cx>, Vec<Iv>), String> {
+    let ncol = c.centers.len();
+    let rows = c.coeff_shape[0];
+    let cm = trial_coefficients(c, frozen)?;
+    let (chart, w) = saved_chart(c)?;
+    let basis = saved_basis(c)?;
+    let mut centers = f(&c.centers);
+    if shift != 0.0 {
+        for e in centers.iter_mut() {
+            let shifted = *e + shift;
+            if shifted - *e != shift {
+                return Err("centre shift is not exact in binary64".into());
+            }
+            *e = shifted;
+        }
+    }
+    let python_v: BTreeMap<laurent::Key, f64> = c
+        .python_potential
+        .iter()
+        .map(|p| (p.key.as_slice().try_into().expect("six-entry key"), f64::from_bits(p.c)))
+        .collect();
+    let (sv_, tv_, g2v_) = (f64::from_bits(c.s_bits), f64::from_bits(c.t_bits), f64::from_bits(c.g2_bits));
+    if sv_ != c.s || tv_ != c.t || g2v_ != c.g2 || !c.saved_s_equals_chart_s {
+        return Err("saved constants or chart disagree with their bit patterns".into());
+    }
+    let potential = potential_enclosure(sv_, tv_, g2v_, f64::from_bits(c.g_bits), &python_v)?;
+    let pm: Vec<(usize, usize, laurent::Key, f64)> =
+        c.python_metric.iter().map(|m| (m.i, m.j, m.key.as_slice().try_into().expect("six-entry key"), m.c)).collect();
+    let metric = verified_cometric(&pm)?;
+    let (space, groups) = build_residual(&chart, &basis, w, &cm, &centers, &metric, &potential, mutation)?;
+    let (space_p, p) = embed(w, &basis, &cm, ncol, 6)?;
+    if space_p.degree != space.degree {
+        return Err("trial embedding and residual workspace differ".into());
+    }
+    let norms: Vec<Iv> = (0..ncol).map(|j| tree_sum(&(0..rows).map(|n| cm[n * ncol + j].norm_sq()).collect::<Vec<_>>())).collect();
+    Ok((space, groups, p, norms))
 }
 
 pub fn load_saved_states(path: &std::path::Path) -> Result<SavedStates, String> {

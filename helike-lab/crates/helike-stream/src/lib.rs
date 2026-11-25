@@ -34,6 +34,10 @@ pub struct Provenance {
     /// SHA-256 over the solver source files (sorted by path), so a receipt names the code that produced it even
     /// outside a git checkout.
     pub source_sha256: Option<String>,
+    /// How `source_sha256` was computed. Receipts without this field used raw bytes, so their hash depends on the
+    /// checkout's line endings (CRLF on Windows, LF elsewhere) and is not comparable across platforms.
+    #[serde(default)]
+    pub source_hash_policy: Option<String>,
     pub platform: String,
     pub threads: usize,
 }
@@ -82,7 +86,19 @@ pub fn hash_sources(root: &Path) -> Option<String> {
         let rel = f.strip_prefix(root).unwrap_or(f).to_string_lossy().replace('\\', "/");
         h.update(rel.as_bytes());
         h.update([0u8]);
-        h.update(std::fs::read(f).ok()?);
+        // universal newlines: CRLF -> LF, so a Windows checkout and a Mac checkout of the same commit agree
+        let bytes = std::fs::read(f).ok()?;
+        let mut norm = Vec::with_capacity(bytes.len());
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == 13 && bytes.get(i + 1) == Some(&10) {
+                i += 1;
+                continue;
+            }
+            norm.push(bytes[i]);
+            i += 1;
+        }
+        h.update(&norm);
         h.update([0u8]);
     }
     Some(format!("{:x}", h.finalize()))
@@ -99,6 +115,7 @@ impl Provenance {
             git_revision: rev,
             git_dirty: dirty,
             source_sha256: hash_sources(source_root),
+            source_hash_policy: Some(SOURCE_HASH_POLICY.into()),
             platform: format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH),
             threads,
         }
@@ -122,6 +139,9 @@ impl Receipt {
         Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
     }
 }
+
+/// Source-hash policy: SHA-256 over sorted (relative path, content with CRLF normalised to LF).
+pub const SOURCE_HASH_POLICY: &str = "sha256-universal-newline-v1";
 
 /// Wall-clock fields: recorded in receipts, never compared on replay.
 pub const TIMING_KEYS: [&str; 1] = ["seconds"];

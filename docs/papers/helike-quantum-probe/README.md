@@ -19,9 +19,7 @@ The registered flux-edge grid at larger coupling stays held.
 
 ![Helike against the competitor](figures/09-flux-ordering.png)
 
-**Verification status.** `report-verification.json` predates this build. The tests (18) pass, the two new verifier
-mutations are caught, and the PDF text conditions hold (21 pages, Figures 1–13). The full verifier needs PyMuPDF,
-which was not available where this build ran. Run `python scripts/verify_ym_helike_report.py` to refresh it.
+**Verification status.** `python scripts/verify_ym_helike_report.py` passes: 18 tests, all verifier mutations rejected, 21 pages and 13 figure captions checked, and every artifact hash matches the manifest. The scientific status stays UNRESOLVED for the original survey.
 
 [Read the illustrated report (PDF)](report.pdf) · [Editable LaTeX](report.tex) ·
 [Detailed numerical results](../../research/helike-quantum-probe-results-2026-11-23.md) ·

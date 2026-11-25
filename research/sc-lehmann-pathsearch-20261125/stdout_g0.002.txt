@@ -1,0 +1,17 @@
+Lehmann path search on B3' (L_u = 5, L_v = 2), 801-point s-grid; floating point, not a bound
+
+=== control g2 = 0.002: rho_b - E0 = 2.32
+  built: 1938 basis functions, C3 0.05301, 957 s
+  mu_11(1) - rho_b = +0.0360; first s with mu_11 >= rho_b: 0.9575
+  [DELTA = 0.0, LOSS = 0.0] PATH: 4 steps from N0 = 168: (s 0.079, N 168) -> (s 0.349, N 47) -> (s 0.566, N 32) -> (s 0.958, N 13)
+    real step s = 0.0788  N = 168  rho = 9.9394  l_11 = 6.9236 (mu_11 6.9236)  max resid 1.1e-02
+    real step s = 0.3488  N =  47  rho = 8.5516  l_11 = 7.1897 (mu_11 7.1898)  max resid 2.3e-02
+  [DELTA = 0.0, LOSS = 0.0] REAL FAIL at s = 0.5663: mu_N = 8.5280 > rho - DELTA = 8.1987
+  [DELTA = 0.02, LOSS = 0.0] PATH: 4 steps from N0 = 92: (s 0.114, N 92) -> (s 0.367, N 47) -> (s 0.579, N 32) -> (s 0.958, N 13)
+    real step s = 0.1138  N =  92  rho = 9.1983  l_11 = 6.9593 (mu_11 6.9593)  max resid 8.9e-03
+    real step s = 0.3675  N =  47  rho = 8.6116  l_11 = 7.2074 (mu_11 7.2075)  max resid 2.5e-02
+  [DELTA = 0.02, LOSS = 0.0] REAL FAIL at s = 0.5787: mu_N = 8.5463 > rho - DELTA = 8.5352
+  [DELTA = 0.02, LOSS = 0.01] PATH: 4 steps from N0 = 92: (s 0.138, N 92) -> (s 0.383, N 47) -> (s 0.593, N 32) -> (s 0.969, N 13)
+    real step s = 0.1375  N =  92  rho = 9.1983  l_11 = 6.9834 (mu_11 6.9834)  max resid 1.2e-02
+    real step s = 0.3825  N =  47  rho = 8.6519  l_11 = 7.2215 (mu_11 7.2217)  max resid 2.7e-02
+  [DELTA = 0.02, LOSS = 0.01] REAL FAIL at s = 0.5925: mu_N = 8.5664 > rho - DELTA = 8.5663

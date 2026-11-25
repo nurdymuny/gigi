@@ -440,3 +440,47 @@ Every path found is executed with real Lehmann steps:
   proof of impossibility. Ritz values are upper bounds, so the stand-in bounds are optimistic, but admissibility uses
   them too.
 - **UNRESOLVED** otherwise: paths exist under the proxy but none validates.
+
+### 11.4 Results: UNRESOLVED at both controls
+
+Run at commit ac5f1a09. Logs are in `research/sc-lehmann-pathsearch-20261125/`.
+
+- **Paths exist under the proxy at every configuration, and they are short.**
+  - At g² = 0.002: 4 steps, for example N 92 → 47 → 32 → 13, with s at 0.11, 0.37, 0.58 and 0.96.
+  - At g² = 0.004: 7 steps, for example N 186 → 115 → 86 → 47 → 23 → 13 → 12.
+  - **B3′ is not ruled out.** μ₁₁ first reaches ρ_b at s = 0.958 (g² = 0.002) and 0.971 (g² = 0.004).
+- **No path validates.** Every failure is an inadmissible step after 2–5 real steps (real μ_N against ρ − Δ):
+
+  | control | (Δ, LOSS) | real steps | fails at s | real μ_N | ρ − Δ |
+  | --- | --- | --- | --- | --- | --- |
+  | g² = 0.002 | (0, 0) | 2 | 0.566 | 8.528 | 8.199 |
+  | g² = 0.002 | (0.02, 0) | 2 | 0.579 | 8.5463 | 8.5352 |
+  | g² = 0.002 | (0.02, 0.01) | 2 | 0.593 | 8.5664 | 8.5663 |
+  | g² = 0.004 | (0, 0) | 3 | 0.410 | 8.176 | 7.547 |
+  | g² = 0.004 | (0.02, 0) | 2 | 0.170 | 8.2050 | 8.2024 |
+  | g² = 0.004 | (0.02, 0.01) | 5 | 0.809 | 7.767 | 7.605 |
+
+- **Why they fail.**
+  - The fewest-steps plan sets each next step at the edge of admissibility.
+  - The real bound for the top index in the trial space falls below the proxy. Lehmann is weakest just below ρ,
+    and the residuals grow to 0.07 by s ≈ 0.6.
+  - So the next step becomes inadmissible.
+- **What still holds.** The Lehmann bounds at low indices stay tight: ℓ₁₁ is within 5 × 10⁻³ of μ₁₁ at every real
+  step.
+
+## 12. Registration, 25 November: receding-horizon execution, before it is run
+
+Script: `scripts/replan_helike_sc_lehmann_path.py`. It uses the same cached operators as §11.
+
+- **The loop.** After each real Lehmann step:
+  - the new real states are {(N′, k′): real ℓ_{N′+1}} for 12 ≤ N′ ≤ N − 1;
+  - the §11 dynamic program is re-solved from those real states;
+  - only its first move is executed.
+- **Fixed settings.** Δ = 0.02, an 801-point grid, 40 real steps in total, and a basis of at most 2,000 functions.
+- **Planning loss.** The proxy loss for planned (not yet executed) steps is LOSS ∈ {0.01, 0.03, 0.06}. A larger loss
+  plans with more slack.
+- **Verdict, per control.**
+  - **PASS** if any LOSS reaches a real ℓ₁₁ ≥ ρ_b. B3′ is then feasible in floating point, §10's FAIL is superseded
+    for that control, and the rigorous build of §6.3 is next.
+  - **FAIL** if every LOSS ends with no plan from its real state or with 40 steps used. Item 2 of §10.3, widening the
+    margin, is then the remaining route; otherwise B4 stands.

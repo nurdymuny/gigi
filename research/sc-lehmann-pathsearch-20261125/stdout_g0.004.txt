@@ -1,0 +1,21 @@
+Lehmann path search on B3' (L_u = 5, L_v = 2), 801-point s-grid; floating point, not a bound
+
+=== control g2 = 0.004: rho_b - E0 = 2.32
+  built: 1986 basis functions, C3 0.07496, 976 s
+  mu_11(1) - rho_b = +0.0328; first s with mu_11 >= rho_b: 0.9712500000000001
+  [DELTA = 0.0, LOSS = 0.0] PATH: 7 steps from N0 = 186: (s 0.046, N 186) -> (s 0.098, N 115) -> (s 0.198, N 86) -> (s 0.410, N 47) -> (s 0.482, N 32) -> (s 0.694, N 23) -> (s 0.971, N 13)
+    real step s = 0.0462  N = 186  rho = 8.8341  l_11 = 6.2873 (mu_11 6.2873)  max resid 1.7e-02
+    real step s = 0.0975  N = 115  rho = 8.4513  l_11 = 6.4534 (mu_11 6.4534)  max resid 2.6e-02
+    real step s = 0.1975  N =  86  rho = 8.2849  l_11 = 6.2688 (mu_11 6.7487)  max resid 4.2e-02
+  [DELTA = 0.0, LOSS = 0.0] REAL FAIL at s = 0.4100: mu_N = 8.1761 > rho - DELTA = 7.5468
+  [DELTA = 0.02, LOSS = 0.0] PATH: 7 steps from N0 = 186: (s 0.037, N 186) -> (s 0.086, N 115) -> (s 0.170, N 86) -> (s 0.365, N 47) -> (s 0.594, N 23) -> (s 0.795, N 13) -> (s 0.971, N 12)
+    real step s = 0.0375  N = 186  rho = 8.8341  l_11 = 6.2580 (mu_11 6.2580)  max resid 1.4e-02
+    real step s = 0.0863  N = 115  rho = 8.4200  l_11 = 6.4177 (mu_11 6.4177)  max resid 2.3e-02
+  [DELTA = 0.02, LOSS = 0.0] REAL FAIL at s = 0.1700: mu_N = 8.2050 > rho - DELTA = 8.2024
+  [DELTA = 0.02, LOSS = 0.01] PATH: 7 steps from N0 = 186: (s 0.054, N 186) -> (s 0.098, N 115) -> (s 0.188, N 86) -> (s 0.386, N 47) -> (s 0.606, N 23) -> (s 0.809, N 13) -> (s 0.980, N 12)
+    real step s = 0.0537  N = 186  rho = 8.8341  l_11 = 6.3122 (mu_11 6.3122)  max resid 1.9e-02
+    real step s = 0.0975  N = 115  rho = 8.4778  l_11 = 6.4534 (mu_11 6.4534)  max resid 2.6e-02
+    real step s = 0.1875  N =  86  rho = 8.2855  l_11 = 6.7254 (mu_11 6.7254)  max resid 3.8e-02
+    real step s = 0.3862  N =  47  rho = 8.1326  l_11 = 7.0123 (mu_11 7.0127)  max resid 6.3e-02
+    real step s = 0.6063  N =  23  rho = 7.8390  l_11 = 7.2928 (mu_11 7.2962)  max resid 7.0e-02
+  [DELTA = 0.02, LOSS = 0.01] REAL FAIL at s = 0.8087: mu_N = 7.7674 > rho - DELTA = 7.6046

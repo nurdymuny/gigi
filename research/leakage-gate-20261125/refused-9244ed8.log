@@ -1,0 +1,9 @@
+$ python scripts/run_helike_leakage_gate.py research/leakage-gate-20261125/controls-9244ed8
+refusing: leakage endpoints do not pair: Arb 2.9219858911830733e-09, Rust 2.921985891183073e-09
+exit 2
+
+Diagnosis (exact comparison of all 32 copied endpoints against the Arb dyadics): 3 were below the exact Arb upper
+endpoint by less than one ulp (g2=0.004 Mq=6 ground leakage; two competitor tail norms). The export file was
+correct (rounded upward); the helike-lab reader's default serde_json float parser was not correctly rounded.
+Fixed on feat/helike-lab 34b8860 (float_roundtrip; endpoints computed upward from the dyadic and cross-checked).
+No gate value was computed in this attempt; no output directory was written.

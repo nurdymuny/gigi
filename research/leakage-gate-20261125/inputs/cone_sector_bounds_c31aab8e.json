@@ -1,18 +1,18 @@
 {
   "schema": "helike-lab/receipt/v1",
-  "created_unix": 1795601560,
+  "created_unix": 1795602808,
   "provenance": {
     "tool": "helike",
     "tool_version": "0.1.0",
-    "git_revision": "5544e3263d66969baa66bcb4d9f877902173d912",
-    "git_dirty": false,
-    "source_sha256": "0dd165607140c95bfbe5b2697bad5cf9ae6de9d4d57220521c57a65ea827b727",
+    "git_revision": "3746a9b6ab88c3ebb5eacf3138babbb10934ee26",
+    "git_dirty": true,
+    "source_sha256": "2f5139e135795810fb1fe2310adc9ade50d87a69568d11750d186427decf21d2",
     "source_hash_policy": "sha256-universal-newline-v1",
-    "platform": "windows-x86_64",
+    "platform": "macos-x86_64",
     "threads": 16
   },
   "command": [
-    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-lab\\helike-lab\\target\\release\\helike.exe",
+    "target/release/helike",
     "--out",
     "receipts/cone_sector_bounds_c31aab8e.json",
     "cone-sectors"
@@ -41,7 +41,7 @@
         "charge_workspace_degree": 8,
         "g2": 0.004,
         "residual_group_count": 24,
-        "seconds": 4.7404393,
+        "seconds": 7.79606399,
         "states": [
           {
             "center": -42.12098595059472,
@@ -51,7 +51,7 @@
               2.530691395330465e-6
             ],
             "charge_upper": 0.0015908146954722506,
-            "leakage_norm_upper": 2.921985891183073e-9,
+            "leakage_norm_upper": 2.9219858911830733e-9,
             "name": "ground",
             "norm_sq": [
               0.9999999999999987,
@@ -83,7 +83,7 @@
               0.0000677901513523871
             ],
             "charge_upper": 0.008233477476278613,
-            "leakage_norm_upper": 4.868751199036381e-9,
+            "leakage_norm_upper": 4.86875119903638e-9,
             "name": "helike_plus",
             "norm_sq": [
               0.9999999999999983,
@@ -115,7 +115,7 @@
               0.0000677901513523871
             ],
             "charge_upper": 0.008233477476278613,
-            "leakage_norm_upper": 4.868751199036381e-9,
+            "leakage_norm_upper": 4.86875119903638e-9,
             "name": "helike_minus",
             "norm_sq": [
               0.9999999999999983,
@@ -161,7 +161,7 @@
             },
             "reference_charge_sq": {
               "10": 0.00009407452185285784,
-              "12": 0.00009407452185448264
+              "12": 0.00009407452185448265
             },
             "sector": {
               "Ok": {
@@ -169,7 +169,7 @@
                 "residual_upper": 0.08012709429395799
               }
             },
-            "tail_norm_upper": 5.0793915244763506e-15
+            "tail_norm_upper": 5.079391524476351e-15
           }
         ],
         "trial_file": "trial-g2-0.004-Mq-6.npz",
@@ -181,7 +181,7 @@
         "charge_workspace_degree": 10,
         "g2": 0.004,
         "residual_group_count": 24,
-        "seconds": 12.1390839,
+        "seconds": 19.771091776,
         "states": [
           {
             "center": -42.121003336986305,
@@ -191,7 +191,7 @@
               3.301115139020539e-7
             ],
             "charge_upper": 0.0005745533168488845,
-            "leakage_norm_upper": 2.3887569728126657e-8,
+            "leakage_norm_upper": 2.3887569728126654e-8,
             "name": "ground",
             "norm_sq": [
               0.9999999999999982,
@@ -213,7 +213,7 @@
                 "residual_upper": 0.006468530113225328
               }
             },
-            "tail_norm_upper": 4.23508018352552e-14
+            "tail_norm_upper": 4.2350801835255196e-14
           },
           {
             "center": -41.033031852939914,
@@ -223,7 +223,7 @@
               1.392047299209054e-6
             ],
             "charge_upper": 0.0011798505410470668,
-            "leakage_norm_upper": 2.713422343523502e-7,
+            "leakage_norm_upper": 2.7134223435235014e-7,
             "name": "helike_plus",
             "norm_sq": [
               0.9999999999999989,
@@ -237,7 +237,7 @@
             },
             "reference_charge_sq": {
               "10": 1.3920451803437676e-6,
-              "12": 1.392046818119836e-6
+              "12": 1.3920468181198359e-6
             },
             "sector": {
               "Ok": {
@@ -255,7 +255,7 @@
               1.392047299209054e-6
             ],
             "charge_upper": 0.0011798505410470668,
-            "leakage_norm_upper": 2.713422343523502e-7,
+            "leakage_norm_upper": 2.7134223435235014e-7,
             "name": "helike_minus",
             "norm_sq": [
               0.9999999999999989,
@@ -269,7 +269,7 @@
             },
             "reference_charge_sq": {
               "10": 1.3920451803437676e-6,
-              "12": 1.392046818119836e-6
+              "12": 1.3920468181198359e-6
             },
             "sector": {
               "Ok": {
@@ -321,7 +321,7 @@
         "charge_workspace_degree": 8,
         "g2": 0.002,
         "residual_group_count": 24,
-        "seconds": 4.7974071,
+        "seconds": 8.570338047,
         "states": [
           {
             "center": -89.6455129616408,
@@ -449,7 +449,7 @@
                 "residual_upper": 0.039019127331509945
               }
             },
-            "tail_norm_upper": 1.0852760862730355e-34
+            "tail_norm_upper": 1.0852760862730357e-34
           }
         ],
         "trial_file": "trial-g2-0.002-Mq-6.npz",
@@ -461,7 +461,7 @@
         "charge_workspace_degree": 10,
         "g2": 0.002,
         "residual_group_count": 24,
-        "seconds": 13.1279913,
+        "seconds": 19.620764385,
         "states": [
           {
             "center": -89.64551517414542,
@@ -485,7 +485,7 @@
             },
             "reference_charge_sq": {
               "10": 3.5914106406184354e-8,
-              "12": 3.5914111157326125e-8
+              "12": 3.591411115732612e-8
             },
             "sector": {
               "Ok": {
@@ -516,7 +516,7 @@
               "12": true
             },
             "reference_charge_sq": {
-              "10": 1.328299243578304e-7,
+              "10": 1.3282992435783039e-7,
               "12": 1.328299750139609e-7
             },
             "sector": {
@@ -548,7 +548,7 @@
               "12": true
             },
             "reference_charge_sq": {
-              "10": 1.328299243578304e-7,
+              "10": 1.3282992435783039e-7,
               "12": 1.328299750139609e-7
             },
             "sector": {

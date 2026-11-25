@@ -6,7 +6,7 @@ Inputs (both pinned by SHA-256):
 - the Arb cutoff/tail receipt research/cutoff-tail-bounds-20261124/controls-c31aab8e/receipt.json
   (authoritative dyadic endpoints: tail_sq, norm_sq, leakage_norm upper);
 - the helike-lab interval receipt research/leakage-gate-20261125/inputs/cone_sector_bounds_c31aab8e.json
-  (feat/helike-lab 3746a9b; r_lower and r_upper for the same hulled trial vector as the Arb bounds).
+  (feat/helike-lab 34b8860, exact upward endpoints; r_lower and r_upper for the same hulled trial vector as the Arb bounds).
 
 Exit 0: gate PASS on all 16 states. Exit 3: completed, gate FAIL or OPEN. Exit 2: refusal (inputs, provenance).
 Nothing here is a spectral certificate; certified and full_grid_released stay false.
@@ -24,8 +24,8 @@ import helike_leakage_gate as lg
 ROOT = Path(__file__).resolve().parents[1]
 ARB = ROOT / 'research/cutoff-tail-bounds-20261124/controls-c31aab8e/receipt.json'
 RUST = ROOT / 'research/leakage-gate-20261125/inputs/cone_sector_bounds_c31aab8e.json'
-RUST_SHA256 = '152f1f7ceec781c367b3571879045277e9c6592a918987147fe89291335f5a51'
-RUST_ORIGIN = {'branch': 'feat/helike-lab', 'commit': '3746a9b', 'path': 'helike-lab/receipts/cone_sector_bounds_c31aab8e.json'}
+RUST_SHA256 = '4ead4c2dcd51e851b8654bfed9018061cfcfbdb257edfa9ca2a611a291e557a7'
+RUST_ORIGIN = {'branch': 'feat/helike-lab', 'commit': '34b8860', 'path': 'helike-lab/receipts/cone_sector_bounds_c31aab8e.json'}
 SOURCES = ['scripts/helike_leakage_gate.py', 'scripts/run_helike_leakage_gate.py']
 CONTROLS = [(0.004, 6), (0.004, 8), (0.002, 6), (0.002, 8)]
 STATES = ['ground', 'helike_plus', 'helike_minus', 'competitor']

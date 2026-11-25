@@ -1,0 +1,18 @@
+test_commutator_keeps_both_contributions (test_helike_quasimode.Construction.test_commutator_keeps_both_contributions) ... ok
+test_complex_norm_and_nonfinite_refusals (test_helike_quasimode.Construction.test_complex_norm_and_nonfinite_refusals) ... ok
+test_cutoff_derivatives_match_cartesian_in_both_shells (test_helike_quasimode.Construction.test_cutoff_derivatives_match_cartesian_in_both_shells) ... ok
+test_cutoff_is_invariant_and_shells_are_nontrivial (test_helike_quasimode.Construction.test_cutoff_is_invariant_and_shells_are_nontrivial) ... ok
+test_cutoff_state_has_zero_action_off_positive_support (test_helike_quasimode.Construction.test_cutoff_state_has_zero_action_off_positive_support) ... ok
+test_full_operator_matches_independent_cartesian_differentiation (test_helike_quasimode.Construction.test_full_operator_matches_independent_cartesian_differentiation) ... ok
+test_generator_sign_and_metric_on_known_covariant (test_helike_quasimode.Construction.test_generator_sign_and_metric_on_known_covariant) ... ok
+test_hermite_grid_norm_and_lowering (test_helike_quasimode.Construction.test_hermite_grid_norm_and_lowering) ... ok
+test_numerical_agreement_never_certifies (test_helike_quasimode.Construction.test_numerical_agreement_never_certifies) ... ok
+test_overlapping_shells_keep_mixed_laplacian_term (test_helike_quasimode.Construction.test_overlapping_shells_keep_mixed_laplacian_term) ... ok
+test_projector_bound_and_refusals (test_helike_quasimode.Construction.test_projector_bound_and_refusals) ... ok
+test_step_endpoints_and_derivatives (test_helike_quasimode.Construction.test_step_endpoints_and_derivatives) ... ok
+test_tensor_operator_matches_pointwise_action (test_helike_quasimode.Construction.test_tensor_operator_matches_pointwise_action) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.748s
+
+OK

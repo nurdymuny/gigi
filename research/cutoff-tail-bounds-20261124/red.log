@@ -1,0 +1,280 @@
+test_bad_inputs_refuse (test_helike_cutoff_bounds.Bounds.test_bad_inputs_refuse) ... FAIL
+test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm) ... FAIL
+test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization) ... FAIL
+test_cutoff_constants_keep_mixed_term (test_helike_cutoff_bounds.Bounds.test_cutoff_constants_keep_mixed_term) ... FAIL
+test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse) ... FAIL
+test_infinite_tail_does_not_underflow (test_helike_cutoff_bounds.Bounds.test_infinite_tail_does_not_underflow) ... FAIL
+test_majorant_bounds_explicit_polynomial (test_helike_cutoff_bounds.Bounds.test_majorant_bounds_explicit_polynomial) ... FAIL
+test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent) ... FAIL
+test_outward_endpoint_serialization (test_helike_cutoff_bounds.Bounds.test_outward_endpoint_serialization) ... FAIL
+test_plateau_whole_ball_and_refusal (test_helike_cutoff_bounds.Bounds.test_plateau_whole_ball_and_refusal) ... FAIL
+test_radial_tail_independent_gamma (test_helike_cutoff_bounds.Bounds.test_radial_tail_independent_gamma) ... FAIL
+test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed) ... FAIL
+
+======================================================================
+FAIL: test_bad_inputs_refuse (test_helike_cutoff_bounds.Bounds.test_bad_inputs_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 4, in radial_tail
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 104, in test_bad_inputs_refuse
+    self.call('radial_tail',0,arb(1))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: radial_tail missing behavioral contract
+
+======================================================================
+FAIL: test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 25, in combine
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 88, in test_combination_keeps_both_terms_and_norm
+    result=self.call('combine',arb(4),arb(9),arb(2),arb(6),arb(100))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: combine missing behavioral contract
+
+======================================================================
+FAIL: test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 10, in polynomial_bounds
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 43, in test_complex_polynomial_majorant_and_normalization
+    a,b,norm=self.call('polynomial_bounds',basis,np.array([3.,4j]),arb(2))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: polynomial_bounds missing behavioral contract
+
+======================================================================
+FAIL: test_cutoff_constants_keep_mixed_term (test_helike_cutoff_bounds.Bounds.test_cutoff_constants_keep_mixed_term)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 16, in cutoff_constants
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 73, in test_cutoff_constants_keep_mixed_term
+    g,l=self.call('cutoff_constants',arb(1),arb(4))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: cutoff_constants missing behavioral contract
+
+======================================================================
+FAIL: test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 19, in derivative_bounds
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 66, in test_derivative_density_gaussian_and_inverse
+    result=self.call('derivative_bounds',arb(2),[arb(3)]+[arb(0)]*5,np.eye(6)*2,np.ones(6),arb(2))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: derivative_bounds missing behavioral contract
+
+======================================================================
+FAIL: test_infinite_tail_does_not_underflow (test_helike_cutoff_bounds.Bounds.test_infinite_tail_does_not_underflow)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 4, in radial_tail
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 27, in test_infinite_tail_does_not_underflow
+    actual=self.call('radial_tail',0,arb(40))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: radial_tail missing behavioral contract
+
+======================================================================
+FAIL: test_majorant_bounds_explicit_polynomial (test_helike_cutoff_bounds.Bounds.test_majorant_bounds_explicit_polynomial)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 10, in polynomial_bounds
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 53, in test_majorant_bounds_explicit_polynomial
+    a,_,_=self.call('polynomial_bounds',basis,np.array([1+2j,3-1j,-2j]),arb(2))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: polynomial_bounds missing behavioral contract
+
+======================================================================
+FAIL: test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 22, in metric_tail
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 82, in test_metric_tail_keeps_ordered_terms_and_exponent
+    result=self.call('metric_tail',np.zeros(6),np.eye(6),np.ones(6),[arb(1)]*6,0,arb(2),metric)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: metric_tail missing behavioral contract
+
+======================================================================
+FAIL: test_outward_endpoint_serialization (test_helike_cutoff_bounds.Bounds.test_outward_endpoint_serialization)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 7, in endpoint
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 35, in test_outward_endpoint_serialization
+    record=self.call('endpoint',x,side)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: endpoint missing behavioral contract
+
+======================================================================
+FAIL: test_plateau_whole_ball_and_refusal (test_helike_cutoff_bounds.Bounds.test_plateau_whole_ball_and_refusal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 13, in plateau
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 60, in test_plateau_whole_ball_and_refusal
+    p=self.call('plateau',np.zeros(6),np.eye(6)*.01,np.ones(6),np.eye(3))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: plateau missing behavioral contract
+
+======================================================================
+FAIL: test_radial_tail_independent_gamma (test_helike_cutoff_bounds.Bounds.test_radial_tail_independent_gamma)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 4, in radial_tail
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 22, in test_radial_tail_independent_gamma
+    actual=self.call('radial_tail',k,arb(rho),arb(decay))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: radial_tail missing behavioral contract
+
+======================================================================
+FAIL: test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 17, in call
+    try: return getattr(cb,name)(*args,**kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\helike_cutoff_bounds.py", line 28, in classify
+    raise NotImplementedError
+NotImplementedError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 94, in test_status_is_only_partial_and_thresholds_fixed
+    yes=self.call('classify',arb('1e-30'),arb('1e-22'),arb(1))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-helike-review-57d20b67\scripts\test_helike_cutoff_bounds.py", line 18, in call
+    except NotImplementedError: self.fail(name+' missing behavioral contract')
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: classify missing behavioral contract
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.003s
+
+FAILED (failures=12)

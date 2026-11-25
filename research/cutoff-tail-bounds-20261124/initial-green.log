@@ -1,0 +1,17 @@
+test_bad_inputs_refuse (test_helike_cutoff_bounds.Bounds.test_bad_inputs_refuse) ... ok
+test_combination_keeps_both_terms_and_norm (test_helike_cutoff_bounds.Bounds.test_combination_keeps_both_terms_and_norm) ... ok
+test_complex_polynomial_majorant_and_normalization (test_helike_cutoff_bounds.Bounds.test_complex_polynomial_majorant_and_normalization) ... ok
+test_cutoff_constants_keep_mixed_term (test_helike_cutoff_bounds.Bounds.test_cutoff_constants_keep_mixed_term) ... ok
+test_derivative_density_gaussian_and_inverse (test_helike_cutoff_bounds.Bounds.test_derivative_density_gaussian_and_inverse) ... ok
+test_infinite_tail_does_not_underflow (test_helike_cutoff_bounds.Bounds.test_infinite_tail_does_not_underflow) ... ok
+test_majorant_bounds_explicit_polynomial (test_helike_cutoff_bounds.Bounds.test_majorant_bounds_explicit_polynomial) ... ok
+test_metric_tail_keeps_ordered_terms_and_exponent (test_helike_cutoff_bounds.Bounds.test_metric_tail_keeps_ordered_terms_and_exponent) ... ok
+test_outward_endpoint_serialization (test_helike_cutoff_bounds.Bounds.test_outward_endpoint_serialization) ... ok
+test_plateau_whole_ball_and_refusal (test_helike_cutoff_bounds.Bounds.test_plateau_whole_ball_and_refusal) ... ok
+test_radial_tail_independent_gamma (test_helike_cutoff_bounds.Bounds.test_radial_tail_independent_gamma) ... ok
+test_status_is_only_partial_and_thresholds_fixed (test_helike_cutoff_bounds.Bounds.test_status_is_only_partial_and_thresholds_fixed) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.003s
+
+OK

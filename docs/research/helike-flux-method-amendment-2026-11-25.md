@@ -152,3 +152,38 @@ showed its gaps and weights:
 So identification fails there: both weights are below the registered 0.9. The domain-gate export, which applies the
 quasimode selection rule's 0.95, refuses with "unresolved Helike partner identification". No registered point has
 been computed. The registered grid is not rerun until the identification question is settled; see §5.2 when written.
+
+### 5.2 Identification relative to the dressed vacuum (REGISTERED before code; Bee's decision, 26 November)
+
+**The defect.** The registered identification measures a level's weight on the *bare* harmonic single-quantum state
+a†_m|0⟩. Suppose a single-quantum level is the dressed vacuum with one quantum added: |m⟩ ≈ U a†_m|0⟩, with U the
+coupling's dressing. Its bare weight then carries the vacuum's own overlap factor, Z = |⟨0|U|0⟩|², at leading order.
+That factor is shared by every level, and it falls as g² grows. The 0.9 threshold was set where Z ≈ 1 (g² ≈ 0.002,
+weights ≥ 0.98). It was meant to test that a level is *its channel's* single quantum, not to test how far the vacuum
+is dressed. At the registered couplings the shared factor alone can push a correctly identified level below 0.9. At
+the unregistered g² = 0.04 the bare weights were 0.858 and 0.757 (§5.1).
+
+**The amended rule.**
+- Let Z be the ground state's weight on the harmonic vacuum |0⟩. It uses the same linear-Gram harmonic reference, the
+  same Gauss–Hermite quadrature, and the same resolved order as the single-quantum weights.
+- For each level and channel, the **dressed weight** is w̃ = w / Z.
+- **Selection is unchanged.** Helike is the level of maximal weight on her doublet; the competitor is the level of
+  maximal weight on the low Q = 0 mode. Dividing by a common Z does not change either argmax.
+- **Thresholds are unchanged and now apply to w̃:**
+  - the registered identification needs w̃ ≥ 0.9 for both identified levels at the final rung;
+  - the domain gate's quasimode selection needs w̃ ≥ 0.95 for both Helike partners and for the competitor.
+- **Numerics.** Z enters the order-agreement check, with the same 10⁻⁶ tolerance as the weights.
+- **Receipt.** The bare w, Z and w̃ are all written to the receipt.
+
+**What this does and does not do.**
+- It changes neither the gaps, nor the switch, nor the convergence rule, nor any threshold.
+- It removes the leading common factor and nothing else. A level whose single-quantum character is genuinely mixed
+  (for example, with a two-quantum state of another channel) still has w̃ well below 1.
+- w̃ can exceed 1 at higher order. That is reported, and it does not change the rule.
+
+**Checks before the grid.**
+- (a) The g² = 0.002 and 0.004 controls: Z ≥ 0.98, and every identification there is unchanged.
+- (b) Tests: w̃ = w/Z in the solver output; the runner uses w̃; and a mutant that drops the normalisation (uses w) is
+  caught.
+- (c) The unregistered exposure point of §5.1 (g² = 0.04, s = 1.12) is recomputed, and its w̃ reported, whatever it
+  is. The rule and thresholds above are fixed by this commit and are not adjusted after seeing it.

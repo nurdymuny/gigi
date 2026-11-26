@@ -1,0 +1,20 @@
+=== g2 = 0.004: w2 = [1.1883333333333332, 1.1883333333333332, 1.2246888304165702, 5.903333333333333, 5.903333333333333, 7.17031116958343]
+  PASS  frame orthonormal
+  PASS  frame orthogonal to gauge tangents
+  PASS  frame columns are Hessian eigenvectors
+  PASS  gradient at q_b contains 0
+  PASS  linear part of P contains 0
+  PASS  quadratic part is 1/2 sum w2 z^2
+  PASS  quartic part is (g^2/2)|cof Nz|^2
+  P: 210 terms, max coefficient radius 3.0e-35 (0 s)
+  C3 <= 0.087118 [box budget reached]  (best sampled 0.073280; 400001 boxes; 1261 s)
+=== g2 = 0.002: w2 = [1.1883333333333332, 1.1883333333333332, 1.2246888304165702, 5.903333333333333, 5.903333333333333, 7.17031116958343]
+  PASS  frame orthonormal
+  PASS  frame orthogonal to gauge tangents
+  PASS  frame columns are Hessian eigenvectors
+  PASS  gradient at q_b contains 0
+  PASS  linear part of P contains 0
+  PASS  quadratic part is 1/2 sum w2 z^2
+  PASS  quartic part is (g^2/2)|cof Nz|^2
+  P: 210 terms, max coefficient radius 5.5e-35 (0 s)
+  C3 <= 0.061602 [box budget reached]  (best sampled 0.051817; 400001 boxes; 1472 s)

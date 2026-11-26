@@ -1,0 +1,8 @@
+=== g2 = 0.004: J(0) = 11335.932951, 84 terms, max rel. difference vs floating det 1.7e-15
+  v_J >= -0.001616  (best point -0.001117; 5815 boxes; 30 s)
+  beta_u <= 0.071876  (best point 0.065862; -100001 boxes; 361 s)
+  beta_v <= 0.005457  (best point 0.003457; 18559 boxes; 63 s)
+=== g2 = 0.002: J(0) = 32062.860243, 84 terms, max rel. difference vs floating det 1.6e-15
+  v_J >= -0.000939  (best point -0.000488; 75 boxes; 0 s)
+  beta_u <= 0.046285  (best point 0.043699; -100001 boxes; 420 s)
+  beta_v <= 0.003756  (best point 0.001861; 776 boxes; 4 s)

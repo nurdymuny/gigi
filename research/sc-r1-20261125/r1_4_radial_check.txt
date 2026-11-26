@@ -1,0 +1,4 @@
+soft: 39 radial levels below 8 (l < 13); floating Galerkin 39; max |Galerkin - enclosure| 8.6e-07; max radius 4.6e-14; 213 s
+stiff: 4 radial levels below 8 (l < 3); floating Galerkin 4; max |Galerkin - enclosure| 2.2e-12; max radius 4.6e-14; 39 s
+
+[exited with code 0]

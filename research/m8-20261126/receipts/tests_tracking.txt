@@ -1,0 +1,22 @@
+test_avoided_crossing_inside_inspection_tolerance (test_helike_m8_tracking.Tracking.test_avoided_crossing_inside_inspection_tolerance)
+Gap 8e-5 < 1e-4, but resolved within the budget: closeness is a reason to inspect, not a crossing. ... ok
+test_constant_spectrum_rejection (test_helike_m8_tracking.Tracking.test_constant_spectrum_rejection)
+A3.4: the endpoint overlap favours the wrong branch with weight 1; the midpoint check must run, refinement ... ok
+test_crossing_hands_to_the_branch_that_becomes_lowest (test_helike_m8_tracking.Tracking.test_crossing_hands_to_the_branch_that_becomes_lowest) ... ok
+test_inter_sector_switch_is_reported_not_a_handover (test_helike_m8_tracking.Tracking.test_inter_sector_switch_is_reported_not_a_handover) ... ok
+test_one_to_one (test_helike_m8_tracking.Tracking.test_one_to_one) ... ok
+test_resolved_avoided_crossing (test_helike_m8_tracking.Tracking.test_resolved_avoided_crossing) ... ok
+test_same_shares_without_crossing_dissolve (test_helike_m8_tracking.Tracking.test_same_shares_without_crossing_dissolve) ... ok
+test_smooth_drift_persists_and_continuity_decides_nothing (test_helike_m8_tracking.Tracking.test_smooth_drift_persists_and_continuity_decides_nothing) ... ok
+test_starting_identity_must_resolve (test_helike_m8_tracking.Tracking.test_starting_identity_must_resolve) ... ok
+test_sub_tolerance_avoided_crossing_is_open (test_helike_m8_tracking.Tracking.test_sub_tolerance_avoided_crossing_is_open) ... ok
+test_three_point_handover (test_helike_m8_tracking.Tracking.test_three_point_handover) ... ok
+test_true_crossing_with_symmetry_labels_and_priority (test_helike_m8_tracking.Tracking.test_true_crossing_with_symmetry_labels_and_priority) ... ok
+test_unresolved_energy_ordering_is_open (test_helike_m8_tracking.Tracking.test_unresolved_energy_ordering_is_open) ... ok
+test_unresolved_matching_is_open (test_helike_m8_tracking.Tracking.test_unresolved_matching_is_open) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.015s
+
+OK
+exit 0

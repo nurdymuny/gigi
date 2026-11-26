@@ -1,0 +1,21 @@
+test_complex_and_real_forms_agree (test_helike_m8_geometry.Kernel.test_complex_and_real_forms_agree)
+For f = f1 + i f2: 1/2 g grad conj(f).grad f = the sum over the two real partners, to 1e-12. ... ok
+test_frame_invariance_and_refusal (test_helike_m8_geometry.Kernel.test_frame_invariance_and_refusal)
+Shares are unchanged under any block-diagonal linear change of z (the frame absorbs it; within a block ... ok
+test_identity_holds_for_an_inexact_ground_state (test_helike_m8_geometry.Kernel.test_identity_holds_for_an_inexact_ground_state)
+(★) is exact for any positive psi0 and any E0; with a wrong trial ground state the residual term is ... ok
+test_plain_oscillator (test_helike_m8_geometry.Kernel.test_plain_oscillator)
+f = its coordinate: share 1 on its block, alignment 1, price = gap = w_j, residual term 0. ... ok
+test_planted_mixture (test_helike_m8_geometry.Kernel.test_planted_mixture)
+f = cos t yH + sin t yS (unit coordinates): pi_H = cos^2 w_H / (cos^2 w_H + sin^2 w_S), cross 0, a = cos^2. ... ok
+test_positivity_is_checked (test_helike_m8_geometry.Kernel.test_positivity_is_checked) ... ok
+test_reviewer_counterexample (test_helike_m8_geometry.Kernel.test_reviewer_counterexample)
+Raw normalised contributions (5, 5, -9); positive shares (1/2, 1/2); J in [0, 1]. ... ok
+test_sheared_gaussian_chart (test_helike_m8_geometry.Kernel.test_sheared_gaussian_chart)
+Constant non-identity G (block-diagonal across blocks, sheared within) and a ground state that is not the ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 37.016s
+
+OK
+exit 0

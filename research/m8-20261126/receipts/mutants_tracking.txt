@@ -1,0 +1,15 @@
+CAUGHT  selection_changed counted as a switch
+CAUGHT  the mandatory midpoint skipped when the endpoint overlap is high
+CAUGHT  a rejected coarse match retained for the energy-order reversal
+CAUGHT  two earlier branches assigned to the same later state
+CAUGHT  closeness within 1e-4 used as sufficient crossing evidence
+CAUGHT  an unresolved possible crossing converted into a verified one
+CAUGHT  the crossing verified by the energy condition alone
+CAUGHT  the crossing verified by the subspace condition alone
+CAUGHT  the handover forgotten (the old since-the-previous-point rule)
+CAUGHT  the own-share rule applied before a resolved crossing
+CAUGHT  the inter-sector switch granting HANDS OVER
+CAUGHT  the refinement depth cut to one level
+CAUGHT  an unresolved step read as DISSOLVES
+CAUGHT  continuity used as the failure criterion
+14/14 mutants caught

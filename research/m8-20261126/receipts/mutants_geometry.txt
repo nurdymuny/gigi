@@ -1,0 +1,6 @@
+CAUGHT  raw D_XX/D used as the fingerprint
+CAUGHT  a Cholesky factor in place of the symmetric square root
+CAUGHT  the frame normalisation G(0)^{-1/2} skipped
+CAUGHT  the weight psi0^2 dropped from the measure
+CAUGHT  the residual term dropped from Q0a
+5/5 mutants caught

@@ -187,3 +187,32 @@ zeroes it", which the code cannot check by itself. The synthetic tests exposed t
 
 **T2, amended.** The tone runs over the first three **distinct** weighted energies, so a degenerate pair counts once.
 Each ratio's weight fraction sums the weights in its cluster.
+
+## Results, first stage: the four controls (26 November). The controls pass.
+
+Data and report: `research/heat-signal-20261126/controls/` (cone-heat receipts at g² = 0.002 and 0.004, Mq = 8 and
+10, s = 1.15, t = 3; `report.json`). The code was at commit 360574c, with 9/9 tests passing and 5/5 mutants caught.
+
+| test | g² = 0.002 | g² = 0.004 |
+|---|---|---|
+| T1, Helike sector | CORRIDOR: all five sources end on level 1, at 1.08904 | CORRIDOR: level 1, at 1.08797 |
+| T1, Q = 0 sector | CORRIDOR: all four sources end on level 3, at 1.10114 | CORRIDOR: level 3, at 1.09556 |
+| T1b | AGREES (levels 1 and 3) | AGREES |
+| T4 | SIGNAL-INVARIANT: the plateau moves ≤ 1.8·10⁻⁶ from Mq 8 to 10; quadrature ≤ 1.4·10⁻⁸ | SIGNAL-INVARIANT: ≤ 1.9·10⁻⁵ and ≤ 3·10⁻¹⁰ |
+
+**T2 (0.002 → 0.004): TONE-STABLE in both sectors.**
+- Helike sector: the ratio changes by 0.0050 and the curve by 0.0001.
+- Q = 0 sector: the ratio changes by 0.0039 and the curve by 0.0004.
+- The tones are near-harmonic (second distinct ratio about 2.0, as expected at weak coupling), so this is a check of
+  the machinery, as registered.
+
+**T3 (controls only):** the plateaus fall slightly from 0.002 to 0.004 (Helike 1.08904 → 1.08797; competitor
+1.10114 → 1.09556). This is the known negative O(g²) shift at weak coupling. It is reported, and it carries no meaning
+about the gap's survival at these rooms.
+
+**Disclosed:**
+- **Missing weights.** H (the registered source) misses ≤ 3·10⁻⁶ and C misses ≤ 3.4·10⁻⁴. Most of H″ lies above the
+  12 levels: it is a two-stiff-quanta state near 4.9, and it reaches the corridor only through small mixing. That
+  still counts under the rule. R₂ misses 33% and R₀ misses 54%.
+- **Grid points.** By the registered order, the grid points run only after the registered flux grid
+  (`research/flux-grid-20261126/`) completes.

@@ -1,0 +1,288 @@
+{
+ "stage": "controls (registered first stage)",
+ "points": {
+  "0.002": {
+   "T1": {
+    "helike": {
+     "verdict": "CORRIDOR",
+     "corridor_level": 1,
+     "zero_at_corridor": [],
+     "plateaus": {
+      "H": 1.0890423530069064,
+      "H'": 1.0890423530069064,
+      "H''": 1.0890423530069064,
+      "H'''": 1.0890423530069064,
+      "R2": 1.0890423530069064
+     },
+     "missing": {
+      "H": 9.971447306744707e-07,
+      "H'": 0.0047597582918527115,
+      "H''": 0.9985406510830023,
+      "H'''": 0.00516913516964157,
+      "R2": 0.325827160505322
+     }
+    },
+    "competitor": {
+     "verdict": "CORRIDOR",
+     "corridor_level": 3,
+     "zero_at_corridor": [],
+     "plateaus": {
+      "C": 1.1011437798386385,
+      "C'": 1.1011437798386385,
+      "C''": 1.1011437798386385,
+      "R0": 1.1011437798386385
+     },
+     "missing": {
+      "C": 0.00016749914472302674,
+      "C'": 0.0049379963850280095,
+      "C''": 0.005298811572409412,
+      "R0": 0.5383442601714833
+     }
+    }
+   },
+   "T1b": {
+    "helike": "AGREES",
+    "competitor": "AGREES",
+    "identified_levels": [
+     1,
+     3
+    ]
+   },
+   "T4": {
+    "seams": {
+     "helike": {
+      "levels_k8_vs_k12": true,
+      "quadrature": true,
+      "max_weight_change_quadrature": 5.000172498270672e-11,
+      "truncation_Mq": true,
+      "plateau_change_Mq": 1.1186543247276859e-07,
+      "source_dressing": true
+     },
+     "competitor": {
+      "levels_k8_vs_k12": true,
+      "quadrature": true,
+      "max_weight_change_quadrature": 1.4393196634543415e-08,
+      "truncation_Mq": true,
+      "plateau_change_Mq": 1.7929114264347845e-06,
+      "source_dressing": true
+     }
+    },
+    "verdict": "SIGNAL-INVARIANT"
+   }
+  },
+  "0.004": {
+   "T1": {
+    "helike": {
+     "verdict": "CORRIDOR",
+     "corridor_level": 1,
+     "zero_at_corridor": [],
+     "plateaus": {
+      "H": 1.0879686595279345,
+      "H'": 1.0879686595279345,
+      "H''": 1.0879686595279345,
+      "H'''": 1.0879686595279345,
+      "R2": 1.0879686595279345
+     },
+     "missing": {
+      "H": 2.5607694409401915e-06,
+      "H'": 0.009564747322036937,
+      "H''": 0.9970812335385774,
+      "H'''": 0.01043848626142374,
+      "R2": 0.32667783629852376
+     }
+    },
+    "competitor": {
+     "verdict": "CORRIDOR",
+     "corridor_level": 3,
+     "zero_at_corridor": [],
+     "plateaus": {
+      "C": 1.095559030262998,
+      "C'": 1.095559030262998,
+      "C''": 1.095559030262998,
+      "R0": 1.095559030262998
+     },
+     "missing": {
+      "C": 0.0003410942940578199,
+      "C'": 0.01000212263618283,
+      "C''": 0.010359882112958352,
+      "R0": 0.5477705351920619
+     }
+    }
+   },
+   "T1b": {
+    "helike": "AGREES",
+    "competitor": "AGREES",
+    "identified_levels": [
+     1,
+     3
+    ]
+   },
+   "T4": {
+    "seams": {
+     "helike": {
+      "levels_k8_vs_k12": true,
+      "quadrature": true,
+      "max_weight_change_quadrature": 3.1269431488567534e-13,
+      "truncation_Mq": true,
+      "plateau_change_Mq": 1.5071591619175706e-06,
+      "source_dressing": true
+     },
+     "competitor": {
+      "levels_k8_vs_k12": true,
+      "quadrature": true,
+      "max_weight_change_quadrature": 3.0762892233582306e-10,
+      "truncation_Mq": true,
+      "plateau_change_Mq": 1.891504970785718e-05,
+      "source_dressing": true
+     }
+    },
+    "verdict": "SIGNAL-INVARIANT"
+   }
+  }
+ },
+ "T2_controls": {
+  "helike": {
+   "tone_a": {
+    "levels": [
+     [
+      1,
+      2
+     ],
+     [
+      7
+     ],
+     [
+      8
+     ]
+    ],
+    "ratios": [
+     1.0,
+     2.010240714837544,
+     2.0102419462555607
+    ],
+    "weight_fractions": [
+     0.9995367511041758,
+     0.00023162596078538515,
+     0.0002316229348906812
+    ],
+    "delta": 1.0890423530069064
+   },
+   "tone_b": {
+    "levels": [
+     [
+      1,
+      2
+     ],
+     [
+      7
+     ],
+     [
+      8
+     ]
+    ],
+    "ratios": [
+     1.0,
+     2.005223446437768,
+     2.0052356688943913
+    ],
+    "weight_fractions": [
+     0.9990648610367421,
+     0.00046759516912639384,
+     0.0004675436214490565
+    ],
+    "delta": 1.0879686595279345
+   },
+   "max_ratio_change": 0.005017268399775787,
+   "max_curve_change": 0.00011806871615610559,
+   "verdict": "TONE-STABLE"
+  },
+  "competitor": {
+   "tone_a": {
+    "levels": [
+     [
+      3
+     ],
+     [
+      4
+     ],
+     [
+      9
+     ]
+    ],
+    "ratios": [
+     1.0,
+     1.9738138514121526,
+     1.9975404476565535
+    ],
+    "weight_fractions": [
+     0.9984247779198979,
+     0.0004807505922590021,
+     0.001094471485823852
+    ],
+    "delta": 1.1011437798386385
+   },
+   "tone_b": {
+    "levels": [
+     [
+      3
+     ],
+     [
+      4
+     ],
+     [
+      9
+     ]
+    ],
+    "ratios": [
+     1.0,
+     1.977743234960231,
+     1.9950284437066532
+    ],
+    "weight_fractions": [
+     0.996818970988053,
+     0.0009628644304598133,
+     0.0022181640739880513
+    ],
+    "delta": 1.095559030262998
+   },
+   "max_ratio_change": 0.00392938354807848,
+   "max_curve_change": 0.00039845604499577636,
+   "verdict": "TONE-STABLE"
+  }
+ },
+ "T3_controls": {
+  "helike": {
+   "sequence": [
+    [
+     0.002,
+     1.0890423530069064
+    ],
+    [
+     0.004,
+     1.0879686595279345
+    ]
+   ],
+   "differences": [
+    -0.0010736934789719044
+   ],
+   "trend": "decreasing"
+  },
+  "competitor": {
+   "sequence": [
+    [
+     0.002,
+     1.1011437798386385
+    ],
+    [
+     0.004,
+     1.095559030262998
+    ]
+   ],
+   "differences": [
+    -0.00558474957564048
+   ],
+   "trend": "decreasing"
+  }
+ },
+ "controls_pass": true
+}

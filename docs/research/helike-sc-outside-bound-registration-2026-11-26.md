@@ -103,3 +103,36 @@ about 37, against τ = 7.31.
 
 **Negative control:** O1 with τ = 12 (above the true wall minimum of about 11) is not proved; τ = 10 is still open
 after 30,000 boxes.
+
+## Results, 26 November: OUTSIDE PROVED at both controls
+
+**O-amendment 3, written before the verdict: a Cartesian hull bound in O2.**
+
+With amendments 1 and 2, O2 was still open at r ≈ 34, on cells where V actually sits 168–216 above ρ_C, and descent
+from them lands back on the ring. There is nothing physical there: the ray split is loose far out, because the cubic
+and quartic terms are each about 10⁵ and cancel, so coefficient slop gets multiplied by r⁴. So a third clearing test
+was added: V enclosed directly on the cell's Cartesian hull Y = [r₀, r₁]·X (natural and mean-value forms of the exact
+polynomial). Near the origin, the ray picture is the right one; far out, the Cartesian one is.
+
+| control | O1 (near ring, R_n = 12) | O2 (Sym, R_n = 12) |
+|---|---|---|
+| g² = 0.002 | **PROVED**, 5,167 boxes, 13 s | **PROVED**, 1,456,309 cells (706,910 clear, 21,248 near the ring), 2,299 s |
+| g² = 0.004 | **PROVED**, 6,130 boxes, 16 s | **PROVED**, 1,065,667 cells (506,305 clear, 26,532 near the ring), 1,655 s |
+
+Logs: `research/sc-outside-20261126/`.
+
+**Negative controls.** O1 with τ = 12 (above the true wall minimum of about 11) does not prove. O2 with R_n = 2 does
+not prove: the valley reaches distance about 4, so a near region that small cannot cover it.
+
+**Rigor notes.**
+- Every bound is Arb at 128 bits. The final comparisons are rounded down.
+- The ray caps are taken from Arb upper bounds with 10⁻⁹ relative slack. A child box inherits its parent's r-interval,
+  which is a superset of its own.
+- R* is exactly orthogonal: a diagonal sign rotation times a Cayley rotation of a rational antisymmetric K.
+- The two symmetry reductions and the polar and nearest-point arguments are by hand, as written above.
+- ρ_C is the recomputed value (R1.9.2). The frozen receipt value must be substituted. The proof has slack only through
+  the margins of the cells, so the substitution needs a rerun, not an argument.
+
+**Consequence.** inf V ≥ ρ_C on the complement of the gauge-swept product tube, at both controls. With R1.8.5, any
+interval-verified homotopy step with ℓ₅(H_s) ≥ ρ_C proves S_C at that control (with Lemma R). The floating margin of
+that step is +0.21 to +0.24 (R1.9.2).

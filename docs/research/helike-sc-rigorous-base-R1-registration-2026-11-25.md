@@ -345,8 +345,8 @@ At every logged last step, the real Lehmann bounds sit within 4·10⁻⁴ of the
 
 ### R1.9.4 What remains for S_C at the controls
 
-1. **The outside bound, rigorous.** inf H_out^N ≥ ρ_C on the complement of the gauge-swept product tube. Floating
-   point gives about 11 on the walls, against 7.31.
+1. ~~The outside bound, rigorous.~~ **Done, 26 November:** PROVED at both controls
+   ([outside-bound registration](helike-sc-outside-bound-registration-2026-11-26.md), Results).
 2. **R2: interval A₀, A₁ and A₂ for the VSCF trial functions, and a verified pencil**, at the 2–3 steps of the
    folded path. The decision rule is the one of R1.8.5: PROVED if some real step has ℓ₅ ≥ ρ_C in interval
    arithmetic and item 1 holds. Otherwise UNRESOLVED.

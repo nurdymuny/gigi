@@ -1,0 +1,2 @@
+=== g2 = 0.002: tau = rho_C - V_bg = 7.31686; V_bg = -95.0547; R_n = 12
+  O2: PROVED; 1456309 cells (706910 clear, 21248 near the ring); 2299 s

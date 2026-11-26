@@ -191,3 +191,4 @@ stability studies) is a series of paired specifications and results in [`docs/`]
 | [Coordinate translations, Jacobians, and the Geometry of Sameness](coordinate-translations-and-sameness.md) | |
 
 Evidence files for this group are in [`evidence/`](evidence/).
+| 26 Nov | [S_C overnight: C₃ by symmetry, ray-aware fold, outside bound PROVED](helike-sc-rigorous-base-R1-registration-2026-11-25.md) (R1.8–R1.9; [outside](helike-sc-outside-bound-registration-2026-11-26.md)): C₃ converged at both controls; the folded base, proved D ≥ 0, passes the homotopy in 2–3 steps with ℓ₅ − ρ_C = +0.21 to +0.24 (floating); outside of the tube ≥ ρ_C proved at both controls; R2 (interval Lehmann at the folded steps) is what remains |

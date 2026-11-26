@@ -328,29 +328,33 @@ class Point:
 
 
 def analyse_point(X, order, carriers):
-    """Shares, the (★) identity, alignment and shape price at one point and order. carriers: {name: (levels, block)}."""
+    """Shares, the (★) identity, alignment and shape price at one point and order. carriers: {name: (levels, block)}.
+    States are evaluated one at a time (the ground state is kept)."""
     P = Point(X, order)
-    cols = sorted({0, *[l for lev, _ in carriers.values() for l in lev]})
-    p, dp = P.values(cols)
-    col = {c: i for i, c in enumerate(cols)}
-    p0, dp0 = p[:, col[0]], dp[:, :, col[0]]
+    p0, dp0 = P.values([0])
+    p0, dp0 = p0[:, 0], dp0[:, :, 0]
     if np.sum(P.core.W * p0) < 0:
         p0, dp0 = -p0, -dp0                                   # the ground state's sign is a convention
     E0 = float(X["levels"][0])
-    out = {"order": order, "E0": E0, "frame_G0_offdiag_ok": True}
+    out = {"order": order, "E0": E0, "frame": "G(0)^{-1/2}, block-diagonal check passed"}
     for name, (lev, block) in carriers.items():
-        parts = [P.core.analyse(p0, dp0, p[:, col[l]], dp[:, :, col[l]], E0, P.blocks, P.A) for l in lev]
+        parts, al = [], []
+        for l in lev:
+            p, dp = P.values([l])
+            parts.append(P.core.analyse(p0, dp0, p[:, 0], dp[:, :, 0], E0, P.blocks, P.A))
+            al.append(P.core.alignment(p0, p[:, 0], list(P.blocks[block])))
+            del p, dp
         D = sum(r["D"] for r in parts)
+        R = sum(r["R"] for r in parts)
         shares = {b: sum(r["shares"][b] * r["D"] for r in parts) / D for b in BLOCKS}
         ritz = sum(float(X["levels"][l]) - E0 for l in lev)
-        ident = sum(r["identity"] for r in parts)
-        al = [P.core.alignment(p0, p[:, col[l]], list(P.blocks[block])) for l in lev]
-        out[name] = dict(levels=list(lev), block=block, D=D, residual_term=sum(r["R"] for r in parts),
-                         identity=ident, ritz_excitation=ritz, identity_rel_error=abs(ident - ritz) / ritz,
-                         residual_share=abs(sum(r["R"] for r in parts)) / ritz,
+        ident = D + R
+        out[name] = dict(levels=list(lev), block=block, D=D, residual_term=R, identity=ident, ritz_excitation=ritz,
+                         identity_rel_error=abs(ident - ritz) / ritz, residual_share=abs(R) / ritz,
                          quadrature_rayleigh=[r["rayleigh"] for r in parts], norms=[r["norm"] for r in parts],
-                         shares=shares, own_share=shares[block], share_sum=sum(r["share_sum"] * r["D"] for r in parts) / D,
-                         raw=[r["raw"] for r in parts], alignment=float(np.mean(al)),
+                         shares=shares, own_share=shares[block],
+                         share_sum=sum(r["share_sum"] * r["D"] for r in parts) / D,
+                         raw=[r["raw"] for r in parts], alignment_per_level=al, alignment=float(np.mean(al)),
                          nonpositive_weight=max(r["nonpositive_weight"] for r in parts))
     for block in ("H", "C"):
         out[f"shape_price_{block}"] = P.core.shape_price(p0, dp0, list(P.blocks[block]), E0)

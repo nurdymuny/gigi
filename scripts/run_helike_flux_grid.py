@@ -210,7 +210,8 @@ def solve(s, t, g2, mq):
     res = r["result"]
     return {"Mq": mq, "E0": res["E0"], "dimension": r["dimension"], "seconds": r["seconds"], "moments": r["moments"],
             "helike": {"gap": res["helike"]["gap"], "weight": res["helike"]["weight"]},
-            "competitor": {"gap": res["competitor"]["gap"], "weight": res["competitor"]["weight"]}}
+            "competitor": {"gap": res["competitor"]["gap"], "weight": res["competitor"]["weight"]},
+            "overlap_orders": res["overlap_orders"], "reference_weight_error": res["reference_weight_error"]}
 
 
 def main():
@@ -247,7 +248,9 @@ def main():
                     p = {"s": s, "ladder": [solve(s, block["t"], g2, mq) for mq in DESIGN["ladder"]]}
                 except (subprocess.CalledProcessError, ValueError, KeyError) as exc:
                     # a solver refusal is a failed point (UNRESOLVED under the registered rule), never a crash
-                    p = {"s": s, "ladder": [], "refused": f"{type(exc).__name__}", "converged": False, "identified": False}
+                    detail = (getattr(exc, "stderr", None) or str(exc)).strip()[-500:]   # keep the solver's reason
+                    p = {"s": s, "ladder": [], "refused": f"{type(exc).__name__}: {detail}", "converged": False,
+                         "identified": False}
                     case["points"].append(p)
                     save(receipt, rec)
                     continue

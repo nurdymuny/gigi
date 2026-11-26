@@ -135,7 +135,8 @@ pub fn export_point(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> 
     let wh = ritz::helike_frequency(s, t);
     let result = ritz::helike_and_competitor(&op, &eigs, wh)?;
     let k = eigs.vectors.len();
-    let amps = ritz::reference_amplitudes(&op, &eigs.vectors, 12)?;
+    // the pair is chosen with the same resolved quadrature order as the identification (flux-grid runner note)
+    let amps = ritz::reference_amplitudes(&op, &eigs.vectors, result.overlap_orders[1])?;
     let hel: Vec<usize> = (0..6).filter(|&j| (bg.w[j] - wh).abs() < 1e-6).collect();
     if hel.len() != 2 {
         return Err("Helike doublet not identified".into());

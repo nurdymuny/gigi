@@ -82,8 +82,8 @@ pub fn classify(op: &ConeOperator, v: &[f64]) -> [f64; 6] {
 /// Overlaps of trial vectors with the original linear-Gram harmonic single-quantum projectors, by a Gauss–Hermite
 /// rule of the given order in each chart coordinate. Returns a 6 × k matrix (row-major, rows = modes).
 pub fn reference_amplitudes(op: &ConeOperator, vectors: &[Vec<f64>], order: usize) -> Result<Vec<f64>, String> {
-    if !(2..=16).contains(&order) || vectors.is_empty() || vectors.len() > 12 {
-        return Err("overlap resource contract requires order 2..16 and 1..12 vectors".into());
+    if !(2..=28).contains(&order) || vectors.is_empty() || vectors.len() > 12 {
+        return Err("overlap resource contract requires order 2..28 and 1..12 vectors".into());
     }
     let k = vectors.len();
     let grid = SlabGrid::new(&op.basis, op.mq + 1, order);
@@ -191,20 +191,35 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
     }
     let comp = *single.iter().min_by(|&&a, &&b| w[a].partial_cmp(&w[b]).unwrap()).unwrap();
     let k = eigs.vectors.len();
-    let coarse = reference_amplitudes(op, &eigs.vectors, 10)?;
-    let fine = reference_amplitudes(op, &eigs.vectors, 12)?;
-    let mut error: f64 = 0.0;
-    for i in 0..6 * k {
-        error = error.max((coarse[i] * coarse[i] - fine[i] * fine[i]).abs());
-    }
-    for c in 0..k {
-        let a: f64 = hel.iter().map(|&m| coarse[m * k + c].powi(2)).sum();
-        let b: f64 = hel.iter().map(|&m| fine[m * k + c].powi(2)).sum();
-        error = error.max((a - b).abs());
+    // The overlap integrand is not polynomial in the chart, so Gauss–Hermite order must be raised until consecutive
+    // orders agree to the frozen tolerance 1e-6. The orders (10, 12) resolve the g² = 0.002 / 0.004 controls; the
+    // stronger couplings need more. The tolerance is unchanged; only the order ladder is extended (flux-grid runner
+    // note, 26 Nov). The first resolved pair is used, so the controls reproduce exactly.
+    let error_of = |coarse: &[f64], fine: &[f64]| {
+        let mut error: f64 = 0.0;
+        for i in 0..6 * k {
+            error = error.max((coarse[i] * coarse[i] - fine[i] * fine[i]).abs());
+        }
+        for c in 0..k {
+            let a: f64 = hel.iter().map(|&m| coarse[m * k + c].powi(2)).sum();
+            let b: f64 = hel.iter().map(|&m| fine[m * k + c].powi(2)).sum();
+            error = error.max((a - b).abs());
+        }
+        error
+    };
+    let mut coarse = reference_amplitudes(op, &eigs.vectors, 10)?;
+    let mut orders = [10, 12];
+    let mut fine = reference_amplitudes(op, &eigs.vectors, 12)?;
+    let mut error = error_of(&coarse, &fine);
+    while error > 1e-6 && orders[1] < 28 {
+        orders = [orders[1], orders[1] + 2];
+        coarse = fine;
+        fine = reference_amplitudes(op, &eigs.vectors, orders[1])?;
+        error = error_of(&coarse, &fine);
     }
     let max_norm = (0..k).map(|c| (0..6).map(|m| fine[m * k + c].powi(2)).sum::<f64>()).fold(0.0, f64::max);
     if error > 1e-6 || max_norm > 1.0 + 1e-6 {
-        return Err(format!("reference weights unresolved at frozen overlap tolerance: {error}"));
+        return Err(format!("reference weights unresolved at frozen overlap tolerance through orders {orders:?}: {error}"));
     }
     let chan = |modes: &[usize]| {
         let weights: Vec<f64> = (0..k).map(|c| modes.iter().map(|&m| fine[m * k + c].powi(2)).sum()).collect();
@@ -229,7 +244,7 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
         boundary_status: BOUNDARY_STATUS.into(),
         energy_shift: op.energy_shift,
         reference_weight_error: error,
-        overlap_orders: [10, 12],
+        overlap_orders: orders,
         helike: chan(&hel),
         competitor: chan(&[comp]),
         levels: eigs.values.clone(),

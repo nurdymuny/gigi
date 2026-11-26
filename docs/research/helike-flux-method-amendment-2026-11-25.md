@@ -122,3 +122,33 @@ all on this machine.
 
 Tests: `test_helike_flux_grid.py` passes 23/23; six were added for the items above. The grid-runner mutants are all
 caught. The grid runs on this machine (Mq = 10 at the control: about 75 s for the solve and 75 s for the gate).
+
+### 5.1 First registered attempt: void (every point refused before any gap existed)
+
+The first run under §5 (`research/flux-grid-20261126-VOID-quadrature/`) ended UNRESOLVED in about 2 minutes, but
+the run was void: every one of the 31 points was refused by the solver before producing a gap or weight. Reproduced
+at (t = 3, g² = 0.03, s = 1.12, Mq = 6), the refusal was "reference weights unresolved at frozen overlap tolerance:
+7.6·10⁻⁵". No gap, weight or level was computed or seen. The runner had also discarded the solver's message; it now
+records it.
+
+**Cause and fix (a numerical-method error, not physics).**
+- The identification weights are Gauss–Hermite overlaps with the linear-Gram harmonic projectors. The integrand is
+  not polynomial in the chart, and the solver fixed the orders at (10, 12) with a 10⁻⁶ agreement tolerance. Those
+  orders resolve the g² = 0.002 and 0.004 controls, but not the registered couplings.
+- The order is now raised in steps of 2, up to 28, until consecutive orders agree to the **unchanged** 10⁻⁶. The
+  first resolved pair is used, so the controls reproduce exactly. The orders used are written to the receipt.
+- The state export (domain gate) picked Helike's pair with a hard-coded order 12. It now uses the identification's
+  resolved order.
+- Checked at unregistered couplings only. The orders converge by (16, 18) or (18, 20) (error ≤ 7.9·10⁻⁷) at:
+  - t = 3, g² = 0.04 and 0.08;
+  - t = 4, g² = 0.06.
+- Rust tests all pass, and the Python grid tests pass 23/23.
+
+**Exposure, disclosed.** Checking the full chain at the unregistered point (t = 3, g² = 0.04, s = 1.12, Mq = 10)
+showed its gaps and weights:
+- Helike gap 1.0899, weight 0.858;
+- competitor gap 0.9599, weight 0.757.
+
+So identification fails there: both weights are below the registered 0.9. The domain-gate export, which applies the
+quasimode selection rule's 0.95, refuses with "unresolved Helike partner identification". No registered point has
+been computed. The registered grid is not rerun until the identification question is settled; see §5.2 when written.

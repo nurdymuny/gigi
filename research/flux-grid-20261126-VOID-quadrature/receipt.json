@@ -1,0 +1,342 @@
+{
+ "status": "COMPLETE",
+ "design": {
+  "primary": {
+   "t": 3.0,
+   "g2": [
+    0.03,
+    0.05,
+    0.07
+   ],
+   "s": [
+    1.12,
+    1.15,
+    1.165,
+    1.18,
+    1.195,
+    1.22,
+    1.24
+   ]
+  },
+  "secondary": {
+   "t": 4.0,
+   "g2": [
+    0.03,
+    0.05
+   ],
+   "s": [
+    1.09,
+    1.12,
+    1.14,
+    1.16,
+    1.18
+   ]
+  },
+  "ladder": [
+   6,
+   8,
+   10
+  ],
+  "convergence_tol": 0.003,
+  "weight_min": 0.9,
+  "s_tolerance": 0.015,
+  "predicted_s_star": {
+   "3.0": {
+    "0.03": 1.1674,
+    "0.05": 1.1809,
+    "0.07": 1.1931
+   },
+   "4.0": {
+    "0.03": 1.126,
+    "0.05": 1.1413
+   }
+  }
+ },
+ "amendment": "docs/research/helike-flux-method-amendment-2026-11-25.md",
+ "started_unix": 1795698161.3668969,
+ "provenance": {
+  "git_commit": "ca5e470c8ec42f799564d93df048e21245227825",
+  "git_dirty": false,
+  "helike_bin_sha256": "6e6257d02a2c0dedf2dcf4afd89145e6dad01d88e626af7524b145b0d2fbe323",
+  "sources_sha256": {
+   "scripts/run_helike_flux_grid.py": "f0dd480e406f361ab1eff8fabab4dfafc68d0beca11822958435cba7db65470b",
+   "scripts/run_helike_flux_background.py": "46297e8cb71ad58c11f8493494471569684e538a38291cfc83446ac4933734d3",
+   "scripts/helike_domain_gate.py": "7f04cdb354eecad138afa2630443a3eae604770b623d2eaf1420a66b23d0c17d",
+   "scripts/helike_cutoff_bounds.py": "6b7e0608eb1b24096d23657c8843ce11404f082037f92eb1cb5b1605252e4e8f",
+   "scripts/helike_leakage_gate.py": "4c2b2ddbd70ce22a76bcdf5c6aa4a0186b8cfa44d981b9279b14c2877dd4fcbf",
+   "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe",
+   "docs/research/helike-flux-method-amendment-2026-11-25.md": "9b34970bd7e98835411bc8e1b66d1da295a0949567b6a46fdb401962b20e6d81",
+   "docs/research/helike-flux-background-registration-2026-11-24.md": "4c279176cca8f1b79cc696782e0a3fb398e6d91e1e88a964eec05896ba7556e0"
+  },
+  "hash_policy": "sha256-universal-newline-v1",
+  "python_flint": "0.9.0",
+  "python": "3.12.10"
+ },
+ "certified": false,
+ "cases": [
+  {
+   "block": "primary",
+   "t": 3.0,
+   "g2": 0.03,
+   "points": [
+    {
+     "s": 1.12,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.15,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.165,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.18,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.195,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.22,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.24,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "primary",
+   "t": 3.0,
+   "g2": 0.05,
+   "points": [
+    {
+     "s": 1.12,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.15,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.165,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.18,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.195,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.22,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.24,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "primary",
+   "t": 3.0,
+   "g2": 0.07,
+   "points": [
+    {
+     "s": 1.12,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.15,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.165,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.18,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.195,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.22,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.24,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "secondary",
+   "t": 4.0,
+   "g2": 0.03,
+   "points": [
+    {
+     "s": 1.09,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.12,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.14,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.16,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.18,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "secondary",
+   "t": 4.0,
+   "g2": 0.05,
+   "points": [
+    {
+     "s": 1.09,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.12,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.14,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.16,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    },
+    {
+     "s": 1.18,
+     "ladder": [],
+     "refused": "CalledProcessError",
+     "converged": false,
+     "identified": false
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  }
+ ],
+ "overall": "UNRESOLVED",
+ "finished_unix": 1795698282.3700404
+}

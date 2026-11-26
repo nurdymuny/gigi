@@ -1,0 +1,122 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795701510,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "9e422f6146da0bd68cd1111095656013ca9f5b8f",
+    "git_dirty": true,
+    "source_sha256": "3fa7922ff3a1d29cd9cdd644b46901af3411b6c3d9a7b79af48a5684192363f6",
+    "source_hash_policy": "sha256-universal-newline-v1",
+    "platform": "macos-x86_64",
+    "threads": 16
+  },
+  "command": [
+    "./helike-lab/target/release/helike",
+    "--out",
+    "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/xc_exposure.json",
+    "cone",
+    "--s",
+    "1.12",
+    "--t",
+    "3",
+    "--g2",
+    "0.04",
+    "--mq",
+    "10"
+  ],
+  "status": "COMPUTED",
+  "params": {
+    "Mq": 10,
+    "extra": 4,
+    "g2": 0.04,
+    "s": 1.12,
+    "solver": {
+      "block": 4,
+      "max_dim": 1600,
+      "nev": 12,
+      "tol": 1e-10
+    },
+    "t": 3.0
+  },
+  "results": {
+    "Mq": 10,
+    "applications": 364,
+    "background_gradient": 4.440892098500626e-16,
+    "cross_check_quadrature_order": 18,
+    "dimension": 8008,
+    "frequencies": [
+      1.046327541692184,
+      1.106586342466476,
+      1.106586342466476,
+      2.407100607231308,
+      2.407100607231308,
+      2.648395490763491
+    ],
+    "g2": 0.04,
+    "max_in_space_lanczos_residual": 3.816558041141935e-10,
+    "moments": "exact",
+    "quadrature_cross_check": 1.291411422243982e-12,
+    "result": {
+      "E0": 5.2969610380669785,
+      "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+      "competitor": {
+        "dressed_overlap": 0.9705425624606305,
+        "dressed_weight": 0.8364898851398211,
+        "gap": 0.9598946324052484,
+        "level_index": 1,
+        "log_basis_weight": 0.49408351520137095,
+        "weight": 0.757405244251694
+      },
+      "dressed_overlap_error": 4.651834473179406e-14,
+      "dressed_overlap_orthonormality": 1.2079226507921703e-13,
+      "energy_shift": -3.512320000000002,
+      "helike": {
+        "dressed_overlap": 0.9896971597593721,
+        "dressed_weight": 0.947055309403326,
+        "gap": 1.089874748467361,
+        "level_index": 2,
+        "log_basis_weight": 0.7607150166278189,
+        "weight": 0.8575174316884785
+      },
+      "in_space_lanczos_residuals": [
+        5.916686765945797e-14,
+        4.435339440161351e-14,
+        5.758441594612943e-14,
+        4.398899934784369e-14,
+        5.113291771092169e-14,
+        5.398159062542652e-12,
+        6.492697723739685e-14,
+        7.93917155060777e-14,
+        6.306331530424413e-11,
+        1.3093948157011327e-13,
+        1.0855161368810548e-12,
+        3.816558041141935e-10
+      ],
+      "levels": [
+        5.2969610380669785,
+        6.256855670472227,
+        6.3868357865343395,
+        6.390640191509953,
+        7.276451263279504,
+        7.364115623413666,
+        7.381871598515738,
+        7.405709071321307,
+        7.488960949411165,
+        7.491071366079027,
+        8.003779991259822,
+        8.394766611111667
+      ],
+      "overlap_orders": [
+        18,
+        20
+      ],
+      "reference_weight_error": 4.827400312823471e-7,
+      "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+      "vacuum_weight": 0.905456548497406
+    },
+    "s": 1.12,
+    "seconds": 261.443077958,
+    "t": 3.0
+  }
+}

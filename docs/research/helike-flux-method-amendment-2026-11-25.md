@@ -203,3 +203,43 @@ the unregistered g² = 0.04 the bare weights were 0.858 and 0.757 (§5.1).
   The dressing removes Helike's shortfall, but not the competitor's. The competitor's mixing at that point is specific
   to its state, and the rule fails it, as registered. The domain-gate export refuses there as well (w̃ < 0.95).
   Nothing is adjusted. The registered grid now runs under §5.2.
+
+### 5.3 Dressed-overlap cross-check (report-only; Bee's request, 26 November)
+
+**What is added.** A second identification number is written next to w̃ = w/Z and never used by the decision rule. With
+G the computed ground state and y_m the same linear-Gram harmonic coordinates as the registered reference, set
+b_m = y_m G − ⟨G|y_m G⟩G. The **dressed overlap** of a level ψ on a channel is the squared norm of its projection onto
+span{b_m : m in the channel}: d = vᵀB⁻¹v, with v_m = ⟨b_m|ψ⟩ and B the Gram matrix of the b_m (2×2 for Helike's
+doublet).
+- It is the registered reference a†|0⟩ = √(2w)·y|0⟩ with the bare vacuum replaced by the actual ground state.
+- When G is Gaussian, it equals |⟨ψ|a_m†|G⟩|²/‖a_m†G‖².
+- It needs no derivatives of the chart functions: every term is a node sum on the same Gauss–Hermite grid at the
+  resolved orders.
+
+**Receipt.** Per rung:
+- `cross_check.dressed_overlap` for Helike and the competitor;
+- `cross_check.dressed_overlap_error`, the |fine − coarse| at the two resolved orders;
+- `cross_check.dressed_overlap_orthonormality`, the max |⟨G|ψ_c⟩ − δ_{0c}| on the grid.
+
+A failure writes null. It never refuses a point.
+
+**Code.** `dressed_overlap_terms` and `dressed_overlap_weight` (`ritz.rs`), and the runner field.
+- Tests: the Rust suites pass (the 5.2 tests unchanged), and the runner passes 27/27, two of them new. One new test
+  checks that the cross-check cannot change `assess_point`; the other checks that the runner records it.
+- The amendment 5.2 code path is untouched.
+
+**Values seen (logs in `research/flux-grid-crosscheck-20261126/`):**
+
+| point | Z | Helike w / w̃ / dressed overlap | competitor w / w̃ / dressed overlap |
+|---|---|---|---|
+| control g² = 0.004, Mq = 6 | 0.9929 | 0.9885 / 0.9956 / 0.9990 | 0.9808 / 0.9878 / 0.9964 |
+| control g² = 0.002, Mq = 6 | 0.9965 | 0.9943 / 0.9979 / 0.9995 | 0.9906 / 0.9941 / 0.9982 |
+| exposure g² = 0.04, s = 1.12, Mq = 10 (unregistered) | 0.9055 | 0.8575 / 0.9471 / **0.9897** | 0.7574 / 0.8365 / **0.9705** |
+
+Fine and coarse orders agree to ≤ 10⁻¹². The grid orthonormality is ≤ 1.2·10⁻¹³.
+
+**Reading, stated plainly.** At the exposure point the competitor is a clean single quantum on the dressed ground
+state (0.971). Its w̃ = 0.837 falls below 0.9 because of higher-order dressing, not because of mixing with another
+channel. (I had predicted mixing; that was wrong.) Under the registered rule (5.2), points like this would be
+UNRESOLVED for an identification reason, not a physical one. **The rule is not changed here.** Any change would be a
+new amendment, disclosed as made after seeing these values.

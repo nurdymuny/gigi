@@ -160,12 +160,120 @@ pub fn reference_amplitudes_with_vacuum(op: &ConeOperator, vectors: &[Vec<f64>],
     res
 }
 
+/// Dressed single-quantum overlaps (amendment 5.3, report-only cross-check). With G = vectors[0] (the ground state)
+/// and y_m the linear-Gram harmonic coordinate, accumulates on the same Gauss–Hermite grid as the reference weights:
+///   d[m][c] = <y_m G | psi_c>,  n[m][j] = <y_m G | y_j G>,  p[m] = <G | y_m G>,  s[c] = <G | psi_c>.
+/// The solver's inner product is the coefficient dot product, and node values are orthonormal Hermite polynomials,
+/// so each inner product is sum_nodes wt * values * values (no chart measure is needed).
+pub fn dressed_overlap_terms(op: &ConeOperator, vectors: &[Vec<f64>], order: usize)
+    -> Result<(Vec<f64>, [[f64; 6]; 6], [f64; 6], Vec<f64>), String> {
+    if !(2..=28).contains(&order) || vectors.is_empty() || vectors.len() > 12 {
+        return Err("overlap resource contract requires order 2..28 and 1..12 vectors".into());
+    }
+    let k = vectors.len();
+    let grid = SlabGrid::new(&op.basis, op.mq + 1, order);
+    let ch = &op.chart;
+    let inv_m = inv6(&ch.m);
+    let x0 = gram_entries(&ch.g0);
+    let w = op.bg.w;
+    let zq: Vec<Vec<f64>> = (0..6).map(|a| grid.nodes.iter().map(|x| x / w[a].sqrt()).collect()).collect();
+    let slabs: Vec<(usize, usize)> = (0..order).flat_map(|a| (0..order).map(move |b| (a, b))).collect();
+    let len = 6 * k + 36 + 6 + k;
+    let acc: Vec<f64> = slabs
+        .par_iter()
+        .map(|&(q0, q1)| {
+            let mut sc = grid.scratch(k);
+            let refs: Vec<&[f64]> = vectors.iter().map(|v| &v[..]).collect();
+            let mut out = vec![0.0; len];
+            grid.process(&refs, q0, q1, &mut sc, None, |q2, vals| {
+                for p in 0..vals.len() / k {
+                    let [q3, q4, q5] = grid.decode3(p);
+                    let qs = [q0, q1, q2, q3, q4, q5];
+                    let mut z = [0.0; 6];
+                    let mut wt = 1.0;
+                    for a in 0..6 {
+                        z[a] = zq[a][qs[a]];
+                        wt *= grid.weights[qs[a]];
+                    }
+                    let u = ch.coordinates(&z);
+                    let pt = ch.point_from_u(&u);
+                    let mut y = [0.0; 6];
+                    for i in 0..6 {
+                        for j in 0..6 {
+                            y[i] += inv_m[i][j] * (pt.x[j] - x0[j]);
+                        }
+                    }
+                    let g = vals[p * k];
+                    for m in 0..6 {
+                        let ym = wt * y[m] * g;
+                        for c in 0..k {
+                            out[m * k + c] += ym * vals[p * k + c];
+                        }
+                        for j in 0..6 {
+                            out[6 * k + m * 6 + j] += ym * y[j] * g;
+                        }
+                        out[6 * k + 36 + m] += ym * g;
+                    }
+                    for c in 0..k {
+                        out[6 * k + 42 + c] += wt * g * vals[p * k + c];
+                    }
+                }
+            });
+            out
+        })
+        .reduce(|| vec![0.0; len], |mut a, b| {
+            for (x, y) in a.iter_mut().zip(&b) {
+                *x += y;
+            }
+            a
+        });
+    let d = acc[..6 * k].to_vec();
+    let mut n = [[0.0; 6]; 6];
+    let mut p = [0.0; 6];
+    for m in 0..6 {
+        for j in 0..6 {
+            n[m][j] = acc[6 * k + m * 6 + j];
+        }
+        p[m] = acc[6 * k + 36 + m];
+    }
+    let s = acc[6 * k + 42..].to_vec();
+    Ok((d, n, p, s))
+}
+
+/// The dressed-overlap weight of level c on the channel `modes`: the squared norm of the projection of psi_c onto
+/// span{y_m G - <G|y_m G> G : m in modes}, i.e. d^T B^{-1} d with B the Gram matrix of those vectors.
+pub fn dressed_overlap_weight(terms: &(Vec<f64>, [[f64; 6]; 6], [f64; 6], Vec<f64>), k: usize, modes: &[usize], c: usize)
+    -> Option<f64> {
+    let (d, n, p, s) = terms;
+    let r = modes.len();
+    let mut b = vec![vec![0.0; r]; r];
+    let mut v = vec![0.0; r];
+    for (i, &m) in modes.iter().enumerate() {
+        v[i] = d[m * k + c] - p[m] * s[c];
+        for (j, &q) in modes.iter().enumerate() {
+            b[i][j] = n[m][q] - p[m] * p[q];
+        }
+    }
+    let val = match r {
+        1 => if b[0][0] > 0.0 { v[0] * v[0] / b[0][0] } else { return None },
+        2 => {
+            let det = b[0][0] * b[1][1] - b[0][1] * b[1][0];
+            if !(det > 0.0) { return None; }
+            (v[0] * (b[1][1] * v[0] - b[0][1] * v[1]) + v[1] * (b[0][0] * v[1] - b[1][0] * v[0])) / det
+        }
+        _ => return None,
+    };
+    if val.is_finite() { Some(val) } else { None }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct Channel {
     pub gap: f64,
     pub weight: f64,
     /// weight / vacuum_weight: the weight relative to the dressed vacuum (amendment 5.2)
     pub dressed_weight: f64,
+    /// report-only cross-check (amendment 5.3): projection weight on span{y_m G} with G the actual ground state
+    pub dressed_overlap: Option<f64>,
     pub log_basis_weight: f64,
     pub level_index: usize,
 }
@@ -180,6 +288,9 @@ pub struct HelikeCompetitor {
     pub reference_weight_error: f64,
     /// Z: the ground state's weight on the harmonic vacuum (amendment 5.2)
     pub vacuum_weight: f64,
+    /// amendment 5.3 (report-only): max |fine - coarse| of the dressed overlaps, and max |<psi_a|psi_b> - delta| on the grid
+    pub dressed_overlap_error: Option<f64>,
+    pub dressed_overlap_orthonormality: Option<f64>,
     pub overlap_orders: [usize; 2],
     pub helike: Channel,
     pub competitor: Channel,
@@ -240,6 +351,13 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
     if error > 1e-6 || max_norm > 1.0 + 1e-6 || !(vacuum_weight > 0.0 && vacuum_weight <= 1.0 + 1e-6) {
         return Err(format!("reference weights unresolved at frozen overlap tolerance through orders {orders:?}: {error}"));
     }
+    // amendment 5.3 (report-only): dressed overlaps at the resolved fine order, with the coarse order for an error
+    // estimate. A failure here writes null; it never refuses a point and never enters the decision rule.
+    let t_fine = dressed_overlap_terms(op, &eigs.vectors, orders[1]).ok();
+    let t_coarse = dressed_overlap_terms(op, &eigs.vectors, orders[0]).ok();
+    let orthonormality = t_fine.as_ref().map(|t| {
+        t.3.iter().enumerate().map(|(c, &x)| (x - if c == 0 { 1.0 } else { 0.0 }).abs()).fold(0.0, f64::max)
+    });
     let chan = |modes: &[usize]| {
         let weights: Vec<f64> = (0..k).map(|c| modes.iter().map(|&m| fine[m * k + c].powi(2)).sum()).collect();
         // first maximum over levels 1.. (numpy argmax)
@@ -254,9 +372,26 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
             gap: eigs.values[best] - eigs.values[0],
             weight: weights[best],
             dressed_weight: weights[best] / vacuum_weight,
+            dressed_overlap: t_fine.as_ref().and_then(|t| dressed_overlap_weight(t, k, modes, best)),
             log_basis_weight: modes.iter().map(|&m| cl[m]).sum(),
             level_index: best,
         }
+    };
+    let helike = chan(&hel);
+    let competitor = chan(&[comp]);
+    let dressed_overlap_error = match (&t_fine, &t_coarse) {
+        (Some(f), Some(c)) => {
+            let mut e: f64 = 0.0;
+            let mut ok = true;
+            for (modes, ch) in [(&hel[..], &helike), (&[comp][..], &competitor)] {
+                match (dressed_overlap_weight(f, k, modes, ch.level_index), dressed_overlap_weight(c, k, modes, ch.level_index)) {
+                    (Some(a), Some(b)) => e = e.max((a - b).abs()),
+                    _ => ok = false,
+                }
+            }
+            if ok { Some(e) } else { None }
+        }
+        _ => None,
     };
     Ok(HelikeCompetitor {
         e0: eigs.values[0],
@@ -265,9 +400,11 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
         energy_shift: op.energy_shift,
         reference_weight_error: error,
         vacuum_weight,
+        dressed_overlap_error,
+        dressed_overlap_orthonormality: orthonormality,
         overlap_orders: orders,
-        helike: chan(&hel),
-        competitor: chan(&[comp]),
+        helike,
+        competitor,
         levels: eigs.values.clone(),
         in_space_lanczos_residuals: eigs.residuals.clone(),
     })

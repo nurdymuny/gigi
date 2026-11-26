@@ -208,6 +208,24 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class CrossCheck(unittest.TestCase):
+    """Amendment 5.3: the dressed-overlap cross-check is reported, never decided on."""
+
+    def test_cross_check_does_not_enter_the_decision(self):
+        a = grid.assess_point(point(1.18, 0.002), grid.DESIGN)
+        p = point(1.18, 0.002)
+        for r in p["ladder"]:
+            r["cross_check"] = {"dressed_overlap": {"helike": 0.0, "competitor": 0.0}, "dressed_overlap_error": 1.0,
+                                "dressed_overlap_orthonormality": 1.0}
+        self.assertEqual(grid.assess_point(p, grid.DESIGN), a)
+
+    def test_solver_output_carries_the_cross_check(self):
+        import inspect
+        src = inspect.getsource(grid.solve)
+        self.assertIn('"cross_check"', src)
+        self.assertIn("dressed_overlap", src)
+
+
 class DomainStage(unittest.TestCase):
     """The domain gate's aggregation, and an end-to-end parity run at a control (Mq 6) against the archived
     Python-construction sector bounds."""

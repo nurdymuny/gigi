@@ -215,7 +215,11 @@ def solve(s, t, g2, mq):
             "vacuum_weight": res["vacuum_weight"],
             "helike": {k: res["helike"][k] for k in ("gap", "weight", "dressed_weight")},
             "competitor": {k: res["competitor"][k] for k in ("gap", "weight", "dressed_weight")},
-            "overlap_orders": res["overlap_orders"], "reference_weight_error": res["reference_weight_error"]}
+            "overlap_orders": res["overlap_orders"], "reference_weight_error": res["reference_weight_error"],
+            # amendment 5.3: report-only cross-check, never read by assess_point or the domain gate
+            "cross_check": {"dressed_overlap": {n: res[n].get("dressed_overlap") for n in ("helike", "competitor")},
+                            "dressed_overlap_error": res.get("dressed_overlap_error"),
+                            "dressed_overlap_orthonormality": res.get("dressed_overlap_orthonormality")}}
 
 
 def main():

@@ -68,6 +68,7 @@ class VSCF:
         ecut = self.rhob + 12.0
         ub = dr.Block(ws, dr.LU, beta, vlo, ecut); vb = dr.Block(wt, dr.LV, beta, 0.0, ecut)
         ui = block_cut(ub, NU_TARGET); vi = block_cut(vb, NV_TARGET)
+        self.ublock, self.vblock, self.ui, self.vi = ub, vb, ui, vi   # exposed for the R2 cut checks
         self.Eu, self.Ev = ub.E[ui], vb.E[vi]
         self.U = ub.monomials(ui); self.V = vb.monomials(vi)
         z3 = (0, 0, 0)

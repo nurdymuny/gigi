@@ -76,3 +76,43 @@ likewise for the stiff block), the enclosed β, and v_J. Log: `research/sc-r1-20
 | max enclosure radius | 9.1·10⁻¹⁴ | 9.1·10⁻¹⁴ |
 
 For comparison, the uniform base had 38 and 92 levels, with λ₁₁ of 6.83 and 6.09 (R1.8.3).
+
+## R2 amendment 1, 26 November: the trial functions are the exact base eigenfunctions (no cut); written before code
+
+**Why the cut-Hermite plan is dropped.** A floating check measured the tails of the actual VSCF trial states, built on
+proxy balls of radius 9 (soft) and 6 (stiff) standing in for R³ × R³
+(`scripts/r2_cut_feasibility.py`; log `research/sc-r2-20261126/cut_tail_feasibility_g0.004.txt`).
+
+At the early steps (s ≈ 0.2–0.5, N = 47), the worst norm left beyond the cut is:
+
+| cut | worst tail |
+|---|---|
+| \|u\| ≥ 4.5 | about 2·10⁻² |
+| \|v\| ≥ 2.0 | about 4·10⁻² |
+| \|v\| ≥ 2.6 | about 2·10⁻³ |
+
+Early in the homotopy the soft valley is shallow, so the higher states are broad. At the last step (s = 0.99, N = 13)
+the soft tail at 4.0 is 8·10⁻³. Cutting would cost leakage of the order of the margin at the early steps, and
+widening the box would not fix the soft side.
+
+**The route taken instead.** The floating VSCF trial states are finite combinations of the exact Robin eigenfunctions
+φ = R_{nl}(r)Y_{lm} of the base blocks. These lie in D(H_s) exactly, so no cut, tail or leakage is involved. The only
+analytic input is their moments.
+- **Radial.** ∫₀ᴸ r^{2+k}R_aR_b dr. With R = r^l e^{−ωr²/2} M(a, l + 3/2, ωr²), this is a convolution of Kummer
+  series coefficients against lower incomplete gammas, ½ω^{−(p+1)/2}γ((p+1)/2, ωL²), plus an explicit geometric bound
+  on the truncated tail. The eigenvalue E enters as its R1.4 enclosure. A prototype matches quadrature to 10⁻¹⁰ at
+  about 20 ms per moment.
+- **Angular.** uᵅ = r^{|α|}ûᵅ, and ûₖY_{lm} is an exact finite combination of Y_{l±1,m′}. The angular matrices of ûᵅ
+  are exact products of these ladders, computed in Arb.
+- **Assembly.** Block moment matrices and the trial matrices A₀, A₁, A₂ in midpoint–radius arithmetic (BLAS, with
+  rounding inflated by an a priori γ_n bound). The pencil step is done in Arb at the final size (N ≤ 168).
+
+The box stays at L_u = 5, L_v = 2. The decision rule is unchanged.
+
+**Order.**
+- R2.1a: radial moments with tail bounds.
+- R2.1b: angular ladders.
+- R2.1c: block moment matrices, checked against the floating U^α to 10⁻⁷.
+- R2.1d: trial matrices.
+- R2.2: verified pencil.
+- R2.3: chain the steps.

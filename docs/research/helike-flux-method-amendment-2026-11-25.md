@@ -362,3 +362,42 @@ decision, to be recorded as a separate amendment, with the timing disclosed:
 2. Register a gate that does not tighten with convergence, before any grid value is seen. For example, apply it at the
    rung where the gap change is measured, or use an absolute leakage bound tied to the gap tolerance. Then rerun.
 3. Run the registered grid to completion, and separately rerun under option 2 as a disclosed second analysis.
+
+### 5.7 A domain gate that does not tighten as the basis converges (REGISTERED before code and before any grid value; Bee's decision, 26 November)
+
+**Decision.** Following §5.6, Bee chose to **stop the registered run at 93a6de65 and re-register.** The stopped run's
+partial receipt is archived **unread**, as in §5.4. No gap, weight or verdict from it is looked at.
+
+**What the gate is for.** The grid reports gaps to a registered tolerance of 0.003 (§3). The domain gate must
+guarantee that cutting a trial state to the physical domain cannot move a reported energy by an amount that matters.
+The relative rule ℓ ≤ 10⁻³·r answered a different question, the certificate's error budget. It also tightens as r
+shrinks with the basis, which §5.6 showed.
+
+**The registered gate.**
+- Inputs are the same Arb and interval enclosures as before: for Helike's two partners and the competitor at the final
+  rung (Mq = 10), the upper bounds on leakage ℓ, tail t and residual r.
+- **Energy shift of the cut:** e_cut = ℓ + 2·t·r, the cut-dependent part of Lemma 1's e = 2tr + ℓ + c(r + ℓ). The
+  charge term c belongs to sector projection, which the grid does not use.
+- **PASS** if, for all three states: e_cut ≤ 3·10⁻⁴ (one tenth of the gap tolerance), the tail budget t² ≤ 10⁻¹²
+  holds, and the normalisation-width budget ≤ 10⁻¹⁰ holds. These budgets are unchanged.
+- **FAIL** if any of these fails with the enclosures resolved. **OPEN** if an enclosure does not resolve.
+- The old relative ratio ℓ/r stays in the receipt as `relative_ratio_reported`. It is reported, not decided on.
+
+**Where it replaces the old gate.** In `assess_point`, a point is converged when the last-step change is ≤ 0.003
+**and** this gate passes. Nothing else in the registered grid rule changes: ladder, identification (§5.2), switch,
+tolerance, overall rule. The gluing qualifier (§5.5, §5.6) applies, with S5 now comparing this gate's verdict at the
+two radii.
+
+**Checks before the rerun.**
+1. The four controls, g² = 0.002 and 0.004 at Mq = 8 and 10: expected PASS. Stated now: at g² = 0.004, Mq = 10,
+   e_cut ≈ 5.6·10⁻⁶ from the enclosures already seen in §5.6.
+2. The §5.5 gluing check reruns at the controls with this gate.
+3. Tests: the gate's arithmetic and boundaries; the relative ratio can never decide a verdict; assess_point uses the new
+   gate.
+4. Mutants that must be caught:
+   - the old relative gate restored as decisive;
+   - the tail term dropped from e_cut;
+   - the threshold set to the full gap tolerance;
+   - OPEN read as PASS.
+
+**Rerun.** The registered grid is then run again on Bee's machine, from a fresh commit, with a new receipt directory.

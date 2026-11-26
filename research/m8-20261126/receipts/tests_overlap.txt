@@ -1,0 +1,16 @@
+test_change_of_variables_is_symmetric (test_helike_m8_overlap.Overlap.test_change_of_variables_is_symmetric)
+<A|B> on B's grid equals <B|A> on A's grid: the Jacobian and Gaussian factors are right. ... ok
+test_quadrature_seam (test_helike_m8_overlap.Overlap.test_quadrature_seam) ... ok
+test_rust_port_matches_the_python_reference (test_helike_m8_overlap.Overlap.test_rust_port_matches_the_python_reference)
+helike cone-overlap reproduces overlap_matrix (both directions) to 1e-12. ... ok
+test_self_overlap_is_identity (test_helike_m8_overlap.Overlap.test_self_overlap_is_identity) ... ok
+test_tracking_step_on_real_states (test_helike_m8_overlap.Overlap.test_tracking_step_on_real_states)
+A short real step: matching resolves through the midpoint, Helike's pair is followed, no crossing. ... ok
+test_vacuum_overlap_against_closed_form (test_helike_m8_overlap.Overlap.test_vacuum_overlap_against_closed_form)
+The two charts' harmonic vacua (basis state 000000) overlap by an exact Gaussian integral: ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 170.823s
+
+OK
+exit 0

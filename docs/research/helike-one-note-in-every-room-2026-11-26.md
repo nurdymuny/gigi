@@ -23,6 +23,9 @@ the first controls show, and the milestones and falsifiers follow.
 - M8 allows a carrier to deform continuously.
 - T5 is described as proposed, not computed.
 
+*Added the same evening:* §4.9, the inherited note: the gap descends from the intrinsic geometry of one turn, with M9
+and a falsifier.
+
 ---
 
 ## 1. The problem, as it is actually posed
@@ -405,6 +408,53 @@ and seams varied on purpose.
 I do not think the method replaces analysis. I think it chooses what the analysis should be about, and it does not
 let me fool myself on the way.
 
+### 4.9 The inherited note: the gap descends from the intrinsic geometry of one turn
+
+**The picture.** A thing that exists has to take up space equally in every direction. So it is curved, just because it
+exists (my note `unit-curvature-2026-11-18.md`). A curved, closed shape has a lowest nonzero note. My gut says the gap
+we see in every field is that note: the note of the first thing that turned, inherited by everything after it.
+
+The same gap explains two things that look opposite.
+- **Things do not fall into one another.** With a gap, no change is free. Without one, configurations could slide
+  continuously into each other along flat directions. The gap puts a minimum price on every change, so distinct
+  things stay distinct.
+- **And yet they share.** They share information through transport, and only at that price. Distinct but connected is
+  what a gapped connection gives.
+
+**Parallel transport is the gauge field.** A connection is the rule for carrying a frame from one point to another
+and comparing it. Carry it around a small loop and it comes back turned, by a holonomy U, and that turn is the field
+strength. Wilson's lattice energy prices the turn by its chord, 1 − ½ Re tr U. That is the subject of *Three Ways
+Across a Turn: Chord, Arc and Tangent* (doi:10.5281/zenodo.24375338): the chord, the arc and the tangent are three
+prices for the turn that transport makes.
+
+**Proved: at strong coupling the gap is the note of the turn.** In the Hamiltonian lattice theory (Kogut and
+Susskind, Phys. Rev. D 11 (1975) 395), the energy at strong coupling is the electric term.
+- On each link, that term is g²/(2a) times the Laplacian on the group itself, SU(2) = S³: a compact, positively
+  curved shape.
+- Gauss's law allows only closed loops of flux. So the lightest excitation is the smallest loop, one plaquette of four
+  links, each carrying the first nonzero note of S³, the Casimir j(j+1) = 3/4.
+- Its energy is 4 · (g²/2a) · 3/4 = 3g²/(2a), at leading order.
+- The higher levels at that order follow from the same two ingredients: the Casimirs of the group (j = 1 gives 2, a
+  ratio of 8/3 to the first) and the lengths of the loops (a two-plaquette loop gives 6/4).
+
+So at strong coupling, both the octave and the tone are read directly off the intrinsic geometry of one turn and the
+shapes of the loops. The proof of Shen, Zhu and Zhu works the same way: the curvature of the group dominates.
+
+**Conjecture (the inherited note).** The note of the turn is not replaced as the coupling weakens. It descends.
+Followed continuously from strong coupling toward the continuum, the lowest note keeps an identifiable descent from
+the group's own spectrum: the same carrier (H1), never reaching zero (H2), and perhaps a recognisable tone (H3). The
+gap of the continuum theory would then be the inherited note of the turn, rescaled by the running coupling into the
+field's own scale.
+
+**What is open.** The whole of it below strong coupling. Classically, a small turn costs almost nothing (the chord
+goes like θ²), so at weak coupling the gap cannot be read off the group. It has to survive the descent, and that is
+the Clay problem. The cosmological reading, that a first particle set the note for everything after, is beyond
+anything I can test. I state it as the picture that led me here, not as a claim.
+
+**Where it can be tested.** On the lattice (Halcyon), not in my homogeneous reduction. At strong coupling the
+reduction's kinetic term is a Laplacian on its reduced configuration space, not on the group, so the clean comparison
+with Casimirs belongs to the lattice.
+
 ## 5. What a proof requires, and my answer to each part
 
 | requirement | why it is hard | my answer | status |
@@ -444,6 +494,12 @@ let me fool myself on the way.
    followed continuously except at a recorded switch, or its alignment collapses with no switch recorded. These are
    the stated jump and alignment thresholds of amendment 1. A smooth rotation of the carrier is tracking, not failure.
    Registered: `helike-M8-weighted-geometry-registration-2026-11-26.md`.
+9. **M9. The inherited note (§4.9), proposed.** On the SU(2) lattice (Halcyon), follow the lowest levels and their
+   tone from strong coupling, where they are fixed by the Casimirs and the loop lengths, toward weak coupling. Use
+   the same tracking as M8: the carrier subspace, its continuity, and seams varied on purpose. *Fails if* the lowest
+   note's descent from the plaquette loop cannot be followed continuously, with no identifiable switch. A clean
+   handover to another loop or representation does not fail it: that would be a switch, as with Helike. Not yet
+   registered.
 
 ## 7. What would show me wrong
 
@@ -453,6 +509,8 @@ let me fool myself on the way.
 - **The corridor splits**, or its weight collapses, for the stated source class. The gap would not be a common exit.
 - **The tone shifts** where only the octave should move. This would refute H3, the strongest form, and leave the
   carrier and the gap standing.
+- **The inherited note breaks.** The lowest note at weak coupling has no continuous descent from the strong-coupling
+  note of the turn, and no identifiable switch. Then the gap would be made at weak coupling, not inherited.
 - **The van den Heuvel crossing** turns out to be the same object as my switch, and it is an artefact of the
   truncation. My switch would then be an artefact too.
 
@@ -466,5 +524,7 @@ I believe the gap is a property of the shape of the folded space of field shapes
 whose identity persists, and that the reason it stays cheapest is a curvature of the space of field shapes weighted
 by where the vacuum lives. I believe it is the corridor a stated class of disturbances leaves through, and that it is
 invariant under how the rooms are joined. More boldly, I believe it plays the same tone in every room once the field's
-own scale sets the octave. I hold the carrier as the centre, and the tone as the strongest and most exposed claim. I hold those beliefs as conjectures. Each milestone above is a place where the geometry gets to
+own scale sets the octave. Underneath all of it, I believe the note is inherited: it is the intrinsic note of one
+turn, the thing parallel transport does, carried down from strong coupling to the continuum. I hold the carrier as
+the centre, and the tone as the strongest and most exposed claim. I hold those beliefs as conjectures. Each milestone above is a place where the geometry gets to
 tell me yes or no.

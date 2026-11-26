@@ -1,0 +1,165 @@
+{
+ "commit": "fa69d91",
+ "points": [
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "verdict": "PASS",
+   "states": {
+    "helike_plus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 1.787666378426066e-25,
+     "relative_ratio_reported": 6.363365465869879e-23,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.0028093096128199483,
+     "r_upper": 0.0028103448200538037,
+     "leakage_norm_upper": 1.7876663773154739e-25
+    },
+    "helike_minus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 1.787666378426066e-25,
+     "relative_ratio_reported": 6.363365465869879e-23,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.0028093096128199483,
+     "r_upper": 0.0028103448200538037,
+     "leakage_norm_upper": 1.7876663773154739e-25
+    },
+    "competitor": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 1.148432417105367e-25,
+     "relative_ratio_reported": 2.0785127496021715e-23,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.005525260385929012,
+     "r_upper": 0.005526694842962643,
+     "leakage_norm_upper": 1.1484324157025266e-25
+    }
+   }
+  },
+  {
+   "g2": 0.002,
+   "Mq": 10,
+   "verdict": "PASS",
+   "states": {
+    "helike_plus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 6.5421340890798506e-24,
+     "relative_ratio_reported": 6.534833840496625e-21,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.0010011171281952733,
+     "r_upper": 0.0010041036182718316,
+     "leakage_norm_upper": 6.542134087631269e-24
+    },
+    "helike_minus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 6.5421340890798506e-24,
+     "relative_ratio_reported": 6.534833840496625e-21,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.0010011171281952733,
+     "r_upper": 0.0010041036182718316,
+     "leakage_norm_upper": 6.542134087631269e-24
+    },
+    "competitor": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 4.448923951263518e-24,
+     "relative_ratio_reported": 1.9868150489654394e-21,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.0022392240039554815,
+     "r_upper": 0.002242838920620332,
+     "leakage_norm_upper": 4.4489239490633966e-24
+    }
+   }
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "verdict": "PASS",
+   "states": {
+    "helike_plus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 2.71342242837076e-07,
+     "relative_ratio_reported": 3.0759663953285555e-05,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.008821365368765235,
+     "r_upper": 0.008821541382187237,
+     "leakage_norm_upper": 2.7134223435236946e-07
+    },
+    "helike_minus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 2.71342242837076e-07,
+     "relative_ratio_reported": 3.0759663953285555e-05,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.008821365368765235,
+     "r_upper": 0.008821541382187237,
+     "leakage_norm_upper": 2.7134223435236946e-07
+    },
+    "competitor": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 1.7203206375641014e-07,
+     "relative_ratio_reported": 9.72125412592311e-06,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.017696487586864887,
+     "r_upper": 0.017696722938793544,
+     "leakage_norm_upper": 1.7203205296815735e-07
+    }
+   }
+  },
+  {
+   "g2": 0.004,
+   "Mq": 10,
+   "verdict": "PASS",
+   "states": {
+    "helike_plus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 5.580721138343108e-06,
+     "relative_ratio_reported": 0.001386664100127753,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.004024565905008964,
+     "r_upper": 0.0040249618460141585,
+     "leakage_norm_upper": 5.580721059074091e-06
+    },
+    "helike_minus": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 5.580721138343108e-06,
+     "relative_ratio_reported": 0.001386664100127753,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.004024565905008964,
+     "r_upper": 0.0040249618460141585,
+     "leakage_norm_upper": 5.580721059074091e-06
+    },
+    "competitor": {
+     "cut_gate": "PASS",
+     "cut_energy_upper": 3.6587595526377953e-06,
+     "relative_ratio_reported": 0.00040774893155810847,
+     "tail_budget_passed": true,
+     "norm_width_budget_passed": true,
+     "state_passed": true,
+     "r_lower": 0.008973069341514945,
+     "r_upper": 0.008973543459424539,
+     "leakage_norm_upper": 3.6587594367995384e-06
+    }
+   }
+  }
+ ]
+}

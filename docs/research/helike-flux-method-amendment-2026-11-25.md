@@ -401,3 +401,19 @@ two radii.
    - OPEN read as PASS.
 
 **Rerun.** The registered grid is then run again on Bee's machine, from a fresh commit, with a new receipt directory.
+
+#### 5.7 control results (check 1)
+
+Commit fa69d91. Report: `research/flux-grid-20261126/gate57-controls/report.json`. s = 1.15, t = 3. Each entry is the
+largest e_cut upper bound over the three gated states, against the budget 3·10⁻⁴. The l/r ratio is reported, not decided on.
+
+| g², Mq | verdict | e_cut (Helike partners / competitor) | l/r reported |
+|---|---|---|---|
+| 0.002, 8 | PASS | 1.8·10⁻²⁵ / 1.1·10⁻²⁵ | 6.4·10⁻²³ |
+| 0.002, 10 | PASS | 6.5·10⁻²⁴ / 4.4·10⁻²⁴ | 6.5·10⁻²¹ |
+| 0.004, 8 | PASS | 2.7·10⁻⁷ / 1.7·10⁻⁷ | 3.1·10⁻⁵ |
+| 0.004, 10 | PASS | 5.58·10⁻⁶ / 3.66·10⁻⁶ | 1.39·10⁻³ (above the old 10⁻³ line) |
+
+The prediction stated in the registration, e_cut ≈ 5.6·10⁻⁶ at g² = 0.004 and Mq = 10, is met: 5.58·10⁻⁶. That point
+is the one §5.6 showed failing the old relative rule, and its cut moves Helike's energy by less than 1/50 of the
+budget. All four controls pass, as expected. The gluing rerun (check 2) follows.

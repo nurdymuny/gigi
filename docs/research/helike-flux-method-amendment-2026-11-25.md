@@ -456,3 +456,14 @@ aside unrecorded, because §5.8 put check 2 after the corrections.
 
 Checks 1 to 4 of §5.7 are complete. The registered grid reruns from c839dab or later into
 `research/flux-grid-20261126-gate57/`.
+
+### 5.9 The stopped c839dab4 run is void; rerun from scratch (26 November)
+
+The run launched from c839dab4 (§5.8) was stopped by Bee before it completed. It had two parts: check 2, the gluing check at the controls, and then the registered grid.
+
+- **Archive.** Its partial output is kept **unread** as `research/flux-grid-20261126-VOID_partial-c839dab4/`. Nobody opened the receipt. It holds:
+  - the partial grid receipt;
+  - the partial gluing check from that run.
+- **Check 2.** It is taken from the committed `research/flux-grid-20261126/gluing-controls-gate57/report.json`.
+- **Rerun.** The registered grid reruns from scratch, from the commit that records this section, into `research/flux-grid-20261126-gate57/`. No rule, threshold or prediction changes.
+

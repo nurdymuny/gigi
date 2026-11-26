@@ -4,6 +4,11 @@
 It is milestone M8 of my note *One note in every room* (`helike-one-note-in-every-room-2026-11-26.md`, §4.7). It tests
 hypothesis H1, carrier persistence, inside the homogeneous reduction and only there.
 
+**Reading the current contract.** The earlier versions remain below as registration history. Amendment 3 governs
+carrier matching, crossing evidence, handover and the coordinate frame; amendment 2 supplies the positive shares and
+the six-level refinement budget. Earlier rules that conflict with these are superseded, not alternative tests. The
+model, grid thresholds and own-block threshold are unchanged. The tests below are requirements, not passing receipts.
+
 **The question.** The grid tells me *where* the competitor's excitation becomes cheaper than Helike's (the switch).
 This experiment asks *why* one shape is cheapest, and *how* the other takes over. It reads each excitation as a slow
 function on the field space weighted by the vacuum, and it measures where that function spends its energy.
@@ -371,6 +376,10 @@ A fourth review confirmed that amendment 2's shares are nonnegative and normalis
 (5, 5, −9) counterexample gives positive shares (½, ½). It found that the switch and handover contract was still loose,
 in two places, and that the frame of the split needed stating. All three points are right.
 
+**Tightened before implementation.** A confident endpoint match is not yet a measured path. I now require the
+matching to survive subdivision before it can supply evidence for a crossing. This changes neither the Hamiltonian
+nor the six-level refinement limit. It closes a way for the reading method to invent the event it is meant to find.
+
 ### A3.1 A changed selection is not a crossing
 
 Amendment 2 counted "a change of the identified level index" as a recorded switch. But an overlap-based selector can
@@ -389,20 +398,46 @@ changes, and nothing crosses.
   - The quadrature seam is order 10 against order 12, within 10⁻⁴.
   - For Helike's two-dimensional subspace, the overlap is the mean of the squared singular values of the 2×2 overlap
     matrix. For the competitor, it is the squared overlap.
-  - At each step, including refined midpoints, the followed carrier moves to the eigen-subspace of its sector with the
-    largest overlap with the previous carrier. The sector is charge ±2 for Helike, and the Q = 0 excitations for the
-    competitor.
-  - If the largest overlap is below 0.5, or the two largest are within 0.1 of each other, the step is refined as in
-    A2.2(b). If that does not resolve it, the step is OPEN.
-- **A verified crossing** within a sector needs spectral and subspace evidence together. It holds at a step (after
-  refinement) when:
-  1. the followed carrier's energy and a neighbouring level of the same sector come within 10⁻⁴ of each other, or
-     their energy order reverses; and
-  2. the followed carrier's lowest-level status changes: it is the sector's lowest level on one side and not on the
-     other.
+  - The largest physical overlap proposes a match; it does not accept one. The sector is charge ±2 for Helike, and
+    the Q = 0 excitations for the competitor. Branches participating in a possible crossing are matched one-to-one:
+    two earlier branches cannot both acquire the same later state.
+  - Every step is checked through its midpoint, even if its endpoint overlap is 1 and J is zero. Compare the direct
+    endpoint match with the match composed through the midpoint. Compare eigen-subspaces, not signs, phases or the
+    ordering of partners within a degenerate pair.
+  - All constituent matches must be unambiguous: the largest overlap is at least 0.5, and it exceeds the second
+    largest by more than 0.1. The direct and composed routes must select the same endpoint subspace. The quadrature
+    seam above must pass on both routes.
+  - If a route is ambiguous or the routes disagree, discard that coarse match and refine its two child steps. A
+    resolved sequence of child matches replaces the discarded match; the coarse assignment never survives as
+    crossing evidence. Midpoint checks consume the same six-level budget as A2.2(b), down to 1/64 of the original
+    grid step. There is no extra unreported refinement. If the required checks cannot resolve within that budget,
+    the step is OPEN.
+  - At a degeneracy, retain the whole degenerate subspace. An independently defined exact symmetry label may
+    distinguish the branches; an arbitrary eigensolver basis may not. If branch identity remains ambiguous, report
+    OPEN rather than manufacturing an exchange by relabelling vectors.
+- **A verified crossing** here means a numerically resolved crossing of the computed Mq = 10 levels, not a theorem
+  about the exact operator. Within a sector it requires all of the following:
+  1. Both participating branches have passed the subdivision-consistency check above. Their labels are fixed by that
+     check, never reassigned by sorting energies at each endpoint.
+  2. Their signed energy separation has opposite, resolved signs on the two sides of a bracket. Each sign must clear
+     both 10⁻⁴ in the solver's energy units and the sum of the two branches' reported numerical energy uncertainties.
+     The method producing those uncertainties must be recorded; a missing estimate is not zero. Missing or
+     unresolved numerical-error information makes the event OPEN. The truncation diagnostics are reported alongside
+     this finite-model event; numerical stability is not renamed a rigorous spectral enclosure.
+  3. The followed carrier changes from the sector's lowest excitation to a higher one, and the other matched branch
+     becomes the lowest. The candidate-level set must resolve those identities; missing levels or ambiguous ties
+     make the event OPEN.
+  Coming within 10⁻⁴ alone is a reason to inspect a possible crossing, never evidence that one happened. A reversal
+  produced by the discarded coarse matching is not an independent spectral observation. A resolved avoided crossing
+  is not a crossing; an unresolved possible crossing is OPEN and cannot authorise HANDS OVER.
 - **The inter-sector switch** is the registered switch bracket, where Δ_C − Δ_H changes sign with both channels
   identified. It is verified by the spectrum by definition. It is reported as **the gap handing over** from one channel
   to the other. It changes neither channel's own carrier, and it grants no HANDS OVER to either.
+
+The receipt retains the sampled positions, overlap matrices, direct and composed assignments, rejected coarse
+matches, signed energy differences with their uncertainties, bracket and refinement depth. This is resolution at a
+declared sampling scale. No finite midpoint test rules out every arbitrarily narrow unsampled excursion, and I do not
+call it a proof of continuity or of an exact degeneracy.
 
 ### A3.2 A handover is remembered
 
@@ -411,14 +446,15 @@ switch between the first two points, would read HANDS OVER at 0.4, then DISSOLVE
 
 **Correction: each channel is a small state machine along increasing s.**
 - **It starts in HELD.** The followed carrier is the channel's identified level at the first point, and it is the
-  sector's lowest level.
-- **In HELD:**
-  - If the own-block share of the followed carrier is ≥ 0.5, the channel stays HELD.
-  - If the share is < 0.5 with no verified crossing at this step, the channel goes to **DISSOLVED**. That is final for
-    the case.
-  - At a verified crossing, the channel goes to **HANDED** (handed over). From then on, the channel's carrier is the
-    sector's new lowest level, followed by physical overlap from the crossing on. The former carrier's shares are still
-    reported, but they decide nothing more.
+  sector's lowest level. If that starting identity is not resolved, the case is OPEN; it is not assumed.
+  Apply the own-share rule at the first point too, with no preceding crossing.
+- **In HELD, after all required point and step checks resolve, use this priority:**
+  - At a verified crossing, the channel goes to **HANDED** (handed over), regardless of the former carrier's share.
+    From then on, the channel's carrier is the sector's new lowest level, followed by physical overlap from the
+    crossing on. The former carrier's shares are still reported, but they decide nothing more.
+  - Otherwise, if the own-block share of the followed carrier is ≥ 0.5, the channel stays HELD.
+  - Otherwise the share is < 0.5 with no verified crossing, and the channel goes to **DISSOLVED**. That is final for
+    the case. A still-unresolved possible crossing gives OPEN before this rule is applied, not DISSOLVED.
 - **In HANDED:** the state is kept for the rest of the case. A later fall in either carrier's own-block share cannot
   turn it into DISSOLVED. The new carrier's dominant block, and its shares, are reported at every later point.
 - **OPEN** at any OPEN point or step stops the machine. The case verdict is then OPEN.
@@ -431,6 +467,10 @@ switch between the first two points, would read HANDS OVER at 0.4, then DISSOLVE
 **selection_changed** points are listed beside the verdict. A selection_changed point where the followed carrier
 stays HELD means the grid's selector and the physical carrier disagree there. That is a finding about the selector,
 and it is reported as such.
+
+HANDS OVER records that a resolved transfer occurred and was followed. It is not a claim that the successor keeps
+the original carrier's defining geometry forever. Its later geometry is evidence I retain, not a prediction this
+absorbing verdict tests. OPEN takes precedence over every case verdict if a required check remains unresolved.
 
 ### A3.3 The frame of the split
 
@@ -448,22 +488,47 @@ therefore fixed explicitly.
 
 **Added tests:**
 - **The reviewer's constant-spectrum counterexample.** Two levels stay fixed at 1 and 2 while their eigenvectors
-  rotate by 90° across the sweep. The selector's index changes, and the step must be flagged selection_changed. There
-  is no verified crossing. The followed carrier stays at energy 1, and the verdict follows its own-block share.
+  rotate by 90° inside one original grid step: H(s) = R(πs/2) diag(1, 2) R(πs/2)ᵀ, 0 ≤ s ≤ 1. Start with only
+  the two endpoints. Their overlap favours the wrong branch with weight 1, so the midpoint check must run even
+  though the endpoint match looks certain. Refinement must recover the energy-1 branch. The selector's index changes,
+  but no crossing is verified. For the verdict part of this fixture, supply the own-block share cos²(πs/2): it reaches
+  zero, so the expected verdict is DISSOLVES, not HANDS OVER. This share is planted for the verdict test, not inferred
+  as a Dirichlet decomposition of the 2×2 Hamiltonian. The energy-share kernel has its separate exact tests.
+- **Unresolved matching.** Supply ambiguous overlaps at every permitted refinement level. The budget is exhausted
+  at level six and the verdict is OPEN, even if a coarse energy ordering appears to reverse.
 - **The three-point handover.** Shares of 0.8, 0.4 and 0.3, with a verified crossing between the first two points, must
   give HANDS OVER, never DISSOLVES.
 - **The same shares without the crossing** must give DISSOLVES at the second point.
-- **A true intra-sector crossing:** a symmetry-protected exchange in the sector, with energies meeting. It must be
-  verified as a crossing.
-- **An avoided crossing with a gap of 10⁻²:** the energies never meet. It must not be verified as a crossing, and the
-  carrier must be followed through it by overlap.
+- **A true intra-sector crossing:** H(s) = diag(2 + s, 2 − s), −1 ≤ s ≤ 1, with fixed, independently supplied
+  symmetry labels distinguishing its two branches within the sector. The symmetry resolves the central degeneracy;
+  the branch energies reverse order and the lowest state changes. It must be verified as a crossing. A fixture with
+  the former carrier's share still above 0.5 must also enter HANDED, checking the state-machine priority.
+- **A resolved avoided crossing with a gap of 10⁻²:** H(s) = [[2 + s, ε], [ε, 2 − s]], ε = 0.005, on the original
+  step −0.1 ≤ s ≤ 0.1. The energies never meet. The registered refinement must resolve the lower branch without
+  verifying a crossing. Its narrower parameter interval is part of this synthetic fixture, not a changed grid step.
+- **A sub-tolerance avoided crossing:** H(s) = [[2 + s, ε], [ε, 2 − s]], ε = 5·10⁻⁶, on the original step
+  −1 ≤ s ≤ 1. The exact minimum separation is 10⁻⁵, below the inspection tolerance but strictly positive. With the
+  registered ambiguity rule and six-level budget, tracking through its central rotation remains unresolved: OPEN,
+  never a verified crossing or HANDS OVER. This is a separate fixture from the resolved avoided crossing above.
+- **Unresolved energy ordering.** Matched branches appear to exchange order, but the numerical uncertainty overlaps
+  zero at a bracket endpoint. The crossing status and case verdict must be OPEN, not HANDS OVER.
 - **Frame invariance:** the shares are unchanged under a random block-orthogonal change of z. A non-block-diagonal G(0)
   is refused.
 
 **Added mutants, which must be caught:**
 - selection_changed counted as a switch;
+- the mandatory midpoint skipped when the endpoint overlap is high;
+- a rejected coarse match retained when computing the energy-order reversal;
+- two earlier branches assigned to the same later state;
+- closeness within 10⁻⁴ used as sufficient crossing evidence;
+- an unresolved matching, degeneracy or energy sign converted into a verified crossing;
 - the crossing verified by the energy condition alone;
 - the crossing verified by the subspace condition alone;
 - the handover state forgotten, with the old "since the previous point" rule;
+- the own-share rule applied before a resolved crossing, so a share above 0.5 hides a handover;
 - the inter-sector switch granting HANDS OVER;
 - the frame normalisation G(0)^{-1/2} skipped.
+
+These fixtures must first fail against the relevant removed mechanism, then pass with it restored. No M8 control
+value is released as a result until those tests and mutants have receipts. This amendment registers the checks; it
+does not report them as already run.

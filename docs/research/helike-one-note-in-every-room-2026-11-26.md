@@ -35,6 +35,11 @@ and a falsifier. *Tightened after a third review:*
 - The U(1) controls now declare the scale held fixed, and gap survival is separated from survival of the carrier's
   properties.
 
+*Tightened before implementation:*
+- A crossing needs a subdivision-consistent carrier path, not just a confident match between endpoints.
+- String tension is a ruler only where it is nonzero. The four-dimensional U(1) Coulomb control has its own
+  masslessness test; I do not divide by a vanished ruler.
+
 ---
 
 ## 1. The problem, as it is actually posed
@@ -488,21 +493,33 @@ something different.
 
 First, a distinction the controls require. "Surviving" has to say **which physical scale is held fixed** as the cutoff
 is removed. And **gap survival** and **survival of the starting carrier's properties** are separate predictions:
-either can hold without the other. In all three theories below, the scale held fixed is the string tension √σ, and
-the gap is read as m/√σ.
-- **Four-dimensional compact U(1).** It has a weak-coupling phase with a massless photon. There the gap is lost, even
-  in lattice units, and the diagnostic must say so at the transition.
-- **Three-dimensional compact U(1): the subtle control.** Polyakov showed that every finite lattice is gapped and
-  confining. But m and √σ do not scale together. In the standard continuum limit, m/√σ → 0 (Athenodorou, Bonati and
-  Soler Calero, arXiv:2608.27976, 2026). Hold the string tension fixed and the gap goes to zero; hold the gap fixed
-  and the string tension diverges. So gapped at every cutoff is not inheritance in the field's scale. A diagnostic
-  that reads "positive at every finite lattice" as "kept" fails this control.
+either can hold without the other. For the confining SU(2) and three-dimensional U(1) comparisons, the reference
+energy scale is √σ, where σ is the nonzero string tension, and the gap is read as m/√σ. The continuum comparison
+holds that string-tension scale fixed. It is not a usable ruler in a phase where σ vanishes.
+- **Four-dimensional compact U(1).** Its weak-coupling Coulomb phase has a massless photon and zero asymptotic
+  confining string tension. I therefore report m/√σ as **not applicable**, with the reason σ = 0, not as zero or
+  infinity. The control instead follows the photon channel at fixed bare coupling in the Coulomb phase while the
+  spatial volume grows. Nonzero momenta approach zero with increasing box size. Their energies test the low-momentum
+  dispersion E(p)² = mγ² + c²|p|², with lattice corrections and finite-volume effects accounted for, rather than
+  assuming a zero energy on one finite box. The required outcome is masslessness in the infinite-volume limit;
+  phase identification and the loss of confining string tension are reported separately. For the potential and its
+  finite-size corrections, see Cella, Heller, Mitrjushkin and Viceré, *The Coulomb law in the pure gauge U(1) theory on
+  a lattice*, [arXiv:hep-lat/9704012](https://arxiv.org/abs/hep-lat/9704012).
+- **Three-dimensional compact U(1): the subtle control.** The Polyakov mechanism gives a gap and confinement at
+  finite lattice coupling; the statement is not merely that a finite box has discrete levels. But m and √σ do not
+  scale together. In the standard continuum limit, m/√σ → 0 (Athenodorou, Bonati and Soler Calero,
+  [arXiv:2608.27976](https://arxiv.org/abs/2608.27976), 2026). Hold the string tension fixed and the gap goes to zero;
+  hold the gap fixed and the string tension diverges. So gapped at every cutoff is not inheritance in the field's
+  scale. A diagnostic that reads "positive at every cutoff" as "kept" fails this control.
 - **SU(2) in four dimensions.** Lattice studies find m/√σ finite in the continuum limit. That is the gap's survival
   in the field's scale. Whether the starting carrier's properties survive with it is the separate question M9 asks.
 
 A diagnostic that calls SU(2)'s note inherited must also report four-dimensional U(1)'s gap as lost, and
 three-dimensional U(1)'s gap as lost in the string-tension scale. Otherwise it measures nothing. The carrier's
-properties are reported separately in all three.
+properties are reported separately in all three. These are distinct control protocols, not three curves forced onto
+one ruler. Before M9 runs, I will register the actions, couplings, volumes, momentum channels, fit windows,
+discretization and uncertainty checks, and numerical acceptance criteria. A zero-mass fit inside an unresolved
+uncertainty is OPEN, not evidence of masslessness. No U(1) control result is claimed here.
 
 ## 5. What a proof requires, and my answer to each part
 
@@ -544,18 +561,29 @@ properties are reported separately in all three.
    - *Fails if* that share falls below one half while the carrier is still the channel's lowest level, and no verified
      level crossing has handed the channel to another state.
    - A change in which level an overlap selector picks is not a crossing.
+   - Even a confident endpoint match must agree with tracking through intermediate points after refinement. A false
+     exchange introduced by a coarse match cannot verify itself through its own reversed energy labels. Unresolved
+     matching or energy ordering gives OPEN, not a handover.
    - Once a verified crossing hands the channel over, the new carrier is followed from then on.
-   - A smooth deformation is tracking, not failure. Continuity only describes how the carrier changes.
+   - HANDS OVER records that transfer; it does not test indefinite retention of the original geometry by its successor.
+   - Smoothness alone decides neither persistence nor failure. The own-block share decides the geometric prediction;
+     continuity describes how it changes. The thresholds and model are unchanged.
    Registered: `helike-M8-weighted-geometry-registration-2026-11-26.md`.
 9. **M9. The inherited note (§4.9), proposed.** On the SU(2) lattice (Halcyon), follow the lowest levels from strong
    coupling, where they are fixed by the Casimirs and the loop lengths, toward weak coupling.
    - Measure the starting carrier's properties along the way: representation content, loop extent and Wilson-loop
      overlap.
    - Check them as the lattice spacing, the volume and the representation cutoff change.
-   - Run the same diagnostic on compact U(1), with the string tension held fixed. In four dimensions, it must show the
-     gap lost at the transition. In three dimensions, it must show the gap lost in the string-tension scale
-     (m/√σ → 0), even though every finite lattice is gapped. The carrier's properties are reported as a separate
-     prediction in each.
+   - In three-dimensional compact U(1), hold the string-tension scale fixed and require m/√σ → 0 under cutoff
+     removal, despite a positive gap at each finite coupling.
+   - In four-dimensional compact U(1), identify the Coulomb phase and test masslessness through photon dispersion
+     and increasing volume at fixed bare coupling. Its vanishing string tension makes m/√σ not applicable there.
+     Do not demand an exactly zero excitation energy on a finite box.
+   - Report the carrier's properties separately from gap survival in every theory. Register the control-specific
+     acceptance criteria before running; the two U(1) controls do not use a common nonzero string-tension scale.
+   - The control tests must reject division by zero string tension, a finite-box spacing called a mass, a positive
+     finite-cutoff gap called continuum survival, and a carrier overlap used in place of the masslessness test. Each
+     rejection needs its own planted fixture and mechanism-removal check.
 
    *Fails if* the starting carrier's properties are lost at weak coupling with no identifiable switch, or if the
    diagnostic cannot tell four-dimensional U(1) from SU(2). A clean handover to another loop or representation does

@@ -35,6 +35,9 @@ and a falsifier. *Tightened after a third review:*
 - The U(1) controls now declare the scale held fixed, and gap survival is separated from survival of the carrier's
   properties.
 
+*Added after the M8 design work:* §4.8 now says how I work, seeing and then translating, with Thurston's framing, and
+where the translation corrected the vision.
+
 *Tightened before implementation:*
 - A crossing needs a subdivision-consistent carrier path, not just a confident match between endpoints.
 - String tension is a ruler only where it is nonzero. The four-dimensional U(1) Coulomb control has its own
@@ -412,8 +415,6 @@ version of this bound. T5 is deferred, and has not been implemented or computed.
 
 ### 4.8 The method
 
-
-
 Geometric visualisation chooses the object: the stretched sphere, the twist, the fold, the ray to the wall. Rigorous
 enclosures settle each claim: interval and ball arithmetic, branch and bound, Lehmann–Temple bounds. Registration
 before computation keeps the readings honest: stated tolerances, refusals as results, mutants that must be caught,
@@ -421,6 +422,32 @@ and seams varied on purpose.
 
 I do not think the method replaces analysis. I think it chooses what the analysis should be about, and it does not
 let me fool myself on the way.
+
+**Seeing, then translating.** My work does not start from the accumulated facts of the field. It starts from seeing
+how something works, as a mechanism. The work is then translation: finding the terms in which what I see satisfies
+the contract that a proof has to meet. Several of the ideas in this note arrived that way, and each turned out to
+point at structure that others had already given a language:
+- "the gluing must not become part of the reading" is gauge, chart and scheme invariance;
+- "the gap is the corridor" is the spectral decay of correlations;
+- "it goes back to parallel transport" is holonomy as the field strength;
+- "the note is inherited" is the strong-coupling Casimir gap.
+
+This is an old way of working. Thurston argued that mathematics is about human understanding, and that a formal proof
+is the protocol that lets understanding be checked and passed on, not the understanding itself (W. P. Thurston, "On
+proof and progress in mathematics", Bull. Amer. Math. Soc. 30 (1994) 161–177). Poincaré and Hadamard described seeing
+a structure whole first and verifying it afterwards (J. Hadamard, *The Psychology of Invention in the Mathematical
+Field*, Princeton, 1945).
+
+**But translation is not neutral. It is where the vision gets corrected, not only expressed.** In this note alone:
+- "the gap prices every change" became "the gap prices the spectrum, so correlations decay";
+- "the drum is bounded" became "the drum is unbounded, and the vacuum's weight does the work";
+- "Δ·R grows if and only if the gap survives" became a one-way test;
+- "octave and tone form a double cover" became a scale–shape split, until a two-to-one map is specified.
+
+In each case the mechanism survived, and the first statement of it was wrong in a detail that would have sunk a
+proof. What I see is a blueprint, not a finished solution. That is why I register before I run, let reviewers attack
+the statement, and keep conjectures labelled. The seeing is fast and mostly right. The contract is strict, and its
+details are where a correct vision can still fail.
 
 ### 4.9 The inherited note: the gap descends from the intrinsic geometry of one turn
 

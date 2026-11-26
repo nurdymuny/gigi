@@ -170,3 +170,20 @@ it is registered in detail and run.
 - the bare reference amplitudes;
 - the monomial overlaps with all 12 Ritz levels, their Gram matrix and their G components;
 - everything at both the resolved fine order and the coarse order (for the T4 quadrature seam).
+
+## Amendment 2 (before any value; found by the synthetic tests): T1 made decidable, tone over distinct energies
+
+**Why.** As registered, the T1 corridor was the lowest level reached by *any* source, and a source with zero weight
+there was a "selection rule". Under that rule SPLIT can never occur. The registration also asked for "the symmetry that
+zeroes it", which the code cannot check by itself. The synthetic tests exposed this before any control was run.
+
+**T1, amended.**
+- The corridor of a sector is the plateau of its **registered** source (H or C).
+- "Reaching" the corridor means weight ≥ 10⁻⁶ on its degenerate cluster: all levels within 10⁻⁶ in energy of the
+  corridor level. That way, Helike's two degenerate partners count together.
+- Verdict: CORRIDOR if every other source in the sector reaches the corridor. Otherwise SPLIT. The sources that miss it
+  are listed by name, and a symmetry that zeroes them may be named by hand in the report. Naming a symmetry never
+  turns a SPLIT into a CORRIDOR.
+
+**T2, amended.** The tone runs over the first three **distinct** weighted energies, so a degenerate pair counts once.
+Each ratio's weight fraction sums the weights in its cluster.

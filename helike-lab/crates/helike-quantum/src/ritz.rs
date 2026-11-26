@@ -266,6 +266,107 @@ pub fn dressed_overlap_weight(terms: &(Vec<f64>, [[f64; 6]; 6], [f64; 6], Vec<f6
     if val.is_finite() { Some(val) } else { None }
 }
 
+/// Mode roles from the frequencies (heat-signal amendment 1): Helike's doublet (at ω_H), the competitor (the lowest
+/// isolated mode), the other doublet ("stiff", charge 1) and the remaining singlet ("x", charge 0).
+/// Returns [h1, h2, c, x, s1, s2].
+pub fn mode_roles(w: &[f64; 6], wh: f64) -> Result<[usize; 6], String> {
+    let hel: Vec<usize> = (0..6).filter(|&j| (w[j] - wh).abs() < 1e-6).collect();
+    let deg = |j: usize| (0..6).filter(|&m| (w[m] - w[j]).abs() < 1e-6).count();
+    let singles: Vec<usize> = (0..6).filter(|&j| !hel.contains(&j) && deg(j) == 1).collect();
+    let pair: Vec<usize> = (0..6).filter(|&j| !hel.contains(&j) && deg(j) == 2).collect();
+    if hel.len() != 2 || singles.len() != 2 || pair.len() != 2 {
+        return Err("mode roles need one Helike doublet, one other doublet and two singlets".into());
+    }
+    let (c, x) = if w[singles[0]] <= w[singles[1]] { (singles[0], singles[1]) } else { (singles[1], singles[0]) };
+    Ok([hel[0], hel[1], c, x, pair[0], pair[1]])
+}
+
+/// Monomial-source overlaps (heat-signal registration, amendment 1): for monomials y^α (exponents over the six
+/// linear-Gram harmonic coordinates) times the ground state G = vectors[0], accumulated on the Gauss–Hermite grid:
+///   d[a][c] = <y^α_a G | psi_c>,  n[a][b] = <y^α_a G | y^α_b G>,  p[a] = <G | y^α_a G>,  s[c] = <G | psi_c>.
+/// Same inner product as `dressed_overlap_terms` (sum over nodes of weight * values * values).
+pub fn source_overlap_terms(op: &ConeOperator, vectors: &[Vec<f64>], order: usize, monos: &[[u8; 6]])
+    -> Result<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>), String> {
+    if !(2..=28).contains(&order) || vectors.is_empty() || vectors.len() > 12 || monos.is_empty() {
+        return Err("overlap resource contract requires order 2..28, 1..12 vectors and some monomials".into());
+    }
+    let k = vectors.len();
+    let nm = monos.len();
+    let grid = SlabGrid::new(&op.basis, op.mq + 1, order);
+    let ch = &op.chart;
+    let inv_m = inv6(&ch.m);
+    let x0 = gram_entries(&ch.g0);
+    let w = op.bg.w;
+    let zq: Vec<Vec<f64>> = (0..6).map(|a| grid.nodes.iter().map(|x| x / w[a].sqrt()).collect()).collect();
+    let slabs: Vec<(usize, usize)> = (0..order).flat_map(|a| (0..order).map(move |b| (a, b))).collect();
+    let len = nm * k + nm * nm + nm + k;
+    let acc: Vec<f64> = slabs
+        .par_iter()
+        .map(|&(q0, q1)| {
+            let mut sc = grid.scratch(k);
+            let refs: Vec<&[f64]> = vectors.iter().map(|v| &v[..]).collect();
+            let mut out = vec![0.0; len];
+            let mut mv = vec![0.0; nm];
+            grid.process(&refs, q0, q1, &mut sc, None, |q2, vals| {
+                for p in 0..vals.len() / k {
+                    let [q3, q4, q5] = grid.decode3(p);
+                    let qs = [q0, q1, q2, q3, q4, q5];
+                    let mut z = [0.0; 6];
+                    let mut wt = 1.0;
+                    for a in 0..6 {
+                        z[a] = zq[a][qs[a]];
+                        wt *= grid.weights[qs[a]];
+                    }
+                    let u = ch.coordinates(&z);
+                    let pt = ch.point_from_u(&u);
+                    let mut y = [0.0; 6];
+                    for i in 0..6 {
+                        for j in 0..6 {
+                            y[i] += inv_m[i][j] * (pt.x[j] - x0[j]);
+                        }
+                    }
+                    let g = vals[p * k];
+                    for (a, e) in monos.iter().enumerate() {
+                        let mut m = 1.0;
+                        for i in 0..6 {
+                            for _ in 0..e[i] {
+                                m *= y[i];
+                            }
+                        }
+                        mv[a] = wt * m * g;
+                    }
+                    for a in 0..nm {
+                        for c in 0..k {
+                            out[a * k + c] += mv[a] * vals[p * k + c];
+                        }
+                        let ga = mv[a] * g;
+                        out[nm * k + nm * nm + a] += ga;
+                        if mv[a] != 0.0 {
+                            for b in 0..nm {
+                                out[nm * k + a * nm + b] += mv[a] * mv[b] / wt;
+                            }
+                        }
+                    }
+                    for c in 0..k {
+                        out[nm * k + nm * nm + nm + c] += wt * g * vals[p * k + c];
+                    }
+                }
+            });
+            out
+        })
+        .reduce(|| vec![0.0; len], |mut a, b| {
+            for (x, y) in a.iter_mut().zip(&b) {
+                *x += y;
+            }
+            a
+        });
+    let d = acc[..nm * k].to_vec();
+    let n = acc[nm * k..nm * k + nm * nm].to_vec();
+    let pg = acc[nm * k + nm * nm..nm * k + nm * nm + nm].to_vec();
+    let s = acc[nm * k + nm * nm + nm..].to_vec();
+    Ok((d, n, pg, s))
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct Channel {
     pub gap: f64,

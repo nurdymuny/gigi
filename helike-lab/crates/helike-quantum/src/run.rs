@@ -195,3 +195,77 @@ pub fn convergence(ladder: [usize; 2], extra: usize, set: &SolveSettings) -> Con
         changes,
     }
 }
+
+
+/// Heat-signal monomials (registration amendment 1), as exponents over the roles [h1, h2, c, x, s1, s2].
+pub const HEAT_MONOMIALS: [[u8; 6]; 22] = [
+    [1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0], [0, 0, 0, 1, 0, 0],
+    [1, 0, 1, 0, 0, 0], [0, 1, 1, 0, 0, 0], [1, 0, 0, 1, 0, 0], [0, 1, 0, 1, 0, 0],
+    [0, 0, 0, 0, 2, 0], [0, 0, 0, 0, 0, 2], [0, 0, 0, 0, 1, 1], [2, 0, 0, 0, 0, 0], [0, 2, 0, 0, 0, 0],
+    [0, 0, 2, 0, 0, 0], [0, 0, 0, 2, 0, 0], [0, 0, 1, 1, 0, 0],
+    [3, 0, 0, 0, 0, 0], [1, 2, 0, 0, 0, 0], [2, 1, 0, 0, 0, 0], [0, 3, 0, 0, 0, 0], [2, 0, 1, 0, 0, 0], [0, 2, 1, 0, 0, 0],
+];
+
+#[derive(Clone, Debug, Serialize)]
+pub struct HeatOrder {
+    pub order: usize,
+    /// 7 x k reference amplitudes (rows 0..5 the bare single quanta per mode index, row 6 the vacuum)
+    pub reference_amplitudes: Vec<f64>,
+    /// nm x k monomial-source overlaps, nm x nm Gram, nm G-components, k <G|psi_c>
+    pub d: Vec<f64>,
+    pub n: Vec<f64>,
+    pub p: Vec<f64>,
+    pub s: Vec<f64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct HeatResult {
+    pub s: f64,
+    pub t: f64,
+    pub g2: f64,
+    #[serde(rename = "Mq")]
+    pub mq: usize,
+    pub frequencies: [f64; 6],
+    /// mode indices of [h1, h2, c, x, s1, s2]
+    pub roles: [usize; 6],
+    /// monomial exponents over the roles (registration order)
+    pub monomials: Vec<[u8; 6]>,
+    pub levels: Vec<f64>,
+    pub identification: HelikeCompetitor,
+    pub fine: HeatOrder,
+    pub coarse: HeatOrder,
+    pub seconds: f64,
+}
+
+/// One heat-signal point: solve, identify at the resolved orders, then the monomial-source overlaps and the bare
+/// reference amplitudes at both resolved orders (fine for the signal, coarse for the T4 quadrature seam).
+pub fn heat_point(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> Result<HeatResult, String> {
+    let t0 = Instant::now();
+    let bg = Background::maurer_cartan(s, t, g2.sqrt())?;
+    let op = ConeOperator::exact(bg.clone(), mq, Mutation::None)?;
+    let eigs = ritz::spectrum(&op, set);
+    let identification = ritz::helike_and_competitor(&op, &eigs, ritz::helike_frequency(s, t))?;
+    let roles = ritz::mode_roles(&bg.w, ritz::helike_frequency(s, t))?;
+    // exponents over mode indices, from exponents over roles
+    let monos: Vec<[u8; 6]> = HEAT_MONOMIALS
+        .iter()
+        .map(|e| {
+            let mut m = [0u8; 6];
+            for (r, &mode) in roles.iter().enumerate() {
+                m[mode] += e[r];
+            }
+            m
+        })
+        .collect();
+    let one = |order: usize| -> Result<HeatOrder, String> {
+        let reference_amplitudes = ritz::reference_amplitudes_with_vacuum(&op, &eigs.vectors, order)?;
+        let (d, n, p, sv) = ritz::source_overlap_terms(&op, &eigs.vectors, order, &monos)?;
+        Ok(HeatOrder { order, reference_amplitudes, d, n, p, s: sv })
+    };
+    let fine = one(identification.overlap_orders[1])?;
+    let coarse = one(identification.overlap_orders[0])?;
+    Ok(HeatResult {
+        s, t, g2, mq, frequencies: bg.w, roles, monomials: HEAT_MONOMIALS.to_vec(), levels: eigs.values.clone(),
+        identification, fine, coarse, seconds: t0.elapsed().as_secs_f64(),
+    })
+}

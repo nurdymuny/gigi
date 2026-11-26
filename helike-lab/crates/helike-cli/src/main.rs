@@ -152,6 +152,18 @@ enum Cmd {
     /// only possible with `--assume S_C`, and is then conditional on (A) and S_C.
     /// Solve one point with exact moments and export its four quasimode trial states (ground, Helike pair with its
     /// chiral mixing, competitor) as bit patterns, for the per-point domain-validity gate. Writes `--states-out`.
+    /// Heat-signal data at one point (registration helike-heat-signal-registration-2026-11-26.md, amendment 1):
+    /// levels, identification, bare reference amplitudes and monomial-source overlaps at both resolved orders.
+    ConeHeat {
+        #[arg(long)]
+        s: f64,
+        #[arg(long)]
+        t: f64,
+        #[arg(long)]
+        g2: f64,
+        #[arg(long)]
+        mq: usize,
+    },
     ConeExport {
         #[arg(long)]
         s: f64,
@@ -295,6 +307,12 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                     "arithmetic": "binary64 intervals, round-to-nearest then one ulp outward; exp by Cody-Waite reduction and Taylor with explicit remainder",
                     "scope": "uncut residual of each saved trial state under the registered operator; no cutoff leakage, no gate, no spectral statement"}),
              json!({"controls": rows}))
+        }
+        Cmd::ConeHeat { s, t, g2, mq } => {
+            let r = run::heat_point(*s, *t, *g2, *mq, &SolveSettings::default())?;
+            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "solver": SolveSettings::default(),
+                    "registration": "docs/research/helike-heat-signal-registration-2026-11-26.md"}),
+             serde_json::to_value(&r).unwrap())
         }
         Cmd::ConeExport { s, t, g2, mq, states_out } => {
             let e = helike_quantum::export::export_point(*s, *t, *g2, *mq, &SolveSettings::default())?;

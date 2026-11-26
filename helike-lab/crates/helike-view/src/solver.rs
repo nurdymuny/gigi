@@ -116,6 +116,10 @@ pub fn spawn(repaint: impl Fn() + Send + 'static) -> SolverHandle {
             }
             *seq += 1;
             let _ = tx_frame.send(Frame { scene: "controls-history".into(), seq: *seq, status: Status::Computed, params: serde_json::Value::Null, data: serde_json::to_value(&history).unwrap() });
+            if let Some(g) = std::fs::read_to_string(paths.geometry()).ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()) {
+                *seq += 1;
+                let _ = tx_frame.send(Frame { scene: "geometry".into(), seq: *seq, status: Status::Computed, params: serde_json::Value::Null, data: g });
+            }
             repaint();
         };
         loop {

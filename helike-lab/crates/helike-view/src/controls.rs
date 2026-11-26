@@ -274,12 +274,16 @@ impl Paths {
     pub fn r2(&self) -> PathBuf {
         self.root.join("research/sc-r2-20261126")
     }
+    /// The geometry export of the control runs (scripts/export_helike_geometry.py).
+    pub fn geometry(&self) -> PathBuf {
+        self.root.join("research/geometry-controls-20261126/geometry.json")
+    }
     pub fn history(&self) -> PathBuf {
         self.root.join("research/controls-history.json")
     }
     /// Every file the scene reads; their sizes and mtimes decide when to rescan.
     pub fn watched(&self) -> Vec<PathBuf> {
-        let mut v = vec![self.history()];
+        let mut v = vec![self.history(), self.geometry()];
         for d in [self.domain(), self.gluing(), self.heat()] {
             v.extend([
                 d.join("report.json"),

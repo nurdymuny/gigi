@@ -6,6 +6,7 @@ mod controls;
 mod solver;
 mod theme;
 mod view_controls;
+mod view_geometry;
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Vec2};
 use helike_core::helike::{berger_xy, Member, Spectrum};
@@ -21,6 +22,7 @@ enum Scene {
     Sphere,
     Edge,
     Controls,
+    Geometry,
 }
 
 struct App {
@@ -50,6 +52,7 @@ struct App {
     edge_tex: Option<egui::TextureHandle>,
     edge_tex_seq: u64,
     controls: view_controls::ControlsView,
+    geometry: view_geometry::GeometryView,
     dirty_ladder: bool,
     dirty_sphere: bool,
     dirty_edge: bool,
@@ -67,6 +70,7 @@ fn parse_shot() -> (Scene, Option<std::path::PathBuf>) {
                 "sphere" => Scene::Sphere,
                 "edge" => Scene::Edge,
                 "controls" | "controls-lower" => Scene::Controls,
+                "geometry" => Scene::Geometry,
                 _ => Scene::Ladder,
             };
             (scene, Some(a[k + 2].clone().into()))
@@ -115,6 +119,7 @@ impl App {
             probe: None,
             edge_tex: None,
             edge_tex_seq: 0,
+            geometry: view_geometry::GeometryView::new(),
             controls: {
                 let mut v = view_controls::ControlsView::new(root);
                 v.start_at_bottom = std::env::args().any(|a| a == "controls-lower");
@@ -134,6 +139,7 @@ impl App {
                 "edge" => self.edge = serde_json::from_value(f.data.clone()).ok().map(|d| (f, d)),
                 "probe" => self.probe = serde_json::from_value(f.data.clone()).ok().map(|d| (f, d)),
                 "controls" | "controls-history" => self.controls.accept(f),
+                "geometry" => self.geometry.accept(f),
                 _ => {}
             }
         }
@@ -188,6 +194,7 @@ impl eframe::App for App {
                     (Scene::Sphere, "Helike on the three-sphere"),
                     (Scene::Edge, "The edge forming"),
                     (Scene::Controls, "Controls"),
+                    (Scene::Geometry, "Geometry of the controls"),
                 ] {
                     if scene_tab(ui, self.scene == s, name).clicked() {
                         self.scene = s;
@@ -206,6 +213,7 @@ impl eframe::App for App {
             Scene::Sphere => self.draw_sphere(ui),
             Scene::Edge => self.draw_edge(ui),
             Scene::Controls => self.controls.ui(ui),
+            Scene::Geometry => self.geometry.ui(ui),
         });
         self.handle_shot(ui.ctx());
     }
@@ -219,6 +227,7 @@ impl App {
             Scene::Sphere => self.sphere.is_some(),
             Scene::Edge => self.edge.as_ref().is_some_and(|(_, d)| d.rows_done == d.ts.len()),
             Scene::Controls => self.controls.ready(),
+            Scene::Geometry => self.geometry.ready(),
         };
         if !ready {
             ctx.request_repaint_after(std::time::Duration::from_millis(100));
@@ -253,6 +262,7 @@ impl App {
     fn controls(&mut self, ui: &mut egui::Ui) {
         match self.scene {
             Scene::Controls => self.controls.side_controls(ui),
+            Scene::Geometry => self.geometry.side_controls(ui),
             Scene::Ladder | Scene::Sphere => {
                 ui.label(theme::eyebrow("The family member"));
                 let mut ch = false;

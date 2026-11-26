@@ -362,3 +362,108 @@ belonged to the withdrawn rule.
 - At the controls, π_H ≥ 0.9 for Helike and π_C ≥ 0.9 for the competitor (replacing σ ≥ 0.9).
 - On the grid, Helike PERSISTS up to the switch, with π_H staying above 0.5. Any transition at the switch is resolved
   under refinement.
+
+---
+
+## Amendment 3 (26 November; before any code and before any value): a fourth review
+
+A fourth review confirmed that amendment 2's shares are nonnegative and normalised. The reviewer checked that the
+(5, 5, −9) counterexample gives positive shares (½, ½). It found that the switch and handover contract was still loose,
+in two places, and that the frame of the split needed stating. All three points are right.
+
+### A3.1 A changed selection is not a crossing
+
+Amendment 2 counted "a change of the identified level index" as a recorded switch. But an overlap-based selector can
+pick a different eigenvector while the energies stay apart. The reviewer's counterexample: two levels stay exactly at
+1 and 2 while their eigenvectors rotate. Their overlaps with a fixed reference trade places, so the selected index
+changes, and nothing crosses.
+
+**Correction.** Two things are kept apart.
+- **selection_changed.** The grid's overlap selector picks a different level index than at the previous point. It is
+  reported, and it is never a switch.
+- **The carrier is followed through the physical Hilbert space, not by a selector.** The configuration space (the cone
+  of 3×3 Gram matrices) and its measure dμ do not depend on s. Only the Hamiltonian does. So states at different
+  points live in one Hilbert space, and their overlap ⟨ψ_a(s_k), ψ_b(s_{k+1})⟩ is well defined.
+  - It is computed by Gauss–Hermite quadrature at the nodes of the later point's chart. The earlier state is evaluated
+    there through the change of chart, using the same machinery as the domain gate's export.
+  - The quadrature seam is order 10 against order 12, within 10⁻⁴.
+  - For Helike's two-dimensional subspace, the overlap is the mean of the squared singular values of the 2×2 overlap
+    matrix. For the competitor, it is the squared overlap.
+  - At each step, including refined midpoints, the followed carrier moves to the eigen-subspace of its sector with the
+    largest overlap with the previous carrier. The sector is charge ±2 for Helike, and the Q = 0 excitations for the
+    competitor.
+  - If the largest overlap is below 0.5, or the two largest are within 0.1 of each other, the step is refined as in
+    A2.2(b). If that does not resolve it, the step is OPEN.
+- **A verified crossing** within a sector needs spectral and subspace evidence together. It holds at a step (after
+  refinement) when:
+  1. the followed carrier's energy and a neighbouring level of the same sector come within 10⁻⁴ of each other, or
+     their energy order reverses; and
+  2. the followed carrier's lowest-level status changes: it is the sector's lowest level on one side and not on the
+     other.
+- **The inter-sector switch** is the registered switch bracket, where Δ_C − Δ_H changes sign with both channels
+  identified. It is verified by the spectrum by definition. It is reported as **the gap handing over** from one channel
+  to the other. It changes neither channel's own carrier, and it grants no HANDS OVER to either.
+
+### A3.2 A handover is remembered
+
+Amendment 2 asked only whether a switch happened "since the previous point". Shares of 0.8, 0.4, 0.3, with a genuine
+switch between the first two points, would read HANDS OVER at 0.4, then DISSOLVES at 0.3.
+
+**Correction: each channel is a small state machine along increasing s.**
+- **It starts in HELD.** The followed carrier is the channel's identified level at the first point, and it is the
+  sector's lowest level.
+- **In HELD:**
+  - If the own-block share of the followed carrier is ≥ 0.5, the channel stays HELD.
+  - If the share is < 0.5 with no verified crossing at this step, the channel goes to **DISSOLVED**. That is final for
+    the case.
+  - At a verified crossing, the channel goes to **HANDED** (handed over). From then on, the channel's carrier is the
+    sector's new lowest level, followed by physical overlap from the crossing on. The former carrier's shares are still
+    reported, but they decide nothing more.
+- **In HANDED:** the state is kept for the rest of the case. A later fall in either carrier's own-block share cannot
+  turn it into DISSOLVED. The new carrier's dominant block, and its shares, are reported at every later point.
+- **OPEN** at any OPEN point or step stops the machine. The case verdict is then OPEN.
+- **Case verdicts:**
+  - **PERSISTS** if the channel ends HELD;
+  - **HANDS OVER** if it ends HANDED;
+  - **DISSOLVES** if it ever reaches DISSOLVED (**M8 fails** for that case);
+  - **OPEN** if the machine stopped.
+
+**selection_changed** points are listed beside the verdict. A selection_changed point where the followed carrier
+stays HELD means the grid's selector and the physical carrier disagree there. That is a finding about the selector,
+and it is reported as such.
+
+### A3.3 The frame of the split
+
+The symmetric-square-root split of A2.1 is canonical within a declared frame. It is invariant under permutations and
+under orthogonal changes inside each block, but **not** under arbitrary rescaling of coordinates. The frame is
+therefore fixed explicitly.
+- At each point, take the solver's chart coordinates z, and the kinetic form G(0) at the background node z = 0.
+- If G(0) is not block-diagonal across H, C, S, R to 10⁻⁸, relative to its norm, the point is OPEN.
+- Otherwise, use the coordinates z̃ = G(0)^{-1/2} z. In these coordinates the kinetic form at the background is the
+  identity. The map is block-diagonal, so the blocks are kept.
+- The shares are computed in z̃. They are unique up to orthogonal changes inside each block, and they are invariant
+  under those.
+
+### A3.4 Tests and mutants, amended
+
+**Added tests:**
+- **The reviewer's constant-spectrum counterexample.** Two levels stay fixed at 1 and 2 while their eigenvectors
+  rotate by 90° across the sweep. The selector's index changes, and the step must be flagged selection_changed. There
+  is no verified crossing. The followed carrier stays at energy 1, and the verdict follows its own-block share.
+- **The three-point handover.** Shares of 0.8, 0.4 and 0.3, with a verified crossing between the first two points, must
+  give HANDS OVER, never DISSOLVES.
+- **The same shares without the crossing** must give DISSOLVES at the second point.
+- **A true intra-sector crossing:** a symmetry-protected exchange in the sector, with energies meeting. It must be
+  verified as a crossing.
+- **An avoided crossing with a gap of 10⁻²:** the energies never meet. It must not be verified as a crossing, and the
+  carrier must be followed through it by overlap.
+- **Frame invariance:** the shares are unchanged under a random block-orthogonal change of z. A non-block-diagonal G(0)
+  is refused.
+
+**Added mutants, which must be caught:**
+- selection_changed counted as a switch;
+- the crossing verified by the energy condition alone;
+- the crossing verified by the subspace condition alone;
+- the handover state forgotten, with the old "since the previous point" rule;
+- the inter-sector switch granting HANDS OVER;
+- the frame normalisation G(0)^{-1/2} skipped.

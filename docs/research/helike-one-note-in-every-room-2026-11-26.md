@@ -30,6 +30,11 @@ and a falsifier. *Tightened after a third review:*
 - M9 now needs a measurable inherited property, plus cutoff checks and a compact-U(1) control;
 - M8's fingerprint and refinement are corrected (amendment 2).
 
+*And a fourth review:*
+- M8's switch and handover contract is made precise (amendment 3).
+- The U(1) controls now declare the scale held fixed, and gap survival is separated from survival of the carrier's
+  properties.
+
 ---
 
 ## 1. The problem, as it is actually posed
@@ -477,11 +482,27 @@ are removed. Candidates:
 - **Loop structure:** the spatial extent of its excess electric energy, against the single plaquette.
 - **Creation:** its overlap with the state the fundamental plaquette Wilson loop creates from the vacuum.
 
-**The control that keeps me honest: compact U(1).** Compact U(1) also has a discrete electric spectrum on each link,
-and its strong-coupling excitations are flux loops too. But in four dimensions it has a weak-coupling phase with a
-massless photon: the starting note is *not* inherited there. In three dimensions, Polyakov showed that compact U(1)
-stays gapped at all couplings. A diagnostic that calls SU(2)'s note inherited must also call four-dimensional U(1)'s
-note lost at its transition. Otherwise it measures nothing.
+**The controls that keep me honest: compact U(1).** Compact U(1) also has a discrete electric spectrum on each link,
+and its strong-coupling excitations are flux loops too. Two of its versions behave differently, and each tests
+something different.
+
+First, a distinction the controls require. "Surviving" has to say **which physical scale is held fixed** as the cutoff
+is removed. And **gap survival** and **survival of the starting carrier's properties** are separate predictions:
+either can hold without the other. In all three theories below, the scale held fixed is the string tension √σ, and
+the gap is read as m/√σ.
+- **Four-dimensional compact U(1).** It has a weak-coupling phase with a massless photon. There the gap is lost, even
+  in lattice units, and the diagnostic must say so at the transition.
+- **Three-dimensional compact U(1): the subtle control.** Polyakov showed that every finite lattice is gapped and
+  confining. But m and √σ do not scale together. In the standard continuum limit, m/√σ → 0 (Athenodorou, Bonati and
+  Soler Calero, arXiv:2608.27976, 2026). Hold the string tension fixed and the gap goes to zero; hold the gap fixed
+  and the string tension diverges. So gapped at every cutoff is not inheritance in the field's scale. A diagnostic
+  that reads "positive at every finite lattice" as "kept" fails this control.
+- **SU(2) in four dimensions.** Lattice studies find m/√σ finite in the continuum limit. That is the gap's survival
+  in the field's scale. Whether the starting carrier's properties survive with it is the separate question M9 asks.
+
+A diagnostic that calls SU(2)'s note inherited must also report four-dimensional U(1)'s gap as lost, and
+three-dimensional U(1)'s gap as lost in the string-tension scale. Otherwise it measures nothing. The carrier's
+properties are reported separately in all three.
 
 ## 5. What a proof requires, and my answer to each part
 
@@ -517,21 +538,24 @@ note lost at its transition. Otherwise it measures nothing.
 7. **M7. The tone (H3, separately).** The ratio vector across the grid. *Fails if* the tone shifts where only the
    octave should move. This refutes H3 only.
 8. **M8. The weighted geometry of the carrier (H1, §4.7).** From the computed ψ₀ and ψ₁, the slow function f₁ = ψ₁/ψ₀.
-   Follow the identified carrier subspace across the s-sweep. Degenerate partners are followed together. Report where
-   its Dirichlet energy lives, and its alignment with Helike's registered structure. *Fails if* the subspace cannot be
-   followed continuously except at a recorded switch, or its alignment collapses with no switch recorded. These are
-   the stated jump and alignment thresholds of amendment 1. A smooth rotation of the carrier is tracking, not failure.
-   Amendment 2 makes the decided quantity a measurable property of the carrier: the share of its energy carried in
-   its own coordinates, which must stay at least one half without a switch. Continuity only describes how the
-   carrier changes.
+   Follow each channel's carrier across the s-sweep by its overlap in the physical Hilbert space, with degenerate
+   partners followed together. The decided quantity is a measurable property of the carrier: its own-block share, the
+   fraction of its excitation energy spent in its own coordinates.
+   - *Fails if* that share falls below one half while the carrier is still the channel's lowest level, and no verified
+     level crossing has handed the channel to another state.
+   - A change in which level an overlap selector picks is not a crossing.
+   - Once a verified crossing hands the channel over, the new carrier is followed from then on.
+   - A smooth deformation is tracking, not failure. Continuity only describes how the carrier changes.
    Registered: `helike-M8-weighted-geometry-registration-2026-11-26.md`.
 9. **M9. The inherited note (§4.9), proposed.** On the SU(2) lattice (Halcyon), follow the lowest levels from strong
    coupling, where they are fixed by the Casimirs and the loop lengths, toward weak coupling.
    - Measure the starting carrier's properties along the way: representation content, loop extent and Wilson-loop
      overlap.
    - Check them as the lattice spacing, the volume and the representation cutoff change.
-   - Run the same diagnostic on compact U(1) in four dimensions, which must show the note lost at its transition, and
-     in three dimensions, which must show it kept.
+   - Run the same diagnostic on compact U(1), with the string tension held fixed. In four dimensions, it must show the
+     gap lost at the transition. In three dimensions, it must show the gap lost in the string-tension scale
+     (m/√σ → 0), even though every finite lattice is gapped. The carrier's properties are reported as a separate
+     prediction in each.
 
    *Fails if* the starting carrier's properties are lost at weak coupling with no identifiable switch, or if the
    diagnostic cannot tell four-dimensional U(1) from SU(2). A clean handover to another loop or representation does

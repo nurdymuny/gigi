@@ -534,3 +534,36 @@ therefore fixed explicitly.
 These fixtures must first fail against the relevant removed mechanism, then pass with it restored. No M8 control
 value is released as a result until those tests and mutants have receipts. This amendment registers the checks; it
 does not report them as already run.
+
+---
+
+## Implementation notes (26 November; written during coding, before any control value was seen)
+
+These record how two registered quantities are realised in code. Neither changes a rule, a threshold or a verdict.
+
+**N1. Q2 compares against the §5.3 dressed overlap, computed with the Gram inverse.**
+- §3's Q2 says the alignment "must equal the grid's dressed weight". Two different quantities carry similar names:
+  - the grid's **dressed weight**, w/Z, which is the bare reference weight divided by the vacuum weight (amendment 5.2);
+  - the **§5.3 dressed overlap**, which is the projection weight of the state on span{y_m G − ⟨G|y_m G⟩G}.
+- Only the second is mathematically the same object as M8's alignment, because ⟨f, ȳ_m⟩_{ψ₀²} = ⟨Ψ, ȳ_m Ψ₀⟩. So Q2's
+  cross-check is against the §5.3 dressed overlap: the solver's `dressed_overlap_weight`, exported per level by
+  `helike cone-levels`, at the resolved fine order. The tolerance is still 10⁻⁶.
+- The alignment is computed as the projection weight vᵀB⁻¹v, with v_m = ⟨f, ȳ_m⟩ and B the Gram matrix of the centred
+  ȳ_m in the ψ₀² inner product, per unit ‖f‖². The solver uses the same construction. When the ȳ_m are orthogonal it
+  equals §3's sum Σ⟨f, ȳ⟩²/(‖f‖²‖ȳ‖²). For Helike's pair, the per-level values are compared level by level, and their
+  mean is reported.
+
+**N2. Sectors come from the charge compression, not from energy clustering.**
+- The trial space splits Helike's exact symmetric pair slightly. At g² = 0.004 and Mq = 8, levels 1 and 2 differ by
+  2.6·10⁻⁶, which is more than an energy tolerance of 10⁻⁶. Clustering by energy would break her pair and label each
+  half charge 0.
+- So `helike cone-levels` exports the full charge compression Im⟨v_a, L v_b⟩ over all twelve levels. A pair is a
+  mutual strongest coupling with |Im⟨v_a, L v_b⟩| > ½, and its |charge| is that coupling, rounded. A level coupled to
+  no partner is charge 0. The diagonal ⟨v_a, L v_a⟩, which is zero for a real vector, is exported as a check.
+- The sectors are then:
+  - Helike's channel: the charge-2 pairs;
+  - the competitor's channel: the charge-0 single levels above the ground state.
+- **A pair's numerical splitting joins its uncertainty.** Each member's recorded uncertainty is its in-space residual
+  ‖Hx − θx‖ plus half the pair's splitting. The splitting is a truncation artifact of an exact degeneracy, so a
+  crossing test cannot be passed or failed through it. The method is recorded in the export
+  (`uncertainty_method`), and the addition is made in `helike_m8_overlap.PhysicalFamily.sample`.

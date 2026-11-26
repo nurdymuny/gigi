@@ -566,3 +566,40 @@ These come from a check run with 13 trial vectors and no homotopy.
 - **Residuals:** 3.8 × 10⁻³ for λ₁–λ₄, 4.4–4.7 × 10⁻³ for the six-level cluster, 1.1 × 10⁻² for λ₁₁ = λ₁₂, and
   1.5 × 10⁻² for λ₁₃.
 - **Comparison:** the isotropic basis gave 0.12 at the same point, so this is about ten times smaller.
+
+### 13.5 Results: PASS at both controls (floating point)
+
+Run at commit 16c4d71c. Logs are in `research/sc-lehmann-vscf-20261125/`.
+
+| control | LOSS | real steps | last s | real ℓ₁₁ − ρ_b | residuals | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| g² = 0.002 | 0.01 | 4 (N 92 → 47 → 32 → 13) | 0.969 | **+0.0092** | ≤ 1.4e-2 | PASS |
+| g² = 0.002 | 0.03 | 4 (N 47 → 32 → 23 → 13) | 0.994 | **+0.0299** | ≤ 1.5e-2 | PASS |
+| g² = 0.002 | 0.06 | — | — | — | — | no plan at s = 0 |
+| g² = 0.004 | 0.01 | 7 (N 186 → … → 13 → 12) | 0.980 | −0.0007 | ≤ 1.8e-2 | ran out of indices |
+| g² = 0.004 | 0.03 | 9 (N 186 → 115 → 86 → 47 → 32 → 29 → 23 → 13 → 12) | 0.9975 | **+0.0240** | ≤ 1.7e-2 | PASS |
+| g² = 0.004 | 0.06 | — | — | — | — | no plan at s = 0 |
+
+**Verdict by §13.3: PASS at both controls.**
+
+The ordering of eigenvalues gives the inside-model statement λ₁₁(H_in^N) ≥ λ₁₁(H_s) ≥ ℓ₁₁ ≥ ρ_b, with floating-point
+margins of +0.030 at g² = 0.002 and +0.024 at g² = 0.004.
+
+The real Lehmann bounds stay within 10⁻² of the Ritz values at the last step: ℓ₁₁ is 4 × 10⁻⁴ below μ₁₁ at g² = 0.002
+and 5 × 10⁻³ below at g² = 0.004. §12 lost 0.18 at the same point.
+
+**What this settles.**
+- **Gate G-base of §4 and §8.5 passes in floating point at both controls.**
+  - (i) Outside: as in §8.3.
+  - (ii) Inside: a homotopy from the explicit B3′ base reaches λ₁₁ ≥ ρ_b within 40 steps, with at most 2,000 trial
+    functions. The representation span is about 54,000 product functions; that change is disclosed in §13.1.
+- **Floating point only, not a bound.** The rigorous version still needs every item of §6.3:
+  - Arb enclosures of C₃, β and v_J;
+  - rigorous radial eigenpairs (an enclosed base spectrum);
+  - interval A₀, A₁ and A₂;
+  - a verified pencil solver;
+  - and then the Lehmann step on the full singlet H with cut Hermite states for λ₅ ≥ ρ_C (Lemma R), which this base
+    feeds.
+- **The margins are thin**, 0.024–0.030. Interval widening in the rigorous build must stay well below that.
+- **S_C is still a stated hypothesis.** The ordering stays proved conditional on S_C until the rigorous chain closes.
+  What has changed is that the route is now known to be feasible.

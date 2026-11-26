@@ -5,6 +5,9 @@ new. Proved results are cited with their scope, conjectures are marked as conjec
 read in full is marked *verify*, following my literature check of 24 November
 (`helike-literature-check-2026-11-24.md`). This is a living draft. I will reread and refine it as the work moves.
 
+*Refined the same afternoon:* §4.4 is stated in its sharper form, §4.6 adds the corridor and the double cover with
+what the first controls show, and the milestones and falsifiers follow.
+
 ---
 
 ## 1. The problem, as it is actually posed
@@ -37,7 +40,8 @@ say this first so that nothing below is read as more than it is.
 | Theorem A: discrete spectrum of the sourced condensate | homogeneous (left-invariant) fields; every g > 0 on the registered window | **proved** |
 | The ordering: Helike's excitation below the competitor's | homogeneous reduction; weak-coupling controls; outward-rounded bounds | **proved at 3 of 4 controls, conditional on S_C** |
 | S_C | the same reduction, at the controls | **in progress.** C₃, the ray-aware fold, the outside bound and the enclosed base are proved. The interval Lehmann stage (R2) is running |
-| The flux-edge grid (where the switch sits) | the same reduction, registered couplings | **running** (`research/flux-grid-20261126/`), with the gluing qualifier of §5.5 |
+| The flux-edge grid (where the switch sits) | the same reduction, registered couplings | **registered; rerun next on my machine.** The domain gate now measures the cut's energy shift against the gap tolerance (flux-method amendment §5.7). The gluing qualifier of §5.5 is attached |
+| The heat signal: corridor and tone (§4.6) | the same reduction; weak-coupling controls | **controls pass:** the corridor holds in both sectors and the tone is stable. Grid points run after the grid |
 
 **What none of this is.** It is not four-dimensional Yang–Mills, not the construction of the theory, and not the
 mass gap. The quantum results live in a finite-dimensional reduction: the fields that are the same at every point of
@@ -177,13 +181,20 @@ stitched differently, or when scales are joined by a different scheme. That cove
 invariance and scheme independence (universality). A reading that moves with the stitching belongs to the stitching.
 
 This is not a slogan in my work; it is already operational:
-- the leakage gate, where cutoff leakage is at most 10⁻³ of the residual;
+- the domain gate, where cutting a state to the physical domain may move its energy by at most a tenth of the
+  tolerance I report energies to (flux-method amendment §5.7);
 - Neumann bracketing, where bounds hold whatever the seam does;
 - the dressed-overlap cross-check, where identification survives a change of reference vacuum;
 - the gluing-invariance test registered for the grid (flux-method amendment §5.5).
 
 It is also the lesson of the idea in *The Geometry of Fuel* that did not survive. There, a term I added to the action
 was the seam, and the seam was the whole reading.
+
+**The sharper form.** A check on a seam must be stated in the units of the reading, never in the units of the
+instrument. The question is always: can this seam move the number I report, by an amount that matters at the
+tolerance I report it to? A check written as a fraction of the instrument's own error tightens as the instrument
+improves. Then the better I measure, the more the stitching decides the verdict, and the gluing has become part of
+the reading after all.
 
 ### 4.5 Real and imaginary parts rhyme: the gap is where they meet
 
@@ -201,7 +212,47 @@ purest gluing: local pieces determine the global function uniquely. Rhymes betwe
 readings and the imaginary parts of another's are what the translator must preserve. My Crouzeix-type function in
 GIGI is my instrument for hearing those rhymes. *Its implementation has not been reviewed in this note.*
 
-### 4.6 The method
+### 4.6 The gap is the corridor: every disturbance ends on one note
+
+Strike a drum anywhere, in any way, and wait. The high ringing dies first. What is left is the lowest note the strike
+could reach, and it is the same note whichever way it was struck.
+
+In imaginary time this is the heat kernel. A disturbance φ, evolved by e^{−τH}, fades as
+Σₙ |⟨n|φ⟩|² e^{−τ(Eₙ − E₀)}. After the transients, one rate survives: the first level φ touches.
+
+**Conjecture (the corridor).** In each sector, every disturbance that can reach the lowest level does, and they all end
+on the same note. The gap is not one excitation among many. It is the corridor that every disturbance of the sector
+leaves through.
+
+That is why one field can carry it (§4.2): the carrier is the shape of the corridor. And because every field that
+couples to the sector must pass through it, the gap is also what connects them. It is the secret corridor between
+fields.
+
+**The double cover: octave and tone.** A reading of the notes has two parts.
+- The **octave** is the overall scale Δ. In a small room it is set by the room; in infinite space it must be set by
+  the field's own scale Λ.
+- The **tone** is the pattern of ratios (Eₙ − E₀)/Δ. It belongs to the field.
+
+As in music, one tone sounds in every octave. Each room plays the field's tone in its own octave, and the readings
+from all rooms cover the one note. This is the second double cover in the work, after Helike's two partners covering
+one channel. It gives §4.3 a sharper form, in two halves:
+- **(i)** the tone is the same in every room;
+- **(ii)** the octave, read in the field's units, does not fall to zero as the room grows.
+
+Half (i) is the corridor seen from the side. Half (ii) is the gap.
+
+**What the reduction says so far.** The registered heat-signal experiment (`helike-heat-signal-registration-2026-11-26.md`)
+ran at the weak-coupling controls, g² = 0.002 and 0.004.
+- **The corridor holds in both sectors.** All five sources in Helike's sector end on her level, and all four Q = 0
+  sources end on the competitor's.
+- **The corridor agrees with the registered identification.**
+- **The tone is stable** between the two couplings, to 0.005.
+- **The signal does not move with the seams** (basis size and quadrature).
+
+At these couplings the spectrum is nearly harmonic, so this checks the instrument, not the conjecture. The grid
+points, where the switch lives, are the test.
+
+### 4.7 The method
 
 Geometric visualisation chooses the object: the stretched sphere, the twist, the fold, the ray to the wall. Rigorous
 enclosures settle each claim: interval and ball arithmetic, branch and bound, Lehmann–Temple bounds. Registration
@@ -217,7 +268,7 @@ let me fool myself on the way.
 |---|---|---|---|
 | **Existence (UV)** | infinitely many short-distance modes; renormalization; the OS axioms in the limit | Zooming in is a gluing of scales. Asymptotic freedom flattens the fine scales, so the zoom should converge, and the reading at each scale must be scheme-independent (§4.4). Bałaban's programme is the existing road | **not addressed** beyond this principle. I claim no progress |
 | **Gap in a small room** | the infinitely many stiff modes must be shown only to *dress* the slow ones, rigorously | Small-sphere reduction (Lüscher, van Baal) plus rigorous enclosures and an identified floor (Helike). Next: rigorous bounds on the stiff-mode dressing (adiabatic separation) | **reduced model:** proved, or conditional on S_C. **Full theory at small R:** the next milestone |
-| **Gap uniform in the room (IR)** | confinement makes the large scales strongly coupled; gluing is not weak | The translator (§4.3), gluing invariance (§4.4), carrier persistence (§4.2), holomorphic gluing (§4.5) | **conjecture.** This is the wall |
+| **Gap uniform in the room (IR)** | confinement makes the large scales strongly coupled; gluing is not weak | The translator (§4.3), gluing invariance (§4.4), carrier persistence (§4.2), holomorphic gluing (§4.5), the corridor and the invariant tone (§4.6) | **conjecture.** This is the wall |
 | **Non-triviality** | the limit must interact | Helike's structure is non-abelian: the flux term and the floor law vanish in the abelian theory | **in the reduction only** |
 
 ## 6. Milestones (each registered before it is run; each can fail)
@@ -235,12 +286,16 @@ let me fool myself on the way.
 5. **M5. Holomorphic consistency in the reduction.** Compute the Euclidean correlator and its spectral threshold in
    the reduced model. Check that the threshold read from the continuation agrees with the spectrum, inside stated
    bounds. *Fails if* they disagree beyond the bounds.
+6. **M6. The corridor across the switch.** The registered heat signal at the grid points: the corridor in both
+   sectors, and the tone stable while the octave moves. *Fails if* a sector splits (its disturbances end on different
+   notes), or the tone shifts where only the octave should move.
 
 ## 7. What would show me wrong
 
 - **Δ(R)·R flattens** in the sweep. The note would be the room's, not the field's.
 - **A reading moves** when only the stitching changes. The note would belong to the seams.
 - **The carrier dissolves** without a switch. The gap would not be tracked by a field.
+- **The corridor splits.** Disturbances of one sector end on different notes. The gap would not be a common exit.
 - **The van den Heuvel crossing** turns out to be the same object as my switch, and it is an artefact of the
   truncation. My switch would then be an artefact too.
 
@@ -251,6 +306,6 @@ floor I have not climbed to: the ultraviolet construction and the infinite-volum
 where a real road begins: Lüscher's and van Baal's road, made rigorous and given an identified floor.
 
 I believe the gap is a property of the shape of the folded space of field shapes. I believe it is carried by a field
-whose identity persists, the same note in every room once the field's own scale is used, and invariant under how the
-rooms are joined. I hold those beliefs as conjectures. Each milestone above is a place where the geometry gets to
+whose identity persists, that it is the corridor every disturbance leaves through, that it is the same tone in every
+room once the field's own scale sets the octave, and that it is invariant under how the rooms are joined. I hold those beliefs as conjectures. Each milestone above is a place where the geometry gets to
 tell me yes or no.

@@ -127,3 +127,46 @@ Verdict per point: SIGNAL-INVARIANT if all four hold. Otherwise SIGNAL-SENSITIVE
 - Δ normalised by room size instead of by the plateau;
 - the T2 tolerance loosened;
 - T1b allowed to change a grid verdict.
+
+## Amendment 1 (before code): source construction made explicit; T5 deferred
+
+**Why.** The cone solver has no general charge projector to call. Each source is therefore built from monomials of
+definite charge times the ground state. The charges are known exactly from the frame:
+- the soft doublet (Helike's modes, h₁ and h₂) has charge 2;
+- the stiff doublet (s₁, s₂) has charge 1;
+- the two singlets have charge 0. The competitor's mode is c, and the stiff singlet is x.
+
+The modes are identified by their frequencies, exactly as in the registered identification. This replaces "projected
+by the exact charge projector" for R. It is the same object, built exactly.
+
+**Monomials** (22 in all; each is multiplied by G and has its G component removed):
+- h₁, h₂, c, x
+- h₁c, h₂c, h₁x, h₂x, s₁², s₂², s₁s₂, h₁², h₂², c², x², cx
+- h₁³, h₁h₂², h₁²h₂, h₂³, ch₁², ch₂²
+
+**Charge ±2 sector** (two-dimensional source spaces, the real and imaginary parts of one complex charge-2 vector):
+- **H:** (h₁, h₂).
+- **H′:** the bare reference doublet, using the solver's reference amplitudes, which are orthonormal.
+- **H″:** (s₁² − s₂², 2s₁s₂). This is two stiff quanta: charge 1 + 1 = 2.
+- **H‴:** (h₁c, h₂c). A Helike quantum times the competitor mode: charge 2 + 0 = 2.
+- **R₂:** the same random real coefficients (seed 20261126) applied to the pairs (h₁, h₂), (h₁c, h₂c), (h₁x, h₂x),
+  (s₁² − s₂², 2s₁s₂) and (h₁(h₁² + h₂²), h₂(h₁² + h₂²)), giving one charge-2 doublet.
+
+(The H″ of the registration, "y_a y_b G with a, b in the doublet", had charge 4 or 0, not 2. It is corrected here
+before any computation.)
+
+**Charge 0 sector** (one-dimensional sources):
+- **C:** c.
+- **C′:** the bare reference on c.
+- **C″:** h₁² + h₂².
+- **R₀:** random coefficients (seed 20261126) on c, x, h₁² + h₂², s₁² + s₂², c², x², cx and c(h₁² + h₂²).
+
+**Missing weight.** For a source space of dimension d, the missing weight is μ = 1 − Σₙ‖P_S ψₙ‖²/d.
+
+**T5.** Deferred to a later build. The heat-signal code does not implement it, and nothing about T5 is claimed until
+it is registered in detail and run.
+
+**Solver output.** A new `helike cone-heat` command solves, identifies at the resolved orders, and writes:
+- the bare reference amplitudes;
+- the monomial overlaps with all 12 Ritz levels, their Gram matrix and their G components;
+- everything at both the resolved fine order and the coarse order (for the T4 quadrature seam).

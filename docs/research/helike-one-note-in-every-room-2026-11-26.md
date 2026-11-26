@@ -415,6 +415,7 @@ let me fool myself on the way.
 8. **M8. The weighted geometry of the carrier (H1, §4.7).** From the computed ψ₀ and ψ₁, the slow function f₁ = ψ₁/ψ₀.
    Report its alignment with Helike's twist coordinate across the switch, and the floating Bakry–Émery lower bound
    next to the computed gap. *Fails if* f₁ changes direction without a level crossing or an identifiable switch.
+   Registered: `helike-M8-weighted-geometry-registration-2026-11-26.md`.
 
 ## 7. What would show me wrong
 

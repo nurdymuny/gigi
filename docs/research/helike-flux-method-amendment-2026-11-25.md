@@ -417,3 +417,20 @@ largest e_cut upper bound over the three gated states, against the budget 3·10�
 The prediction stated in the registration, e_cut ≈ 5.6·10⁻⁶ at g² = 0.004 and Mq = 10, is met: 5.58·10⁻⁶. That point
 is the one §5.6 showed failing the old relative rule, and its cut moves Helike's energy by less than 1/50 of the
 budget. All four controls pass, as expected. The gluing rerun (check 2) follows.
+
+### 5.8 Two corrections to the §5.7 code before the rerun (26 November, before check 2 and before any grid value)
+
+A review of the §5.7 code before the rerun found two places where the code differed from the registered text. Neither
+one can change a convergence decision, because only PASS makes a point converged.
+
+1. **Point verdict, OPEN versus FAIL** (`helike_leakage_gate.overall_cut`). §5.7 says FAIL "if any of these fails with
+   the enclosures resolved". The code returned OPEN whenever a state's residual enclosure was unresolved, even when its
+   tail or normalisation budget had failed with that enclosure resolved. Such a point now reads FAIL. New test:
+   `test_resolved_budget_failure_is_fail_even_when_r_is_open`.
+2. **Gluing seam S5** (`run_helike_gluing_check.s5`). §5.7 compares "this gate's verdict at the two radii". The code
+   compared only each state's cut-gate label, so a tail or normalisation budget that changed with the radius went
+   unseen. S5 now compares, at each radius, each state's (cut gate, state passed) and the point verdict.
+
+After both fixes, the runner and gluing tests pass and the grid mutants stay 15/15 caught. Then check 2 (the §5.5
+gluing check at the controls under the §5.7 gate) runs, and the registered grid reruns from this commit into
+`research/flux-grid-20261126-gate57/`.

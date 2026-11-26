@@ -169,6 +169,9 @@ def overall_cut(rows):
     """PASS only if every gated state passes; FAIL if any check fails with the enclosures resolved; else OPEN."""
     if all(r['state_passed'] for r in rows):
         return 'PASS'
-    if any(r['cut_gate'] != 'OPEN' and not r['state_passed'] for r in rows):
+    resolved_failure = lambda r: (r['cut_gate'] == 'FAIL' or r.get('tail_budget_passed') is False
+                                  or r.get('norm_width_budget_passed') is False
+                                  or (r['cut_gate'] == 'PASS' and not r['state_passed']))
+    if any(resolved_failure(r) for r in rows):
         return 'FAIL'
     return 'OPEN'

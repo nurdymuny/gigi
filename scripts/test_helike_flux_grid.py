@@ -286,6 +286,14 @@ class CutGate(unittest.TestCase):
         self.assertFalse(self.state(0, 0, 1, 1, tail_sq=F(2, 10**12))["state_passed"])
         self.assertFalse(self.state(0, 0, 1, 1, nsq=(1, 1 + F(2, 10**10)))["state_passed"])
 
+    def test_resolved_budget_failure_is_fail_even_when_r_is_open(self):
+        import helike_leakage_gate as lg
+        from fractions import Fraction as F
+        ok = self.state(0, 0, 1, 1)
+        bad = self.state(0, 0, None, 1, tail_sq=F(2, 10**12))          # r unresolved, tail budget resolved and failed
+        self.assertEqual(bad["cut_gate"], "OPEN")
+        self.assertEqual(lg.overall_cut([ok, ok, bad]), "FAIL")
+
     def test_assess_point_converges_only_through_the_new_gate(self):
         import helike_domain_gate as dg
         good = {"state_passed": True, "cut_gate": "PASS", "relative_gate": "FAIL"}   # old rule would refuse

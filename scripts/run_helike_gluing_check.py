@@ -173,10 +173,13 @@ def s5(s, t, g2, mq):
         other = dg.domain_gate_point(s, t, g2, mq)
     finally:
         cb.plateau = orig
-    pick = lambda r: {n: r["states"][n]["cut_gate"] for n in ("helike_plus", "helike_minus", "competitor")}   # §5.7
+    # §5.7: the gate's verdict per state is the cut gate together with the tail and normalisation budgets
+    pick = lambda r: {n: (r["states"][n]["cut_gate"], bool(r["states"][n]["state_passed"]))
+                      for n in ("helike_plus", "helike_minus", "competitor")}
     a, b = pick(registered), pick(other)
     return {"registered_rho": reg_rho, "alternate_rho": alt_rho, "registered": a, "alternate": b,
-            "verdicts": (registered["verdict"], other["verdict"]), "holds": a == b}
+            "verdicts": (registered["verdict"], other["verdict"]),
+            "holds": a == b and registered["verdict"] == other["verdict"]}
 
 
 # ------------------------------------------------------------------ verdicts

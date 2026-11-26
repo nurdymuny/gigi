@@ -4,7 +4,7 @@ import contextlib, copy, inspect, io, json, sys, textwrap, unittest
 from pathlib import Path
 from unittest.mock import patch
 import run_helike_flux_grid as grid
-from test_helike_flux_grid import Design, Point, Case, Release
+from test_helike_flux_grid import Design, Point, Case, Release, Dressed
 
 
 def run(case, test):
@@ -36,6 +36,9 @@ def main():
         ("gate_always_passes", "domain_gate", 'return r["verdict"], r', 'return "PASS", r', Release, "test_domain_gate_passes_the_stage_verdict_through"),
         ("refusal_becomes_pass", "domain_gate", 'return "OPEN", {"error"', 'return "PASS", {"error"', Release, "test_domain_gate_passes_the_stage_verdict_through"),
         ("no_explicit_flag", "main", "if not a.registered_grid:", "if False:", Release, "test_the_grid_needs_an_explicit_flag"),
+        # amendment 5.2: identification by the bare weight instead of w / Z
+        ("bare_weight_identification", "assess_point", 'last[n]["dressed_weight"] for n', 'last[n]["weight"] for n',
+         Dressed, "test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold"),
     ]:
         src = textwrap.dedent(inspect.getsource(getattr(grid, func)))
         assert src.count(old) == 1, name

@@ -1,0 +1,10 @@
+(a) controls t=3 s=1.15
+  g2=0.002 Mq= 6 Z=0.9965  H w=0.9943 wd=0.9979  C w=0.9906 wd=0.9941 orders [10, 12]
+  g2=0.002 Mq= 8 Z=0.9965  H w=0.9944 wd=0.9979  C w=0.9907 wd=0.9942 orders [10, 12]
+  g2=0.002 Mq=10 Z=0.9965  H w=0.9944 wd=0.9979  C w=0.9907 wd=0.9942 orders [10, 12]
+  g2=0.004 Mq= 6 Z=0.9929  H w=0.9885 wd=0.9956  C w=0.9808 wd=0.9878 orders [10, 12]
+  g2=0.004 Mq= 8 Z=0.9929  H w=0.9887 wd=0.9957  C w=0.9812 wd=0.9882 orders [10, 12]
+  g2=0.004 Mq=10 Z=0.9929  H w=0.9887 wd=0.9957  C w=0.9812 wd=0.9882 orders [12, 14]
+(c) exposure point t=3 g2=0.04 s=1.12 Mq=10
+  Z=0.9055  H w=0.8575 wd=0.9471 gap 1.0899  C w=0.7574 wd=0.8365 gap 0.9599
+  domain gate OPEN CalledProcessError: Command '['C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-flux\\helike-lab\\target\\release\\helike.exe', '--out', 'C:\\Users\\nurdm\\AppData\\Local\\Temp\\tmpc8wzbo48\\export-receipt.json', 'cone-export', '--s', '1.12', '--t', '3.0', '--g2', '0.04', '--mq', '10', '--states-out', 'C:\\Users\\nurdm\\AppData\\Local\\Temp\\tmpc8wzbo48\\export.json']' returned non-zero exit status 2.

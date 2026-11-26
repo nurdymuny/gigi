@@ -14,9 +14,11 @@ import run_helike_flux_grid as grid
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def rung(mq, h, c, wh=0.97, wc=0.96):
-    return {"Mq": mq, "E0": 1.0, "dimension": 100, "seconds": 0.1, "moments": "exact",
-            "helike": {"gap": h, "weight": wh}, "competitor": {"gap": c, "weight": wc}}
+def rung(mq, h, c, wh=0.97, wc=0.96, z=1.0):
+    """wh, wc are dressed weights; the bare weights are wh*z, wc*z (amendment 5.2)."""
+    return {"Mq": mq, "E0": 1.0, "dimension": 100, "seconds": 0.1, "moments": "exact", "vacuum_weight": z,
+            "helike": {"gap": h, "weight": wh * z, "dressed_weight": wh},
+            "competitor": {"gap": c, "weight": wc * z, "dressed_weight": wc}}
 
 
 def point(s, diff, drift=0.0, domain="PASS", wh=0.97):
@@ -140,6 +142,26 @@ class Robustness(unittest.TestCase):
         cb.polynomial_bounds([(10, 0, 0, 0, 0, 0)], np.array([1.0 + 0j]), 1)
         with self.assertRaises(ValueError):
             cb.polynomial_bounds([(11, 0, 0, 0, 0, 0)], np.array([1.0 + 0j]), 1)
+
+
+class Dressed(unittest.TestCase):
+    """Amendment 5.2: identification by w / Z."""
+
+    def test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold(self):
+        p = {"s": 1.18, "domain_gate": "PASS",
+             "ladder": [rung(m, 1.08, 1.082, wh=0.95, wc=0.93, z=0.88) for m in (6, 8, 10)]}
+        self.assertTrue(grid.assess_point(p, grid.DESIGN)["identified"])     # bare 0.836 / 0.818, dressed 0.95 / 0.93
+
+    def test_genuine_mixing_still_fails_after_dressing(self):
+        p = {"s": 1.18, "domain_gate": "PASS",
+             "ladder": [rung(m, 1.08, 1.082, wh=0.95, wc=0.85, z=0.88) for m in (6, 8, 10)]}
+        self.assertFalse(grid.assess_point(p, grid.DESIGN)["identified"])
+
+    def test_inconsistent_dressed_weight_refuses(self):
+        p = {"s": 1.18, "domain_gate": "PASS", "ladder": [rung(m, 1.08, 1.082, z=0.88) for m in (6, 8, 10)]}
+        p["ladder"][-1]["helike"]["dressed_weight"] = 0.99
+        with self.assertRaises(ValueError):
+            grid.assess_point(p, grid.DESIGN)
 
 
 class Release(unittest.TestCase):

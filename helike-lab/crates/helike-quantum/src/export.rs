@@ -141,7 +141,9 @@ pub fn export_point(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> 
     if hel.len() != 2 {
         return Err("Helike doublet not identified".into());
     }
-    let weight = |c: usize| hel.iter().map(|&m| amps[m * k + c].powi(2)).sum::<f64>();
+    // dressed weights (amendment 5.2): relative to the ground state's vacuum weight Z; the 0.95 rule applies to these
+    let z = result.vacuum_weight;
+    let weight = |c: usize| hel.iter().map(|&m| amps[m * k + c].powi(2)).sum::<f64>() / z;
     let mut order: Vec<usize> = (1..k).collect();
     order.sort_by(|&a, &b| weight(b).partial_cmp(&weight(a)).unwrap());
     let mut pair = [order[0], order[1]];
@@ -151,7 +153,7 @@ pub fn export_point(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> 
         return Err("unresolved Helike partner identification".into());
     }
     let idx = [0, pair[0], pair[1], comp];
-    if result.competitor.weight < 0.95 || idx.iter().collect::<std::collections::BTreeSet<_>>().len() != 4 {
+    if result.competitor.dressed_weight < 0.95 || idx.iter().collect::<std::collections::BTreeSet<_>>().len() != 4 {
         return Err("ambiguous state selection".into());
     }
     let n = op.dim();

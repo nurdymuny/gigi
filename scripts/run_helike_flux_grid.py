@@ -125,7 +125,9 @@ def assess_point(point, D):
         raise ValueError("incomplete or reordered refinement ladder")
     for r in rows:
         for n in ("helike", "competitor"):
-            gap, w = r[n]["gap"], r[n]["weight"]
+            gap, w, wd = r[n]["gap"], r[n]["weight"], r[n]["dressed_weight"]
+            if not (math.isfinite(wd) and wd >= 0 and abs(wd * r["vacuum_weight"] - w) <= 1e-9):
+                raise ValueError("dressed weight is not weight / vacuum weight")
             if not (math.isfinite(gap) and gap >= 0 and 0 <= w <= 1 + 1e-10):
                 raise ValueError("invalid excitation gap or weight")
     last_step = max(abs(rows[-1][n]["gap"] - rows[-2][n]["gap"]) for n in ("helike", "competitor"))
@@ -133,7 +135,8 @@ def assess_point(point, D):
     return {
         "last_step_change": last_step,
         "converged": bool(last_step <= D["convergence_tol"] and point.get("domain_gate") == "PASS"),
-        "identified": bool(min(last[n]["weight"] for n in ("helike", "competitor")) >= D["weight_min"]),
+        # amendment 5.2: the registered 0.9 applies to the dressed weight w / Z (Z = ground-state vacuum weight)
+        "identified": bool(min(last[n]["dressed_weight"] for n in ("helike", "competitor")) >= D["weight_min"]),
         "diff_competitor_minus_helike": last["competitor"]["gap"] - last["helike"]["gap"],
     }
 
@@ -209,8 +212,9 @@ def solve(s, t, g2, mq):
         r = json.loads(out.read_text())["results"]
     res = r["result"]
     return {"Mq": mq, "E0": res["E0"], "dimension": r["dimension"], "seconds": r["seconds"], "moments": r["moments"],
-            "helike": {"gap": res["helike"]["gap"], "weight": res["helike"]["weight"]},
-            "competitor": {"gap": res["competitor"]["gap"], "weight": res["competitor"]["weight"]},
+            "vacuum_weight": res["vacuum_weight"],
+            "helike": {k: res["helike"][k] for k in ("gap", "weight", "dressed_weight")},
+            "competitor": {k: res["competitor"][k] for k in ("gap", "weight", "dressed_weight")},
             "overlap_orders": res["overlap_orders"], "reference_weight_error": res["reference_weight_error"]}
 
 

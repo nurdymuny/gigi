@@ -187,3 +187,19 @@ the unregistered g² = 0.04 the bare weights were 0.858 and 0.757 (§5.1).
   caught.
 - (c) The unregistered exposure point of §5.1 (g² = 0.04, s = 1.12) is recomputed, and its w̃ reported, whatever it
   is. The rule and thresholds above are fixed by this commit and are not adjusted after seeing it.
+
+**§5.2 checks, run after the code and before the grid.** Log: `research/flux-grid-amendment-5.2-checks.txt`.
+- **(a) Controls** (t = 3, s = 1.15, Mq = 6, 8, 10): **PASS.**
+  - Z = 0.9965 at g² = 0.002 and 0.9929 at g² = 0.004.
+  - Every identification is unchanged. Dressed weights are 0.9941–0.9979 at g² = 0.002 and 0.9878–0.9957 at
+    g² = 0.004. Orders are (10, 12), except (12, 14) at g² = 0.004, Mq = 10.
+- **(b) Tests:** 26/26 pass, including three new ones for w̃. Grid-runner mutants: 10/10 caught, including the new
+  `bare_weight_identification`. Rust tests: all pass.
+- **(c) The exposure point** (t = 3, g² = 0.04, s = 1.12, Mq = 10), reported as found:
+  - Z = 0.9055;
+  - Helike: w = 0.8575, w̃ = **0.9471**;
+  - competitor: w = 0.7574, w̃ = **0.8365**.
+
+  The dressing removes Helike's shortfall, but not the competitor's. The competitor's mixing at that point is specific
+  to its state, and the rule fails it, as registered. The domain-gate export refuses there as well (w̃ < 0.95).
+  Nothing is adjusted. The registered grid now runs under §5.2.

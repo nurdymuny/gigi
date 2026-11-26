@@ -82,6 +82,15 @@ pub fn classify(op: &ConeOperator, v: &[f64]) -> [f64; 6] {
 /// Overlaps of trial vectors with the original linear-Gram harmonic single-quantum projectors, by a Gauss–Hermite
 /// rule of the given order in each chart coordinate. Returns a 6 × k matrix (row-major, rows = modes).
 pub fn reference_amplitudes(op: &ConeOperator, vectors: &[Vec<f64>], order: usize) -> Result<Vec<f64>, String> {
+    let k = vectors.len();
+    reference_amplitudes_with_vacuum(op, vectors, order).map(|mut a| {
+        a.truncate(6 * k);
+        a
+    })
+}
+
+/// As `reference_amplitudes`, plus a seventh row: the overlap with the harmonic vacuum |0> (amendment 5.2).
+pub fn reference_amplitudes_with_vacuum(op: &ConeOperator, vectors: &[Vec<f64>], order: usize) -> Result<Vec<f64>, String> {
     if !(2..=28).contains(&order) || vectors.is_empty() || vectors.len() > 12 {
         return Err("overlap resource contract requires order 2..28 and 1..12 vectors".into());
     }
@@ -99,7 +108,7 @@ pub fn reference_amplitudes(op: &ConeOperator, vectors: &[Vec<f64>], order: usiz
         .map(|&(q0, q1)| {
             let mut sc = grid.scratch(k);
             let refs: Vec<&[f64]> = vectors.iter().map(|v| &v[..]).collect();
-            let mut amp = vec![0.0; 6 * k];
+            let mut amp = vec![0.0; 7 * k];
             let mut err: Option<String> = None;
             grid.process(&refs, q0, q1, &mut sc, None, |q2, vals| {
                 for p in 0..vals.len() / k {
@@ -132,6 +141,9 @@ pub fn reference_amplitudes(op: &ConeOperator, vectors: &[Vec<f64>], order: usiz
                             amp[a * k + c] += target * vals[p * k + c];
                         }
                     }
+                    for c in 0..k {
+                        amp[6 * k + c] += measure * vals[p * k + c];
+                    }
                 }
             });
             if let Some(e) = err {
@@ -139,7 +151,7 @@ pub fn reference_amplitudes(op: &ConeOperator, vectors: &[Vec<f64>], order: usiz
             }
             Ok(amp)
         })
-        .try_reduce(|| vec![0.0; 6 * k], |mut a, b| {
+        .try_reduce(|| vec![0.0; 7 * k], |mut a, b| {
             for (x, y) in a.iter_mut().zip(&b) {
                 *x += y;
             }
@@ -152,6 +164,8 @@ pub fn reference_amplitudes(op: &ConeOperator, vectors: &[Vec<f64>], order: usiz
 pub struct Channel {
     pub gap: f64,
     pub weight: f64,
+    /// weight / vacuum_weight: the weight relative to the dressed vacuum (amendment 5.2)
+    pub dressed_weight: f64,
     pub log_basis_weight: f64,
     pub level_index: usize,
 }
@@ -164,6 +178,8 @@ pub struct HelikeCompetitor {
     pub boundary_status: String,
     pub energy_shift: f64,
     pub reference_weight_error: f64,
+    /// Z: the ground state's weight on the harmonic vacuum (amendment 5.2)
+    pub vacuum_weight: f64,
     pub overlap_orders: [usize; 2],
     pub helike: Channel,
     pub competitor: Channel,
@@ -205,20 +221,23 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
             let b: f64 = hel.iter().map(|&m| fine[m * k + c].powi(2)).sum();
             error = error.max((a - b).abs());
         }
+        // the ground state's vacuum weight Z resolves to the same tolerance (amendment 5.2)
+        error = error.max((coarse[6 * k].powi(2) - fine[6 * k].powi(2)).abs());
         error
     };
-    let mut coarse = reference_amplitudes(op, &eigs.vectors, 10)?;
+    let mut coarse = reference_amplitudes_with_vacuum(op, &eigs.vectors, 10)?;
     let mut orders = [10, 12];
-    let mut fine = reference_amplitudes(op, &eigs.vectors, 12)?;
+    let mut fine = reference_amplitudes_with_vacuum(op, &eigs.vectors, 12)?;
     let mut error = error_of(&coarse, &fine);
     while error > 1e-6 && orders[1] < 28 {
         orders = [orders[1], orders[1] + 2];
         coarse = fine;
-        fine = reference_amplitudes(op, &eigs.vectors, orders[1])?;
+        fine = reference_amplitudes_with_vacuum(op, &eigs.vectors, orders[1])?;
         error = error_of(&coarse, &fine);
     }
     let max_norm = (0..k).map(|c| (0..6).map(|m| fine[m * k + c].powi(2)).sum::<f64>()).fold(0.0, f64::max);
-    if error > 1e-6 || max_norm > 1.0 + 1e-6 {
+    let vacuum_weight = fine[6 * k].powi(2);
+    if error > 1e-6 || max_norm > 1.0 + 1e-6 || !(vacuum_weight > 0.0 && vacuum_weight <= 1.0 + 1e-6) {
         return Err(format!("reference weights unresolved at frozen overlap tolerance through orders {orders:?}: {error}"));
     }
     let chan = |modes: &[usize]| {
@@ -234,6 +253,7 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
         Channel {
             gap: eigs.values[best] - eigs.values[0],
             weight: weights[best],
+            dressed_weight: weights[best] / vacuum_weight,
             log_basis_weight: modes.iter().map(|&m| cl[m]).sum(),
             level_index: best,
         }
@@ -244,6 +264,7 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
         boundary_status: BOUNDARY_STATUS.into(),
         energy_shift: op.energy_shift,
         reference_weight_error: error,
+        vacuum_weight,
         overlap_orders: orders,
         helike: chan(&hel),
         competitor: chan(&[comp]),

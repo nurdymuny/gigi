@@ -113,3 +113,57 @@ RED tests come first. Then a `check_helike_sc_r1_mutations.py` must reject each 
 
 R1 proves no eigenvalue bound for H. Its outputs are the inputs of R2: interval A₀, A₁ and A₂ for the homotopy steps,
 and the verified pencil.
+
+## R1.7 Results so far, and amendments (written after the runs)
+
+**Amendments, disclosed.**
+- **C₃ tightness gate replaced.** C₃ enters only the base (it lowers the reduced ω²). The R1.2 tightness gate is
+  replaced by the test that matters: rerun the §13 floating-point VSCF homotopy with every enclosed constant
+  substituted (C₃ upper bound, v_J lower bound, face-wise β upper bounds, each block using its own face's β).
+  Driver: `scripts/vscf_with_r1_constants.py`.
+- **Branch-and-bound budgets.** C₃, v_J and β return the heap-top bound when their box budget is reached. That bound
+  is still a proven bound, only looser; the logs mark it `[box budget reached]` (or a negative box count).
+- **Root isolation (R1.4), as implemented.** The count below E is the Prüfer count, #eig < E = Z(E) + [R′(L)/R(L) < β],
+  taken once per l at the cut. Roots are bracketed by sign changes of F_l on a grid; the number of brackets must equal
+  the count, and each bracket is refined by sign bisection to 10⁻¹³. This replaces interval Newton with derivative
+  exclusion; uniqueness per bracket follows from the bracket count matching the Prüfer count.
+- **Face-wise β.** The single 6-sphere β of the floating model is replaced by β_u on the soft 3-ball face and β_v on
+  the stiff one (R1.3 already registered this; the floating §13 runs used the 6-sphere value).
+- **KMAX.** At g² = 0.004 the enclosed base has about 180 levels below ρ_b, more than the 200 Ritz levels the
+  planner tracked leave room for. KMAX was raised to 600 for that control.
+
+**Enclosures (128-bit Arb).** Logs in `research/sc-r1-20261125/`.
+
+| | g² = 0.002 | g² = 0.004 |
+|---|---|---|
+| R1.1 frame and P | all 7 checks PASS (coefficient radius 5.5·10⁻³⁵) | same |
+| C₃ ≤ | 0.061602 (sampled 0.051817; budget reached) | 0.087118 (sampled 0.073280; budget reached) |
+| v_J ≥ | −0.000939 | −0.001616 |
+| β_u ≤ | 0.046285 (budget reached) | 0.071876 (budget reached) |
+| β_v ≤ | 0.003756 | 0.005457 |
+| J(0) vs floating det | rel. diff 1.6·10⁻¹⁵ | 1.7·10⁻¹⁵ |
+
+R1.4 check at the floating constants: the soft block has 39 radial levels below 8 (l < 13) and the stiff block has 4
+(l < 3). These match floating Galerkin to 8.6·10⁻⁷ (soft) and 2.2·10⁻¹² (stiff), with enclosure radius ≤ 4.6·10⁻¹⁴.
+
+**Homotopy with the enclosed constants (floating point, not a bound).** Logs in
+`research/sc-r1-constants-homotopy-20261125/`.
+- **g² = 0.002: PASS.**
+  - LOSS 0.01: real ℓ₁₁ − ρ_b = +0.0101 after 5 steps.
+  - LOSS 0.03: real ℓ₁₁ − ρ_b = +0.0264 after 5 steps (N 249 → 47 → 23 → 13 → 12).
+  - Residuals ≤ 1.5·10⁻² throughout.
+  - LOSS 0.06 finds no plan.
+- **g² = 0.004: FAIL.**
+  - The enclosed base starts ℓ₁₁ at 5.51 against ρ_b = 7.73, a gap of 2.2; the gap at g² = 0.002 is 0.9.
+  - LOSS 0.01 plans 24 steps. After 6 real steps (s = 0.061, N 596 → 391) the residual has grown to 3.6·10⁻² and no
+    plan remains.
+  - LOSS 0.03 and 0.06 find no plan from the start.
+  - The §13 floating PASS at this control (+0.024) used the sampled C₃ = 0.0733. The enclosure is 19 % looser and
+    stops at its box budget, so it is the first suspect.
+
+**Status.** R1 is INCOMPLETE at both controls.
+- R1.4 has not yet been run at the enclosed constants (reduced ω² = w2min − 2·C₃·√29, per-face β, v_J shift).
+- The R1.5 tests and mutants are not yet written.
+- g² = 0.004 additionally fails the replacement gate.
+
+The next lever for g² = 0.004 is a tighter C₃ bound (more boxes, or a sharper box bound) before anything else.

@@ -1,0 +1,21 @@
+VSCF-trial Lehmann homotopy on B3' (L_u = 5, L_v = 2); floating point, not a bound
+
+=== control g2 = 0.002
+  VSCF representation: soft 693 (E_u < 12.370), stiff 78; tensor 54054; mixed u-groups 19; D^2 u-groups 165; built in 156 s
+  built: 1981 basis functions, C3 0.06161, 999 s
+  [planning LOSS = 0.01]
+    real step  1: s = 0.1050  N = 150  rho = 9.2612  l_11 = 6.8249 (mu_11 6.8249, rho_b 7.7292)  max resid 1.2e-02  plan said 5 steps
+    real step  2: s = 0.2050  N =  87  rho = 8.8919  l_11 = 6.9429 (mu_11 6.9429, rho_b 7.7292)  max resid 1.2e-02  plan said 4 steps
+    real step  3: s = 0.4288  N =  47  rho = 8.5686  l_11 = 7.1925 (mu_11 7.1925, rho_b 7.7292)  max resid 9.0e-03  plan said 3 steps
+    real step  4: s = 0.6462  N =  23  rho = 8.0913  l_11 = 7.4199 (mu_11 7.4200, rho_b 7.7292)  max resid 1.1e-02  plan said 2 steps
+    real step  5: s = 0.9725  N =  13  rho = 8.0325  l_11 = 7.7393 (mu_11 7.7398, rho_b 7.7292)  max resid 1.5e-02  plan said 1 steps
+  [planning LOSS = 0.01] PASS (real l_11 = 7.7393 >= rho_b = 7.7292 at s = 0.9725, 5 real steps)
+  [planning LOSS = 0.03]
+    real step  1: s = 0.0875  N = 249  rho = 9.9607  l_11 = 6.8037 (mu_11 6.8037, rho_b 7.7292)  max resid 1.4e-02  plan said 5 steps
+    real step  2: s = 0.3237  N =  47  rho = 8.3308  l_11 = 7.0776 (mu_11 7.0776, rho_b 7.7292)  max resid 7.3e-03  plan said 4 steps
+    real step  3: s = 0.5550  N =  23  rho = 7.9372  l_11 = 7.3261 (mu_11 7.3262, rho_b 7.7292)  max resid 1.0e-02  plan said 3 steps
+    real step  4: s = 0.8125  N =  13  rho = 7.8614  l_11 = 7.5855 (mu_11 7.5858, rho_b 7.7292)  max resid 1.3e-02  plan said 2 steps
+    real step  5: s = 0.9925  N =  12  rho = 7.8054  l_11 = 7.7556 (mu_11 7.7586, rho_b 7.7292)  max resid 1.2e-02  plan said 1 steps
+  [planning LOSS = 0.03] PASS (real l_11 = 7.7556 >= rho_b = 7.7292 at s = 0.9925, 5 real steps)
+  [planning LOSS = 0.06]
+  [planning LOSS = 0.06] FAIL (no plan from the real state after 0 steps)

@@ -1,0 +1,16 @@
+VSCF-trial Lehmann homotopy on B3' (L_u = 5, L_v = 2); floating point, not a bound
+
+=== control g2 = 0.004
+  VSCF representation: soft 689 (E_u < 10.232), stiff 78; tensor 53742; mixed u-groups 19; D^2 u-groups 165; built in 124 s
+  [planning LOSS = 0.01]
+    real step  1: s = 0.0013  N = 596  rho = 9.4068  l_11 = 5.5085 (mu_11 5.5085, rho_b 7.7263)  max resid 1.9e-03  plan said 24 steps
+    real step  2: s = 0.0063  N = 553  rho = 9.3157  l_11 = 5.5359 (mu_11 5.5359, rho_b 7.7263)  max resid 4.8e-03  plan said 22 steps
+    real step  3: s = 0.0238  N = 550  rho = 9.2904  l_11 = 5.6286 (mu_11 5.6286, rho_b 7.7263)  max resid 1.7e-02  plan said 21 steps
+    real step  4: s = 0.0262  N = 513  rho = 9.2392  l_11 = 5.6415 (mu_11 5.6415, rho_b 7.7263)  max resid 1.7e-02  plan said 20 steps
+    real step  5: s = 0.0312  N = 429  rho = 9.1167  l_11 = 5.6669 (mu_11 5.6669, rho_b 7.7263)  max resid 1.9e-02  plan said 18 steps
+    real step  6: s = 0.0612  N = 391  rho = 9.0648  l_11 = 5.8127 (mu_11 5.8127, rho_b 7.7263)  max resid 3.6e-02  plan said 17 steps
+  [planning LOSS = 0.01] FAIL (no plan from the real state after 6 steps)
+  [planning LOSS = 0.03]
+  [planning LOSS = 0.03] FAIL (no plan from the real state after 0 steps)
+  [planning LOSS = 0.06]
+  [planning LOSS = 0.06] FAIL (no plan from the real state after 0 steps)

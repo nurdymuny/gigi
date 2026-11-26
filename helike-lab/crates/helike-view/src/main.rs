@@ -126,6 +126,7 @@ impl App {
                 if std::env::args().any(|a| a == "geometry-state") {
                     g.tab = 1;
                 }
+                presentation_state(&mut g.state);
                 g
             },
             controls: {
@@ -597,6 +598,41 @@ blue: she is the floor · amber: a rival undercuts her · green: ladder-proved c
                     let t = t0 + ((plot.bottom() - pos.y) / plot.height()) as f64 * (t1 - t0);
                     let _ = self.solver.tx.send(Request::Probe { m: Member::new(x, d.y, t), jmax: d.jmax });
                 }
+            }
+        }
+    }
+}
+
+/// `--state plus|minus|competitor|level:N`, `--plane h1,c` (role names), `--point 0.002,10`: open the State view on a
+/// chosen state, slice and control point (used for presentation stills).
+fn presentation_state(s: &mut view_state::StateView) {
+    let a: Vec<String> = std::env::args().collect();
+    let val = |flag: &str| a.iter().position(|x| x == flag).and_then(|k| a.get(k + 1)).cloned();
+    if let Some(w) = val("--state") {
+        s.which = match w.as_str() {
+            "plus" => state_slice::Which::Mixed(1),
+            "minus" => state_slice::Which::Mixed(2),
+            "competitor" => state_slice::Which::Mixed(3),
+            l => l.strip_prefix("level:").and_then(|n| n.parse().ok()).map(|n: usize| {
+                s.level_n = n;
+                state_slice::Which::Level(n)
+            }).unwrap_or(s.which),
+        };
+    }
+    if let Some(pl) = val("--plane") {
+        if let Some((x, y)) = pl.split_once(',') {
+            let idx = |r: &str| view_state::ROLES.iter().position(|q| *q == r);
+            if let (Some(i), Some(j)) = (idx(x), idx(y)) {
+                s.axis_a = i;
+                s.axis_b = j;
+            }
+        }
+    }
+    if let Some(pt) = val("--point") {
+        if let Some((g, m)) = pt.split_once(',') {
+            if let (Ok(g), Ok(m)) = (g.parse(), m.parse()) {
+                s.g2 = g;
+                s.mq = m;
             }
         }
     }

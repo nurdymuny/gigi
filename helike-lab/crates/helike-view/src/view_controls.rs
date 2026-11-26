@@ -91,7 +91,8 @@ impl ControlsView {
         legend_row(ui, Outcome::Queued, "queued / report pending");
         ui.add_space(4.0);
         ui.label(caption("Gauges: value ÷ tolerance on a log scale; left of the line is inside. Grey: reported, not decided."));
-        if let Some(r) = &self.root {
+        // --present hides the local checkout path (presentation stills)
+        if let Some(r) = self.root.as_ref().filter(|_| !std::env::args().any(|a| a == "--present")) {
             ui.add_space(10.0);
             ui.label(eyebrow("Root"));
             ui.label(caption(r.display().to_string()));

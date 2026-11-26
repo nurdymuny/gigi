@@ -1,0 +1,659 @@
+{
+ "status": "RUNNING",
+ "design": {
+  "primary": {
+   "t": 3.0,
+   "g2": [
+    0.03,
+    0.05,
+    0.07
+   ],
+   "s": [
+    1.12,
+    1.15,
+    1.165,
+    1.18,
+    1.195,
+    1.22,
+    1.24
+   ]
+  },
+  "secondary": {
+   "t": 4.0,
+   "g2": [
+    0.03,
+    0.05
+   ],
+   "s": [
+    1.09,
+    1.12,
+    1.14,
+    1.16,
+    1.18
+   ]
+  },
+  "ladder": [
+   6,
+   8,
+   10
+  ],
+  "convergence_tol": 0.003,
+  "weight_min": 0.9,
+  "s_tolerance": 0.015,
+  "predicted_s_star": {
+   "3.0": {
+    "0.03": 1.1674,
+    "0.05": 1.1809,
+    "0.07": 1.1931
+   },
+   "4.0": {
+    "0.03": 1.126,
+    "0.05": 1.1413
+   }
+  }
+ },
+ "amendment": "docs/research/helike-flux-method-amendment-2026-11-25.md",
+ "started_unix": 1795700484.462107,
+ "provenance": {
+  "git_commit": "9e422f6146da0bd68cd1111095656013ca9f5b8f",
+  "git_dirty": false,
+  "helike_bin_sha256": "d9f8a3783162828d7c56dbceeecda8b5f5aba54bde2b5e496085a6f661a78ecb",
+  "sources_sha256": {
+   "scripts/run_helike_flux_grid.py": "a988ca9c936393d16e703fe448c76574ab4f0af39cf252bd26af8331fb635962",
+   "scripts/run_helike_flux_background.py": "46297e8cb71ad58c11f8493494471569684e538a38291cfc83446ac4933734d3",
+   "scripts/helike_domain_gate.py": "7f04cdb354eecad138afa2630443a3eae604770b623d2eaf1420a66b23d0c17d",
+   "scripts/helike_cutoff_bounds.py": "6b7e0608eb1b24096d23657c8843ce11404f082037f92eb1cb5b1605252e4e8f",
+   "scripts/helike_leakage_gate.py": "4c2b2ddbd70ce22a76bcdf5c6aa4a0186b8cfa44d981b9279b14c2877dd4fcbf",
+   "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe",
+   "docs/research/helike-flux-method-amendment-2026-11-25.md": "5979c34ec63a46c39628ae2c14683b54ef9f5b6f9b67229752e6ae4cc7d783e6",
+   "docs/research/helike-flux-background-registration-2026-11-24.md": "4c279176cca8f1b79cc696782e0a3fb398e6d91e1e88a964eec05896ba7556e0"
+  },
+  "hash_policy": "sha256-universal-newline-v1",
+  "python_flint": "0.9.0",
+  "python": "3.12.10"
+ },
+ "certified": false,
+ "cases": [
+  {
+   "block": "primary",
+   "t": 3.0,
+   "g2": 0.03,
+   "points": [
+    {
+     "s": 1.12,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.320572471655138,
+       "dimension": 924,
+       "seconds": 5.0138958,
+       "moments": "exact",
+       "vacuum_weight": 0.9316982357031145,
+       "helike": {
+        "gap": 1.103315092834137,
+        "weight": 0.8939174796548354,
+        "dressed_weight": 0.9594495786291067
+       },
+       "competitor": {
+        "gap": 1.0169662461008242,
+        "weight": 0.8260416476802167,
+        "dressed_weight": 0.8865978446946794
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 8.699884912477529e-07
+      },
+      {
+       "Mq": 8,
+       "E0": 5.314167099795843,
+       "dimension": 3003,
+       "seconds": 14.430722,
+       "moments": "exact",
+       "vacuum_weight": 0.9317598561591625,
+       "helike": {
+        "gap": 1.0935202852744146,
+        "weight": 0.8973544479716682,
+        "dressed_weight": 0.9630748116480163
+       },
+       "competitor": {
+        "gap": 0.9788273697464049,
+        "weight": 0.8254323443782986,
+        "dressed_weight": 0.8858852835545417
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 4.94023050023884e-07
+      },
+      {
+       "Mq": 10,
+       "E0": 5.311835463389546,
+       "dimension": 8008,
+       "seconds": 74.03028,
+       "moments": "exact",
+       "vacuum_weight": 0.9319997751398568,
+       "helike": {
+        "gap": 1.0911397811709138,
+        "weight": 0.8961871508596854,
+        "dressed_weight": 0.9615744281968337
+       },
+       "competitor": {
+        "gap": 0.96410501871474,
+        "weight": 0.8134437066065229,
+        "dressed_weight": 0.8727938871921473
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.554990398140333e-07
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp8c5gpi7a\\\\export-receipt.json', 'cone-export', '--s', '1.12', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp8c5gpi7a\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.01472235103166497,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.12703476245617384
+    },
+    {
+     "s": 1.15,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.375192463700861,
+       "dimension": 924,
+       "seconds": 8.956619,
+       "moments": "exact",
+       "vacuum_weight": 0.9392314994440449,
+       "helike": {
+        "gap": 1.0858907349260303,
+        "weight": 0.9025290637740002,
+        "dressed_weight": 0.9609229080458122
+       },
+       "competitor": {
+        "gap": 1.076337183188187,
+        "weight": 0.8409922094942496,
+        "dressed_weight": 0.8954046047135922
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 7.002718709347988e-07
+      },
+      {
+       "Mq": 8,
+       "E0": 5.370072327838591,
+       "dimension": 3003,
+       "seconds": 28.6242581,
+       "moments": "exact",
+       "vacuum_weight": 0.9398326927989266,
+       "helike": {
+        "gap": 1.077115436344151,
+        "weight": 0.9064486504775443,
+        "dressed_weight": 0.9644787390594374
+       },
+       "competitor": {
+        "gap": 1.04263967824249,
+        "weight": 0.8493139197294215,
+        "dressed_weight": 0.9036862903758646
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 3.657149817426486e-07
+      },
+      {
+       "Mq": 10,
+       "E0": 5.3683139829102275,
+       "dimension": 8008,
+       "seconds": 102.4880471,
+       "moments": "exact",
+       "vacuum_weight": 0.9402907812114969,
+       "helike": {
+        "gap": 1.0752444325474917,
+        "weight": 0.906110452514878,
+        "dressed_weight": 0.963649193016037
+       },
+       "competitor": {
+        "gap": 1.0310783676389583,
+        "weight": 0.8420097097296897,
+        "dressed_weight": 0.8954780016505329
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.8883102204103608e-07
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpazordizg\\\\export-receipt.json', 'cone-export', '--s', '1.15', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpazordizg\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.011561310603531716,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.044166064908533365
+    },
+    {
+     "s": 1.165,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.401021346960128,
+       "dimension": 924,
+       "seconds": 5.0710598000000005,
+       "moments": "exact",
+       "vacuum_weight": 0.9423991143986811,
+       "helike": {
+        "gap": 1.0764641048360222,
+        "weight": 0.9061308183800326,
+        "dressed_weight": 0.961514929858789
+       },
+       "competitor": {
+        "gap": 1.106209725725206,
+        "weight": 0.8547908527292993,
+        "dressed_weight": 0.9070369864202577
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 6.281837704458226e-07
+      },
+      {
+       "Mq": 8,
+       "E0": 5.396419997910806,
+       "dimension": 3003,
+       "seconds": 25.0903654,
+       "moments": "exact",
+       "vacuum_weight": 0.943161878366734,
+       "helike": {
+        "gap": 1.068139916773518,
+        "weight": 0.9101602822437921,
+        "dressed_weight": 0.9650096161858338
+       },
+       "competitor": {
+        "gap": 1.0744648742946161,
+        "weight": 0.8366380384901907,
+        "dressed_weight": 0.8870566735998598
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 3.0604551215507314e-07
+      },
+      {
+       "Mq": 10,
+       "E0": 5.394881823405883,
+       "dimension": 8008,
+       "seconds": 106.5747083,
+       "moments": "exact",
+       "vacuum_weight": 0.943668410130358,
+       "helike": {
+        "gap": 1.0664704756830794,
+        "weight": 0.9100855706626398,
+        "dressed_weight": 0.9644124576946694
+       },
+       "competitor": {
+        "gap": 1.0640101055016018,
+        "weight": 0.8424208248069989,
+        "dressed_weight": 0.8927085147320203
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.5948943055121845e-07
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpemr9vzdy\\\\export-receipt.json', 'cone-export', '--s', '1.165', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpemr9vzdy\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.010454768793014324,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.0024603701814776002
+    },
+    {
+     "s": 1.18,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.425878808687314,
+       "dimension": 924,
+       "seconds": 8.2737674,
+       "moments": "exact",
+       "vacuum_weight": 0.945229136270364,
+       "helike": {
+        "gap": 1.066537267380557,
+        "weight": 0.9093196906639098,
+        "dressed_weight": 0.9620097982293015
+       },
+       "competitor": {
+        "gap": 1.1357786227749127,
+        "weight": 0.8655599287949757,
+        "dressed_weight": 0.9157143972627177
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 5.610281098578085e-07
+      },
+      {
+       "Mq": 8,
+       "E0": 5.4217296122495595,
+       "dimension": 3003,
+       "seconds": 31.3651227,
+       "moments": "exact",
+       "vacuum_weight": 0.9461031133654728,
+       "helike": {
+        "gap": 1.0586272454128673,
+        "weight": 0.9133950261925057,
+        "dressed_weight": 0.9654286232537401
+       },
+       "competitor": {
+        "gap": 1.105834544565468,
+        "weight": 0.8695096432685262,
+        "dressed_weight": 0.9190432110253937
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 2.7232939192600725e-07
+      },
+      {
+       "Mq": 10,
+       "E0": 5.42037767648497,
+       "dimension": 8008,
+       "seconds": 86.4049039,
+       "moments": "exact",
+       "vacuum_weight": 0.9466329071928029,
+       "helike": {
+        "gap": 1.0571307308725846,
+        "weight": 0.9135135268320337,
+        "dressed_weight": 0.9650134913870856
+       },
+       "competitor": {
+        "gap": 1.0966943469227113,
+        "weight": 0.8648821153434137,
+        "dressed_weight": 0.9136404500327192
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.3735094495093136e-07
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpitlptpng\\\\export-receipt.json', 'cone-export', '--s', '1.18', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpitlptpng\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.009140197642756753,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.039563616050126704
+    },
+    {
+     "s": 1.195,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.449772371679764,
+       "dimension": 924,
+       "seconds": 8.9983691,
+       "moments": "exact",
+       "vacuum_weight": 0.947759320732422,
+       "helike": {
+        "gap": 1.0560915170414473,
+        "weight": 0.9121306156459734,
+        "dressed_weight": 0.9624074337154342
+       },
+       "competitor": {
+        "gap": 1.165314079839722,
+        "weight": 0.873630346000059,
+        "dressed_weight": 0.9217850216708218
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 4.984876088576229e-07
+      },
+      {
+       "Mq": 8,
+       "E0": 5.4460182154578085,
+       "dimension": 3003,
+       "seconds": 35.1358993,
+       "moments": "exact",
+       "vacuum_weight": 0.9487060356315214,
+       "helike": {
+        "gap": 1.0485605036029675,
+        "weight": 0.9162014500714539,
+        "dressed_weight": 0.9657379795856044
+       },
+       "competitor": {
+        "gap": 1.137123031127972,
+        "weight": 0.8782013954642249,
+        "dressed_weight": 0.9256833650053001
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 2.3548192040756533e-07
+      },
+      {
+       "Mq": 10,
+       "E0": 5.444824467855469,
+       "dimension": 8008,
+       "seconds": 78.0150152,
+       "moments": "exact",
+       "vacuum_weight": 0.9492415006179906,
+       "helike": {
+        "gap": 1.047212448056186,
+        "weight": 0.9164593591756863,
+        "dressed_weight": 0.9654649091712046
+       },
+       "competitor": {
+        "gap": 1.1289884299663022,
+        "weight": 0.8745627006650467,
+        "dressed_weight": 0.9213279235006842
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 9.303710084562766e-07
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpjsosdxv5\\\\export-receipt.json', 'cone-export', '--s', '1.195', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpjsosdxv5\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.008134601161669863,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.08177598191011626
+    },
+    {
+     "s": 1.22,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.487462735201668,
+       "dimension": 924,
+       "seconds": 7.8677302000000005,
+       "moments": "exact",
+       "vacuum_weight": 0.9513949991266268,
+       "helike": {
+        "gap": 1.0374747509471263,
+        "weight": 0.9160540751248853,
+        "dressed_weight": 0.962853573926514
+       },
+       "competitor": {
+        "gap": 1.2143719209864319,
+        "weight": 0.8853420448754904,
+        "dressed_weight": 0.9305725231772581
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 4.0760545905182965e-07
+      },
+      {
+       "Mq": 8,
+       "E0": 5.48426116788989,
+       "dimension": 3003,
+       "seconds": 25.4779869,
+       "moments": "exact",
+       "vacuum_weight": 0.9524015845714987,
+       "helike": {
+        "gap": 1.030502085995317,
+        "weight": 0.9200343107085361,
+        "dressed_weight": 0.9660150986859969
+       },
+       "competitor": {
+        "gap": 1.1888286951877074,
+        "weight": 0.8906564502810018,
+        "dressed_weight": 0.9351690134805088
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 1.851187760859574e-07
+      },
+      {
+       "Mq": 10,
+       "E0": 5.483281195769366,
+       "dimension": 8008,
+       "seconds": 80.932096,
+       "moments": "exact",
+       "vacuum_weight": 0.9529217034568371,
+       "helike": {
+        "gap": 1.0293563895296725,
+        "weight": 0.9204382009120684,
+        "dressed_weight": 0.9659116772900324
+       },
+       "competitor": {
+        "gap": 1.182095240275416,
+        "weight": 0.8883579068124752,
+        "dressed_weight": 0.9322464831998798
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 7.31694698719032e-07
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpcxz0_wmt\\\\export-receipt.json', 'cone-export', '--s', '1.22', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpcxz0_wmt\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.006733454912291492,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.15273885074574345
+    },
+    {
+     "s": 1.24,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.515694641847213,
+       "dimension": 924,
+       "seconds": 8.242691,
+       "moments": "exact",
+       "vacuum_weight": 0.9538484394013877,
+       "helike": {
+        "gap": 1.021437196853313,
+        "weight": 0.9185691044552081,
+        "dressed_weight": 0.9630136890842741
+       },
+       "competitor": {
+        "gap": 1.2534440534287796,
+        "weight": 0.893473744628074,
+        "dressed_weight": 0.9367041006942325
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 3.4622830125119464e-07
+      },
+      {
+       "Mq": 8,
+       "E0": 5.51285662733504,
+       "dimension": 3003,
+       "seconds": 23.6397284,
+       "moments": "exact",
+       "vacuum_weight": 0.9548650252438982,
+       "helike": {
+        "gap": 1.0148495543783316,
+        "weight": 0.9224234485365712,
+        "dressed_weight": 0.9660249607539657
+       },
+       "competitor": {
+        "gap": 1.2297851295563698,
+        "weight": 0.8991492635038659,
+        "dressed_weight": 0.9416506414340593
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 1.52978287482064e-07
+      },
+      {
+       "Mq": 10,
+       "E0": 5.512012227329291,
+       "dimension": 8008,
+       "seconds": 89.7040514,
+       "moments": "exact",
+       "vacuum_weight": 0.9553599175999636,
+       "helike": {
+        "gap": 1.0138325218487267,
+        "weight": 0.9228899295837669,
+        "dressed_weight": 0.9660128215366548
+       },
+       "competitor": {
+        "gap": 1.223966332481794,
+        "weight": 0.8976265843376262,
+        "dressed_weight": 0.9395690229422917
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 6.025393446407179e-07
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpdfmsp005\\\\export-receipt.json', 'cone-export', '--s', '1.24', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpdfmsp005\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.005818797074575777,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.21013381063306724
+    }
+   ]
+  }
+ ]
+}

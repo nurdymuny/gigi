@@ -243,3 +243,16 @@ state (0.971). Its w̃ = 0.837 falls below 0.9 because of higher-order dressing,
 channel. (I had predicted mixing; that was wrong.) Under the registered rule (5.2), points like this would be
 UNRESOLVED for an identification reason, not a physical one. **The rule is not changed here.** Any change would be a
 new amendment, disclosed as made after seeing these values.
+
+### 5.4 Grid restart for the §5.3 receipt fields (26 November)
+
+- A registered run under §5.2 was started at commit 9e422f61. It was stopped after 6 of 31 points so that the
+  registered receipt carries the §5.3 cross-check at every rung.
+- Its partial receipt is archived **unread** in `research/flux-grid-20261126-SUPERSEDED-9e422f61/`. No gap, weight
+  or verdict from it was looked at before the restart.
+- The rule did not change between the two commits: §5.3 is report-only, and a test shows that `assess_point` cannot
+  see it. The solver is deterministic, so the restart can change no decision.
+- The registered run is `research/flux-grid-20261126/`, at 93a6de65. Before it was launched:
+  - runner tests passed 28/28;
+  - grid mutants were 10/10 caught;
+  - no release conditions were unmet.

@@ -567,3 +567,48 @@ These record how two registered quantities are realised in code. Neither changes
   ‖Hx − θx‖ plus half the pair's splitting. The splitting is a truncation artifact of an exact degeneracy, so a
   crossing test cannot be passed or failed through it. The method is recorded in the export
   (`uncertainty_method`), and the addition is made in `helike_m8_overlap.PhysicalFamily.sample`.
+
+---
+
+## Amendment 4 (26 November): the quadrature seam pair is set by the basis degree
+
+**Disclosure first.** This amendment comes **after** a control value was seen. At g² = 0.002 and Mq = 10 the registered
+seam Q0b failed:
+- the shares moved by 2.5·10⁻³ (Helike) and 4.0·10⁻³ (the competitor) between orders 10 and 12, against 10⁻³;
+- the point was OPEN, as registered;
+- the order-12 shares were seen: 0.9973 for Helike and 0.9993 for the competitor.
+
+The rule below is fixed by an argument that depends on no value. It is applied to every point alike, and the seen
+point is rerun under it. Bee decided to register it.
+
+**Why the registered pair fails at Mq = 10.** Gauss–Hermite quadrature of order n integrates a polynomial of degree up
+to 2n − 1 exactly, along each axis. A trial state's polynomial part p has degree at most Mq along each axis, so p² has
+degree up to 2Mq.
+- At Mq = 8, order 10 is exact to degree 19 ≥ 16, and order 12 to degree 23.
+- At Mq = 10, order 10 is exact only to degree 19, which is below the 20 needed. So order 10 cannot integrate even the
+  norm of the basis exactly, and the seam measures the coarse order's failure, not the reading's sensitivity.
+
+The registered pair was sized for Mq ≤ 8.
+
+**The rule.**
+- The coarse order n_c is the smallest even integer with n_c ≥ max(10, Mq + 1). This is the least order exact for
+  degree 2Mq, and never below the registered 10.
+- The fine order is n_f = n_c + 2.
+- This gives:
+  - (10, 12) at Mq = 6 and Mq = 8, unchanged;
+  - (12, 14) at Mq = 10.
+- The rule applies to every quadrature with a seam in M8:
+  - Q0b, the shares;
+  - Q0a and Q2, which are evaluated at the fine order;
+  - the physical overlaps of A3.1, whose seam tolerance stays 10⁻⁴.
+- Degree exactness is only a floor. The integrands that decide anything (the ratio f = p/p₀, the metric, and the
+  Laurent potential) are not polynomials. So the seam still decides, with its tolerance unchanged at 10⁻³.
+- **One pair, no ladder.** If the seam fails at the pair this rule gives, the point is OPEN. Orders are not raised
+  further until a seam happens to pass, because that would be shopping for a resolution.
+
+**Predictions, stated now.** At g² = 0.002 and Mq = 10, the (12, 14) seam is ≤ 10⁻³ for both channels, and the
+order-14 shares agree with the seen order-12 values to that tolerance. At g² = 0.004 and Mq = 10, the same holds. If
+either seam fails at (12, 14), that point is OPEN.
+
+**What is rerun.** Both Mq = 10 controls, under the rule. The Mq = 8 controls already used (10, 12), which the rule
+leaves unchanged, so they stand.

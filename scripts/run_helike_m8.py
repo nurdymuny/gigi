@@ -19,7 +19,15 @@ Q0B_TOL = 1e-3          # shares, order 10 vs 12
 Q2_TOL = 1e-6           # alignment vs the solver's §5.3 dressed overlap
 RESIDUAL_FLAG = 1e-2
 POSITIVITY_FLOOR = 1e-12
-ORDERS = (10, 12)
+ORDERS = (10, 12)        # the registered pair for Mq <= 8
+
+
+def seam_orders(mq):
+    """Amendment 4: the coarse order is the least even n >= max(10, Mq + 1) (exact for degree 2 Mq); fine = coarse + 2.
+    One pair, no ladder."""
+    n = max(10, mq + 1)
+    n += n % 2
+    return (n, n + 2)
 
 
 def export(s, t, g2, mq, out):
@@ -53,9 +61,11 @@ def label(own, shares, block):
 def point(s, t, g2, mq, out):
     X = export(s, t, g2, mq, out)
     car, br = carriers(X)
-    res = {o: gm.analyse_point(X, o, car) for o in ORDERS}
-    fine, coarse = res[12], res[10]
-    rep = {"g2": g2, "Mq": mq, "branches": [[list(l), q] for l, q in br], "orders": {str(o): res[o] for o in ORDERS}}
+    orders = seam_orders(mq)
+    res = {o: gm.analyse_point(X, o, car) for o in orders}
+    coarse, fine = res[orders[0]], res[orders[1]]
+    rep = {"g2": g2, "Mq": mq, "seam_orders": list(orders), "branches": [[list(l), q] for l, q in br],
+           "orders": {str(o): res[o] for o in orders}}
     open_reasons = []
     for name, (lev, block) in car.items():
         f, c = fine[name], coarse[name]
@@ -83,11 +93,11 @@ def point(s, t, g2, mq, out):
     return rep
 
 
-def controls(out_dir):
+def controls(out_dir, mqs=(8, 10)):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
-    rep = {"stage": "M8 controls", "points": []}
+    rep = {"stage": "M8 controls", "amendment": "4 (seam orders by basis degree)", "points": []}
     for g2 in (0.002, 0.004):
-        for mq in (8, 10):
+        for mq in mqs:
             t0 = time.time()
             r = point(1.15, 3.0, g2, mq, out)
             r["seconds"] = time.time() - t0
@@ -104,6 +114,7 @@ def controls(out_dir):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--controls", metavar="OUT_DIR")
+    ap.add_argument("--mq", type=int, nargs="*", default=[8, 10])
     a = ap.parse_args()
     if a.controls:
-        controls(a.controls)
+        controls(a.controls, tuple(a.mq))

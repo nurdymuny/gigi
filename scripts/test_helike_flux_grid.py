@@ -105,6 +105,43 @@ class Case(unittest.TestCase):
             o(["SUPPORTED"] * 2)
 
 
+class Robustness(unittest.TestCase):
+    """Fixes of 26 November (disclosed in the amendment's runner note): no single point or crossing can crash the grid."""
+
+    def test_multiple_crossings_are_unresolved_not_a_crash(self):
+        r = grid.assess_case(case(S, [-0.02, 0.01, -0.01, 0.01, 0.02, 0.03, 0.04]), grid.DESIGN)
+        self.assertEqual(r["status"], "UNRESOLVED")
+        self.assertIn("ambiguous crossing", r["reason"])
+
+    def test_zero_difference_at_an_endpoint_is_unresolved_not_a_crash(self):
+        r = grid.assess_case(case(S, [0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06]), grid.DESIGN)
+        self.assertEqual(r["status"], "UNRESOLVED")
+
+    def test_receipt_digest_ignores_line_endings(self):
+        with tempfile.TemporaryDirectory() as d:
+            a, b = Path(d) / "a.json", Path(d) / "b.json"
+            a.write_bytes(b'{"x": 1}\n'); b.write_bytes(b'{"x": 1}\r\n')
+            self.assertEqual(grid.sha(a), grid.sha(b))
+
+    def test_nonfinite_values_are_written_as_strings(self):
+        self.assertEqual(grid.finite_json({"a": [float("nan"), 1.0], "b": float("inf")}), {"a": ["nan", 1.0], "b": "inf"})
+
+    def test_an_unexpected_domain_stage_error_is_open(self):
+        with patch("helike_domain_gate.domain_gate_point", side_effect=OSError("disk")):
+            v, d = grid.domain_gate(1.18, 3.0, 0.05, 10)
+        self.assertEqual(v, "OPEN")
+
+
+    def test_cutoff_degree_cap_is_ten(self):
+        import numpy as np
+        import helike_cutoff_bounds as cb
+        from flint import ctx
+        ctx.prec = cb.PRECISION
+        cb.polynomial_bounds([(10, 0, 0, 0, 0, 0)], np.array([1.0 + 0j]), 1)
+        with self.assertRaises(ValueError):
+            cb.polynomial_bounds([(11, 0, 0, 0, 0, 0)], np.array([1.0 + 0j]), 1)
+
+
 class Release(unittest.TestCase):
     def test_domain_gate_passes_the_stage_verdict_through(self):
         import helike_domain_gate as dg

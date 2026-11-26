@@ -12,6 +12,9 @@ import helike_positive_cone as pc
 PRECISION=128
 EPSILON=arb(1)/16
 POWERS=(3,2,1,0,0,0)
+# Section 3 of the cutoff registration holds for any total degree m; the cap is a scope guard. It was 8 (the Mq 6, 8
+# controls) and is 10 since the flux-grid amendment puts the domain gate at the final rung Mq = 10 (runner note, 26 Nov).
+MAX_DEGREE=10
 
 
 def checked(x,positive=False,nonnegative=False):
@@ -98,7 +101,7 @@ def polynomial_bounds(basis,C,rho):
             or any(len(n)!=6 or any(isinstance(v,bool) or not isinstance(v,(int,np.integer)) or v<0 for v in n) for n in basis)):
         raise ValueError('unique six-index nonnegative Hermite basis and matching vector required')
     m=max(map(sum,basis))
-    if m>8: raise ValueError('registered trial degree exceeds eight')
+    if m>MAX_DEGREE: raise ValueError('registered trial degree exceeds ten')
 
     @lru_cache(None)
     def h(n):

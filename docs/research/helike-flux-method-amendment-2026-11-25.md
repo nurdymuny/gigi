@@ -90,3 +90,35 @@ switch, conditional on S_C. That is a strictly stronger, separately labelled sta
 It computes nothing and inspects no grid point. It does not change the threshold of any test, the predictions, or
 the definition of the switch. It does not make S_C a theorem. Its certificates are reported, conditional on S_C, as
 before.
+
+## 5. Runner note, 26 November: fixes before the grid (no grid point computed)
+
+These are written and committed before any registered point is computed. They change no question, model, grid,
+prediction, tolerance, identification or decision threshold. Before them, the runner could not complete the grid at
+all on this machine.
+
+1. **Domain gate at the final rung was impossible.**
+   - `helike_cutoff_bounds.polynomial_bounds` refused total degree above 8, the scope of the Mq = 6, 8 controls it was
+     registered on. §3.3 puts the gate at the final rung, Mq = 10, so every point would have been OPEN and every case
+     UNRESOLVED by construction.
+   - The inequalities of §3 of the cutoff registration (Hermite majorants k_n, the exact six-dimensional radial tail
+     T_k) hold for any m. The cap is now 10 (`MAX_DEGREE`).
+   - Checked: cutoff tests 19/19 and cutoff mutants all caught. At the control (t = 3, g² = 0.002, s = 1.15; not a
+     grid point), the Mq = 10 gate PASSES all four states, with leakage ≤ 7·10⁻²⁴ against r_lower ≥ 2.7·10⁻⁴.
+2. **Pinned receipts read as changed on a CRLF checkout.** The release check hashed raw bytes, while the pins are LF
+   digests. It now uses the original runner's `sha256-universal-newline-v1`, as the domain gate already did.
+3. **The binary path missed `.exe` on Windows**, in both the runner and `helike_domain_gate`.
+4. **One point could crash the grid.**
+   - A rung failing validation in `assess_point` is now a refused point, so its case is UNRESOLVED under the
+     registered rule.
+   - Any exception inside the domain stage is OPEN, as before, but now for every exception type.
+5. **An ambiguous crossing could crash the grid.** `switch_point` refuses multiple crossings, or a zero difference
+   without a unique interior bracket. The registered rule has no outcome for this. The case is reported **UNRESOLVED
+   with reason "ambiguous crossing"**: fail-closed, claiming neither SUPPORTED nor NOT_SUPPORTED.
+6. **Provenance.** The receipt now records:
+   - the commit and dirty flag, the binary's SHA-256, LF digests of the runner and gate sources and of the
+     registration and amendment, and the python-flint version;
+   - atomic writes with an integrity file. Non-finite numbers are written as strings, not dropped.
+
+Tests: `test_helike_flux_grid.py` passes 23/23; six were added for the items above. The grid-runner mutants are all
+caught. The grid runs on this machine (Mq = 10 at the control: about 75 s for the solve and 75 s for the gate).

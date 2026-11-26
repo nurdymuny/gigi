@@ -38,7 +38,7 @@ DESIGN = {
     "predicted_s_star": registered.DESIGN["predicted_s_star"],
 }
 AMENDMENT = "docs/research/helike-flux-method-amendment-2026-11-25.md"
-HELIKE_BIN = ROOT / "helike-lab/target/release/helike"
+HELIKE_BIN = ROOT / ("helike-lab/target/release/helike" + (".exe" if sys.platform == "win32" else ""))
 
 # Release evidence, pinned (same receipts the paper builder reads).
 PINNED = {
@@ -52,7 +52,51 @@ PINNED = {
 
 
 def sha(p):
+    """LF-normalised digest (the original runner's sha256-universal-newline-v1): the pins are digests of the committed
+    text, so a CRLF checkout must not read as a changed receipt."""
+    return registered.sha(p)
+
+
+def raw_sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+
+
+SOURCES = tuple("scripts/" + f for f in (
+    "run_helike_flux_grid.py", "run_helike_flux_background.py", "helike_domain_gate.py", "helike_cutoff_bounds.py",
+    "helike_leakage_gate.py", "helike_positive_cone.py")) + (AMENDMENT, registered.REGISTRATION)
+
+
+def provenance():
+    """What produced the receipt: commit, dirty flag, binary digest, source digests, Arb library version."""
+    def git(*a):
+        try:
+            return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            return None
+    try:
+        import flint
+        flint_version = flint.__version__
+    except ImportError:
+        flint_version = None
+    return {"git_commit": git("rev-parse", "HEAD"), "git_dirty": bool(git("status", "--porcelain", "--", "scripts", "helike-lab/crates")),
+            "helike_bin_sha256": raw_sha(HELIKE_BIN) if HELIKE_BIN.exists() else None,
+            "sources_sha256": {f: sha(ROOT / f) for f in SOURCES}, "hash_policy": registered.HASH_POLICY,
+            "python_flint": flint_version, "python": sys.version.split()[0]}
+
+
+def finite_json(x):
+    """Strict JSON for the receipt: a non-finite float is written as its string ("nan", "inf"), never dropped."""
+    if isinstance(x, float) and not math.isfinite(x):
+        return str(x)
+    if isinstance(x, dict):
+        return {k: finite_json(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [finite_json(v) for v in x]
+    return x
+
+
+def save(path, rec):
+    registered.save_receipt(path, finite_json(rec))   # atomic write + LF-digest integrity file
 
 
 def domain_stage_ready():
@@ -70,7 +114,7 @@ def domain_gate(s, t, g2, mq):
     import helike_domain_gate as dg
     try:
         r = dg.domain_gate_point(s, t, g2, mq)
-    except (ValueError, KeyError, subprocess.CalledProcessError, ArithmeticError) as exc:
+    except Exception as exc:  # noqa: BLE001 -- any refusal or failure inside the stage is OPEN, never PASS
         return "OPEN", {"error": f"{type(exc).__name__}: {exc}"}
     return r["verdict"], r
 
@@ -100,8 +144,15 @@ def assess_case(case, D):
     pts = [assess_point(p, D) for p in case["points"]]
     if not all(a["converged"] and a["identified"] for a in pts):
         return {"status": "UNRESOLVED", "measured_switch": None}
-    measured = registered.switch_point([p["s"] for p in case["points"]], [a["diff_competitor_minus_helike"] for a in pts])
     predicted = D["predicted_s_star"][str(case["t"])][str(case["g2"])]
+    try:
+        measured = registered.switch_point([p["s"] for p in case["points"]], [a["diff_competitor_minus_helike"] for a in pts])
+    except ValueError as exc:
+        # multiple crossings, or a zero difference without a unique interior bracket: no single switch can be read
+        # off. The registered rule has no outcome for this; it is reported as UNRESOLVED with the reason (disclosed
+        # amendment, fail-closed: neither SUPPORTED nor NOT_SUPPORTED is claimed).
+        return {"status": "UNRESOLVED", "measured_switch": None, "predicted_switch": predicted,
+                "reason": f"ambiguous crossing: {exc}"}
     if measured is None or abs(measured - predicted) > D["s_tolerance"]:
         status = "NOT_SUPPORTED"
     else:
@@ -183,7 +234,9 @@ def main():
         print("refusing to write into a non-empty directory")
         return 2
     out.mkdir(parents=True, exist_ok=True)
-    rec = {"status": "RUNNING", "design": DESIGN, "amendment": AMENDMENT, "started_unix": time.time(), "cases": []}
+    rec = {"status": "RUNNING", "design": DESIGN, "amendment": AMENDMENT, "started_unix": time.time(),
+           "provenance": provenance(), "certified": False, "cases": []}
+    receipt = out / "receipt.json"
     for label in ("primary", "secondary"):
         block = DESIGN[label]
         for g2 in block["g2"]:
@@ -196,16 +249,19 @@ def main():
                     # a solver refusal is a failed point (UNRESOLVED under the registered rule), never a crash
                     p = {"s": s, "ladder": [], "refused": f"{type(exc).__name__}", "converged": False, "identified": False}
                     case["points"].append(p)
-                    (out / "receipt.json").write_text(json.dumps(rec, indent=1))
+                    save(receipt, rec)
                     continue
                 p["domain_gate"], p["domain"] = domain_gate(s, block["t"], g2, DESIGN["ladder"][-1])
-                p.update(assess_point(p, DESIGN))
+                try:
+                    p.update(assess_point(p, DESIGN))
+                except ValueError as exc:
+                    p.update(refused=f"ValueError: {exc}", converged=False, identified=False)
                 case["points"].append(p)
-                (out / "receipt.json").write_text(json.dumps(rec, indent=1))
+                save(receipt, rec)
             case.update(assess_case(case, DESIGN))
     statuses = [c["status"] for c in rec["cases"] if c["block"] == "primary"]
-    rec.update(status="COMPLETE", overall=overall(statuses), certified=False)
-    (out / "receipt.json").write_text(json.dumps(rec, indent=1))
+    rec.update(status="COMPLETE", overall=overall(statuses), certified=False, finished_unix=time.time())
+    save(receipt, rec)
     print(rec["overall"])
     return 0
 

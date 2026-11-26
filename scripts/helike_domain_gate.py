@@ -16,6 +16,7 @@ import json
 import math
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
 import numpy as np
@@ -25,7 +26,7 @@ import helike_leakage_gate as lg
 import helike_positive_cone as pc
 
 ROOT = Path(__file__).resolve().parents[1]
-HELIKE_BIN = ROOT / "helike-lab/target/release/helike"
+HELIKE_BIN = ROOT / ("helike-lab/target/release/helike" + (".exe" if sys.platform == "win32" else ""))
 NAMES = ("ground", "helike_plus", "helike_minus", "competitor")
 CHARGES = (0, 2, -2, 0)
 GATED = ("helike_plus", "helike_minus", "competitor")

@@ -162,3 +162,100 @@ is not the cheapest bare shape, and the vacuum's weight has rearranged them.
 Everything here is about the sourced homogeneous reduction. A DISSOLVES verdict would refute H1 in this model only.
 PERSISTS everywhere would support it in this model only, and would say nothing yet about the unsourced theory (§5 of
 the note, the source bridge).
+
+---
+
+## Amendment 1 (26 November; before any code and before any value): a second review
+
+An outside review of the note's §4.7 and of this registration found four points. All four are right. Nothing has been
+coded or computed, so the design is corrected here, in the open, before anything can be seen.
+
+### A1.1 The measure, and complex states
+
+- **The reduced measure is not the metric's volume.** Write dμ = w dvol_g. In the chart, dμ = e^{log_scale + ℓ·z} dz,
+  and dvol_g = (det g_{ij})^{1/2} dz, where g_{ij} is the inverse of the kinetic g^{ij}. So
+
+    w(z) = e^{log_scale + ℓ·z} / (det g_{ij}(z))^{1/2},
+
+  computed at each node from the solver's own chart (`ConeChart.log_measure`, `ConeChart.metric`).
+- **Q4 uses the weighted curvature with the measure carried along:**
+
+    Ric_g − Hess_g log(w ψ₀²),
+
+  with Hess_g the covariant Hessian, built from the Christoffel symbols of g by finite differences. It is still floating
+  and reported only.
+- **The form (★) and Q0a hold for any f in the form domain.** For a complex f, one derivative takes the conjugate,
+  ½ g^{ij} ∂ᵢf̄ ∂ⱼf, and normalisation uses |f|². The residual term becomes ⟨|f|²ψ₀, ρ₀⟩. The registered computation
+  still uses the real partners and sums them. The complex form is used in a synthetic test, to check that the two
+  agree.
+
+### A1.2 What the curvature decides
+
+Q4 constrains how cheap **any** excitation can be. It decides nothing about **which** excitation is cheapest. That is
+decided by the comparison of levels and of state geometry (Q1–Q3).
+- No verdict, and no explanation, may cite Q4 as the reason for a switch, or for its absence.
+- §4 "the explanation" uses Q3 only, as registered.
+
+### A1.3 The carrier may deform: continuity replaces direction
+
+The per-case rule of §4 is replaced. As registered, a channel whose largest share moved from one block to another
+counted as DISSOLVES. An eigenvector can rotate smoothly while its level stays isolated, and that is successful
+tracking. So the decision is now continuity of the identified subspace, together with its alignment.
+
+- **The fingerprint.** At each point, the subspace's energy-share vector σ = (σ_H, σ_C, σ_S, σ_R, σ_cross), from Q1.
+  - The cross shares are aggregated, so σ sums to 1.
+  - Helike's two partners are one subspace, and their shares are summed (§1).
+  - The blocks are fixed by frequency identity, which deforms continuously with s, so σ can be compared across points.
+- **The jump** between adjacent grid points k, k+1 is J_k = ½‖σ(s_{k+1}) − σ(s_k)‖₁, a number in [0, 1].
+- **Continuity rule.**
+  - If J_k ≤ 0.2, the step is *continuous*.
+  - If J_k > 0.2, the pair is bisected once. The midpoint s is solved at the same settings (Mq = 10). It is an M8
+    diagnostic point only, and it never enters the grid.
+  - If both half-jumps are ≤ 0.75·J_k, the change is spread out, and the step is *continuous* (a fast, smooth
+    rotation).
+  - Otherwise it is concentrated, and the step is a *jump*.
+  - A midpoint that is OPEN under Q0 makes the step OPEN.
+- **Alignment.** At each point, the alignment with Helike's registered structure (Q2, the dressed weight) is reported
+  and cross-checked. A resolved grid case already requires it to be ≥ 0.9 at every point (the grid's weight_min).
+  - A point below 0.9 makes the case OPEN here, as in the grid.
+  - It is never counted as continuity.
+- **Per-case verdicts, for each channel:**
+  - **PERSISTS** if every step is continuous. If its largest block changes along the way, it is reported as
+    *PERSISTS, deforming*, with where and how far.
+  - **HANDS OVER** if jumps occur only at steps where the grid records a switch: the registered switch bracket, or a
+    change of the identified level index.
+  - **DISSOLVES** if a jump occurs at a step with no recorded switch. **M8 fails** for that case.
+  - **OPEN** if any point or step is OPEN, or the grid case is unresolved.
+- **How much change contradicts the prediction:** a concentrated jump, J > 0.2 that does not spread under bisection, at
+  a step with no switch. A smooth rotation of any size does not contradict it.
+- **The per-point labels** ALIGNED, DRESSED and TURNED are kept as descriptions. They decide nothing.
+- **A second fingerprint, reported only:** the subspace's projector weights on the 22 registered heat-signal
+  monomials. Its jump is reported beside J_k.
+
+### A1.4 Tests and mutants, amended
+
+Added tests:
+- **Q4 against an exact case.** A flat metric with a nonconstant density w and a Gaussian ψ₀, where the weighted
+  tensor is known in closed form. Q4 must reproduce it, and must differ from it when w is dropped.
+- **Complex and real forms agree.** For a planted charge-2 pair, the complex form (conjugate, |f|²) and the
+  summed-real-partner form must agree to 10⁻¹².
+- **A smooth rotation.** A synthetic family with σ rotating from H to S over the sweep, with no level crossing. The
+  steps have J > 0.2, but the change spreads under bisection, so the verdict is PERSISTS, deforming.
+- **A planted jump.** An avoided crossing with σ swapping inside one step. Without a recorded switch the verdict is
+  DISSOLVES; with one at that step it is HANDS OVER.
+
+Added mutants, which must be caught:
+- w dropped from Q4;
+- the old direction rule restored as decisive;
+- the bisection skipped, so every J > 0.2 is read as a jump;
+- the bisection threshold loosened to 1.0;
+- Q4 cited in the explanation.
+
+The mutant "the direction taken from the alignment a instead of the share σ" is replaced by "the continuity taken
+from the alignment instead of the fingerprint".
+
+### A1.5 Predictions, restated
+
+- At the controls: unchanged.
+- On the grid: Helike PERSISTS up to the switch. Small deformation is allowed, and I predict her largest block stays
+  H. The two channels exchange the lowest place at the switch without a concentrated jump in either fingerprint.

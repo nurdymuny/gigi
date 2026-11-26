@@ -17,6 +17,12 @@ the first controls show, and the milestones and falsifiers follow.
 - §4.5 names the data that holomorphic gluing would have to connect.
 - §5 adds the bridge from the sourced reduction to the unsourced theory.
 
+*And after a second review:*
+- §4.7 now carries the reduced measure in the curvature, and uses complex conjugates.
+- It separates what curvature constrains from what decides the carrier.
+- M8 allows a carrier to deform continuously.
+- T5 is described as proposed, not computed.
+
 ---
 
 ## 1. The problem, as it is actually posed
@@ -304,9 +310,9 @@ reaches it in a comparable time. Three things are measured, not only the end lev
 
 The gap is then not one excitation among many. It is the channel this class of disturbances leaves through.
 
-That is why one field can carry it (§4.2): the carrier is the shape of the corridor. And because every field that
-couples to the sector must pass through it, the gap is also what connects them. It is the secret corridor between
-fields.
+That is why one field can carry it (§4.2): the carrier is the shape of the corridor. To the extent that every
+disturbance in the stated class leaves through it, the gap is also what connects them. It is the secret corridor
+between those disturbances. Whether the class can be widened, and how far, is part of what M6 measures.
 
 **Octave and tone.** A reading of the notes has two parts.
 - The **octave** is the overall scale Δ. In a small room it is set by the room; in infinite space it must be set by
@@ -345,13 +351,20 @@ consistency check, not an independent measurement of it. The grid points, where 
 
 ### 4.7 Why one field stays cheapest: the gap as weighted geometry
 
-In my reduction this is exact, not a picture. The kinetic term is a Dirichlet form, ½ g^{ij} ∂ᵢf ∂ⱼf, over the chart's
-measure. The ground state ψ₀ is positive. Write any state as ψ = f ψ₀. Then
+In my reduction this is exact, not a picture.
+- The kinetic term is a Dirichlet form, ½ g^{ij} ∂ᵢψ̄ ∂ⱼψ, taken over the reduced model's own measure dμ.
+- That measure is not the volume of the kinetic metric. In the chart it is dμ = w dvol_g, with a nonconstant density
+  w. The density comes from the Gram coordinates, through the factor e^{3u₀+2u₁+u₂} and the metric's determinant.
+- For the exact ground state, ψ₀ is positive.
 
-  ⟨ψ, (H − E₀) ψ⟩ = ½ ∫ g^{ij} ∂ᵢf ∂ⱼf · ψ₀² dμ,
+Write any state as ψ = f ψ₀. Then, for the exact ground state, and for f in the form domain,
 
-and the gap is the smallest such value over f with ∫ f ψ₀² dμ = 0 and ∫ f² ψ₀² dμ = 1. This is the ground-state
-transformation: H − E₀ becomes a weighted Laplacian on the field space with the vacuum's probability as its measure.
+  ⟨ψ, (H − E₀) ψ⟩ = ½ ∫ g^{ij} ∂ᵢf̄ ∂ⱼf · ψ₀² dμ.
+
+The gap is the smallest such value over f with ∫ f ψ₀² dμ = 0 and ∫ |f|² ψ₀² dμ = 1. This is the ground-state
+transformation. H − E₀ becomes a weighted Laplacian on the field space, with measure ψ₀² dμ = w ψ₀² dvol_g.
+- **For a computed ψ₀**, the identity gains a residual term, ⟨|f|²ψ₀, (H − E₀)ψ₀⟩. It must be controlled, not
+  assumed away. M8 measures it.
 
 Two consequences follow, and both can be measured.
 - **The carrier is a shape on that geometry.** The ground state is invariant under the charge rotation, so the
@@ -359,13 +372,26 @@ Two consequences follow, and both can be measured.
   function of that charge on the vacuum-weighted geometry. Helike's channel is the statement that, over a region, the
   slowest charge-2 function is, to leading order, her twist coordinate h₁ + i h₂. Following f₁ across the switch
   shows either why she stays cheapest, or exactly which direction becomes cheaper. This is H1 made geometric.
-- **The constraint has a curvature.** If the Bakry–Émery tensor Ric_g − 2 Hess log ψ₀ is bounded below by κ > 0,
-  the whole gap, over all sectors, is at least κ/2 with this normalisation. A cheaper shape would have to run against
-  that curvature. The bound is on the gap, not on a particular sector's level. Where
-  the bound holds, it explains why no cheaper shape appears. Where it fails, it shows where a switch can happen.
+- **The constraint has a curvature.** The weighted curvature has to carry the reduced measure:
+
+    Ric_g − Hess_g log(w ψ₀²),
+
+  with the covariant Hessian of the kinetic metric. Moncrief, Marini and Maitra start from the metric's own volume, so
+  their formula applies here only with w carried along. If this tensor is bounded below by κ > 0, every excitation,
+  in every sector, costs at least κ/2 with this normalisation.
+
+**What each tool decides.** The curvature and the comparison answer different questions, and neither substitutes for
+the other.
+- **The curvature bound constrains how cheap any excitation can be.** It does not say which one is cheapest. Two
+  oscillators can exchange which is lower while a positive bound holds throughout. Losing the bound, which is only
+  sufficient, need not produce a switch, or close the gap.
+- **Comparing sector energies and the geometry of their states decides which excitation is cheapest.** It also shows
+  how the carrier changes shape, where its weight lies, and how its cost moves across the switch. That is the carrier
+  question, and M8 is built on it.
 
 This is the finite-dimensional, rigorous counterpart of the Moncrief–Marini–Maitra programme, and of the
-strong-coupling mechanism of Shen, Zhu and Zhu. My heat-signal T5 computes the floating version of this bound.
+strong-coupling mechanism of Shen, Zhu and Zhu. The heat-signal registration proposes T5 to investigate a floating
+version of this bound. T5 is deferred, and has not been implemented or computed.
 
 ### 4.8 The method
 
@@ -413,8 +439,10 @@ let me fool myself on the way.
 7. **M7. The tone (H3, separately).** The ratio vector across the grid. *Fails if* the tone shifts where only the
    octave should move. This refutes H3 only.
 8. **M8. The weighted geometry of the carrier (H1, §4.7).** From the computed ψ₀ and ψ₁, the slow function f₁ = ψ₁/ψ₀.
-   Report its alignment with Helike's twist coordinate across the switch, and the floating Bakry–Émery lower bound
-   next to the computed gap. *Fails if* f₁ changes direction without a level crossing or an identifiable switch.
+   Follow the identified carrier subspace across the s-sweep. Degenerate partners are followed together. Report where
+   its Dirichlet energy lives, and its alignment with Helike's registered structure. *Fails if* the subspace cannot be
+   followed continuously except at a recorded switch, or its alignment collapses with no switch recorded. These are
+   the stated jump and alignment thresholds of amendment 1. A smooth rotation of the carrier is tracking, not failure.
    Registered: `helike-M8-weighted-geometry-registration-2026-11-26.md`.
 
 ## 7. What would show me wrong

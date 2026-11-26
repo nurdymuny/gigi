@@ -1,0 +1,3411 @@
+{
+ "status": "COMPLETE",
+ "design": {
+  "primary": {
+   "t": 3.0,
+   "g2": [
+    0.03,
+    0.05,
+    0.07
+   ],
+   "s": [
+    1.12,
+    1.15,
+    1.165,
+    1.18,
+    1.195,
+    1.22,
+    1.24
+   ]
+  },
+  "secondary": {
+   "t": 4.0,
+   "g2": [
+    0.03,
+    0.05
+   ],
+   "s": [
+    1.09,
+    1.12,
+    1.14,
+    1.16,
+    1.18
+   ]
+  },
+  "ladder": [
+   6,
+   8,
+   10
+  ],
+  "convergence_tol": 0.003,
+  "weight_min": 0.9,
+  "s_tolerance": 0.015,
+  "predicted_s_star": {
+   "3.0": {
+    "0.03": 1.1674,
+    "0.05": 1.1809,
+    "0.07": 1.1931
+   },
+   "4.0": {
+    "0.03": 1.126,
+    "0.05": 1.1413
+   }
+  }
+ },
+ "amendment": "docs/research/helike-flux-method-amendment-2026-11-25.md",
+ "started_unix": 1795722917.905165,
+ "provenance": {
+  "git_commit": "9b36f6702a62b12361f7aee372ebfadd6738913a",
+  "git_dirty": false,
+  "helike_bin_sha256": "210293c9ad659a0e5a77afa578f09c804a367517ca7feaa8b0ab8d0ef40e6618",
+  "sources_sha256": {
+   "scripts/run_helike_flux_grid.py": "42c405da36ccaf2a681ff1ca9deb419dc358f046eab81e3eb61d29075a9360c7",
+   "scripts/run_helike_flux_background.py": "46297e8cb71ad58c11f8493494471569684e538a38291cfc83446ac4933734d3",
+   "scripts/helike_domain_gate.py": "39154a6db8b9ffc48430a5a93d0af83e44873350aae46fe9263262355cb4dbff",
+   "scripts/helike_cutoff_bounds.py": "6b7e0608eb1b24096d23657c8843ce11404f082037f92eb1cb5b1605252e4e8f",
+   "scripts/helike_leakage_gate.py": "fa0ff8665ab956c52c7367cde6c05ccc096ccf6af6b3f0068a87e539404c62e9",
+   "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe",
+   "docs/research/helike-flux-method-amendment-2026-11-25.md": "da7ddb1576d8f018e87e29c8186cb538196b6be392bb02fde22c19b130b1f93e",
+   "docs/research/helike-flux-background-registration-2026-11-24.md": "4c279176cca8f1b79cc696782e0a3fb398e6d91e1e88a964eec05896ba7556e0"
+  },
+  "hash_policy": "sha256-universal-newline-v1",
+  "python_flint": "0.9.0",
+  "python": "3.12.10"
+ },
+ "certified": false,
+ "cases": [
+  {
+   "block": "primary",
+   "t": 3.0,
+   "g2": 0.03,
+   "points": [
+    {
+     "s": 1.12,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.320572471655138,
+       "dimension": 924,
+       "seconds": 13.306026,
+       "moments": "exact",
+       "vacuum_weight": 0.9316982357031145,
+       "helike": {
+        "gap": 1.103315092834137,
+        "weight": 0.8939174796548354,
+        "dressed_weight": 0.9594495786291067
+       },
+       "competitor": {
+        "gap": 1.0169662461008242,
+        "weight": 0.8260416476802167,
+        "dressed_weight": 0.8865978446946794
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 8.699884912477529e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9927035330108912,
+         "competitor": 0.9752158210498801
+        },
+        "dressed_overlap_error": 4.418687638008123e-14,
+        "dressed_overlap_orthonormality": 4.929390229335695e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.314167099795843,
+       "dimension": 3003,
+       "seconds": 33.5173296,
+       "moments": "exact",
+       "vacuum_weight": 0.9317598561591625,
+       "helike": {
+        "gap": 1.0935202852744146,
+        "weight": 0.8973544479716682,
+        "dressed_weight": 0.9630748116480163
+       },
+       "competitor": {
+        "gap": 0.9788273697464049,
+        "weight": 0.8254323443782986,
+        "dressed_weight": 0.8858852835545417
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 4.94023050023884e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9926641223382107,
+         "competitor": 0.9782121907659177
+        },
+        "dressed_overlap_error": 8.426592756904938e-14,
+        "dressed_overlap_orthonormality": 7.482903185973555e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.311835463389546,
+       "dimension": 8008,
+       "seconds": 91.0532656,
+       "moments": "exact",
+       "vacuum_weight": 0.9319997751398568,
+       "helike": {
+        "gap": 1.0911397811709138,
+        "weight": 0.8961871508596854,
+        "dressed_weight": 0.9615744281968337
+       },
+       "competitor": {
+        "gap": 0.96410501871474,
+        "weight": 0.8134437066065229,
+        "dressed_weight": 0.8727938871921473
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.554990398140333e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.991523981225301,
+         "competitor": 0.9736822743025367
+        },
+        "dressed_overlap_error": 5.995204332975845e-14,
+        "dressed_overlap_orthonormality": 1.2378986724570495e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp_8rzjcc6\\\\export-receipt.json', 'cone-export', '--s', '1.12', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp_8rzjcc6\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.01472235103166497,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.12703476245617384
+    },
+    {
+     "s": 1.15,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.375192463700861,
+       "dimension": 924,
+       "seconds": 11.8532657,
+       "moments": "exact",
+       "vacuum_weight": 0.9392314994440449,
+       "helike": {
+        "gap": 1.0858907349260303,
+        "weight": 0.9025290637740002,
+        "dressed_weight": 0.9609229080458122
+       },
+       "competitor": {
+        "gap": 1.076337183188187,
+        "weight": 0.8409922094942496,
+        "dressed_weight": 0.8954046047135922
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 7.002718709347988e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.993422426090531,
+         "competitor": 0.9687789478357194
+        },
+        "dressed_overlap_error": 1.609823385706477e-14,
+        "dressed_overlap_orthonormality": 3.5638159090467525e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.370072327838591,
+       "dimension": 3003,
+       "seconds": 37.7706743,
+       "moments": "exact",
+       "vacuum_weight": 0.9398326927989266,
+       "helike": {
+        "gap": 1.077115436344151,
+        "weight": 0.9064486504775443,
+        "dressed_weight": 0.9644787390594374
+       },
+       "competitor": {
+        "gap": 1.04263967824249,
+        "weight": 0.8493139197294215,
+        "dressed_weight": 0.9036862903758646
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 3.657149817426486e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9934644788130984,
+         "competitor": 0.9778772071848324
+        },
+        "dressed_overlap_error": 2.90878432451791e-14,
+        "dressed_overlap_orthonormality": 7.127631818093505e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.3683139829102275,
+       "dimension": 8008,
+       "seconds": 121.2384189,
+       "moments": "exact",
+       "vacuum_weight": 0.9402907812114969,
+       "helike": {
+        "gap": 1.0752444325474917,
+        "weight": 0.906110452514878,
+        "dressed_weight": 0.963649193016037
+       },
+       "competitor": {
+        "gap": 1.0310783676389583,
+        "weight": 0.8420097097296897,
+        "dressed_weight": 0.8954780016505329
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.8883102204103608e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9926468836318649,
+         "competitor": 0.9747408757000932
+        },
+        "dressed_overlap_error": 8.881784197001252e-15,
+        "dressed_overlap_orthonormality": 9.947598300641403e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpgt5erk1o\\\\export-receipt.json', 'cone-export', '--s', '1.15', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpgt5erk1o\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.011561310603531716,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.044166064908533365
+    },
+    {
+     "s": 1.165,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.401021346960128,
+       "dimension": 924,
+       "seconds": 10.7811991,
+       "moments": "exact",
+       "vacuum_weight": 0.9423991143986811,
+       "helike": {
+        "gap": 1.0764641048360222,
+        "weight": 0.9061308183800326,
+        "dressed_weight": 0.961514929858789
+       },
+       "competitor": {
+        "gap": 1.106209725725206,
+        "weight": 0.8547908527292993,
+        "dressed_weight": 0.9070369864202577
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 6.281837704458226e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9937545154314066,
+         "competitor": 0.9742272048504803
+        },
+        "dressed_overlap_error": 2.7644553313166398e-14,
+        "dressed_overlap_orthonormality": 3.2307490016592055e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.396419997910806,
+       "dimension": 3003,
+       "seconds": 38.6477015,
+       "moments": "exact",
+       "vacuum_weight": 0.943161878366734,
+       "helike": {
+        "gap": 1.068139916773518,
+        "weight": 0.9101602822437921,
+        "dressed_weight": 0.9650096161858338
+       },
+       "competitor": {
+        "gap": 1.0744648742946161,
+        "weight": 0.8366380384901907,
+        "dressed_weight": 0.8870566735998598
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 3.0604551215507314e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9938307850869333,
+         "competitor": 0.9516279520029524
+        },
+        "dressed_overlap_error": 3.885780586188048e-15,
+        "dressed_overlap_orthonormality": 6.17284001691587e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.394881823405883,
+       "dimension": 8008,
+       "seconds": 121.5083434,
+       "moments": "exact",
+       "vacuum_weight": 0.943668410130358,
+       "helike": {
+        "gap": 1.0664704756830794,
+        "weight": 0.9100855706626398,
+        "dressed_weight": 0.9644124576946694
+       },
+       "competitor": {
+        "gap": 1.0640101055016018,
+        "weight": 0.8424208248069989,
+        "dressed_weight": 0.8927085147320203
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.5948943055121845e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9931360718883001,
+         "competitor": 0.9619601245093234
+        },
+        "dressed_overlap_error": 1.2212453270876722e-14,
+        "dressed_overlap_orthonormality": 9.43689570931383e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpmuxx1xhm\\\\export-receipt.json', 'cone-export', '--s', '1.165', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpmuxx1xhm\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.010454768793014324,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.0024603701814776002
+    },
+    {
+     "s": 1.18,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.425878808687314,
+       "dimension": 924,
+       "seconds": 11.3135253,
+       "moments": "exact",
+       "vacuum_weight": 0.945229136270364,
+       "helike": {
+        "gap": 1.066537267380557,
+        "weight": 0.9093196906639098,
+        "dressed_weight": 0.9620097982293015
+       },
+       "competitor": {
+        "gap": 1.1357786227749127,
+        "weight": 0.8655599287949757,
+        "dressed_weight": 0.9157143972627177
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 5.610281098578085e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9940682398444112,
+         "competitor": 0.9771200590267228
+        },
+        "dressed_overlap_error": 1.7985612998927536e-14,
+        "dressed_overlap_orthonormality": 3.241851231905457e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.4217296122495595,
+       "dimension": 3003,
+       "seconds": 39.9446729,
+       "moments": "exact",
+       "vacuum_weight": 0.9461031133654728,
+       "helike": {
+        "gap": 1.0586272454128673,
+        "weight": 0.9133950261925057,
+        "dressed_weight": 0.9654286232537401
+       },
+       "competitor": {
+        "gap": 1.105834544565468,
+        "weight": 0.8695096432685262,
+        "dressed_weight": 0.9190432110253937
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 2.7232939192600725e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9941744126623145,
+         "competitor": 0.9784067723651164
+        },
+        "dressed_overlap_error": 1.176836406102666e-14,
+        "dressed_overlap_orthonormality": 6.061817714453355e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.42037767648497,
+       "dimension": 8008,
+       "seconds": 126.9202042,
+       "moments": "exact",
+       "vacuum_weight": 0.9466329071928029,
+       "helike": {
+        "gap": 1.0571307308725846,
+        "weight": 0.9135135268320337,
+        "dressed_weight": 0.9650134913870856
+       },
+       "competitor": {
+        "gap": 1.0966943469227113,
+        "weight": 0.8648821153434137,
+        "dressed_weight": 0.9136404500327192
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.3735094495093136e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9935824320847529,
+         "competitor": 0.9757546558403815
+        },
+        "dressed_overlap_error": 1.709743457922741e-14,
+        "dressed_overlap_orthonormality": 9.936496070395151e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpw7719xc7\\\\export-receipt.json', 'cone-export', '--s', '1.18', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpw7719xc7\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.009140197642756753,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.039563616050126704
+    },
+    {
+     "s": 1.195,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.449772371679764,
+       "dimension": 924,
+       "seconds": 10.4430015,
+       "moments": "exact",
+       "vacuum_weight": 0.947759320732422,
+       "helike": {
+        "gap": 1.0560915170414473,
+        "weight": 0.9121306156459734,
+        "dressed_weight": 0.9624074337154342
+       },
+       "competitor": {
+        "gap": 1.165314079839722,
+        "weight": 0.873630346000059,
+        "dressed_weight": 0.9217850216708218
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 4.984876088576229e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9943638798015209,
+         "competitor": 0.9776930314475688
+        },
+        "dressed_overlap_error": 1.7763568394002505e-14,
+        "dressed_overlap_orthonormality": 3.26405569239796e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.4460182154578085,
+       "dimension": 3003,
+       "seconds": 37.4898744,
+       "moments": "exact",
+       "vacuum_weight": 0.9487060356315214,
+       "helike": {
+        "gap": 1.0485605036029675,
+        "weight": 0.9162014500714539,
+        "dressed_weight": 0.9657379795856044
+       },
+       "competitor": {
+        "gap": 1.137123031127972,
+        "weight": 0.8782013954642249,
+        "dressed_weight": 0.9256833650053001
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 2.3548192040756533e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9944958970230302,
+         "competitor": 0.978651088563055
+        },
+        "dressed_overlap_error": 1.354472090042691e-14,
+        "dressed_overlap_orthonormality": 5.417888360170764e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.444824467855469,
+       "dimension": 8008,
+       "seconds": 115.8591867,
+       "moments": "exact",
+       "vacuum_weight": 0.9492415006179906,
+       "helike": {
+        "gap": 1.047212448056186,
+        "weight": 0.9164593591756863,
+        "dressed_weight": 0.9654649091712046
+       },
+       "competitor": {
+        "gap": 1.1289884299663022,
+        "weight": 0.8745627006650467,
+        "dressed_weight": 0.9213279235006842
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 9.303710084562766e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9939898480966691,
+         "competitor": 0.9762135153092111
+        },
+        "dressed_overlap_error": 1.2301271112846734e-13,
+        "dressed_overlap_orthonormality": 6.350475700855895e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmprh6b32ot\\\\export-receipt.json', 'cone-export', '--s', '1.195', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmprh6b32ot\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.008134601161669863,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.08177598191011626
+    },
+    {
+     "s": 1.22,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.487462735201668,
+       "dimension": 924,
+       "seconds": 9.2720974,
+       "moments": "exact",
+       "vacuum_weight": 0.9513949991266268,
+       "helike": {
+        "gap": 1.0374747509471263,
+        "weight": 0.9160540751248853,
+        "dressed_weight": 0.962853573926514
+       },
+       "competitor": {
+        "gap": 1.2143719209864319,
+        "weight": 0.8853420448754904,
+        "dressed_weight": 0.9305725231772581
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 4.0760545905182965e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9948177720631496,
+         "competitor": 0.9781954735853374
+        },
+        "dressed_overlap_error": 1.7541523789077473e-14,
+        "dressed_overlap_orthonormality": 3.3306690738754696e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.48426116788989,
+       "dimension": 3003,
+       "seconds": 35.0000225,
+       "moments": "exact",
+       "vacuum_weight": 0.9524015845714987,
+       "helike": {
+        "gap": 1.030502085995317,
+        "weight": 0.9200343107085361,
+        "dressed_weight": 0.9660150986859969
+       },
+       "competitor": {
+        "gap": 1.1888286951877074,
+        "weight": 0.8906564502810018,
+        "dressed_weight": 0.9351690134805088
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 1.851187760859574e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9949848134812938,
+         "competitor": 0.9787024574779317
+        },
+        "dressed_overlap_error": 1.4432899320127035e-14,
+        "dressed_overlap_orthonormality": 4.9960036108132044e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.483281195769366,
+       "dimension": 8008,
+       "seconds": 106.0225438,
+       "moments": "exact",
+       "vacuum_weight": 0.9529217034568371,
+       "helike": {
+        "gap": 1.0293563895296725,
+        "weight": 0.9204382009120684,
+        "dressed_weight": 0.9659116772900324
+       },
+       "competitor": {
+        "gap": 1.182095240275416,
+        "weight": 0.8883579068124752,
+        "dressed_weight": 0.9322464831998798
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 7.31694698719032e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.994592090901348,
+         "competitor": 0.9766725247036456
+        },
+        "dressed_overlap_error": 3.4638958368304884e-14,
+        "dressed_overlap_orthonormality": 6.861178292183467e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp0wrl1rki\\\\export-receipt.json', 'cone-export', '--s', '1.22', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp0wrl1rki\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.006733454912291492,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.15273885074574345
+    },
+    {
+     "s": 1.24,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.515694641847213,
+       "dimension": 924,
+       "seconds": 9.1538486,
+       "moments": "exact",
+       "vacuum_weight": 0.9538484394013877,
+       "helike": {
+        "gap": 1.021437196853313,
+        "weight": 0.9185691044552081,
+        "dressed_weight": 0.9630136890842741
+       },
+       "competitor": {
+        "gap": 1.2534440534287796,
+        "weight": 0.893473744628074,
+        "dressed_weight": 0.9367041006942325
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 3.4622830125119464e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9951476195125921,
+         "competitor": 0.9783904503710981
+        },
+        "dressed_overlap_error": 2.0872192862952943e-14,
+        "dressed_overlap_orthonormality": 3.6415315207705135e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.51285662733504,
+       "dimension": 3003,
+       "seconds": 36.347682,
+       "moments": "exact",
+       "vacuum_weight": 0.9548650252438982,
+       "helike": {
+        "gap": 1.0148495543783316,
+        "weight": 0.9224234485365712,
+        "dressed_weight": 0.9660249607539657
+       },
+       "competitor": {
+        "gap": 1.2297851295563698,
+        "weight": 0.8991492635038659,
+        "dressed_weight": 0.9416506414340593
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 1.52978287482064e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9953365000077596,
+         "competitor": 0.9785712808485179
+        },
+        "dressed_overlap_error": 1.354472090042691e-14,
+        "dressed_overlap_orthonormality": 5.6621374255882984e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.512012227329291,
+       "dimension": 8008,
+       "seconds": 103.190921,
+       "moments": "exact",
+       "vacuum_weight": 0.9553599175999636,
+       "helike": {
+        "gap": 1.0138325218487267,
+        "weight": 0.9228899295837669,
+        "dressed_weight": 0.9660128215366548
+       },
+       "competitor": {
+        "gap": 1.223966332481794,
+        "weight": 0.8976265843376262,
+        "dressed_weight": 0.9395690229422917
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 6.025393446407179e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9950133643931798,
+         "competitor": 0.9768013614300151
+        },
+        "dressed_overlap_error": 3.6637359812630166e-14,
+        "dressed_overlap_orthonormality": 7.083222897108499e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp604nt0x0\\\\export-receipt.json', 'cone-export', '--s', '1.24', '--t', '3.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp604nt0x0\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.005818797074575777,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.21013381063306724
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "primary",
+   "t": 3.0,
+   "g2": 0.05,
+   "points": [
+    {
+     "s": 1.12,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.313323338673866,
+       "dimension": 924,
+       "seconds": 12.1204083,
+       "moments": "exact",
+       "vacuum_weight": 0.8800545652501343,
+       "helike": {
+        "gap": 1.1178785087943384,
+        "weight": 0.8185974068539611,
+        "dressed_weight": 0.9301666500886733
+       },
+       "competitor": {
+        "gap": 1.0664063712949563,
+        "weight": 0.7336705844830891,
+        "dressed_weight": 0.8336648810799145
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 6.660326835605801e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9908160768741754,
+         "competitor": 0.9604851800958504
+        },
+        "dressed_overlap_error": 3.674838211509268e-14,
+        "dressed_overlap_orthonormality": 8.149037000748649e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.2940571122424585,
+       "dimension": 3003,
+       "seconds": 43.0326618,
+       "moments": "exact",
+       "vacuum_weight": 0.8794393486647136,
+       "helike": {
+        "gap": 1.0995128138666121,
+        "weight": 0.8236986133650055,
+        "dressed_weight": 0.9366178743487639
+       },
+       "competitor": {
+        "gap": 1.0042851626869833,
+        "weight": 0.7354149819503513,
+        "dressed_weight": 0.8362316094531816
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 3.9320222119942905e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9915123342059786,
+         "competitor": 0.9748485875583544
+        },
+        "dressed_overlap_error": 1.1057821325266559e-13,
+        "dressed_overlap_orthonormality": 1.1257661469699087e-13
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.285213148526282,
+       "dimension": 8008,
+       "seconds": 110.9986317,
+       "moments": "exact",
+       "vacuum_weight": 0.8784736477035179,
+       "helike": {
+        "gap": 1.0921666108277872,
+        "weight": 0.8193864959740247,
+        "dressed_weight": 0.9327388455146524
+       },
+       "competitor": {
+        "gap": 0.9715055063378504,
+        "weight": 0.7110350536689278,
+        "dressed_weight": 0.8093982733889588
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.132715988371729e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9888154111917808,
+         "competitor": 0.9690373489421635
+        },
+        "dressed_overlap_error": 2.6867397195928788e-14,
+        "dressed_overlap_orthonormality": 1.1690648449302898e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp6kzo_ape\\\\export-receipt.json', 'cone-export', '--s', '1.12', '--t', '3.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp6kzo_ape\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.032779656349132935,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.12066110448993683
+    },
+    {
+     "s": 1.15,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.3664892687852905,
+       "dimension": 924,
+       "seconds": 13.7605431,
+       "moments": "exact",
+       "vacuum_weight": 0.8918501696299113,
+       "helike": {
+        "gap": 1.0978462096837758,
+        "weight": 0.8310881361368408,
+        "dressed_weight": 0.9318696844355766
+       },
+       "competitor": {
+        "gap": 1.1193923452334786,
+        "weight": 0.5487767326760337,
+        "dressed_weight": 0.615323909063961
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 3.340326779621705e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9913774025127152,
+         "competitor": 0.6953298832030222
+        },
+        "dressed_overlap_error": 2.375877272697835e-14,
+        "dressed_overlap_orthonormality": 6.228351168147128e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.350267838654327,
+       "dimension": 3003,
+       "seconds": 98.7657277,
+       "moments": "exact",
+       "vacuum_weight": 0.8925178675855879,
+       "helike": {
+        "gap": 1.0804459496075616,
+        "weight": 0.8370973535299915,
+        "dressed_weight": 0.9379054290470191
+       },
+       "competitor": {
+        "gap": 1.057087049975987,
+        "weight": 0.7538753686118673,
+        "dressed_weight": 0.8446613742884811
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 3.875582658269261e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.991990685638459,
+         "competitor": 0.9623932018709551
+        },
+        "dressed_overlap_error": 5.3512749786932545e-14,
+        "dressed_overlap_orthonormality": 9.425793479067579e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.343164881557501,
+       "dimension": 8008,
+       "seconds": 236.6346799,
+       "moments": "exact",
+       "vacuum_weight": 0.8925601105741434,
+       "helike": {
+        "gap": 1.0740482501755668,
+        "weight": 0.8347418108514637,
+        "dressed_weight": 0.9352219541992663
+       },
+       "competitor": {
+        "gap": 1.0282743097949654,
+        "weight": 0.7428929458715211,
+        "dressed_weight": 0.8323169913941726
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 5.770193657328448e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9897576694816176,
+         "competitor": 0.966535273521196
+        },
+        "dressed_overlap_error": 3.574918139293004e-14,
+        "dressed_overlap_orthonormality": 9.636735853746359e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmprjtg1tx6\\\\export-receipt.json', 'cone-export', '--s', '1.15', '--t', '3.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmprjtg1tx6\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.028812740181021645,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.04577394038060145
+    },
+    {
+     "s": 1.165,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.3918101122019095,
+       "dimension": 924,
+       "seconds": 13.962469,
+       "moments": "exact",
+       "vacuum_weight": 0.8970071021122118,
+       "helike": {
+        "gap": 1.0872355777410858,
+        "weight": 0.8365390614985152,
+        "dressed_weight": 0.9325891172195733
+       },
+       "competitor": {
+        "gap": 1.1426294424130221,
+        "weight": 0.766681468245029,
+        "dressed_weight": 0.8547105886226534
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 3.9116203986999665e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9916594145411609,
+         "competitor": 0.9585630806102861
+        },
+        "dressed_overlap_error": 2.453592884421596e-14,
+        "dressed_overlap_orthonormality": 6.106226635438361e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.376902982845122,
+       "dimension": 3003,
+       "seconds": 36.7016703,
+       "moments": "exact",
+       "vacuum_weight": 0.8981477325193499,
+       "helike": {
+        "gap": 1.0703199524052067,
+        "weight": 0.8428613939594782,
+        "dressed_weight": 0.9384440481692353
+       },
+       "competitor": {
+        "gap": 1.0858143600466956,
+        "weight": 0.6960946545319388,
+        "dressed_weight": 0.7750335822586313
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 3.634737691382561e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9922456926214498,
+         "competitor": 0.8732801375986106
+        },
+        "dressed_overlap_error": 2.942091015256665e-14,
+        "dressed_overlap_orthonormality": 9.259260025373806e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.370526020352248,
+       "dimension": 8008,
+       "seconds": 128.0109076,
+       "moments": "exact",
+       "vacuum_weight": 0.8985357413936861,
+       "helike": {
+        "gap": 1.0643498955608788,
+        "weight": 0.8412613296085488,
+        "dressed_weight": 0.936258059477633
+       },
+       "competitor": {
+        "gap": 1.0570639722454418,
+        "weight": 0.7338679280431365,
+        "dressed_weight": 0.8167376034534372
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 5.375362133186457e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.990223484890798,
+         "competitor": 0.9355791816290507
+        },
+        "dressed_overlap_error": 3.341771304121721e-14,
+        "dressed_overlap_orthonormality": 9.370282327836321e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp4iwzgqyk\\\\export-receipt.json', 'cone-export', '--s', '1.165', '--t', '3.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp4iwzgqyk\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.02875038780125383,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.007285923315436982
+    },
+    {
+     "s": 1.18,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.416272197223042,
+       "dimension": 924,
+       "seconds": 13.4971972,
+       "moments": "exact",
+       "vacuum_weight": 0.9017185320291099,
+       "helike": {
+        "gap": 1.0761937598228863,
+        "weight": 0.8414918387867881,
+        "dressed_weight": 0.9332089880566218
+       },
+       "competitor": {
+        "gap": 1.1682662958961645,
+        "weight": 0.7825470828695591,
+        "dressed_weight": 0.8678396362871872
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 3.326219988331047e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9919392968224949,
+         "competitor": 0.9656333251524117
+        },
+        "dressed_overlap_error": 2.90878432451791e-14,
+        "dressed_overlap_orthonormality": 6.483702463810914e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.4025552385484525,
+       "dimension": 3003,
+       "seconds": 53.1338381,
+       "moments": "exact",
+       "vacuum_weight": 0.9032381928374398,
+       "helike": {
+        "gap": 1.0597549211451902,
+        "weight": 0.8480428698214829,
+        "dressed_weight": 0.93889173038336
+       },
+       "competitor": {
+        "gap": 1.1125296585563191,
+        "weight": 0.7854427514328287,
+        "dressed_weight": 0.8695854068852342
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 3.194282656437952e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9925062216685729,
+         "competitor": 0.970417849419742
+        },
+        "dressed_overlap_error": 5.084821452783217e-14,
+        "dressed_overlap_orthonormality": 8.970602038971265e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.396820909346979,
+       "dimension": 8008,
+       "seconds": 155.6065017,
+       "moments": "exact",
+       "vacuum_weight": 0.9038890766174336,
+       "helike": {
+        "gap": 1.0541800751104642,
+        "weight": 0.8470703210964934,
+        "dressed_weight": 0.937139681194545
+       },
+       "competitor": {
+        "gap": 1.0870390805163508,
+        "weight": 0.7703113666059832,
+        "dressed_weight": 0.8522189132859868
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 5.191701979434526e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9906789352339238,
+         "competitor": 0.96359399051316
+        },
+        "dressed_overlap_error": 3.8968828164342995e-14,
+        "dressed_overlap_orthonormality": 9.814371537686384e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmprp5mlr0j\\\\export-receipt.json', 'cone-export', '--s', '1.18', '--t', '3.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmprp5mlr0j\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.025490578039968348,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.0328590054058866
+    },
+    {
+     "s": 1.195,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.439862843475856,
+       "dimension": 924,
+       "seconds": 14.5728183,
+       "moments": "exact",
+       "vacuum_weight": 0.9060171680843203,
+       "helike": {
+        "gap": 1.064694028012834,
+        "weight": 0.8459675941450275,
+        "dressed_weight": 0.9337213729997398
+       },
+       "competitor": {
+        "gap": 1.1943145662706671,
+        "weight": 0.7935784206772514,
+        "dressed_weight": 0.8758977739408526
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 2.8241965277508996e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9922151956005735,
+         "competitor": 0.9672979309277749
+        },
+        "dressed_overlap_error": 2.3869795029440866e-14,
+        "dressed_overlap_orthonormality": 6.23945339839338e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.427222358119106,
+       "dimension": 3003,
+       "seconds": 51.0323263,
+       "moments": "exact",
+       "vacuum_weight": 0.9078348593868565,
+       "helike": {
+        "gap": 1.0487184025893095,
+        "weight": 0.8526703755555873,
+        "dressed_weight": 0.9392351116936325
+       },
+       "competitor": {
+        "gap": 1.140367511577396,
+        "weight": 0.7987096182471439,
+        "dressed_weight": 0.8797961545413504
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.8073528328398378e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9927690401172187,
+         "competitor": 0.9726605422333624
+        },
+        "dressed_overlap_error": 4.318767565791859e-14,
+        "dressed_overlap_orthonormality": 9.525713551283843e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.422056272567522,
+       "dimension": 8008,
+       "seconds": 119.6688974,
+       "moments": "exact",
+       "vacuum_weight": 0.9086803422849149,
+       "helike": {
+        "gap": 1.0435062587327852,
+        "weight": 0.8522126858117895,
+        "dressed_weight": 0.9378575128728601
+       },
+       "competitor": {
+        "gap": 1.1166002404327493,
+        "weight": 0.7867066670723769,
+        "dressed_weight": 0.865768335093692
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 4.905988038039766e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9911203641962028,
+         "competitor": 0.9673792451168554
+        },
+        "dressed_overlap_error": 5.218048215738236e-14,
+        "dressed_overlap_orthonormality": 9.281464485866309e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpq0jxuh9v\\\\export-receipt.json', 'cone-export', '--s', '1.195', '--t', '3.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpq0jxuh9v\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.023767271144646607,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.07309398169996406
+    },
+    {
+     "s": 1.22,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.477208473133388,
+       "dimension": 924,
+       "seconds": 11.4309186,
+       "moments": "exact",
+       "vacuum_weight": 0.9123438876756438,
+       "helike": {
+        "gap": 1.0444350061222138,
+        "weight": 0.8524171852472627,
+        "dressed_weight": 0.9343156640408313
+       },
+       "competitor": {
+        "gap": 1.238322155651299,
+        "weight": 0.8094028203674757,
+        "dressed_weight": 0.8871685680161364
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 2.1719098453054642e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9926620683609743,
+         "competitor": 0.9683697856015167
+        },
+        "dressed_overlap_error": 4.496403249731884e-14,
+        "dressed_overlap_orthonormality": 6.217248937900877e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.466135862786001,
+       "dimension": 3003,
+       "seconds": 30.9446127,
+       "moments": "exact",
+       "vacuum_weight": 0.9145098831720855,
+       "helike": {
+        "gap": 1.0291881079658198,
+        "weight": 0.8592215662971149,
+        "dressed_weight": 0.9395432264950527
+       },
+       "competitor": {
+        "gap": 1.1874234733939026,
+        "weight": 0.816075198232318,
+        "dressed_weight": 0.8923634541834199
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 9.580824132937593e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.993204803329386,
+         "competitor": 0.9724091505808251
+        },
+        "dressed_overlap_error": 2.5868196473766147e-14,
+        "dressed_overlap_orthonormality": 5.684341886080802e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.461773549745069,
+       "dimension": 8008,
+       "seconds": 86.4275448,
+       "moments": "exact",
+       "vacuum_weight": 0.9155615216383053,
+       "helike": {
+        "gap": 1.0245096068430808,
+        "weight": 0.8594104859869023,
+        "dressed_weight": 0.9386703849775967
+       },
+       "competitor": {
+        "gap": 1.1663479498042326,
+        "weight": 0.8069732457915921,
+        "dressed_weight": 0.8813970735113404
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 4.3480988887178995e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9918180486363769,
+         "competitor": 0.9673538005519864
+        },
+        "dressed_overlap_error": 4.363176486776865e-14,
+        "dressed_overlap_orthonormality": 9.592326932761353e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpg4pn31sa\\\\export-receipt.json', 'cone-export', '--s', '1.22', '--t', '3.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpg4pn31sa\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.02107552358967002,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.14183834296115183
+    },
+    {
+     "s": 1.24,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.50527222254166,
+       "dimension": 924,
+       "seconds": 10.9014102,
+       "moments": "exact",
+       "vacuum_weight": 0.916719961390393,
+       "helike": {
+        "gap": 1.0271664040206536,
+        "weight": 0.8567082916465605,
+        "dressed_weight": 0.9345365299422382
+       },
+       "competitor": {
+        "gap": 1.273942628506747,
+        "weight": 0.820670331478895,
+        "dressed_weight": 0.895224677156785
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 1.7795326978653492e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9930047142983077,
+         "competitor": 0.9687695575434179
+        },
+        "dressed_overlap_error": 2.4980018054066022e-14,
+        "dressed_overlap_orthonormality": 6.306066779870889e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.495273902758378,
+       "dimension": 3003,
+       "seconds": 35.3812039,
+       "moments": "exact",
+       "vacuum_weight": 0.9190580468722067,
+       "helike": {
+        "gap": 1.0124526448812654,
+        "weight": 0.8634754414658157,
+        "dressed_weight": 0.9395222036349574
+       },
+       "competitor": {
+        "gap": 1.225448529037794,
+        "weight": 0.8282068362601765,
+        "dressed_weight": 0.901147472761682
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 8.258260215665558e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.99354556911666,
+         "competitor": 0.9716548442132112
+        },
+        "dressed_overlap_error": 2.653433028854124e-14,
+        "dressed_overlap_orthonormality": 5.81756864903582e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.491444663884155,
+       "dimension": 8008,
+       "seconds": 135.6953436,
+       "moments": "exact",
+       "vacuum_weight": 0.92019507526872,
+       "helike": {
+        "gap": 1.0081396530078228,
+        "weight": 0.8640253320762991,
+        "dressed_weight": 0.9389588743712652
+       },
+       "competitor": {
+        "gap": 1.2063277150389444,
+        "weight": 0.8210649756018547,
+        "dressed_weight": 0.8922727339766333
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 3.8926969925245913e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9923377914395141,
+         "competitor": 0.96681240758418
+        },
+        "dressed_overlap_error": 3.5083047578154947e-14,
+        "dressed_overlap_orthonormality": 1.0480505352461478e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpl3z53xbi\\\\export-receipt.json', 'cone-export', '--s', '1.24', '--t', '3.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpl3z53xbi\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.019120813998849684,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.1981880620311216
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "primary",
+   "t": 3.0,
+   "g2": 0.07,
+   "points": [
+    {
+     "s": 1.12,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.325877383060433,
+       "dimension": 924,
+       "seconds": 18.7982022,
+       "moments": "exact",
+       "vacuum_weight": 0.8289338321079628,
+       "helike": {
+        "gap": 1.1418702648263164,
+        "weight": 0.7460564638222236,
+        "dressed_weight": 0.9000193199076172
+       },
+       "competitor": {
+        "gap": 1.1405724697348312,
+        "weight": 0.6033817947554989,
+        "dressed_weight": 0.7279010355037755
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 4.983582596596037e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9903077731361815,
+         "competitor": 0.8662444394475438
+        },
+        "dressed_overlap_error": 4.241051954068098e-14,
+        "dressed_overlap_orthonormality": 1.1401990462900358e-13
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.292120006177925,
+       "dimension": 3003,
+       "seconds": 47.7348906,
+       "moments": "exact",
+       "vacuum_weight": 0.8289492254813706,
+       "helike": {
+        "gap": 1.1183440624235272,
+        "weight": 0.7533231720060499,
+        "dressed_weight": 0.9087687747926845
+       },
+       "competitor": {
+        "gap": 1.069384733691634,
+        "weight": 0.6594529755268818,
+        "dressed_weight": 0.7955287914575679
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.8640177351935137e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9920306730511155,
+         "competitor": 0.9590971692884569
+        },
+        "dressed_overlap_error": 8.08242361927114e-14,
+        "dressed_overlap_orthonormality": 1.0347278589506459e-13
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.275205620319827,
+       "dimension": 8008,
+       "seconds": 123.6035905,
+       "moments": "exact",
+       "vacuum_weight": 0.8267970477657992,
+       "helike": {
+        "gap": 1.1067715288388973,
+        "weight": 0.7480086528560368,
+        "dressed_weight": 0.9047064873747829
+       },
+       "competitor": {
+        "gap": 1.0278770949453824,
+        "weight": 0.639810688639614,
+        "dressed_weight": 0.7738424929897046
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.892125382629288e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9888664380945221,
+         "competitor": 0.963017966517119
+        },
+        "dressed_overlap_error": 1.4999113062685865e-13,
+        "dressed_overlap_orthonormality": 1.156852391659413e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp_sje4jns\\\\export-receipt.json', 'cone-export', '--s', '1.12', '--t', '3.0', '--g2', '0.07', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp_sje4jns\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.04150763874625163,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.07889443389351491
+    },
+    {
+     "s": 1.15,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.3746731460421024,
+       "dimension": 924,
+       "seconds": 23.3427037,
+       "moments": "exact",
+       "vacuum_weight": 0.8435385148836231,
+       "helike": {
+        "gap": 1.1189403509409663,
+        "weight": 0.7609015919933532,
+        "dressed_weight": 0.9020353885066282
+       },
+       "competitor": {
+        "gap": 1.1850737430039517,
+        "weight": 0.6701148132710435,
+        "dressed_weight": 0.7944092669716384
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.899795238375802e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.990663142748958,
+         "competitor": 0.9288725598132042
+        },
+        "dressed_overlap_error": 1.7430501486614958e-14,
+        "dressed_overlap_orthonormality": 9.525713551283843e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.344946022422605,
+       "dimension": 3003,
+       "seconds": 46.6620417,
+       "moments": "exact",
+       "vacuum_weight": 0.8447826716617833,
+       "helike": {
+        "gap": 1.0957346066542692,
+        "weight": 0.7688250625524249,
+        "dressed_weight": 0.9100862131085842
+       },
+       "competitor": {
+        "gap": 1.116987625194298,
+        "weight": 0.43729582158224517,
+        "dressed_weight": 0.5176429823330001
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.0963291896537442e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9922115701026326,
+         "competitor": 0.6103795951291303
+        },
+        "dressed_overlap_error": 1.3655743202889425e-14,
+        "dressed_overlap_orthonormality": 8.43769498715119e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.330468392948637,
+       "dimension": 8008,
+       "seconds": 130.5021084,
+       "moments": "exact",
+       "vacuum_weight": 0.8439047687153918,
+       "helike": {
+        "gap": 1.0848834352063825,
+        "weight": 0.7652839251679743,
+        "dressed_weight": 0.9068368298628107
+       },
+       "competitor": {
+        "gap": 1.0702641961104469,
+        "weight": 0.6394043904081296,
+        "dressed_weight": 0.7576736310916259
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.528332328059605e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9893323638210934,
+         "competitor": 0.919142986595883
+        },
+        "dressed_overlap_error": 6.23945339839338e-14,
+        "dressed_overlap_orthonormality": 8.43769498715119e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpcy3foqfz\\\\export-receipt.json', 'cone-export', '--s', '1.15', '--t', '3.0', '--g2', '0.07', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpcy3foqfz\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.04672342908385119,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.014619239095935654
+    },
+    {
+     "s": 1.165,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.3981871670905095,
+       "dimension": 924,
+       "seconds": 16.8864059,
+       "moments": "exact",
+       "vacuum_weight": 0.8501240572179628,
+       "helike": {
+        "gap": 1.1069658529738184,
+        "weight": 0.7675593208246435,
+        "dressed_weight": 0.902879190757743
+       },
+       "competitor": {
+        "gap": 1.2054491062618924,
+        "weight": 0.6968577954573892,
+        "dressed_weight": 0.8197130636884474
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.18942753149598e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9908547265833618,
+         "competitor": 0.9508638392693954
+        },
+        "dressed_overlap_error": 2.964295475749168e-14,
+        "dressed_overlap_orthonormality": 9.792167077193881e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.370307268683199,
+       "dimension": 3003,
+       "seconds": 43.5410116,
+       "moments": "exact",
+       "vacuum_weight": 0.8518940374710868,
+       "helike": {
+        "gap": 1.0839658109227486,
+        "weight": 0.7757423904413772,
+        "dressed_weight": 0.9106090151120535
+       },
+       "competitor": {
+        "gap": 1.1344115718153365,
+        "weight": 0.6893858496151043,
+        "dressed_weight": 0.8092389655192321
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.236163327256179e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9923255254863176,
+         "competitor": 0.9462986018334003
+        },
+        "dressed_overlap_error": 3.086420008457935e-14,
+        "dressed_overlap_orthonormality": 8.426592756904938e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.3569355348203045,
+       "dimension": 8008,
+       "seconds": 110.2694362,
+       "moments": "exact",
+       "vacuum_weight": 0.8515439406274198,
+       "helike": {
+        "gap": 1.0734800861076135,
+        "weight": 0.7729910332275297,
+        "dressed_weight": 0.9077523734805604
+       },
+       "competitor": {
+        "gap": 1.0965911885368644,
+        "weight": 0.5964160713525688,
+        "dressed_weight": 0.70039377053535
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 5.825580733365143e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9895967077058389,
+         "competitor": 0.8378789610940705
+        },
+        "dressed_overlap_error": 4.007905118896815e-14,
+        "dressed_overlap_orthonormality": 8.948397578478762e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp24_ippnz\\\\export-receipt.json', 'cone-export', '--s', '1.165', '--t', '3.0', '--g2', '0.07', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp24_ippnz\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.037820383278472036,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.023111102429250963
+    },
+    {
+     "s": 1.18,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.42105803823304,
+       "dimension": 924,
+       "seconds": 11.7490677,
+       "moments": "exact",
+       "vacuum_weight": 0.856256163343769,
+       "helike": {
+        "gap": 1.0946143224875309,
+        "weight": 0.7737156593401624,
+        "dressed_weight": 0.9036030249624396
+       },
+       "competitor": {
+        "gap": 1.2268047305414456,
+        "weight": 0.7115427901808944,
+        "dressed_weight": 0.8309928975018949
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 9.297738458036164e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9910528683558686,
+         "competitor": 0.9564845270587098
+        },
+        "dressed_overlap_error": 2.531308496145357e-14,
+        "dressed_overlap_orthonormality": 5.306866057708248e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.394912417465713,
+       "dimension": 3003,
+       "seconds": 42.1373894,
+       "moments": "exact",
+       "vacuum_weight": 0.8584898392388303,
+       "helike": {
+        "gap": 1.0718425172168207,
+        "weight": 0.7821072605850844,
+        "dressed_weight": 0.9110268110785451
+       },
+       "competitor": {
+        "gap": 1.1562863586364251,
+        "weight": 0.7157723455991389,
+        "dressed_weight": 0.833757504030298
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 9.7501073215156e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9924534945888855,
+         "competitor": 0.9658692079485772
+        },
+        "dressed_overlap_error": 3.697042672001771e-14,
+        "dressed_overlap_orthonormality": 8.448797217397441e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.38256986707485,
+       "dimension": 8008,
+       "seconds": 106.0654821,
+       "moments": "exact",
+       "vacuum_weight": 0.8585953510655574,
+       "helike": {
+        "gap": 1.0617189413865153,
+        "weight": 0.7800725274670104,
+        "dressed_weight": 0.9085450165772544
+       },
+       "competitor": {
+        "gap": 1.1187536539869454,
+        "weight": 0.6945992047862921,
+        "dressed_weight": 0.8089948354882911
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.777753872588832e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.989876835711379,
+         "competitor": 0.9565377901089545
+        },
+        "dressed_overlap_error": 2.042810365310288e-14,
+        "dressed_overlap_orthonormality": 9.903189379656396e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpa8sr23ns\\\\export-receipt.json', 'cone-export', '--s', '1.18', '--t', '3.0', '--g2', '0.07', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpa8sr23ns\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.037532704649479776,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.057034712600430026
+    },
+    {
+     "s": 1.195,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.443248596942107,
+       "dimension": 924,
+       "seconds": 11.568269,
+       "moments": "exact",
+       "vacuum_weight": 0.8619528720742571,
+       "helike": {
+        "gap": 1.0818565989760387,
+        "weight": 0.7793762877669697,
+        "dressed_weight": 0.9041982607371909
+       },
+       "competitor": {
+        "gap": 1.2488070623969474,
+        "weight": 0.7235005288188188,
+        "dressed_weight": 0.8393736505311967
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 8.192929283890038e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9912556931670046,
+         "competitor": 0.9588761529791586
+        },
+        "dressed_overlap_error": 2.3092638912203256e-14,
+        "dressed_overlap_orthonormality": 5.81756864903582e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.418725308013919,
+       "dimension": 3003,
+       "seconds": 40.2813113,
+       "moments": "exact",
+       "vacuum_weight": 0.8645882846508705,
+       "helike": {
+        "gap": 1.0593290019720696,
+        "weight": 0.7879226828744121,
+        "dressed_weight": 0.9113270406995896
+       },
+       "competitor": {
+        "gap": 1.1792082919659332,
+        "weight": 0.7301424379624338,
+        "dressed_weight": 0.8444972606322937
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 7.958729530965769e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9925939131712941,
+         "competitor": 0.9692740139220093
+        },
+        "dressed_overlap_error": 2.1871393585115584e-14,
+        "dressed_overlap_orthonormality": 9.214851104388799e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.407335784397207,
+       "dimension": 8008,
+       "seconds": 119.3382097,
+       "moments": "exact",
+       "vacuum_weight": 0.8650802125260393,
+       "helike": {
+        "gap": 1.04955970200949,
+        "weight": 0.786528296730652,
+        "dressed_weight": 0.9091969569318721
+       },
+       "competitor": {
+        "gap": 1.1429682135424706,
+        "weight": 0.7129644879723075,
+        "dressed_weight": 0.824159976900231
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.873166927823249e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.99016888977882,
+         "competitor": 0.9629439462460752
+        },
+        "dressed_overlap_error": 1.176836406102666e-14,
+        "dressed_overlap_orthonormality": 9.303668946358812e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpogq32hm_\\\\export-receipt.json', 'cone-export', '--s', '1.195', '--t', '3.0', '--g2', '0.07', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpogq32hm_\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.03624007842346266,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.09340851153298058
+    },
+    {
+     "s": 1.22,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.4786259784040565,
+       "dimension": 924,
+       "seconds": 11.2503529,
+       "moments": "exact",
+       "vacuum_weight": 0.8705268336491078,
+       "helike": {
+        "gap": 1.0596078359337717,
+        "weight": 0.7877214290813279,
+        "dressed_weight": 0.9048789751595905
+       },
+       "competitor": {
+        "gap": 1.2866343383796561,
+        "weight": 0.7410697522181953,
+        "dressed_weight": 0.8512888099172666
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 6.519765676227252e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9915994523516269,
+         "competitor": 0.9608830856841664
+        },
+        "dressed_overlap_error": 3.5416114485542494e-14,
+        "dressed_overlap_orthonormality": 6.228351168147128e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.456563815435527,
+       "dimension": 3003,
+       "seconds": 33.1176141,
+       "moments": "exact",
+       "vacuum_weight": 0.873699352462936,
+       "helike": {
+        "gap": 1.0375039709677907,
+        "weight": 0.796401550815503,
+        "dressed_weight": 0.9115281458896216
+       },
+       "competitor": {
+        "gap": 1.2189384962125338,
+        "weight": 0.7494161192441456,
+        "dressed_weight": 0.8577505719004609
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.8045362348839689e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9928508908745293,
+         "competitor": 0.9698350685487767
+        },
+        "dressed_overlap_error": 4.6074255521943996e-14,
+        "dressed_overlap_orthonormality": 8.493206138382448e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.446598365894596,
+       "dimension": 8008,
+       "seconds": 118.7515628,
+       "moments": "exact",
+       "vacuum_weight": 0.8746937492605356,
+       "helike": {
+        "gap": 1.028296233597378,
+        "weight": 0.795902867628341,
+        "dressed_weight": 0.9099217506712444
+       },
+       "competitor": {
+        "gap": 1.1850276374129596,
+        "weight": 0.7353834072548924,
+        "dressed_weight": 0.8407324367832559
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.875532975181287e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9906721314353185,
+         "competitor": 0.9637118561028555
+        },
+        "dressed_overlap_error": 1.3433698597964394e-14,
+        "dressed_overlap_orthonormality": 9.536815781530095e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp0d9ph5z1\\\\export-receipt.json', 'cone-export', '--s', '1.22', '--t', '3.0', '--g2', '0.07', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp0d9ph5z1\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.03391085879957423,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.1567314038155816
+    },
+    {
+     "s": 1.24,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.505392206502218,
+       "dimension": 924,
+       "seconds": 6.7962445,
+       "moments": "exact",
+       "vacuum_weight": 0.876600768647272,
+       "helike": {
+        "gap": 1.0408343795726074,
+        "weight": 0.7934245809727771,
+        "dressed_weight": 0.9051150869935372
+       },
+       "competitor": {
+        "gap": 1.3177901209975165,
+        "weight": 0.7538136579414899,
+        "dressed_weight": 0.859928127948985
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 5.395005113761897e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9918754129860444,
+         "competitor": 0.9618473314211918
+        },
+        "dressed_overlap_error": 3.441691376337985e-14,
+        "dressed_overlap_orthonormality": 6.405986852087153e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.485088798513623,
+       "dimension": 3003,
+       "seconds": 32.9278482,
+       "moments": "exact",
+       "vacuum_weight": 0.8800921497232164,
+       "helike": {
+        "gap": 1.019065567225363,
+        "weight": 0.8020966982779669,
+        "dressed_weight": 0.911378085272345
+       },
+       "competitor": {
+        "gap": 1.2518304713596038,
+        "weight": 0.7630948115208984,
+        "dressed_weight": 0.8670623999553764
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.4176512219687964e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9930722701723751,
+         "competitor": 0.9691399961663112
+        },
+        "dressed_overlap_error": 2.3869795029440866e-14,
+        "dressed_overlap_orthonormality": 8.393286066166183e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.476122085478462,
+       "dimension": 8008,
+       "seconds": 119.7304768,
+       "moments": "exact",
+       "vacuum_weight": 0.8813755018764586,
+       "helike": {
+        "gap": 1.0102709984086689,
+        "weight": 0.8021630589355822,
+        "dressed_weight": 0.9101263391457645
+       },
+       "competitor": {
+        "gap": 1.2198144852847106,
+        "weight": 0.7512375263735694,
+        "dressed_weight": 0.8523467293726409
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.774977575618735e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9910805189383105,
+         "competitor": 0.9629314266261064
+        },
+        "dressed_overlap_error": 2.0539125955565396e-14,
+        "dressed_overlap_orthonormality": 9.14823772291129e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmppbax9pw7\\\\export-receipt.json', 'cone-export', '--s', '1.24', '--t', '3.0', '--g2', '0.07', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmppbax9pw7\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.0320159860748932,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.20954348687604174
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "secondary",
+   "t": 4.0,
+   "g2": 0.03,
+   "points": [
+    {
+     "s": 1.09,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.373606573328727,
+       "dimension": 924,
+       "seconds": 13.1708548,
+       "moments": "exact",
+       "vacuum_weight": 0.9084544862603711,
+       "helike": {
+        "gap": 0.9502931398187435,
+        "weight": 0.8645307286320267,
+        "dressed_weight": 0.9516500184735117
+       },
+       "competitor": {
+        "gap": 0.9219317817480679,
+        "weight": 0.7774305637435076,
+        "dressed_weight": 0.8557727167420132
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 2.8801655194143905e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9922881914127442,
+         "competitor": 0.9675437552805418
+        },
+        "dressed_overlap_error": 4.007905118896815e-14,
+        "dressed_overlap_orthonormality": 7.194245199571014e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.361448737567534,
+       "dimension": 3003,
+       "seconds": 36.6362195,
+       "moments": "exact",
+       "vacuum_weight": 0.9071940717356398,
+       "helike": {
+        "gap": 0.9363278308855927,
+        "weight": 0.8682329345088999,
+        "dressed_weight": 0.9570531395204119
+       },
+       "competitor": {
+        "gap": 0.8720720549256269,
+        "weight": 0.7764333168337549,
+        "dressed_weight": 0.8558624235146136
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 9.824014963744077e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9926662639740191,
+         "competitor": 0.9779756086359964
+        },
+        "dressed_overlap_error": 7.538414337204813e-14,
+        "dressed_overlap_orthonormality": 6.861178292183467e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.356260620339733,
+       "dimension": 8008,
+       "seconds": 154.3679867,
+       "moments": "exact",
+       "vacuum_weight": 0.9065243389508955,
+       "helike": {
+        "gap": 0.9320448430784625,
+        "weight": 0.8648128965428503,
+        "dressed_weight": 0.9539875096389392
+       },
+       "competitor": {
+        "gap": 0.8489164292995861,
+        "weight": 0.7544490506978929,
+        "dressed_weight": 0.8322435684087682
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 3.9821477648693815e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9907099508114711,
+         "competitor": 0.9723662493815599
+        },
+        "dressed_overlap_error": 4.04121180963557e-14,
+        "dressed_overlap_orthonormality": 1.1457501614131615e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpttgm0tpd\\\\export-receipt.json', 'cone-export', '--s', '1.09', '--t', '4.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpttgm0tpd\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.023155625626040788,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.08312841377887636
+    },
+    {
+     "s": 1.12,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.428893301236739,
+       "dimension": 924,
+       "seconds": 14.34527,
+       "moments": "exact",
+       "vacuum_weight": 0.9188675498860465,
+       "helike": {
+        "gap": 0.9255403667865707,
+        "weight": 0.8751559233180874,
+        "dressed_weight": 0.9524288058998494
+       },
+       "competitor": {
+        "gap": 0.977137598219028,
+        "weight": 0.8048406131332766,
+        "dressed_weight": 0.8759049258329876
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 1.864989969124764e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9929475238677646,
+         "competitor": 0.9704708245866498
+        },
+        "dressed_overlap_error": 3.341771304121721e-14,
+        "dressed_overlap_orthonormality": 6.17284001691587e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.4190280391324865,
+       "dimension": 3003,
+       "seconds": 45.9587161,
+       "moments": "exact",
+       "vacuum_weight": 0.9189545070517315,
+       "helike": {
+        "gap": 0.9126772790214899,
+        "weight": 0.8799709426464182,
+        "dressed_weight": 0.9575783522403261
+       },
+       "competitor": {
+        "gap": 0.9313909883117972,
+        "weight": 0.7981273428885728,
+        "dressed_weight": 0.8685167075889243
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 7.305224272169397e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9933353302613637,
+         "competitor": 0.9671458936126065
+        },
+        "dressed_overlap_error": 2.5868196473766147e-14,
+        "dressed_overlap_orthonormality": 5.939693181744587e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.415056459364787,
+       "dimension": 8008,
+       "seconds": 161.7690547,
+       "moments": "exact",
+       "vacuum_weight": 0.9191150252020301,
+       "helike": {
+        "gap": 0.9091571886739338,
+        "weight": 0.8784441541766806,
+        "dressed_weight": 0.9557499660976496
+       },
+       "competitor": {
+        "gap": 0.9128157888722717,
+        "weight": 0.4916391089938173,
+        "dressed_weight": 0.5349048764443279
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.6109847862942903e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9918581724599252,
+         "competitor": 0.6039523790810889
+        },
+        "dressed_overlap_error": 1.354472090042691e-14,
+        "dressed_overlap_orthonormality": 9.9253938401489e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp0lpydmzz\\\\export-receipt.json', 'cone-export', '--s', '1.12', '--t', '4.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp0lpydmzz\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.01857519943952557,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.003658600198337858
+    },
+    {
+     "s": 1.14,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.463192888731916,
+       "dimension": 924,
+       "seconds": 14.5010838,
+       "moments": "exact",
+       "vacuum_weight": 0.9245586495172736,
+       "helike": {
+        "gap": 0.9076811714412854,
+        "weight": 0.8808308723446302,
+        "dressed_weight": 0.9527041608496396
+       },
+       "competitor": {
+        "gap": 1.0139807866840247,
+        "weight": 0.8214550094848675,
+        "dressed_weight": 0.8884833968226481
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 1.4255865277146285e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9933666220831592,
+         "competitor": 0.9729950603350962
+        },
+        "dressed_overlap_error": 2.4313884239290928e-14,
+        "dressed_overlap_orthonormality": 6.084022174945858e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.454551383586471,
+       "dimension": 3003,
+       "seconds": 47.8295444,
+       "moments": "exact",
+       "vacuum_weight": 0.9252257073555495,
+       "helike": {
+        "gap": 0.8954827192848072,
+        "weight": 0.8860755542533035,
+        "dressed_weight": 0.9576858351524368
+       },
+       "competitor": {
+        "gap": 0.9709059147338008,
+        "weight": 0.8235407116468263,
+        "dressed_weight": 0.8900970920929596
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 6.150952619465855e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9937697853298763,
+         "competitor": 0.9767452632573931
+        },
+        "dressed_overlap_error": 1.609823385706477e-14,
+        "dressed_overlap_orthonormality": 6.195044477408373e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.4511965175610575,
+       "dimension": 8008,
+       "seconds": 122.3098068,
+       "moments": "exact",
+       "vacuum_weight": 0.925696883314849,
+       "helike": {
+        "gap": 0.8923697205512457,
+        "weight": 0.8853818971875413,
+        "dressed_weight": 0.9564490419553506
+       },
+       "competitor": {
+        "gap": 0.9539929738640582,
+        "weight": 0.8116713389550411,
+        "dressed_weight": 0.8768219420254595
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.8710149935218254e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9925456676405767,
+         "competitor": 0.9720958623102978
+        },
+        "dressed_overlap_error": 2.6978419498391304e-14,
+        "dressed_overlap_orthonormality": 1.1035616864774056e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp6ni1jjul\\\\export-receipt.json', 'cone-export', '--s', '1.14', '--t', '4.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp6ni1jjul\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.0169129408697426,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.06162325331281249
+    },
+    {
+     "s": 1.16,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.4954261904505755,
+       "dimension": 924,
+       "seconds": 11.9698703,
+       "moments": "exact",
+       "vacuum_weight": 0.9294049247407072,
+       "helike": {
+        "gap": 0.8886266088300117,
+        "weight": 0.8854877844454087,
+        "dressed_weight": 0.9527470329387905
+       },
+       "competitor": {
+        "gap": 1.0510278662467423,
+        "weight": 0.8350177671856436,
+        "dressed_weight": 0.8984434501663562
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 9.068741537721081e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9937643083008045,
+         "competitor": 0.9735695352625744
+        },
+        "dressed_overlap_error": 2.8199664825478976e-14,
+        "dressed_overlap_orthonormality": 3.441691376337985e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.4878117746408295,
+       "dimension": 3003,
+       "seconds": 36.8131611,
+       "moments": "exact",
+       "vacuum_weight": 0.9304721147464684,
+       "helike": {
+        "gap": 0.8770276839033571,
+        "weight": 0.8909717865587574,
+        "dressed_weight": 0.9575480795590807
+       },
+       "competitor": {
+        "gap": 1.0105962483216135,
+        "weight": 0.8387873281272177,
+        "dressed_weight": 0.9014642296462235
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 5.140681594850705e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9941859288100331,
+         "competitor": 0.9763302592801141
+        },
+        "dressed_overlap_error": 1.6986412276764895e-14,
+        "dressed_overlap_orthonormality": 5.795364188543317e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.484955449260016,
+       "dimension": 8008,
+       "seconds": 114.1194148,
+       "moments": "exact",
+       "vacuum_weight": 0.9311293307076582,
+       "helike": {
+        "gap": 0.8742520735493882,
+        "weight": 0.8908670836185223,
+        "dressed_weight": 0.9567597692808832
+       },
+       "competitor": {
+        "gap": 0.9957320689453608,
+        "weight": 0.829729470942954,
+        "dressed_weight": 0.8911001335468185
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.4604535675543104e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9931694161002139,
+         "competitor": 0.9720414629066538
+        },
+        "dressed_overlap_error": 9.2148511043888e-15,
+        "dressed_overlap_orthonormality": 1.0147438445073931e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpfmr07blc\\\\export-receipt.json', 'cone-export', '--s', '1.16', '--t', '4.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpfmr07blc\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.014864179376252729,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.12147999539597265
+    },
+    {
+     "s": 1.18,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.525558066826258,
+       "dimension": 924,
+       "seconds": 9.2560538,
+       "moments": "exact",
+       "vacuum_weight": 0.9335100260468518,
+       "helike": {
+        "gap": 0.8682723085386916,
+        "weight": 0.8891920808384189,
+        "dressed_weight": 0.95252547485097
+       },
+       "competitor": {
+        "gap": 1.0881797116997767,
+        "weight": 0.8469700643880562,
+        "dressed_weight": 0.9072961626076287
+       },
+       "overlap_orders": [
+        14,
+        16
+       ],
+       "reference_weight_error": 7.95075546844437e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9941380120959318,
+         "competitor": 0.973779663211472
+        },
+        "dressed_overlap_error": 2.5868196473766147e-14,
+        "dressed_overlap_orthonormality": 3.8968828164342995e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.518806082614743,
+       "dimension": 3003,
+       "seconds": 34.1724558,
+       "moments": "exact",
+       "vacuum_weight": 0.9348446243861761,
+       "helike": {
+        "gap": 0.8572023750863806,
+        "weight": 0.8947647870138046,
+        "dressed_weight": 0.9571267392175591
+       },
+       "competitor": {
+        "gap": 1.0502453385010364,
+        "weight": 0.8519944563370775,
+        "dressed_weight": 0.9113754672296496
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 4.3120676973540384e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.994579251662542,
+         "competitor": 0.9755380859388492
+        },
+        "dressed_overlap_error": 4.063416270128073e-14,
+        "dressed_overlap_orthonormality": 5.5289106626332796e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.516354086871582,
+       "dimension": 8008,
+       "seconds": 115.2740475,
+       "moments": "exact",
+       "vacuum_weight": 0.9356033738137446,
+       "helike": {
+        "gap": 0.8547032001771626,
+        "weight": 0.8950678066626672,
+        "dressed_weight": 0.9566744110959704
+       },
+       "competitor": {
+        "gap": 1.0371622044591513,
+        "weight": 0.8452204105533713,
+        "dressed_weight": 0.9033960695417861
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.0877748296843635e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9937318111911043,
+         "competitor": 0.9716047728150277
+        },
+        "dressed_overlap_error": 3.219646771412954e-14,
+        "dressed_overlap_orthonormality": 1.0125233984581428e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpwtseu0if\\\\export-receipt.json', 'cone-export', '--s', '1.18', '--t', '4.0', '--g2', '0.03', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpwtseu0if\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.013083134041885103,
+     "converged": false,
+     "identified": true,
+     "diff_competitor_minus_helike": 0.1824590042819887
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  },
+  {
+   "block": "secondary",
+   "t": 4.0,
+   "g2": 0.05,
+   "points": [
+    {
+     "s": 1.09,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.385168193698629,
+       "dimension": 924,
+       "seconds": 17.7290043,
+       "moments": "exact",
+       "vacuum_weight": 0.8443395104614299,
+       "helike": {
+        "gap": 0.9765146503343756,
+        "weight": 0.7732902169861949,
+        "dressed_weight": 0.9158522222459936
+       },
+       "competitor": {
+        "gap": 1.0141389288186415,
+        "weight": 0.6080588328488599,
+        "dressed_weight": 0.720159160284418
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 4.0496292763592123e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.991199293510338,
+         "competitor": 0.8497980726789961
+        },
+        "dressed_overlap_error": 1.8762769116165146e-14,
+        "dressed_overlap_orthonormality": 1.0935696792557792e-13
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.3549547230309,
+       "dimension": 3003,
+       "seconds": 51.0562337,
+       "moments": "exact",
+       "vacuum_weight": 0.8431839758713069,
+       "helike": {
+        "gap": 0.9543598832371689,
+        "weight": 0.7801350366732185,
+        "dressed_weight": 0.9252251691181197
+       },
+       "competitor": {
+        "gap": 0.9416635486637954,
+        "weight": 0.6458653860718084,
+        "dressed_weight": 0.7659839424775612
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.3791990144683695e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9928559991595187,
+         "competitor": 0.9174467322198928
+        },
+        "dressed_overlap_error": 6.572520305780927e-14,
+        "dressed_overlap_orthonormality": 1.1257661469699087e-13
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.339791635126191,
+       "dimension": 8008,
+       "seconds": 165.8068459,
+       "moments": "exact",
+       "vacuum_weight": 0.840589148463314,
+       "helike": {
+        "gap": 0.9447716617789892,
+        "weight": 0.7744677313097623,
+        "dressed_weight": 0.9213391973065217
+       },
+       "competitor": {
+        "gap": 0.9053616875461756,
+        "weight": 0.6528461908443677,
+        "dressed_weight": 0.7766531271999403
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.859131689296305e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9899115217783802,
+         "competitor": 0.9615472852500359
+        },
+        "dressed_overlap_error": 7.327471962526033e-14,
+        "dressed_overlap_orthonormality": 1.2823075934420558e-13
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpj0shtckc\\\\export-receipt.json', 'cone-export', '--s', '1.09', '--t', '4.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpj0shtckc\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.036301861117619794,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": -0.03940997423281356
+    },
+    {
+     "s": 1.12,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.435687042898474,
+       "dimension": 924,
+       "seconds": 18.9716956,
+       "moments": "exact",
+       "vacuum_weight": 0.8586392744495384,
+       "helike": {
+        "gap": 0.9484901972816715,
+        "weight": 0.7869274328086184,
+        "dressed_weight": 0.916481992176641
+       },
+       "competitor": {
+        "gap": 1.0543273091357621,
+        "weight": 0.710151311538945,
+        "dressed_weight": 0.8270659550184366
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 2.3363931100917057e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.991594984162797,
+         "competitor": 0.958754792678312
+        },
+        "dressed_overlap_error": 1.6986412276764895e-14,
+        "dressed_overlap_orthonormality": 1.0058620603103918e-13
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.409405727302845,
+       "dimension": 3003,
+       "seconds": 51.5043895,
+       "moments": "exact",
+       "vacuum_weight": 0.8590712445881147,
+       "helike": {
+        "gap": 0.9268543140584198,
+        "weight": 0.7947189729193802,
+        "dressed_weight": 0.9250908791626608
+       },
+       "competitor": {
+        "gap": 0.9872962741311131,
+        "weight": 0.7094009003850512,
+        "dressed_weight": 0.825776563764716
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.738923762761857e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9931216085687403,
+         "competitor": 0.9663511054527538
+        },
+        "dressed_overlap_error": 4.218847493575595e-14,
+        "dressed_overlap_orthonormality": 8.659739592076221e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.396651126016679,
+       "dimension": 8008,
+       "seconds": 164.2369825,
+       "moments": "exact",
+       "vacuum_weight": 0.8579917779845908,
+       "helike": {
+        "gap": 0.9179701426797484,
+        "weight": 0.7912661839536715,
+        "dressed_weight": 0.9222304971410604
+       },
+       "competitor": {
+        "gap": 0.952384954045228,
+        "weight": 0.6769673300008932,
+        "dressed_weight": 0.7890137730586169
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.213010318445455e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9905205742697771,
+         "competitor": 0.9479132763409488
+        },
+        "dressed_overlap_error": 2.853273173286652e-14,
+        "dressed_overlap_orthonormality": 8.615330671091215e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp_eajmovr\\\\export-receipt.json', 'cone-export', '--s', '1.12', '--t', '4.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmp_eajmovr\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.034911320085885045,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.034414811365479636
+    },
+    {
+     "s": 1.14,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.467510385121097,
+       "dimension": 924,
+       "seconds": 15.8390418,
+       "moments": "exact",
+       "vacuum_weight": 0.8669105421937445,
+       "helike": {
+        "gap": 0.9286247431488359,
+        "weight": 0.7945973048703967,
+        "dressed_weight": 0.9165851217585186
+       },
+       "competitor": {
+        "gap": 1.0834858823913756,
+        "weight": 0.727766893893792,
+        "dressed_weight": 0.8394948019113424
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 8.658253368709623e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9918756998470131,
+         "competitor": 0.9621784222148574
+        },
+        "dressed_overlap_error": 3.441691376337985e-14,
+        "dressed_overlap_orthonormality": 6.572520305780927e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.443547881822281,
+       "dimension": 3003,
+       "seconds": 40.1183339,
+       "moments": "exact",
+       "vacuum_weight": 0.8682007997381705,
+       "helike": {
+        "gap": 0.9073570825003596,
+        "weight": 0.802846380108391,
+        "dressed_weight": 0.9247243038137158
+       },
+       "competitor": {
+        "gap": 1.0176457138944661,
+        "weight": 0.7321048646718724,
+        "dressed_weight": 0.8432437114693495
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.3569343504382658e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9933290977337953,
+         "competitor": 0.973042107031367
+        },
+        "dressed_overlap_error": 4.8183679268731794e-14,
+        "dressed_overlap_orthonormality": 7.704947790898586e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.432189660916843,
+       "dimension": 8008,
+       "seconds": 121.3740565,
+       "moments": "exact",
+       "vacuum_weight": 0.8679001367832565,
+       "helike": {
+        "gap": 0.8989158986452628,
+        "weight": 0.8006221024766527,
+        "dressed_weight": 0.9224818254367836
+       },
+       "competitor": {
+        "gap": 0.9842974033633798,
+        "weight": 0.7115166074566305,
+        "dressed_weight": 0.8198139132616818
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.17281724069052e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9909571719593492,
+         "competitor": 0.9669818503992925
+        },
+        "dressed_overlap_error": 8.659739592076221e-15,
+        "dressed_overlap_orthonormality": 9.259260025373806e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpwjjgbg_a\\\\export-receipt.json', 'cone-export', '--s', '1.14', '--t', '4.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpwjjgbg_a\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.033348310531086334,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.08538150471811701
+    },
+    {
+     "s": 1.16,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.4977152083938545,
+       "dimension": 924,
+       "seconds": 13.5674209,
+       "moments": "exact",
+       "vacuum_weight": 0.8742437063346967,
+       "helike": {
+        "gap": 0.9076887240947498,
+        "weight": 0.801142623478283,
+        "dressed_weight": 0.9163836327024955
+       },
+       "competitor": {
+        "gap": 1.1135946528036467,
+        "weight": 0.7429958165096869,
+        "dressed_weight": 0.8498726512138451
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 7.113028615002293e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9921627529332602,
+         "competitor": 0.9636818170728642
+        },
+        "dressed_overlap_error": 3.730349362740526e-14,
+        "dressed_overlap_orthonormality": 5.46229728115577e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.475837369156063,
+       "dimension": 3003,
+       "seconds": 41.1807652,
+       "moments": "exact",
+       "vacuum_weight": 0.8762378655395228,
+       "helike": {
+        "gap": 0.8867871581221465,
+        "weight": 0.8097059675255892,
+        "dressed_weight": 0.9240709622004658
+       },
+       "competitor": {
+        "gap": 1.049300095489544,
+        "weight": 0.7490941875966463,
+        "dressed_weight": 0.8548982154924442
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 1.095175325982467e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9935560921869467,
+         "competitor": 0.9732136185190089
+        },
+        "dressed_overlap_error": 4.6074255521943996e-14,
+        "dressed_overlap_orthonormality": 9.270362255620057e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.465714852124333,
+       "dimension": 8008,
+       "seconds": 119.0312767,
+       "moments": "exact",
+       "vacuum_weight": 0.8765487449068277,
+       "helike": {
+        "gap": 0.8787555747087286,
+        "weight": 0.8085097278846305,
+        "dressed_weight": 0.9223785129834059
+       },
+       "competitor": {
+        "gap": 1.0177608835133913,
+        "weight": 0.731687146052112,
+        "dressed_weight": 0.8347364026285685
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 6.039491253773122e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9914057507238341,
+         "competitor": 0.9673152130760995
+        },
+        "dressed_overlap_error": 4.773959005888173e-15,
+        "dressed_overlap_orthonormality": 8.193445921733655e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpdcqjqv5q\\\\export-receipt.json', 'cone-export', '--s', '1.16', '--t', '4.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpdcqjqv5q\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.031539211976152615,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.13900530880466277
+    },
+    {
+     "s": 1.18,
+     "ladder": [
+      {
+       "Mq": 6,
+       "E0": 5.526185897079119,
+       "dimension": 924,
+       "seconds": 15.2568182,
+       "moments": "exact",
+       "vacuum_weight": 0.8806898869290546,
+       "helike": {
+        "gap": 0.8855629363721027,
+        "weight": 0.8065586418093404,
+        "dressed_weight": 0.9158259380288695
+       },
+       "competitor": {
+        "gap": 1.1445054699539323,
+        "weight": 0.7568232604727549,
+        "dressed_weight": 0.8593527321084387
+       },
+       "overlap_orders": [
+        16,
+        18
+       ],
+       "reference_weight_error": 5.725739944395514e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.992450775996513,
+         "competitor": 0.964649189846449
+        },
+        "dressed_overlap_error": 3.1308289294429414e-14,
+        "dressed_overlap_orthonormality": 6.250555628639631e-14
+       }
+      },
+      {
+       "Mq": 8,
+       "E0": 5.506168517454137,
+       "dimension": 3003,
+       "seconds": 38.6931107,
+       "moments": "exact",
+       "vacuum_weight": 0.8832450367497875,
+       "helike": {
+        "gap": 0.865005615051599,
+        "weight": 0.8152909312661798,
+        "dressed_weight": 0.9230631334950165
+       },
+       "competitor": {
+        "gap": 1.081964576838927,
+        "weight": 0.7642482946092531,
+        "dressed_weight": 0.865273239939819
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 9.296443015394118e-08,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9937978995707131,
+         "competitor": 0.972298079737854
+        },
+        "dressed_overlap_error": 2.942091015256665e-14,
+        "dressed_overlap_orthonormality": 8.959499808725013e-14
+       }
+      },
+      {
+       "Mq": 10,
+       "E0": 5.497130261380835,
+       "dimension": 8008,
+       "seconds": 117.1049617,
+       "moments": "exact",
+       "vacuum_weight": 0.8840202894095351,
+       "helike": {
+        "gap": 0.8573403062997258,
+        "weight": 0.8149290638297986,
+        "dressed_weight": 0.9218442988159414
+       },
+       "competitor": {
+        "gap": 1.0522678606125462,
+        "weight": 0.7496536044066002,
+        "dressed_weight": 0.8480049761157827
+       },
+       "overlap_orders": [
+        18,
+        20
+       ],
+       "reference_weight_error": 5.889561157657042e-07,
+       "cross_check": {
+        "dressed_overlap": {
+         "helike": 0.9918568309502707,
+         "competitor": 0.9663012959918807
+        },
+        "dressed_overlap_error": 1.7319479184152442e-14,
+        "dressed_overlap_orthonormality": 9.08162434143378e-14
+       }
+      }
+     ],
+     "domain_gate": "OPEN",
+     "domain": {
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c1f45fde8580c2d1\\\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\\\scratchpad\\\\wt-flux\\\\helike-lab\\\\target\\\\release\\\\helike.exe', '--out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpfh8cq2a1\\\\export-receipt.json', 'cone-export', '--s', '1.18', '--t', '4.0', '--g2', '0.05', '--mq', '10', '--states-out', 'C:\\\\Users\\\\nurdm\\\\AppData\\\\Local\\\\Temp\\\\tmpfh8cq2a1\\\\export.json']' returned non-zero exit status 2."
+     },
+     "last_step_change": 0.029696716226380815,
+     "converged": false,
+     "identified": false,
+     "diff_competitor_minus_helike": 0.19492755431282038
+    }
+   ],
+   "status": "UNRESOLVED",
+   "measured_switch": null
+  }
+ ],
+ "overall": "UNRESOLVED",
+ "finished_unix": 1795731922.4538045
+}

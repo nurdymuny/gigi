@@ -5,8 +5,17 @@ new. Proved results are cited with their scope, conjectures are marked as conjec
 read in full is marked *verify*, following my literature check of 24 November
 (`helike-literature-check-2026-11-24.md`). This is a living draft. I will reread and refine it as the work moves.
 
-*Refined the same afternoon:* §4.4 is stated in its sharper form, §4.6 adds the corridor and the double cover with
-what the first controls show, and the milestones and falsifiers follow.
+*Refined the same afternoon:* §4.4 is stated in its sharper form, §4.6 adds the corridor, octave and tone with what
+the first controls show, and the milestones and falsifiers follow.
+
+*Refined again after an outside review (26 November):*
+- §4.0 separates the three hypotheses by strength, with carrier persistence at the centre.
+- §4.1 corrects the drum: the folded space is not bounded, and the vacuum's weight does the work.
+- §4.3 corrects the radius test.
+- §4.6 says what the corridor predicts beyond ordinary spectral filtering, and measures it.
+- §4.7 adds the exact weighted-geometry form of the gap in my reduction.
+- §4.5 names the data that holomorphic gluing would have to connect.
+- §5 adds the bridge from the sourced reduction to the unsourced theory.
 
 ---
 
@@ -134,19 +143,63 @@ mass gap) for lattice Yang–Mills at **strong coupling**, in any dimension d > 
 - This is the dimension-free geometric mechanism my heat-signal registration (T5) probes in the reduction. The hard
   case is the opposite regime, weak coupling, where the continuum limit lives.
 
+**The continuum version of the same idea.** **Moncrief, Marini and Maitra**, "Orbit Space Curvature as a Source of
+Mass in Quantum Gauge Theory", arXiv:1809.06318 (2018, revised 2019), take up Singer's proposal.
+- The orbit space is positively curved but of infinite diameter.
+- With the Yang–Mills potential included, the role of the Ricci tensor is played by a Bakry–Émery Ricci tensor
+  computed from the ground-state wave functional.
+- A positive lower bound on that tensor gives a gap.
+- They state this as a programme. The infinite-dimensional tensor needs regularisation.
+
+**Mondal**, "A Geometric Approach to the Yang–Mills Mass Gap", arXiv:2301.06996 (2023), argues for a gap in 2+1 and
+3+1 dimensions from a regularised Bakry–Émery curvature.
+- The argument assumes that a quantised theory exists and that the curvature satisfies a pointwise bound.
+- The author calls the 3+1 case not yet rigorous.
+- *verify* in full; I have read the introduction and the theorem statement.
+
 ## 4. My theory
 
 I state it first in plain geometry, then as precisely as I can. It grew from the stretched sphere, from Helike, and
 from a week of watching which of our readings were real.
 
+### 4.0 Three questions, and three hypotheses of different strength
+
+An energy curve answers only the first of three questions:
+- What is the energy?
+- What field carries it?
+- Does that identification survive changes in how I represent and measure it?
+
+Two curves can cross while their states keep distinct identities. A smooth curve can hide a complete change of the
+state carrying it. That is why I follow eigenvectors, channel overlaps and degenerate subspaces, not only levels.
+
+I hold three hypotheses, and they are separate. Each can fail without the others failing.
+- **H1. Carrier persistence (the centre).** The lowest note in a sector has a carrier whose identity can be followed.
+  When it changes, it changes at an identifiable switch, and I can say why one field stays cheapest or how another
+  takes over (§4.2, §4.7).
+- **H2. Gap survival.** Measured in a field scale fixed independently of the room, the lowest excitation stays
+  bounded away from zero as the room grows (§4.3).
+- **H3. Invariant tone (strongest).** The pattern of higher ratios is the same in every room (§4.6). A field can keep
+  a positive gap while its higher ratios change. A tone shift would refute H3 and leave H1 and H2 standing.
+
+Even if H3 needs revision, an explanation of why a particular excitation stays cheapest is the result worth having.
+
 ### 4.1 The gap is the lowest note of a folded drum
 
 Every shape a gauge field can take is a point in a vast space. Gauge symmetry folds that space: shapes that differ
 only by gauge are pressed onto each other, with creases where the copies meet (Gribov, Singer). What is left is
-curved, and in the sense that matters, bounded.
+curved: Singer showed that the orbit space is positively curved.
 
-A bounded drum has a lowest nonzero note. **The mass gap is the pitch of the smallest drum the folded space of field
-shapes allows.** This picture is not new; it is Feynman's in 2+1 dimensions. What I add is the next point.
+It is **not** bounded. The Yang–Mills orbit spaces have infinite diameter (Moncrief, Marini and Maitra,
+arXiv:1809.06318, citing earlier work). So the drum is not small because its walls are close. It is small because of
+where the vacuum puts its weight. The potential confines the vacuum, and the measure weighted by the vacuum's
+probability is finite even where the space is not. Moncrief, Marini and Maitra make this a gap estimate. In the
+Bochner identity weighted by |Ψ₀|², the Ricci tensor is replaced by a Bakry–Émery Ricci tensor built from the ground
+state. If that tensor is bounded below by 1/ℓ₀², the gap is at least ħ²/(2m ℓ₀²). They state this as a programme: in
+infinite dimensions the tensor needs regularisation, and its positivity is sufficient, not necessary.
+
+**The mass gap is the pitch of the smallest drum that the folded space of field shapes, weighted by where the vacuum
+actually lives, allows.** The unweighted picture is Feynman's in 2+1 dimensions. The weighting is Moncrief, Marini
+and Maitra's. What I add is the next point.
 
 ### 4.2 The note has a carrier, and she has a name
 
@@ -168,9 +221,13 @@ fixed Δ that does not care about R.
 and not the room's, under which the curves of lowest notes from all rooms are one curve. The *translator* is the map
 that carries a room's reading to the field's reading.
 
-The honest form of the test is concrete:
-- Δ(R)·R grows without bound as R grows if and only if the gap survives;
-- if the gap closes like 1/R, Δ(R)·R flattens.
+The honest form of the test is concrete. **The gap survives if Δ(R), measured in a field scale fixed independently
+of the room (Λ, or a physical mass held fixed), stays bounded away from zero as R grows.** That is H2 of §4.0.
+
+The product Δ(R)·R is only a one-way test:
+- If it flattens, the gap closes like 1/R, and H2 fails.
+- If it grows, that is necessary for survival but not sufficient. A gap falling like 1/√R gives Δ·R ∝ √R, which grows
+  without bound, while the gap still goes to zero.
 
 Normalizing by the room would hide the difference. The translator must be able to say no.
 
@@ -212,7 +269,18 @@ purest gluing: local pieces determine the global function uniquely. Rhymes betwe
 readings and the imaginary parts of another's are what the translator must preserve. My Crouzeix-type function in
 GIGI is my instrument for hearing those rhymes. *Its implementation has not been reviewed in this note.*
 
-### 4.6 The gap is the corridor: every disturbance ends on one note
+**What is still undefined.** Spatial gluing, a change of renormalisation scheme and analytic continuation are three
+different operations. For the conjecture to say anything, I must name the data each one acts on and the compatibility
+condition that connects them. Until then it is a direction, not a statement.
+
+The most concrete starting point is the one that uses positivity. Fei, Yeh and Gull, "Nevanlinna Analytical
+Continuation", Phys. Rev. Lett. 126 (2021) 056402, continue Euclidean Green's functions while keeping the spectral
+function positive and normalised. They treat the problem as Nevanlinna interpolation, with a Pick-type criterion for
+when a continuation exists. Finitely many Euclidean values still allow many compatible continuations. Any claim that
+the threshold is "read from the continuation" must therefore come with the whole family of continuations, not just
+one of them. For M5, that means reporting the interval of thresholds that the Nevanlinna–Pick family allows.
+
+### 4.6 The gap is the corridor: every disturbance of a stated class ends on one note
 
 Strike a drum anywhere, in any way, and wait. The high ringing dies first. What is left is the lowest note the strike
 could reach, and it is the same note whichever way it was struck.
@@ -220,26 +288,41 @@ could reach, and it is the same note whichever way it was struck.
 In imaginary time this is the heat kernel. A disturbance φ, evolved by e^{−τH}, fades as
 Σₙ |⟨n|φ⟩|² e^{−τ(Eₙ − E₀)}. After the transients, one rate survives: the first level φ touches.
 
-**Conjecture (the corridor).** In each sector, every disturbance that can reach the lowest level does, and they all end
-on the same note. The gap is not one excitation among many. It is the corridor that every disturbance of the sector
-leaves through.
+**What is automatic, and what is not.** That a source with any overlap on the lowest level is eventually dominated by
+it follows from the spectral expansion alone. That part is not a discovery. "Eventually" can also hide a great deal.
+At g² = 0.002, 99.85% of source H″'s weight lies above the twelve retained levels, and it reaches the corridor through
+a small component. A disturbance orthogonal to the lowest state can also stay in a higher level of the same sector
+for ever. That would not disprove a gap.
+
+**Conjecture (the corridor), in the form that can fail.** Fix a stated, physically meaningful class of disturbances in
+each sector. In my reduction these are the registered monomial sources of the heat-signal experiment. Across changing
+rooms, every disturbance in the class keeps a substantial share of its weight on one identifiable channel, and
+reaches it in a comparable time. Three things are measured, not only the end level:
+- the weight each source puts on the corridor;
+- the imaginary time it takes for the corridor to dominate its signal;
+- whether that weight and that time hold up across the switch.
+
+The gap is then not one excitation among many. It is the channel this class of disturbances leaves through.
 
 That is why one field can carry it (§4.2): the carrier is the shape of the corridor. And because every field that
 couples to the sector must pass through it, the gap is also what connects them. It is the secret corridor between
 fields.
 
-**The double cover: octave and tone.** A reading of the notes has two parts.
+**Octave and tone.** A reading of the notes has two parts.
 - The **octave** is the overall scale Δ. In a small room it is set by the room; in infinite space it must be set by
   the field's own scale Λ.
 - The **tone** is the pattern of ratios (Eₙ − E₀)/Δ. It belongs to the field.
 
-As in music, one tone sounds in every octave. Each room plays the field's tone in its own octave, and the readings
-from all rooms cover the one note. This is the second double cover in the work, after Helike's two partners covering
-one channel. It gives §4.3 a sharper form, in two halves:
-- **(i)** the tone is the same in every room;
-- **(ii)** the octave, read in the field's units, does not fall to zero as the room grows.
+As in music, one tone sounds in every octave. Each room plays the field's tone in its own octave. This is a
+decomposition into scale and shape. I first called it a double cover, after Helike's two partners covering one
+channel. It does not earn that name until I can specify a two-to-one map, so for now the name is an image, not a
+theorem.
 
-Half (i) is the corridor seen from the side. Half (ii) is the gap.
+It splits the claim into two halves, and they are different hypotheses:
+- **(i)** the tone is the same in every room. This is H3.
+- **(ii)** the octave, read in the field's units, does not fall to zero as the room grows. This is H2.
+
+A tone shift refutes (i) without touching (ii).
 
 **What the reduction says so far.** The registered heat-signal experiment (`helike-heat-signal-registration-2026-11-26.md`)
 ran at the weak-coupling controls, g² = 0.002 and 0.004.
@@ -249,10 +332,44 @@ ran at the weak-coupling controls, g² = 0.002 and 0.004.
 - **The tone is stable** between the two couplings, to 0.005.
 - **The signal does not move with the seams** (basis size and quadrature).
 
-At these couplings the spectrum is nearly harmonic, so this checks the instrument, not the conjecture. The grid
-points, where the switch lives, are the test.
+At these couplings the spectrum is nearly harmonic, so this checks the instrument, not the conjecture. The heat
+curves are also built from the same computed levels and overlaps. Their agreement with that spectrum is a
+consistency check, not an independent measurement of it. The grid points, where the switch lives, are the test.
 
-### 4.7 The method
+| g² | Helike-channel plateau | competitor-channel plateau |
+|---|---|---|
+| 0.002 | 1.089042353 | 1.101143780 |
+| 0.004 | 1.087968660 | 1.095559030 |
+
+(model units, which are units of 1/R)
+
+### 4.7 Why one field stays cheapest: the gap as weighted geometry
+
+In my reduction this is exact, not a picture. The kinetic term is a Dirichlet form, ½ g^{ij} ∂ᵢf ∂ⱼf, over the chart's
+measure. The ground state ψ₀ is positive. Write any state as ψ = f ψ₀. Then
+
+  ⟨ψ, (H − E₀) ψ⟩ = ½ ∫ g^{ij} ∂ᵢf ∂ⱼf · ψ₀² dμ,
+
+and the gap is the smallest such value over f with ∫ f ψ₀² dμ = 0 and ∫ f² ψ₀² dμ = 1. This is the ground-state
+transformation: H − E₀ becomes a weighted Laplacian on the field space with the vacuum's probability as its measure.
+
+Two consequences follow, and both can be measured.
+- **The carrier is a shape on that geometry.** The ground state is invariant under the charge rotation, so the
+  transformation respects charge. In each charge sector, the lowest state is ψ₁ = f₁ψ₀, where f₁ is the slowest
+  function of that charge on the vacuum-weighted geometry. Helike's channel is the statement that, over a region, the
+  slowest charge-2 function is, to leading order, her twist coordinate h₁ + i h₂. Following f₁ across the switch
+  shows either why she stays cheapest, or exactly which direction becomes cheaper. This is H1 made geometric.
+- **The constraint has a curvature.** If the Bakry–Émery tensor Ric_g − 2 Hess log ψ₀ is bounded below by κ > 0,
+  the whole gap, over all sectors, is at least κ/2 with this normalisation. A cheaper shape would have to run against
+  that curvature. The bound is on the gap, not on a particular sector's level. Where
+  the bound holds, it explains why no cheaper shape appears. Where it fails, it shows where a switch can happen.
+
+This is the finite-dimensional, rigorous counterpart of the Moncrief–Marini–Maitra programme, and of the
+strong-coupling mechanism of Shen, Zhu and Zhu. My heat-signal T5 computes the floating version of this bound.
+
+### 4.8 The method
+
+
 
 Geometric visualisation chooses the object: the stretched sphere, the twist, the fold, the ray to the wall. Rigorous
 enclosures settle each claim: interval and ball arithmetic, branch and bound, Lehmann–Temple bounds. Registration
@@ -268,7 +385,8 @@ let me fool myself on the way.
 |---|---|---|---|
 | **Existence (UV)** | infinitely many short-distance modes; renormalization; the OS axioms in the limit | Zooming in is a gluing of scales. Asymptotic freedom flattens the fine scales, so the zoom should converge, and the reading at each scale must be scheme-independent (§4.4). Bałaban's programme is the existing road | **not addressed** beyond this principle. I claim no progress |
 | **Gap in a small room** | the infinitely many stiff modes must be shown only to *dress* the slow ones, rigorously | Small-sphere reduction (Lüscher, van Baal) plus rigorous enclosures and an identified floor (Helike). Next: rigorous bounds on the stiff-mode dressing (adiabatic separation) | **reduced model:** proved, or conditional on S_C. **Full theory at small R:** the next milestone |
-| **Gap uniform in the room (IR)** | confinement makes the large scales strongly coupled; gluing is not weak | The translator (§4.3), gluing invariance (§4.4), carrier persistence (§4.2), holomorphic gluing (§4.5), the corridor and the invariant tone (§4.6) | **conjecture.** This is the wall |
+| **Gap uniform in the room (IR)** | confinement makes the large scales strongly coupled; gluing is not weak | The translator (§4.3), gluing invariance (§4.4), carrier persistence (§4.2, §4.7), holomorphic gluing (§4.5), the corridor (§4.6); the invariant tone is a separate, stronger claim | **conjecture.** This is the wall |
+| **From the sourced reduction to the unsourced theory** | my reduction is a *sourced* condensate: the sources hold the background, and they change the spectrum | The sources must be removed, controlled, or matched to an effective description of the unsourced theory. Assigning a running coupling to a radius does not supply this connection by itself. The first step is to track every reading as the sources are turned down, to the edge of the window where Theorem A holds | **open.** The next mathematical question, and a condition on M2 |
 | **Non-triviality** | the limit must interact | Helike's structure is non-abelian: the flux term and the floor law vanish in the abelian theory | **in the reduction only** |
 
 ## 6. Milestones (each registered before it is run; each can fail)
@@ -276,8 +394,10 @@ let me fool myself on the way.
 1. **M1. S_C proved at the controls.** R2 interval Lehmann with exact base eigenfunctions. *Fails if* the interval
    ℓ₅ does not clear ρ_C at the frozen value.
 2. **M2. The radius sweep with the gluing qualifier.** Map the reduced model's g² to the room radius through the
-   running coupling, as in van den Heuvel's f = g²(R)/2π². Register the curve of Δ(R)·R, and compare with van den
-   Heuvel's crossing. *Fails if* Δ·R flattens, or if the reading is seam-sensitive (§5.5).
+   running coupling, as in van den Heuvel's f = g²(R)/2π². Register Δ(R) in a field scale fixed independently of the
+   room, and Δ(R)·R as the one-way check (§4.3). Compare with van den Heuvel's crossing. *Fails if* Δ·R flattens,
+   Δ in the field scale trends to zero, or the reading is seam-sensitive (§5.5). It is reported as a statement about
+   the sourced reduction until the source bridge (§5) is crossed.
 3. **M3. Full theory at small R.** A rigorous effective-Hamiltonian statement: bounds on how the stiff modes dress
    Helike's channel, at small radius, uniformly in the ultraviolet cutoff. *Fails if* the dressing cannot be bounded
    below the gap.
@@ -286,16 +406,24 @@ let me fool myself on the way.
 5. **M5. Holomorphic consistency in the reduction.** Compute the Euclidean correlator and its spectral threshold in
    the reduced model. Check that the threshold read from the continuation agrees with the spectrum, inside stated
    bounds. *Fails if* they disagree beyond the bounds.
-6. **M6. The corridor across the switch.** The registered heat signal at the grid points: the corridor in both
-   sectors, and the tone stable while the octave moves. *Fails if* a sector splits (its disturbances end on different
-   notes), or the tone shifts where only the octave should move.
+6. **M6. The corridor across the switch (H1).** The registered heat signal at the grid points, measuring for each
+   registered source its weight on the corridor and its time to dominance, as well as its end level. *Fails if* a
+   sector splits (its sources end on different notes), or the corridor weight of the registered source class
+   collapses across the switch.
+7. **M7. The tone (H3, separately).** The ratio vector across the grid. *Fails if* the tone shifts where only the
+   octave should move. This refutes H3 only.
+8. **M8. The weighted geometry of the carrier (H1, §4.7).** From the computed ψ₀ and ψ₁, the slow function f₁ = ψ₁/ψ₀.
+   Report its alignment with Helike's twist coordinate across the switch, and the floating Bakry–Émery lower bound
+   next to the computed gap. *Fails if* f₁ changes direction without a level crossing or an identifiable switch.
 
 ## 7. What would show me wrong
 
 - **Δ(R)·R flattens** in the sweep. The note would be the room's, not the field's.
 - **A reading moves** when only the stitching changes. The note would belong to the seams.
 - **The carrier dissolves** without a switch. The gap would not be tracked by a field.
-- **The corridor splits.** Disturbances of one sector end on different notes. The gap would not be a common exit.
+- **The corridor splits**, or its weight collapses, for the stated source class. The gap would not be a common exit.
+- **The tone shifts** where only the octave should move. This would refute H3, the strongest form, and leave the
+  carrier and the gap standing.
 - **The van den Heuvel crossing** turns out to be the same object as my switch, and it is an artefact of the
   truncation. My switch would then be an artefact too.
 
@@ -306,6 +434,8 @@ floor I have not climbed to: the ultraviolet construction and the infinite-volum
 where a real road begins: Lüscher's and van Baal's road, made rigorous and given an identified floor.
 
 I believe the gap is a property of the shape of the folded space of field shapes. I believe it is carried by a field
-whose identity persists, that it is the corridor every disturbance leaves through, that it is the same tone in every
-room once the field's own scale sets the octave, and that it is invariant under how the rooms are joined. I hold those beliefs as conjectures. Each milestone above is a place where the geometry gets to
+whose identity persists, and that the reason it stays cheapest is a curvature of the space of field shapes weighted
+by where the vacuum lives. I believe it is the corridor a stated class of disturbances leaves through, and that it is
+invariant under how the rooms are joined. More boldly, I believe it plays the same tone in every room once the field's
+own scale sets the octave. I hold the carrier as the centre, and the tone as the strongest and most exposed claim. I hold those beliefs as conjectures. Each milestone above is a place where the geometry gets to
 tell me yes or no.

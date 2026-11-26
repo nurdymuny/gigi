@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="495.671818pt" height="238.025594pt" viewBox="0 0 495.671818 238.025594" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title/>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 238.025594 
+L 495.671818 238.025594 
+L 495.671818 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 40.53 211.615594 
+L 223.148182 211.615594 
+L 223.148182 28.663594 
+L 40.53 28.663594 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 48.830826 211.615594 
+L 83.578472 211.615594 
+L 83.578472 37.375594 
+L 48.830826 37.375594 
+z
+" clip-path="url(#p995492623b)" style="fill: #75848a"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 145.352064 211.615594 
+L 180.09971 211.615594 
+L 180.09971 139.646898 
+L 145.352064 139.646898 
+z
+" clip-path="url(#p995492623b)" style="fill: #75848a"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 83.578472 211.615594 
+L 118.326118 211.615594 
+L 118.326118 168.055594 
+L 83.578472 168.055594 
+z
+" clip-path="url(#p995492623b)" style="fill: #176f78"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 180.09971 211.615594 
+L 214.847355 211.615594 
+L 214.847355 168.055594 
+L 180.09971 168.055594 
+z
+" clip-path="url(#p995492623b)" style="fill: #176f78"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path id="mbf002203ed" d="M 0 0 
+L 0 3.5 
+" style="stroke: #25343d; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#mbf002203ed" x="83.578472" y="211.615594" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <!-- g$^2$ = 0.004 -->
+      <g style="fill: #25343d" transform="translate(59.103472 227.635594)">
+       <text>
+        <tspan x="0" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">g</tspan>
+        <tspan x="10.342521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="13.092521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">=</tspan>
+        <tspan x="21.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="24.202521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="29.702521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">.</tspan>
+        <tspan x="32.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="37.952521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="43.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">4</tspan>
+        <tspan x="6.213615" y="-4.498437" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">2</tspan>
+       </text>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use xlink:href="#mbf002203ed" x="180.09971" y="211.615594" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <!-- g$^2$ = 0.002 -->
+      <g style="fill: #25343d" transform="translate(155.62471 227.635594)">
+       <text>
+        <tspan x="0" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">g</tspan>
+        <tspan x="10.342521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="13.092521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">=</tspan>
+        <tspan x="21.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="24.202521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="29.702521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">.</tspan>
+        <tspan x="32.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="37.952521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="43.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">2</tspan>
+        <tspan x="6.213615" y="-4.498437" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">2</tspan>
+       </text>
+      </g>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_3">
+      <defs>
+       <path id="mb1187012f8" d="M 0 0 
+L -3.5 0 
+" style="stroke: #25343d; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#mb1187012f8" x="40.53" y="211.615594" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="33.53" y="215.60825" transform="rotate(-0 33.53 215.60825)">0</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_4">
+      <g>
+       <use xlink:href="#mb1187012f8" x="40.53" y="173.737333" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="33.53" y="177.729989" transform="rotate(-0 33.53 177.729989)">20</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_5">
+      <g>
+       <use xlink:href="#mb1187012f8" x="40.53" y="135.859072" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="33.53" y="139.851728" transform="rotate(-0 33.53 139.851728)">40</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_6">
+      <g>
+       <use xlink:href="#mb1187012f8" x="40.53" y="97.980811" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="33.53" y="101.973467" transform="rotate(-0 33.53 101.973467)">60</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_7">
+      <g>
+       <use xlink:href="#mb1187012f8" x="40.53" y="60.10255" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_7">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="33.53" y="64.095207" transform="rotate(-0 33.53 64.095207)">80</text>
+     </g>
+    </g>
+    <g id="text_8">
+     <!-- base levels below $\rho_b$ (enclosed) -->
+     <g style="fill: #25343d" transform="translate(15.439688 196.204594) rotate(-90)">
+      <text>
+       <tspan x="0" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">b</tspan>
+       <tspan x="6.082993" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">a</tspan>
+       <tspan x="11.582993" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">s</tspan>
+       <tspan x="16.246994" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="21.515991" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+       <tspan x="24.265991" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">l</tspan>
+       <tspan x="27.46698" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="32.735977" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">v</tspan>
+       <tspan x="38.950974" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="44.219971" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">l</tspan>
+       <tspan x="47.420959" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">s</tspan>
+       <tspan x="52.084961" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+       <tspan x="54.834961" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">b</tspan>
+       <tspan x="60.917953" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="66.186951" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">l</tspan>
+       <tspan x="69.387939" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">o</tspan>
+       <tspan x="75.393936" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">w</tspan>
+       <tspan x="84.567932" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+       <tspan x="96.925932" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+       <tspan x="99.675932" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">(</tspan>
+       <tspan x="104.691924" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="109.960921" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">n</tspan>
+       <tspan x="116.362914" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">c</tspan>
+       <tspan x="121.246916" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">l</tspan>
+       <tspan x="124.447905" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">o</tspan>
+       <tspan x="130.453902" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">s</tspan>
+       <tspan x="135.117903" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="140.3869" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">d</tspan>
+       <tspan x="147.107893" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">)</tspan>
+       <tspan x="87.317932" y="-0.453125" style="font-style: italic; font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">ρ</tspan>
+       <tspan x="93.081924" y="1.220313" style="font-style: italic; font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">b</tspan>
+      </text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_7">
+    <path d="M 40.53 211.615594 
+L 40.53 28.663594 
+" style="fill: none; stroke: #bac5c8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 40.53 211.615594 
+L 223.148182 211.615594 
+" style="fill: none; stroke: #bac5c8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 8px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="66.204649" y="33.587768" transform="rotate(-0 66.204649 33.587768)">92</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 8px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="100.952295" y="164.267768" transform="rotate(-0 100.952295 164.267768)">23</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 8px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="162.725887" y="135.859072" transform="rotate(-0 162.725887 135.859072)">38</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 8px; font-family: 'TeX Gyre Pagella'; text-anchor: middle; fill: #25343d" x="197.473533" y="164.267768" transform="rotate(-0 197.473533 164.267768)">23</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 13px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #25343d" x="40.53" y="16.663594" transform="rotate(-0 40.53 16.663594)">Levels the homotopy must open</text>
+   </g>
+   <g id="legend_1">
+    <g id="patch_9">
+     <path d="M 141.365682 41.671094 
+L 157.365682 41.671094 
+L 157.365682 36.071094 
+L 141.365682 36.071094 
+z
+" style="fill: #75848a"/>
+    </g>
+    <g id="text_14">
+     <text style="font-size: 8px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #25343d" x="163.765682" y="41.671094" transform="rotate(-0 163.765682 41.671094)">uniform fold</text>
+    </g>
+    <g id="patch_10">
+     <path d="M 141.365682 53.742344 
+L 157.365682 53.742344 
+L 157.365682 48.142344 
+L 141.365682 48.142344 
+z
+" style="fill: #176f78"/>
+    </g>
+    <g id="text_15">
+     <text style="font-size: 8px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #25343d" x="163.765682" y="53.742344" transform="rotate(-0 163.765682 53.742344)">ray-aware fold</text>
+    </g>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_11">
+    <path d="M 259.671818 211.615594 
+L 442.29 211.615594 
+L 442.29 28.663594 
+L 259.671818 28.663594 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 275.836585 614.109994 
+L 307.292349 614.109994 
+L 307.292349 168.259775 
+L 275.836585 168.259775 
+z
+" clip-path="url(#p213926a811)" style="fill: #75848a"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 363.213706 614.109994 
+L 394.669469 614.109994 
+L 394.669469 114.305035 
+L 363.213706 114.305035 
+z
+" clip-path="url(#p213926a811)" style="fill: #75848a"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 307.292349 614.109994 
+L 338.748112 614.109994 
+L 338.748112 91.481407 
+L 307.292349 91.481407 
+z
+" clip-path="url(#p213926a811)" style="fill: #176f78"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 394.669469 614.109994 
+L 426.125233 614.109994 
+L 426.125233 82.493195 
+L 394.669469 82.493195 
+z
+" clip-path="url(#p213926a811)" style="fill: #176f78"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_3">
+     <g id="line2d_8">
+      <g>
+       <use xlink:href="#mbf002203ed" x="307.292349" y="211.615594" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_16">
+      <!-- g$^2$ = 0.004 -->
+      <g style="fill: #25343d" transform="translate(282.817349 227.635594)">
+       <text>
+        <tspan x="0" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">g</tspan>
+        <tspan x="10.342521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="13.092521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">=</tspan>
+        <tspan x="21.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="24.202521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="29.702521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">.</tspan>
+        <tspan x="32.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="37.952521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="43.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">4</tspan>
+        <tspan x="6.213615" y="-4.498437" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">2</tspan>
+       </text>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_9">
+      <g>
+       <use xlink:href="#mbf002203ed" x="394.669469" y="211.615594" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_17">
+      <!-- g$^2$ = 0.002 -->
+      <g style="fill: #25343d" transform="translate(370.194469 227.635594)">
+       <text>
+        <tspan x="0" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">g</tspan>
+        <tspan x="10.342521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="13.092521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">=</tspan>
+        <tspan x="21.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+        <tspan x="24.202521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="29.702521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">.</tspan>
+        <tspan x="32.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="37.952521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">0</tspan>
+        <tspan x="43.452521" y="-0.59375" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">2</tspan>
+        <tspan x="6.213615" y="-4.498437" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">2</tspan>
+       </text>
+      </g>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_6">
+     <g id="line2d_10">
+      <g>
+       <use xlink:href="#mb1187012f8" x="259.671818" y="211.615594" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_18">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="252.671818" y="215.60825" transform="rotate(-0 252.671818 215.60825)">5.5</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_11">
+      <g>
+       <use xlink:href="#mb1187012f8" x="259.671818" y="175.025194" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_19">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="252.671818" y="179.01785" transform="rotate(-0 252.671818 179.01785)">6.0</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_12">
+      <g>
+       <use xlink:href="#mb1187012f8" x="259.671818" y="138.434794" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_20">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="252.671818" y="142.42745" transform="rotate(-0 252.671818 142.42745)">6.5</text>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_13">
+      <g>
+       <use xlink:href="#mb1187012f8" x="259.671818" y="101.844394" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_21">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="252.671818" y="105.83705" transform="rotate(-0 252.671818 105.83705)">7.0</text>
+     </g>
+    </g>
+    <g id="ytick_10">
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#mb1187012f8" x="259.671818" y="65.253994" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_22">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="252.671818" y="69.24665" transform="rotate(-0 252.671818 69.24665)">7.5</text>
+     </g>
+    </g>
+    <g id="ytick_11">
+     <g id="line2d_15">
+      <g>
+       <use xlink:href="#mb1187012f8" x="259.671818" y="28.663594" style="fill: #25343d; stroke: #25343d; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_23">
+      <text style="font-size: 11px; font-family: 'TeX Gyre Pagella'; text-anchor: end; fill: #25343d" x="252.671818" y="32.65625" transform="rotate(-0 252.671818 32.65625)">8.0</text>
+     </g>
+    </g>
+    <g id="text_24">
+     <!-- base $\lambda_{11}$ (above $V_{bg}$) -->
+     <g style="fill: #25343d" transform="translate(231.181818 169.529594) rotate(-90)">
+      <text>
+       <tspan x="0" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">b</tspan>
+       <tspan x="6.082993" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">a</tspan>
+       <tspan x="11.582993" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">s</tspan>
+       <tspan x="16.246994" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="21.515991" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+       <tspan x="38.5039" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+       <tspan x="41.2539" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">(</tspan>
+       <tspan x="46.269891" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">a</tspan>
+       <tspan x="51.769891" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">b</tspan>
+       <tspan x="57.852884" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">o</tspan>
+       <tspan x="63.858881" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">v</tspan>
+       <tspan x="70.073877" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">e</tspan>
+       <tspan x="75.342874" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d"> </tspan>
+       <tspan x="93.728883" y="-0.453125" style="font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">)</tspan>
+       <tspan x="24.265991" y="-0.453125" style="font-style: italic; font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">λ</tspan>
+       <tspan x="78.092874" y="-0.453125" style="font-style: italic; font-size: 11px; font-family: 'TeX Gyre Pagella'; fill: #25343d">V</tspan>
+       <tspan x="30.524994" y="1.220313" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">1</tspan>
+       <tspan x="34.374994" y="1.220313" style="font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">1</tspan>
+       <tspan x="86.034875" y="1.220313" style="font-style: italic; font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">b</tspan>
+       <tspan x="89.599977" y="1.220313" style="font-style: italic; font-size: 7.7px; font-family: 'TeX Gyre Pagella'; fill: #25343d">g</tspan>
+      </text>
+     </g>
+    </g>
+   </g>
+   <g id="line2d_16">
+    <path d="M 267.972645 48.693179 
+L 346.612053 48.693179 
+" clip-path="url(#p213926a811)" style="fill: none; stroke: #a16623; stroke-width: 1.6; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_17">
+    <path d="M 355.349765 48.480954 
+L 433.989174 48.480954 
+" clip-path="url(#p213926a811)" style="fill: none; stroke: #a16623; stroke-width: 1.6; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_18"/>
+   <g id="patch_16">
+    <path d="M 259.671818 211.615594 
+L 259.671818 28.663594 
+" style="fill: none; stroke: #bac5c8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 259.671818 211.615594 
+L 442.29 211.615594 
+" style="fill: none; stroke: #bac5c8; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 13px; font-family: 'TeX Gyre Pagella'; text-anchor: start; fill: #25343d" x="259.671818" y="16.663594" transform="rotate(-0 259.671818 16.663594)">How far below the target the base starts</text>
+   </g>
+   <g id="legend_2">
+    <g id="line2d_19">
+     <path d="M 266.871818 38.871094 
+L 274.871818 38.871094 
+L 282.871818 38.871094 
+" style="fill: none; stroke: #a16623; stroke-width: 1.6; stroke-linecap: square"/>
+    </g>
+    <g id="text_26">
+     <!-- $\rho_b$ -->
+     <g style="fill: #25343d" transform="translate(289.271818 41.671094)">
+      <text>
+       <tspan x="0" y="-0.84375" style="font-style: italic; font-size: 8px; font-family: 'TeX Gyre Pagella'; fill: #25343d">ρ</tspan>
+       <tspan x="4.191986" y="0.403125" style="font-style: italic; font-size: 5.6px; font-family: 'TeX Gyre Pagella'; fill: #25343d">b</tspan>
+      </text>
+     </g>
+    </g>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p995492623b">
+   <rect x="40.53" y="28.663594" width="182.618182" height="182.952"/>
+  </clipPath>
+  <clipPath id="p213926a811">
+   <rect x="259.671818" y="28.663594" width="182.618182" height="182.952"/>
+  </clipPath>
+ </defs>
+</svg>

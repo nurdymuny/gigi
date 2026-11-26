@@ -219,3 +219,37 @@ class FluxReportTests(unittest.TestCase):
         t["params"]["assume"] = None
         with self.assertRaisesRegex(ValueError, "separation hypothesis"):
             self.payload(temple=t)
+
+
+class SCReportTests(unittest.TestCase):
+    """Page 15: the S_C status is read faithfully; S_C is never promoted and the floating homotopy is never rigorous."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.status = json.loads((ROOT / report.SC_RECEIPT[0]).read_text())
+
+    def payload(self, status=None):
+        return report.make_sc_payload(copy.deepcopy(status or self.status))
+
+    def test_sc_rows_are_the_recorded_results(self):
+        p = self.payload()
+        self.assertEqual(p["S_C"], "STATED_HYPOTHESIS")
+        self.assertEqual([r["g2"] for r in p["controls"]], [0.004, 0.002])
+        self.assertEqual([r["base_folded"]["levels_below_rho_b"] for r in p["controls"]], [23, 23])
+        self.assertEqual([r["base_uniform"]["levels_below_rho_b"] for r in p["controls"]], [92, 38])
+        for r in p["controls"]:
+            self.assertGreater(r["l5_margin"], 0.2)
+            self.assertGreater(r["l11_margin"], 0.0)
+
+    def test_rejects_promoted_sc(self):
+        s = copy.deepcopy(self.status); s["S_C"] = "PROVED"
+        with self.assertRaisesRegex(ValueError, "stated hypothesis"):
+            self.payload(s)
+
+    def test_rejects_floating_homotopy_listed_as_rigorous(self):
+        s = copy.deepcopy(self.status); s["proved_rigorous"].append("folded Lehmann homotopy")
+        with self.assertRaisesRegex(ValueError, "floating point"):
+            self.payload(s)
+        s = copy.deepcopy(self.status); s["controls"][0]["outside"]["o2"] = "OPEN"
+        with self.assertRaisesRegex(ValueError, "must be proved"):
+            self.payload(s)

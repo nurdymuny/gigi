@@ -1,0 +1,257 @@
+{
+ "schema": "helike/sc-status/v1",
+ "S_C": "STATED_HYPOTHESIS",
+ "proved_rigorous": [
+  "C3 by symmetry reduction",
+  "ray-aware fold D >= 0",
+  "outside of the product tube >= rho_C",
+  "enclosed folded base spectrum"
+ ],
+ "floating_only": [
+  "folded Lehmann homotopy (l_5, l_11 at each real step)"
+ ],
+ "remaining": [
+  "R2.1 interval A0/A1/A2 with cut Hermite states",
+  "R2.2 verified pencil",
+  "R2.3 chained steps",
+  "frozen rho_C from the Temple receipt (rerun outside bound at it)"
+ ],
+ "tests_passed": true,
+ "mutants": "5/5",
+ "controls": [
+  {
+   "g2": 0.004,
+   "c3_old": 0.087118,
+   "c3_symmetric": 0.075753,
+   "c3_sampled": 0.074885,
+   "c3_converged": true,
+   "fold": {
+    "a": 0.45,
+    "b": 0.25,
+    "verdict": "PROVED"
+   },
+   "base_uniform": {
+    "levels_below_rho_b": 92,
+    "ambiguous": 0,
+    "lambda_11": 6.092448,
+    "max_radius": 9.1e-14
+   },
+   "base_folded": {
+    "levels_below_rho_b": 23,
+    "ambiguous": 0,
+    "lambda_11": 7.141608,
+    "max_radius": 9.1e-14
+   },
+   "outside": {
+    "o1": "PROVED",
+    "o2": "PROVED",
+    "o2_cells": 1065667
+   },
+   "rho_b": 7.7263,
+   "rho_C_recomputed": 7.31395,
+   "homotopy_floating": [
+    {
+     "loss": 0.01,
+     "verdict": "PASS",
+     "trail": [
+      {
+       "step": 1,
+       "s": 0.265,
+       "N": 92,
+       "rho": 9.719210848509,
+       "l11": 7.3192975081354685,
+       "l5": 6.850328113574115
+      },
+      {
+       "step": 2,
+       "s": 0.55,
+       "N": 47,
+       "rho": 9.171001216273863,
+       "l11": 7.497676441417764,
+       "l5": 7.140381343456393
+      },
+      {
+       "step": 3,
+       "s": 0.95875,
+       "N": 32,
+       "rho": 9.112886150822597,
+       "l11": 7.736388728512207,
+       "l5": 7.523136812573684
+      }
+     ]
+    },
+    {
+     "loss": 0.03,
+     "verdict": "PASS",
+     "trail": [
+      {
+       "step": 1,
+       "s": 0.22875,
+       "N": 168,
+       "rho": 10.57717760603192,
+       "l11": 7.295742536540759,
+       "l5": 6.811733676454482
+      },
+      {
+       "step": 2,
+       "s": 0.5075000000000001,
+       "N": 47,
+       "rho": 9.130129890663556,
+       "l11": 7.471777061867213,
+       "l5": 7.098498596630392
+      },
+      {
+       "step": 3,
+       "s": 0.99375,
+       "N": 13,
+       "rho": 8.078334681982476,
+       "l11": 7.755864039376721,
+       "l5": 7.554375912566454
+      }
+     ]
+    },
+    {
+     "loss": 0.06,
+     "verdict": "FAIL",
+     "trail": []
+    }
+   ]
+  },
+  {
+   "g2": 0.002,
+   "c3_old": 0.061602,
+   "c3_symmetric": 0.053838,
+   "c3_sampled": 0.052854,
+   "c3_converged": true,
+   "fold": {
+    "a": 0.36,
+    "b": 0.17,
+    "verdict": "PROVED"
+   },
+   "base_uniform": {
+    "levels_below_rho_b": 38,
+    "ambiguous": 0,
+    "lambda_11": 6.829728,
+    "max_radius": 9.1e-14
+   },
+   "base_folded": {
+    "levels_below_rho_b": 23,
+    "ambiguous": 0,
+    "lambda_11": 7.26443,
+    "max_radius": 9.1e-14
+   },
+   "outside": {
+    "o1": "PROVED",
+    "o2": "PROVED",
+    "o2_cells": 1456309
+   },
+   "rho_b": 7.7292,
+   "rho_C_recomputed": 7.31686,
+   "homotopy_floating": [
+    {
+     "loss": 0.01,
+     "verdict": "PASS",
+     "trail": [
+      {
+       "step": 1,
+       "s": 0.335,
+       "N": 47,
+       "rho": 9.084677356163839,
+       "l11": 7.442199917955011,
+       "l5": 7.051183133829137
+      },
+      {
+       "step": 2,
+       "s": 0.94375,
+       "N": 13,
+       "rho": 8.024814855216784,
+       "l11": 7.7394209490841375,
+       "l5": 7.5291386448039095
+      }
+     ]
+    },
+    {
+     "loss": 0.03,
+     "verdict": "PASS",
+     "trail": [
+      {
+       "step": 1,
+       "s": 0.385,
+       "N": 23,
+       "rho": 8.174557708045917,
+       "l11": 7.467752145838389,
+       "l5": 7.092531641115365
+      },
+      {
+       "step": 2,
+       "s": 0.9862500000000001,
+       "N": 13,
+       "rho": 8.075021924253631,
+       "l11": 7.759187934023743,
+       "l5": 7.560687017894001
+      }
+     ]
+    },
+    {
+     "loss": 0.06,
+     "verdict": "FAIL",
+     "trail": []
+    }
+   ]
+  }
+ ],
+ "sources": {
+  "c3_old": {
+   "path": "research/sc-r1-20261125/r1_2_c3.txt",
+   "sha256": "72987a00ed4446a5e1721a79b263dd468f6f20aef7656af1150fb96875ddfdf9"
+  },
+  "c3_sym": {
+   "path": "research/sc-r1-20261125/r1_2_c3_sym.txt",
+   "sha256": "bb9a824689d6a68a6152bcf38952005668627b6d3429b292fc78a00286fb5de4"
+  },
+  "fold": {
+   "path": "research/sc-r1-20261125/r1_2_fold_ladder.txt",
+   "sha256": "4904a5eb07107a78172f25577ff0fe49885fd6ebac0e6206b6c566fbc5ac13c6"
+  },
+  "base_uniform_0.002": {
+   "path": "research/sc-r1-20261125/r1_4_enclosed_g0.002.txt",
+   "sha256": "6456743ffba11ca534ed990f17c0ef318d1a4851ac55ccba44086a864a86e477"
+  },
+  "base_uniform_0.004": {
+   "path": "research/sc-r1-20261125/r1_4_enclosed_g0.004.txt",
+   "sha256": "8548e2c406bb66723cb97a75d13b7ef21e89f7bb770c52144310546230aa6d19"
+  },
+  "base_folded": {
+   "path": "research/sc-r1-20261125/r2_0_folded_base_enclosed.txt",
+   "sha256": "ca0f152f6141cf99c188feb0010ce4abe3aee998c171eccaff92a3fea697b927"
+  },
+  "o1_0.002": {
+   "path": "research/sc-outside-20261126/o1_g0.002_Rn12.txt",
+   "sha256": "eaa5a4f078fceff3e05680ed91466eb35a3bc019d7da2ac00abf9c857a4a4193"
+  },
+  "o1_0.004": {
+   "path": "research/sc-outside-20261126/o1_g0.004_Rn12.txt",
+   "sha256": "963941c15a9534e73542f8bbbc7ab1090c73a167a709a73316f0cbd72a7a7171"
+  },
+  "o2_0.002": {
+   "path": "research/sc-outside-20261126/o2_g0.002_Rn12.txt",
+   "sha256": "9a581da3bca20058f849b56a1c466a4690b83d6722b30dd76f62dbdb142ee614"
+  },
+  "o2_0.004": {
+   "path": "research/sc-outside-20261126/o2_g0.004_Rn12.txt",
+   "sha256": "36a0e2e65536b1fdfb90327656e511df61fe24c13a71fe9df1221f31dec4c22a"
+  },
+  "homotopy_0.002": {
+   "path": "research/sc-fold-homotopy-20261126/v2_proved_g0.002.json",
+   "sha256": "467f1843d081b32dd19cfa30bbe598597ca0dc55e2134da33f7720277d54c1bc"
+  },
+  "homotopy_0.004": {
+   "path": "research/sc-fold-homotopy-20261126/v2_proved_g0.004.json",
+   "sha256": "a7d229d67f3bcba7d7340c7ef742e50aca76b1e55dec0bf07cf8ad9390f9c686"
+  },
+  "tests": {
+   "path": "research/sc-r1-20261125/r1_8_tests_and_mutants.txt",
+   "sha256": "ed83d423720f7e2207a88bbf8e3827d87e8faa2a7210a4d5e16092388bbb3f0b"
+  }
+ }
+}

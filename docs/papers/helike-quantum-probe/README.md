@@ -14,14 +14,20 @@ the relative leakage gate and the Kato–Temple ordering. In outline:
 - **Theorem A:** discrete spectrum in every sector, on the whole registered window, for every g > 0.
 - **The ordering:** Helike's excitation is proved below the competitor's at three of four weak-coupling controls,
   conditional on one stated counting hypothesis, S_C. The fourth (Mq = 6, g² = 0.004) is UNRESOLVED, as predicted.
+- **Toward S_C (page 15, 26 November):** at both controls, C₃, the ray-aware fold of the base (D ≥ 0) and the outside
+  of the tube (inf V ≥ ρ_C) are proved, and the folded base spectrum is enclosed. The Lehmann homotopy is floating
+  point: its last step clears ρ_C by +0.24. S_C stays a hypothesis until the interval stage R2 closes.
+
+![The folded homotopy](figures/15-sc-homotopy.png)
 
 The registered flux-edge grid at larger coupling stays held.
 
 ![Helike against the competitor](figures/09-flux-ordering.png)
 
-**Verification status.** `report-verification.json` predates this build. The tests (18) pass, the two new verifier
-mutations are caught, and the PDF text conditions hold (21 pages, Figures 1–13). The full verifier needs PyMuPDF,
-which was not available where this build ran. Run `python scripts/verify_ym_helike_report.py` to refresh it.
+**Verification status.** The full verifier passes for the 26 November build (`report-verification.json`): 23 pages,
+Figures 1–15, 21 tests, and every deliberate mechanism removal rejected. That includes the two new ones: S_C
+promoted to proved, and the floating homotopy listed as rigorous. Report integrity PASS is not a scientific PASS;
+the scientific status stays UNRESOLVED.
 
 [Read the illustrated report (PDF)](report.pdf) · [Editable LaTeX](report.tex) ·
 [Detailed numerical results](../../research/helike-quantum-probe-results-2026-11-23.md) ·

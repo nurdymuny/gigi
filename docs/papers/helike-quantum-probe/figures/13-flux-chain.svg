@@ -39,7 +39,7 @@ Q 7.2 21.22632 7.2 22.50144
 L 7.2 81.15696 
 Q 7.2 82.43208 11.2176 82.43208 
 z
-" clip-path="url(#pfa523adae5)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#pe7dd0c59f9)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 78.1776 82.43208 
@@ -52,7 +52,7 @@ Q 74.16 21.22632 74.16 22.50144
 L 74.16 81.15696 
 Q 74.16 82.43208 78.1776 82.43208 
 z
-" clip-path="url(#pfa523adae5)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#pe7dd0c59f9)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 145.1376 82.43208 
@@ -65,7 +65,7 @@ Q 141.12 21.22632 141.12 22.50144
 L 141.12 81.15696 
 Q 141.12 82.43208 145.1376 82.43208 
 z
-" clip-path="url(#pfa523adae5)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#pe7dd0c59f9)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 212.0976 82.43208 
@@ -78,7 +78,7 @@ Q 208.08 21.22632 208.08 22.50144
 L 208.08 81.15696 
 Q 208.08 82.43208 212.0976 82.43208 
 z
-" clip-path="url(#pfa523adae5)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#pe7dd0c59f9)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 279.0576 82.43208 
@@ -91,7 +91,7 @@ Q 275.04 21.22632 275.04 22.50144
 L 275.04 81.15696 
 Q 275.04 82.43208 279.0576 82.43208 
 z
-" clip-path="url(#pfa523adae5)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#pe7dd0c59f9)" style="fill: #ffffff; stroke: #176f78; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 346.0176 82.43208 
@@ -104,7 +104,7 @@ Q 342 21.22632 342 22.50144
 L 342 81.15696 
 Q 342 82.43208 346.0176 82.43208 
 z
-" clip-path="url(#pfa523adae5)" style="fill: #ffffff; stroke: #a16623; stroke-width: 1.4; stroke-linejoin: miter"/>
+" clip-path="url(#pe7dd0c59f9)" style="fill: #ffffff; stroke: #a16623; stroke-width: 1.4; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-size: 8.5px; font-family: 'TeX Gyre Pagella'; fill: #25343d" transform="translate(21.229598 48.706247)">trial state</text>
@@ -348,7 +348,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="pfa523adae5">
+  <clipPath id="pe7dd0c59f9">
    <rect x="7.2" y="7.2" width="401.76" height="127.512"/>
   </clipPath>
  </defs>

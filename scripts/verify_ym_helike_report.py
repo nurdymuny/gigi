@@ -10,6 +10,8 @@ from unittest.mock import patch
 
 import fitz
 import build_ym_helike_report as report
+
+PAGES = 23
 import test_ym_helike_report as tests
 
 
@@ -42,6 +44,10 @@ def main():
                 raise ValueError("flux receipt changed: " + name)
         if json.loads((report.OUT/"flux-plot-data.json").read_text()) != json.loads(json.dumps(report.load_flux_evidence())):
             raise ValueError("flux plot data differs from the authoritative receipts")
+        if manifest["sc_receipt_sha256"] != report.SC_RECEIPT[1] or report.digest(report.ROOT/report.SC_RECEIPT[0]) != report.SC_RECEIPT[1]:
+            raise ValueError("S_C status receipt changed")
+        if json.loads((report.OUT/"sc-plot-data.json").read_text()) != json.loads(json.dumps(report.load_sc_evidence())):
+            raise ValueError("S_C plot data differs from the authoritative receipt")
         _, sectors = report.load_sector_evidence()
         if json.loads((report.OUT/"sector-plot-data.json").read_text()) != json.loads(json.dumps(sectors)):
             raise ValueError("sector plot data differs from authoritative receipt")
@@ -69,6 +75,12 @@ def main():
             ("flux_grid_release_accepted", "make_flux_payload",
              'leak.get("full_grid_released") is not False or', 'False or',
              "FluxReportTests.test_rejects_released_grid_and_missing_hypothesis"),
+            ("sc_promotion_accepted", "make_sc_payload",
+             'if status.get("S_C") != "STATED_HYPOTHESIS":', 'if False:',
+             "SCReportTests.test_rejects_promoted_sc"),
+            ("sc_floating_listed_rigorous", "make_sc_payload",
+             'if any("homotopy" in item for item in status.get("proved_rigorous", [])):', 'if False:',
+             "SCReportTests.test_rejects_floating_homotopy_listed_as_rigorous"),
             ("sector_arithmetic_unchecked", "make_sector_payload",
              'not math.isclose(m[key], value, rel_tol=0, abs_tol=1e-13)', 'False',
              "SectorReportTests.test_rejects_nonfinite_residual_and_changed_gap"),
@@ -91,23 +103,25 @@ def main():
         with fitz.open(report.OUT/"report.pdf") as pdf:
             if pdf.metadata.get("author"):
                 raise ValueError("report has an author metadata field")
-            if len(pdf) != 21:
+            if len(pdf) != PAGES:
                 raise ValueError(f"unexpected pagination: {len(pdf)}")
             text = "\n".join(page.get_text() for page in pdf)
             if "UNRESOLVED" not in text or "99.154" not in text:
                 raise ValueError("result or qualification missing from PDF")
-            if any(f"Figure {n}:" not in text for n in range(1, 14)):
+            if any(f"Figure {n}:" not in text for n in range(1, 16)):
                 raise ValueError("a required figure caption is missing")
             if "0.002774" not in text or "0.004552" not in text or "FULL-OPERATOR ERROR" not in text:
                 raise ValueError("new numerical result or mathematical derivation missing")
             if "FLUX BACKGROUND" not in text or "+0.007179" not in text or "THE ORDERING" not in text:
                 raise ValueError("flux-background pages or their ordering result missing")
+            if "TOWARD S" not in text or "still a hypothesis" not in text or "Floating point only" not in text:
+                raise ValueError("S_C status page or its qualification missing")
             for page in pdf:
                 for word in page.get_text("words"):
                     if not page.rect.contains(fitz.Rect(*word[:4])):
                         raise ValueError("text outside the page")
         result.update(status="PASS", scientific_status="UNRESOLVED", tested_cases=tested.testsRun,
-                      rejected_mutations=rejected, pages=21, figures=13, sector_cases=16, empty_author_metadata=True,
+                      rejected_mutations=rejected, pages=PAGES, figures=15, sector_cases=16, empty_author_metadata=True,
                       artifact_manifest_sha256=report.digest(report.OUT/"artifact-manifest.json"),
                       verifier_sha256=report.digest(Path(__file__)), test_output=stream.getvalue(),
                       disclosure="Report integrity PASS is not scientific convergence PASS; visual review is separate.")

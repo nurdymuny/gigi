@@ -433,6 +433,10 @@ FLUX_RECEIPTS = {
 FLUX_CONTROLS = [(0.004, 6), (0.004, 8), (0.002, 6), (0.002, 8)]
 
 
+SC_RECEIPT = ("research/sc-status-20261126/sc_status.json",
+              "a8ebb0800da0fa4b9cf78e7d9545746c7d5ba28649c28be0ce39c543662248e5")
+
+
 def make_flux_payload(conv, sectors, leak, temple):
     """Rows for the flux-background pages. Refuses any receipt that promotes, forges or reverses a claim."""
     if conv.get("decision") != "CONVERGED" or conv.get("status") != "COMPLETE":
@@ -617,6 +621,98 @@ def write_flux_tables(payload):
     (generated/"flux-bounds.tex").write_text(header+"\n".join(lines)+"\n"+r"\bottomrule\end{tabular}"+"\n", encoding="ascii")
 
 
+def make_sc_payload(status):
+    """Rows for the S_C status page. S_C stays a stated hypothesis until the interval Lehmann stage (R2) closes;
+    any receipt that promotes it, or marks a floating homotopy as rigorous, is refused."""
+    if status.get("schema") != "helike/sc-status/v1":
+        raise ValueError("not an S_C status receipt")
+    if status.get("S_C") != "STATED_HYPOTHESIS":
+        raise ValueError("S_C is reported only as a stated hypothesis until R2 closes")
+    if any("homotopy" in item for item in status.get("proved_rigorous", [])):
+        raise ValueError("the Lehmann homotopy is floating point; it is never listed as rigorous")
+    if not status.get("tests_passed") or status.get("mutants") != "5/5":
+        raise ValueError("R1.8 tests and mutants must pass")
+    rows = []
+    for c in status["controls"]:
+        if c["fold"]["verdict"] != "PROVED" or c["outside"]["o1"] != "PROVED" or c["outside"]["o2"] != "PROVED":
+            raise ValueError("fold and outside bound must be proved to be reported")
+        if not (c["c3_sampled"] <= c["c3_symmetric"] <= c["c3_old"]):
+            raise ValueError("C3 bounds out of order")
+        last = [r["trail"][-1] for r in c["homotopy_floating"] if r["verdict"] == "PASS"]
+        if not last:
+            raise ValueError("no completed floating homotopy")
+        rows.append(dict(g2=c["g2"], c3_old=c["c3_old"], c3=c["c3_symmetric"], c3_sampled=c["c3_sampled"],
+                         fold=(c["fold"]["a"], c["fold"]["b"]), base_uniform=c["base_uniform"], base_folded=c["base_folded"],
+                         o2_cells=c["outside"]["o2_cells"], rho_b=c["rho_b"], rho_C=c["rho_C_recomputed"],
+                         runs=[r for r in c["homotopy_floating"] if r["verdict"] == "PASS"],
+                         l5_margin=max(t["l5"] for t in last) - c["rho_C_recomputed"],
+                         l11_margin=max(t["l11"] for t in last) - c["rho_b"]))
+    return {"controls": rows, "S_C": "STATED_HYPOTHESIS", "remaining": status["remaining"]}
+
+
+def load_sc_evidence():
+    path, expected = SC_RECEIPT
+    if digest(ROOT/path) != expected:
+        raise ValueError("S_C status receipt changed")
+    return make_sc_payload(json.loads((ROOT/path).read_text()))
+
+
+def sc_fold_figure(payload):
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.3))
+    rows = payload["controls"]
+    x = np.arange(len(rows)); w = 0.36
+    ax = axes[0]
+    ax.bar(x - w / 2, [r["base_uniform"]["levels_below_rho_b"] for r in rows], w, color=GRAY, label="uniform fold")
+    ax.bar(x + w / 2, [r["base_folded"]["levels_below_rho_b"] for r in rows], w, color=TEAL, label="ray-aware fold")
+    for i, r in enumerate(rows):
+        ax.text(i - w / 2, r["base_uniform"]["levels_below_rho_b"] + 2, str(r["base_uniform"]["levels_below_rho_b"]), ha="center", fontsize=8)
+        ax.text(i + w / 2, r["base_folded"]["levels_below_rho_b"] + 2, str(r["base_folded"]["levels_below_rho_b"]), ha="center", fontsize=8)
+    ax.set_xticks(x); ax.set_xticklabels([f"g$^2$ = {r['g2']}" for r in rows])
+    ax.set_ylabel("base levels below $\\rho_b$ (enclosed)"); ax.set_title("Levels the homotopy must open")
+    ax.legend(fontsize=8, frameon=False)
+    ax = axes[1]
+    ax.bar(x - w / 2, [r["base_uniform"]["lambda_11"] for r in rows], w, color=GRAY)
+    ax.bar(x + w / 2, [r["base_folded"]["lambda_11"] for r in rows], w, color=TEAL)
+    for i, r in enumerate(rows):
+        ax.plot([i - 0.45, i + 0.45], [r["rho_b"]] * 2, color=GOLD, lw=1.6)
+    ax.plot([], [], color=GOLD, lw=1.6, label="$\\rho_b$")
+    ax.set_ylim(5.5, 8.0); ax.set_xticks(x); ax.set_xticklabels([f"g$^2$ = {r['g2']}" for r in rows])
+    ax.set_ylabel("base $\\lambda_{11}$ (above $V_{bg}$)"); ax.set_title("How far below the target the base starts")
+    ax.legend(fontsize=8, frameon=False, loc="upper left")
+    save(fig, "14-sc-fold")
+
+
+def sc_homotopy_figure(payload):
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.4), sharey=True)
+    for ax, r in zip(axes, payload["controls"]):
+        run = max(r["runs"], key=lambda q: q["loss"])
+        ax.plot([t["s"] for t in run["trail"]], [t["l5"] for t in run["trail"]], "-o", color=TEAL, label="$\\ell_5$ (Lehmann)")
+        ax.plot([t["s"] for t in run["trail"]], [t["l11"] for t in run["trail"]], "-s", color=GRAY, ms=4, label="$\\ell_{11}$")
+        ax.axhline(r["rho_C"], color=GOLD, lw=1.6, label="$\\rho_C$")
+        ax.axhline(r["rho_b"], color=GOLD, lw=1, ls="--", label="$\\rho_b$")
+        last = run["trail"][-1]
+        xm = last["s"] + 0.03
+        ax.annotate("", xy=(xm, last["l5"]), xytext=(xm, r["rho_C"]), arrowprops=dict(arrowstyle="<->", color=TEAL, lw=1.1))
+        ax.text(xm + 0.02, (last["l5"] + r["rho_C"]) / 2, f"+{last['l5'] - r['rho_C']:.3f}", ha="left", va="center",
+                fontsize=8.5, color=TEAL)
+        ax.set_title(f"g$^2$ = {r['g2']}: {len(run['trail'])} real steps"); ax.set_xlabel("homotopy parameter s")
+        ax.set_xlim(0, 1.25); ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    axes[0].set_ylabel("lower bound (above $V_{bg}$), floating point")
+    axes[1].legend(fontsize=7.5, frameon=False, loc="lower right")
+    save(fig, "15-sc-homotopy")
+
+
+def write_sc_table(payload):
+    generated = OUT/"generated"
+    generated.mkdir(parents=True, exist_ok=True)
+    header = (r"\begin{tabular}{@{}rrrrrrr@{}}\toprule $g^2$&$C_3\leq$ (old / new)&fold $(a,b)$&levels (uniform / fold)"
+              r"&O2 cells&$\ell_5-\rho_C$&$\ell_{11}-\rho_b$\\\midrule" + "\n")
+    lines = [f"{r['g2']}&{r['c3_old']:.4f} / {r['c3']:.4f}&({r['fold'][0]}, {r['fold'][1]})&"
+             f"{r['base_uniform']['levels_below_rho_b']} / {r['base_folded']['levels_below_rho_b']}&{r['o2_cells']:,}&"
+             f"{r['l5_margin']:+.3f}&{r['l11_margin']:+.4f}\\\\" for r in payload["controls"]]
+    (generated/"sc-status.tex").write_text(header+"\n".join(lines)+"\n"+r"\bottomrule\end{tabular}"+"\n", encoding="ascii")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", action="store_true", help="also compile the paper-ready LaTeX report")
@@ -631,6 +727,9 @@ def main():
     sector_figures(sectors); write_sector_tables(sectors)
     flux_figure(flux); flux_bounds_figure(flux); flux_convergence_figure(flux)
     flux_window_figure(); flux_chain_figure(); write_flux_tables(flux)
+    sc = load_sc_evidence()
+    sc_fold_figure(sc); sc_homotopy_figure(sc); write_sc_table(sc)
+    (OUT/"sc-plot-data.json").write_text(json.dumps(sc, indent=2)+"\n", encoding="utf-8")
     (OUT/"flux-plot-data.json").write_text(json.dumps(flux, indent=2)+"\n", encoding="utf-8")
     if args.pdf:
         logs = ROOT/"tmp/pdfs/helike-report"
@@ -643,7 +742,7 @@ def main():
                 raise RuntimeError(f"LaTeX pass {pass_number} failed; see {logs}")
     paths = list((OUT/"figures").glob("*")) + list((OUT/"generated").glob("*.tex"))
     paths += [OUT/"plot-data.json", OUT/"case-summary.csv", OUT/"level-weights.csv",
-              OUT/"sector-plot-data.json", OUT/"sector-summary.csv", OUT/"flux-plot-data.json"]
+              OUT/"sector-plot-data.json", OUT/"sector-summary.csv", OUT/"flux-plot-data.json", OUT/"sc-plot-data.json"]
     if args.pdf:
         paths += [OUT/"report.pdf"]
     manifest = {"source_run": RUN_ID, "source_status": receipt["status"],
@@ -654,9 +753,10 @@ def main():
                 "sector_receipt_sha256": digest(SECTOR_RUN/"receipt.json"),
                 "sector_verification_sha256": digest(SECTOR_RUN/"verification.json"),
                 "flux_receipts_sha256": {k: v[1] for k, v in FLUX_RECEIPTS.items()},
+                "sc_receipt_sha256": SC_RECEIPT[1],
                 "outputs": {str(p.relative_to(OUT)).replace("\\", "/"): digest(p) for p in paths}}
     (OUT/"artifact-manifest.json").write_text(json.dumps(manifest, indent=2)+"\n", encoding="utf-8")
-    print(json.dumps({"status": "BUILT", "source_status": receipt["status"], "figures": 13,
+    print(json.dumps({"status": "BUILT", "source_status": receipt["status"], "figures": 15,
                       "cases": len(payload["cases"]), "sector_cases": len(sectors["cases"]), "output": str(OUT)}, indent=2))
 
 

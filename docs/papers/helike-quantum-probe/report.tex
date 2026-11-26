@@ -17,7 +17,7 @@
 \hypersetup{pdftitle={Helike as a Probe of a Quantum Yang-Mills Model},pdfauthor={},pdfsubject={Geometric probes, invariant-sector construction and verified full-operator residuals}}
 \pagestyle{fancy}\fancyhf{}
 \fancyhead[L]{\sffamily\scriptsize\color{muted} GIGI / COMPUTATIONAL RESEARCH}
-\fancyhead[R]{\sffamily\scriptsize\color{muted} UPDATED 25 NOVEMBER 2026}
+\fancyhead[R]{\sffamily\scriptsize\color{muted} UPDATED 26 NOVEMBER 2026}
 \fancyfoot[L]{\sffamily\scriptsize\color{muted} HELIKE QUANTUM PROBE / WORKING PAPER}
 \fancyfoot[R]{\sffamily\small\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
@@ -760,7 +760,7 @@ $S_C$. At $M_q=6$, $g^2=0.004$, the rule is UNRESOLVED: a residual of $0.08$
 cannot separate levels $0.008$ apart. Every verdict and margin matches a
 prediction recorded before computation.
 
-\textbf{Not established.} $S_C$ itself; anything at the registered grid
+\textbf{Not established.} $S_C$ itself (its status is on the next page); anything at the registered grid
 couplings; the location of the switch; any continuum statement.
 
 \fig{09-flux-ordering}{The ordering, control by control. Shaded: Weinstein
@@ -769,7 +769,51 @@ competitor's Kato--Temple lower bound under $S_C$. ORDERED means the gold tick
 lies right of the teal one.}
 
 \newpage
-\pagetitle{15 / CONTRIBUTION AND CONTEXT}{What is distinctive, and what is inherited}
+\pagetitle{15 / TOWARD S$_C$}{Fold the base the way the geometry folds}
+{\small\color{teal}\textbf{Update, 26 November 2026.} Page 15 is new.}\par\smallskip
+\textbf{Status, stated plainly.} $S_C$ is still a hypothesis. Everything around it is now proved at both controls
+except one interval computation. This page records what was proved, what is still floating point, and what remains.
+
+\textbf{The route.} With Neumann bracketing on a tube around the background orbit,
+$\lambda_5(H)\geq\min\bigl(\lambda_5(H_{\mathrm{in}}),\ \inf H_{\mathrm{out}}\bigr)$. Lemma~R turns
+$\lambda_5(H)\geq\rho_C$ into $S_C$: the Helike pair and the two charge-0 windows already account for four levels
+below $\rho_C$. A Lehmann homotopy from an explicit base $H_0$ to the inside minorant $H_1$, with
+$H_s=H_0+sD$ and $D\geq0$, gives lower bounds $\ell_k(H_s)\leq\lambda_k(H_1)\leq\lambda_k(H_{\mathrm{in}})$.
+
+\textbf{The fold.} The base is a folded-down copy of the valley; the homotopy unfolds it. The first base folded every
+direction as if it ran the full tube radius against the worst cubic tilt. The geometry says otherwise:
+\begin{itemize}\itemsep0pt
+\item the tube is thin in the stiff directions, so a ray with a stiff component exits early;
+\item the cubic is weak in the soft directions;
+\item the quartic, which is non-negative, catches the tilt at the walls.
+\end{itemize}
+So each ray is folded only by what it pays before it leaves:
+\[
+ Q(x)+s\,P_3(x)+s^2P_4(x)\ \geq\ 0\qquad (0<s\leq\min(L_u/|x_u|,\,L_v/|x_v|)),
+\]
+proved by branch and bound in 128-bit ball arithmetic. The charge rotation also tightens $C_3$: it turns circles of
+maxima into isolated points.
+
+\textbf{The outside.} Every point is reached by a ray from the origin, and along a ray $V$ is an explicit quartic.
+Near the orbit the slice coordinates are used; far from it, symmetric matrices. There the determinant's pull is
+bounded by $|\det|\leq(|\mathrm{cof}|^2/3)^{3/4}$, so the quartic always catches it. $\inf V\geq\rho_C$ off the tube
+is proved at both controls.
+
+\begin{center}\small\input{generated/sc-status.tex}\end{center}
+
+\textbf{Proved (rigorous):} $C_3$; the fold ($D\geq0$); the outside bound; the enclosed base spectrum (radius
+$\leq10^{-13}$). \textbf{Floating point only:} the homotopy, whose last step gives $\ell_5-\rho_C=+0.21$ to $+0.24$
+and $\ell_{11}-\rho_b=+0.03$. \textbf{Remaining:} interval Lehmann matrices with cut Hermite trial states and a
+verified pencil (stage R2), and the frozen $\rho_C$ of the ordering receipt in place of the recomputed one used here.
+
+\fig{14-sc-fold}{The ray-aware fold. Left: enclosed base levels below $\rho_b$ (uniform fold against the fold that
+follows each ray to its wall). Right: how far below the target the base starts.}
+
+\fig{15-sc-homotopy}{The folded homotopy at both controls (floating point, every input constant rigorous). Teal:
+Lehmann lower bound on $\lambda_5(H_s)$; it clears $\rho_C$ by $0.24$ at the last step.}
+
+\newpage
+\pagetitle{16 / CONTRIBUTION AND CONTEXT}{What is distinctive, and what is inherited}
 \textbf{The research question is geometric.}
 Instead of starting from a low eigenvalue and naming it, we start from a
 specified classical field direction. Its quadratic observable has the exact
@@ -832,7 +876,7 @@ Field: A Floor Law Across the Berger Spheres}, version 3.3, November 2026,
 }
 
 \newpage
-\pagetitle{16 / NEXT EXPERIMENTAL LAYER}{Use GIGI to connect evidence across models}
+\pagetitle{17 / NEXT EXPERIMENTAL LAYER}{Use GIGI to connect evidence across models}
 \textbf{Plan, not a deployed capability.}
 The model supplies observations. GIGI can organize those observations into
 versioned bundles, compare compatible geometric signatures and expose which

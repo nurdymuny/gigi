@@ -1,0 +1,9 @@
+g2=0.002   FOLD (a, b) = (0.311, 0.124): UNRESOLVED; min lower bound of D/s^2 over closed boxes 4.483e-10; 200001 boxes; 819 s; open box lb -1.284e-03
+g2=0.002   FOLD (a, b) = (0.36, 0.17): PROVED; min lower bound of D/s^2 over closed boxes 9.169e-06; 6831 boxes; 28 s
+g2=0.002   FOLD (a, b) = (0.40, 0.22): PROVED; min lower bound of D/s^2 over closed boxes 9.508e-06; 3234 boxes; 14 s
+g2=0.004   FOLD (a, b) = (0.403, 0.193): UNRESOLVED; min lower bound of D/s^2 over closed boxes 1.268e-08; 200001 boxes; 748 s; open box lb -3.208e-03
+g2=0.004   FOLD (a, b) = (0.45, 0.25): PROVED; min lower bound of D/s^2 over closed boxes 3.369e-06; 17075 boxes; 58 s
+g2=0.004   FOLD (a, b) = (0.50, 0.30): PROVED; min lower bound of D/s^2 over closed boxes 9.833e-08; 6943 boxes; 25 s
+g2=0.004   FOLD (a, b) = (0.55, 0.35): PROVED; min lower bound of D/s^2 over closed boxes 4.535e-05; 3824 boxes; 16 s
+
+[exited with code 0]

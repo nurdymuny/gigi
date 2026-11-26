@@ -47,6 +47,9 @@ def block_cut(B, n):
     return [i for i in range(len(E)) if E[i] < c - 1e-12]
 
 
+FOLD = None                                               # (a, b): if set, overrides the uniform 2 C3 L reduction
+
+
 class VSCF:
     def __init__(self, g2, E0rel, log):
         t0 = time.time(); rng = np.random.default_rng(2)
@@ -56,6 +59,8 @@ class VSCF:
         vlo, _, beta = gb.curvature(m, math.hypot(dr.LU, dr.LV), np.random.default_rng(2), n=300)
         w2 = m["w2"]; Lt = math.hypot(dr.LU, dr.LV)
         ws, wt = w2[:3].min() - 2 * C3 * Lt, w2[3:].min() - 2 * C3 * Lt
+        if FOLD is not None:                                  # per-block reductions (a, b) of the ray-aware fold
+            ws, wt = w2[:3].min() - FOLD[0], w2[3:].min() - FOLD[1]
         D = dict(P)
         for k in range(6):
             e = tuple(2 if i == k else 0 for i in range(6))

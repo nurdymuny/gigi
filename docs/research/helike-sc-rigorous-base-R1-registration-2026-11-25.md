@@ -174,3 +174,113 @@ So the g² = 0.004 failure is caused by the looseness of the C₃ enclosure. v_J
 - g² = 0.004 additionally fails the replacement gate.
 
 The next lever for g² = 0.004 is a tighter C₃ bound (more boxes, or a sharper box bound) before anything else.
+
+## R1.8 Overnight, 25–26 November: C₃ tightened by symmetry; R1.4 at the enclosed constants; a ray-aware fold
+
+Written as the work went, before the folded homotopy results. Every change is listed with its reason.
+
+### R1.8.1 C₃ by symmetry reduction (rigorous)
+
+**Why the old bound stopped.** P₃ is invariant under the charge rotation. The maximum of |P₃| on S⁵ is therefore
+attained on whole circles, and branch and bound cannot close on a circle in five dimensions. It ran out of boxes at
+both controls.
+
+**The reduction.** The argument is exact and by hand, because the frame is explicit.
+- Conjugation q ↦ LqLᵀ with L = diag(1, R_θ) fixes V and q_b: rows 2 and 3 share ω and src, and
+  cof(LqLᵀ) = L cof(q) Lᵀ.
+- In the frame it rotates (z₀, z₁) by 2θ (soft1 = (e₂₂ − e₃₃)/√2, soft2 = (e₂₃ + e₃₂)/√2) and (z₃, z₄) by θ
+  (stiff1 and stiff2, with q₂ = q₃). It fixes z₂ and z₅.
+- Conjugation by diag(1, 1, −1) fixes V and q_b, and flips z₁ and z₄.
+
+So max over S⁵ of |P₃| equals the maximum over {z₁ = 0, z₀ ≥ 0, z₃ ≥ 0, z₄ ≥ 0} ∩ S⁵. That set is 7 faces of
+dimension 4 (`c3_symmetric_faces`, `c3_bound_sym` in `scripts/helike_sc_r1.py`; the box bound is the same as
+before). A floating check confirmed the invariance to 9 × 10⁻¹⁶, and the sampled maximum is the same over S⁵ and
+over the reduced set.
+
+| | g² = 0.002 | g² = 0.004 |
+|---|---|---|
+| C₃ ≤ (old, budget reached) | 0.061602 | 0.087118 |
+| **C₃ ≤ (symmetry-reduced, converged)** | **0.053838** (10,829 boxes, 15 s) | **0.075753** (11,268 boxes, 16 s) |
+| best sampled | 0.052854 | 0.074885 |
+
+Log: `research/sc-r1-20261125/r1_2_c3_sym.txt`. The registered tolerance (within 10⁻³ of the sampled value) is now
+met, so the original R1.2 tightness gate passes at both controls.
+
+### R1.8.2 Homotopy with the tightened C₃ (the R1.7 replacement gate)
+
+This uses `scripts/vscf_with_r1_constants.py`, with all other constants as in R1.7. Logs are in
+`research/sc-r1-c3sym-homotopy-20261125/`.
+- **g² = 0.002: PASS.**
+  - LOSS 0.01: +0.0099 after 4 steps.
+  - LOSS 0.03: **+0.0298** after 4 steps; the floating §13 value was +0.0299.
+  - LOSS 0.06: no plan, as before.
+- **g² = 0.004: PASS at LOSS 0.01 by +0.0003** after 8 steps (N 294 → 186 → 150 → 86 → 47 → 23 → 13 → 12). That is
+  far too thin to survive interval widening. LOSS 0.03 was still running when this was written.
+
+### R1.8.3 R1.4 at the enclosed constants (status item 1 of R1.7: done)
+
+This uses `scripts/helike_sc_r1_base_enclosed.py`. Every constant is rounded so the base stays below the true
+operator: ω²_red is the lower endpoint of w²_min − 2C₃√29, β is the upper bound, and v_J is the lower bound.
+
+| | g² = 0.002 | g² = 0.004 |
+|---|---|---|
+| product levels below ρ_b (none ambiguous) | 38 | 92 (180 with the old C₃) |
+| base λ₁ / λ₁₁ | 4.6114 / 6.8297 | 4.2753 / 6.0924 |
+| floating Galerkin count, max diff (first 30) | 38, 6.5·10⁻¹⁰ | 92, 1.2·10⁻⁹ |
+| max enclosure radius | 9.1·10⁻¹⁴ | 9.1·10⁻¹⁴ |
+
+Logs: `research/sc-r1-20261125/r1_4_enclosed_g0.00{2,4}.txt`.
+
+### R1.8.4 A ray-aware fold of the base (new; rigorous check built, homotopy pending)
+
+**The picture.** The base is a folded-down copy of the valley. The uniform rule lowers ω² by 2C₃√(L_u² + L_v²) in
+every direction, as if every ray ran 5.4 units out against the worst cubic tilt. The geometry says otherwise:
+- the box is only 2 wide in the stiff directions, so a ray with a stiff component exits early;
+- the cubic is weak in pure-soft directions (about 0.037) and strong only in the mixed and stiff ones, which are
+  the steep ones;
+- the quartic is non-negative and unfolds the tilt at the walls.
+
+So fold each ray only by what it pays before it leaves the box. The base W₀ = ½(w²_s,min − a)|u|² +
+½(w²_t,min − b)|v|² + v_J is valid if and only if D = P − W₀ ≥ 0 on the tube. Along z = s·x, with x on a max-norm
+face, that is
+
+    Q(x) + s P₃(x) + s² P₄(x) ≥ 0  for 0 < s ≤ min(L_u/|x_u|, L_v/|x_v|),   Q = P₂ − W₀ (diagonal, ≥ 0).
+
+**Rigorous check** (`fold_check` in `scripts/helike_sc_r1.py`). Per box of x it uses enclosures of Q, P₃ and P₄
+(natural and mean-value forms intersected), an upper bound S on the exit parameter, and the exact minimum over
+s ∈ [0, S] of q_lo + s·p3_lo + s²·max(p4_lo, 0). The symmetry reduction of R1.8.1 applies, because W₀ and the tube
+are block-radial. The same D ≥ 0 is what makes the homotopy H_s monotone.
+
+**Ladder** (128-bit Arb; log `research/sc-r1-20261125/r1_2_fold_ladder.txt`):
+
+| control | (a, b) | verdict | boxes |
+|---|---|---|---|
+| g² = 0.002 | (0.311, 0.124), the floating optimum | UNRESOLVED (touches 0 at the walls) | 200,000 |
+| g² = 0.002 | **(0.36, 0.17)** | **PROVED** | 6,831 |
+| g² = 0.002 | (0.40, 0.22) | PROVED | 3,234 |
+| g² = 0.004 | (0.403, 0.193), the floating optimum | UNRESOLVED | 200,000 |
+| g² = 0.004 | **(0.45, 0.25)** | **PROVED** | 17,075 |
+| g² = 0.004 | (0.50, 0.30) / (0.55, 0.35) | PROVED | 6,943 / 3,824 |
+
+The uniform rule's reductions are 0.580 and 0.816, applied to both blocks. In the floating base scan, the fold cut
+the count of base levels below ρ_b from 38 to 13 (g² = 0.002) and from 92 to 23 (g² = 0.004). It raised the base
+λ₁₁ from 6.83 to about 7.3, and from 6.09 to about 7.2. The VSCF homotopy at the proved folds, run through
+`scripts/vscf_folded_base.py` (which sets `vscf_helike_sc_lehmann.FOLD`), is running.
+
+### R1.8.5 Observation to register before the next results: S_C does not need ρ_b
+
+Lemma R needs λ₅(H) ≥ ρ_C. Neumann bracketing gives λ₅(H) ≥ min(λ₅(H_in^N), inf H_out^N), and H_in^N ≥ H₁ ≥ H_s
+for every homotopy parameter s (D ≥ 0 and the inside-minorant chain of §8.3). So **any homotopy step whose real
+Lehmann bound has ℓ₅(H_s) ≥ ρ_C proves S_C at that control**, provided inf H_out^N ≥ ρ_C. The outside clears
+ρ_C + 0.05 from tube radius 4, as shown in §8.3 of the Lehmann registration; its rigorous enclosure is still owed.
+This needs neither ρ_b nor the separate Lehmann step on the full H with cut Hermite states. The margin to beat is
+the S_C margin, about 0.27, not the base margin of about 0.03.
+
+I am registering this now, before seeing any ℓ₅ values. The driver now logs ℓ₅ and μ₅ at every real step
+(`scripts/replan_helike_sc_lehmann_path.py`; a logging change only, with no effect on decisions). **Proposed
+decision rule** (R2 to confirm):
+- **S_C PROVED at a control** if some real step has ℓ₅ ≥ ρ_C in interval arithmetic and the outside bound clears
+  ρ_C.
+- **Otherwise UNRESOLVED.**
+
+ρ_b remains the registered target of the base step and is not changed.

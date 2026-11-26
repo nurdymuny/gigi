@@ -84,10 +84,10 @@ def run(E, Dm, D2m, MU, rhob, loss, log):
         k0 = next(iter(init))[1]; rho = init[(N, k0)]; s = float(S_GRID[kp])
         lo, mu, resid, nneg = dr.lehmann(E, Dm, D2m, s, rho, N)
         used += 1
-        trail.append(dict(step=used, s=s, N=N, rho=rho, l11=float(lo[10]), mu11=float(mu[10]),
+        trail.append(dict(step=used, s=s, N=N, rho=rho, l11=float(lo[10]), mu11=float(mu[10]), l5=float(lo[4]), mu5=float(mu[4]),
                           max_resid=float(resid.max()), planned_remaining=nplan - 1))
         log(f"    real step {used:2d}: s = {s:.4f}  N = {N:3d}  rho = {rho:.4f}  l_11 = {lo[10]:.4f}"
-            f" (mu_11 {mu[10]:.4f}, rho_b {rhob:.4f})  max resid {resid.max():.1e}  plan said {nplan} steps")
+            f" (mu_11 {mu[10]:.4f}, rho_b {rhob:.4f})  l_5 = {lo[4]:.4f} (mu_5 {mu[4]:.4f})  max resid {resid.max():.1e}  plan said {nplan} steps")
         if lo[10] >= rhob:
             return f"PASS (real l_11 = {lo[10]:.4f} >= rho_b = {rhob:.4f} at s = {s:.4f}, {used} real steps)", trail
         init = {(Np, kp): float(lo[Np]) for Np in range(NMIN, N) if np.isfinite(lo[Np])}

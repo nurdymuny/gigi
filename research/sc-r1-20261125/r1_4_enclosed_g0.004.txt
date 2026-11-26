@@ -1,0 +1,3 @@
+=== g2 = 0.004: w2s = 0.372449  w2t = 5.087449  vJ = -0.001616  beta_u = 0.071876  beta_v = 0.005457  rho_b = 7.72626
+  soft radial levels 14 (l < 6), stiff 2 (l < 3); product levels below rho_b: 92 (ambiguous at rho_b: 0); base lambda_1 = 4.275273, lambda_11 = 6.092448; max radius 9.1e-14; 156 s
+  floating Galerkin count at the same constants: 92; max |Galerkin - enclosure| over the first 30: 1.2e-09

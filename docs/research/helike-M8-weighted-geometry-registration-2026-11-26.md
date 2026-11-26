@@ -673,3 +673,45 @@ inconsistency.
 
 **What is rerun.** All four controls. The Mq = 8 and g² = 0.002 results stand as recorded, but they are rerun under
 the amended rule, so that every control reads by the same rule.
+
+---
+
+## Control results (26 November, under amendments 4 and 5)
+
+Report: `research/m8-20261126/controls-a5/report.json`. Exports: `cone-levels` at s = 1.15, t = 3. Code: the commit of
+amendment 5 (60a589e). Tests and mutants have receipts in `research/m8-20261126/receipts/`:
+- tracking: 14 tests, 14/14 mutants caught;
+- geometry: 9 tests, 6/6 mutants caught.
+
+**All four controls are RESOLVED.** Both channels are ALIGNED at every point.
+
+| g², Mq | orders | own share: Helike / competitor | order seam | cut seam | excluded (10⁻¹²) | Q0a | Q2 | dressing discount H / C | ordering |
+|---|---|---|---|---|---|---|---|---|---|
+| 0.002, 8 | 10/12 | 0.99782 / 0.99969 | 7·10⁻⁹ | 1·10⁻⁸ | 1·10⁻⁷ | 2·10⁻¹³ | 1·10⁻¹⁴ | 0.00051 / 0.00236 | by shape |
+| 0.002, 10 | 12/14 | 0.99782 / 0.99969 | 1·10⁻⁹ | 1·10⁻⁸ | 4·10⁻⁵ | 1·10⁻¹³ | 1·10⁻¹¹ | 0.00051 / 0.00236 | by shape |
+| 0.004, 8 | 10/12 | 0.99562 / 0.99937 | 2·10⁻⁸ | 5·10⁻⁸ | 2·10⁻⁷ | 2·10⁻¹² | 9·10⁻¹⁵ | 0.00103 / 0.00476 | by shape |
+| 0.004, 10 | 12/14 | 0.99562 / 0.99938 | 8·10⁻⁹ | 1·10⁻⁷ | 2·10⁻⁴ | 9·10⁻¹⁴ | 2·10⁻¹⁴ | 0.00103 / 0.00475 | by shape |
+
+The seams and the excluded fraction give the larger of the two channels. Q0a is the larger relative error of the
+identity. Q2 is the difference from the solver's §5.3 dressed overlap.
+
+**Against the predictions.** All the registered predictions are met.
+- §5: ALIGNED with σ ≥ 0.9, and A2.4/A1.5 with π ≥ 0.9. The smallest share is 0.9956.
+- §5: the residual share ≤ 10⁻³. The largest is 1.8·10⁻⁴.
+- §5: the dressing discount is small, positive and of order g². It doubles when g² doubles: 0.00051 → 0.00103 for
+  Helike, and 0.00236 → 0.00475 for the competitor.
+- §5: the shape ordering matches the level ordering at all four points.
+- §5: Q2 reproduces the solver's dressed overlap to ≤ 10⁻¹¹.
+- A5: both seams pass at all four. The excluded fraction is ≤ 10⁻³, with the largest at 1.8·10⁻⁴.
+- A5: at g² = 0.004 and Mq = 10, the order-12 and order-14 shares agree to 10⁻³. They agree to 8·10⁻⁹.
+- A4, earlier: its prediction for g² = 0.004 and Mq = 10 was missed. That record stands, and amendment 5 discloses it.
+
+**Not registered, but reported.** The shares are converged in the basis size. Between Mq = 8 and Mq = 10 they change
+by less than 10⁻⁶ at both couplings.
+
+**Superseded, kept.** The original controls report, before amendment 4, is
+`research/m8-20261126/controls/report_pre_amendment4.json`. The amendment-4 report is
+`research/m8-20261126/controls-a4/report.json`.
+
+**Scope.** These controls check the instrument where the answer is nearly harmonic. They do not test carrier
+persistence (H1). That test is the grid stage, after the registered flux grid has been rerun.

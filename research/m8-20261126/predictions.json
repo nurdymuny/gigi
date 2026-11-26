@@ -3,33 +3,96 @@
  "predictions": [
   {
    "quote": "Q0a holds. The residual share is ≤ 10⁻³.",
-   "source": "M8 registration §5 (unchanged in A1.5)"
+   "source": "M8 registration §5 (unchanged in A1.5)",
+   "check": {
+    "op": "le",
+    "pointers": [
+     "/points/0/helike/residual_share",
+     "/points/0/competitor/residual_share",
+     "/points/1/helike/residual_share",
+     "/points/1/competitor/residual_share",
+     "/points/2/helike/residual_share",
+     "/points/2/competitor/residual_share",
+     "/points/3/helike/residual_share",
+     "/points/3/competitor/residual_share"
+    ],
+    "value": 0.001
+   }
   },
   {
    "quote": "Q2 reproduces the dressed weights the grid reports there (about 0.97 for Helike).",
-   "source": "M8 registration §5"
+   "source": "M8 registration §5; read as N1 (the §5.3 dressed overlap)",
+   "outcome": "Q2 ≤ 10⁻¹¹ from the solver's dressed overlap at all four (registration, control results)",
+   "mark": "met"
   },
   {
    "quote": "At the controls, π_H ≥ 0.9 for Helike and π_C ≥ 0.9 for the competitor (replacing σ ≥ 0.9).",
-   "source": "M8 amendment 2, A2.4"
+   "source": "M8 amendment 2, A2.4",
+   "check": {
+    "op": "ge",
+    "pointers": [
+     "/points/0/helike/own_share",
+     "/points/0/competitor/own_share",
+     "/points/1/helike/own_share",
+     "/points/1/competitor/own_share",
+     "/points/2/helike/own_share",
+     "/points/2/competitor/own_share",
+     "/points/3/helike/own_share",
+     "/points/3/competitor/own_share"
+    ],
+    "value": 0.9
+   }
   },
   {
    "quote": "P_X − Δ_X is small and positive, of order g².",
-   "source": "M8 registration §5"
+   "source": "M8 registration §5",
+   "outcome": "positive at all four; doubles when g² doubles (H 0.00051 → 0.00103, C 0.00236 → 0.00475) (registration, control results)",
+   "mark": "met"
   },
   {
    "quote": "The shape ordering matches the level ordering.",
-   "source": "M8 registration §5"
+   "source": "M8 registration §5",
+   "check": {
+    "op": "equals",
+    "pointers": [
+     "/points/0/ordering/shapes",
+     "/points/1/ordering/shapes",
+     "/points/2/ordering/shapes",
+     "/points/3/ordering/shapes",
+     "/points/0/ordering/levels",
+     "/points/1/ordering/levels",
+     "/points/2/ordering/levels",
+     "/points/3/ordering/levels"
+    ],
+    "value": 1
+   }
   },
   {
    "quote": "At g² = 0.002 and Mq = 10, the (12, 14) seam is ≤ 10⁻³ for both channels, and the order-14 shares agree with the seen order-12 values to that tolerance.",
    "source": "M8 amendment 4",
-   "column": 1
+   "column": 1,
+   "outcome": "met in the A4 run (research/m8-20261126/controls-a4/report.json, RESOLVED)",
+   "mark": "met"
   },
   {
    "quote": "At g² = 0.004 and Mq = 10, the same holds.",
    "source": "M8 amendment 4",
-   "column": 3
+   "column": 3,
+   "outcome": "missed in the A4 run: the (12, 14) share seam failed Q0b (OPEN); the record stands, disclosed in A5",
+   "mark": "missed"
+  },
+  {
+   "quote": "A5: at g² = 0.004 and Mq = 10, the order-12 and order-14 shares agree to 10⁻³.",
+   "source": "M8 amendment 5",
+   "column": 3,
+   "check": {
+    "op": "le",
+    "pointers": [
+     "/points/3/helike/share_seam",
+     "/points/3/competitor/share_seam"
+    ],
+    "value": 0.001
+   }
   }
  ]
 }

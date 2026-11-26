@@ -39,7 +39,7 @@ impl Outcome {
     pub fn from_word(s: &str) -> Outcome {
         match s {
             "PASS" | "RESOLVED" | "CORRIDOR" | "GLUING-INVARIANT" | "AGREES"
-            | "SIGNAL-INVARIANT" | "TONE-STABLE" => Outcome::Pass,
+            | "SIGNAL-INVARIANT" | "TONE-STABLE" | "ALIGNED" => Outcome::Pass,
             "FAIL" | "SPLIT" | "DISAGREES" | "GLUING-SENSITIVE" | "SIGNAL-SENSITIVE"
             | "TONE-SHIFT" => Outcome::Fail,
             _ => Outcome::Open,
@@ -164,6 +164,30 @@ pub struct HeatSector {
     pub sources: Vec<(String, f64, f64)>,
 }
 
+/// One M8 channel at one control: the shares at both seam orders, the raw signed block matrix per level, and the
+/// shape price against the level. Every number is copied from the report.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct M8Channel {
+    pub name: String,
+    pub block: String,
+    pub label: String,
+    /// (order, shares H C S R) for the coarse and the fine order of the seam pair
+    pub shares: Vec<(i64, [f64; 4])>,
+    /// per level: the 4x4 raw D_XY / D, signed
+    pub raw: Vec<[[f64; 4]; 4]>,
+    pub shape_price: Option<f64>,
+    pub gap: Option<f64>,
+    pub discount: Option<f64>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct M8Detail {
+    pub channels: Vec<M8Channel>,
+    /// the report's own ordering record: rank of Helike by shape and by level
+    pub ordering_shapes: Option<i64>,
+    pub ordering_levels: Option<i64>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Progress {
     pub stage: String,
@@ -186,6 +210,9 @@ pub struct Tile {
     pub tag: Option<String>,
     pub tables: Vec<Table>,
     pub heat: Vec<HeatSector>,
+    /// M8's geometry for the tile detail (spec section 4), when the tile is an M8 control
+    #[serde(default)]
+    pub m8: Option<M8Detail>,
     pub progress: Option<Progress>,
     /// set when a later amendment replaced this tile; it is kept and drawn struck through
     pub superseded_by: Option<String>,
@@ -426,6 +453,7 @@ pub fn load_all(paths: &Paths) -> (Vec<Suite>, Vec<HistoryEntry>) {
                     tag: Some(sup.note.clone()),
                     tables: vec![],
                     heat: vec![],
+                    m8: None,
                     progress: None,
                     superseded_by: Some(h.id.clone()),
                 });
@@ -500,6 +528,7 @@ fn merge_progress(tiles: &mut Vec<Tile>, prog: Vec<(usize, Progress)>) {
             tag: None,
             tables: vec![],
             heat: vec![],
+            m8: None,
             progress: Some(p),
             superseded_by: None,
         });
@@ -526,6 +555,9 @@ struct PredictionSpec {
     check: Option<PredCheck>,
     #[serde(default)]
     outcome: Option<String>,
+    /// "met" or "missed", written by hand from the registration's own results section; only used without `check`
+    #[serde(default)]
+    mark: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -591,9 +623,11 @@ fn load_predictions(dir: &Path, report: Option<&Value>) -> Vec<Prediction> {
         .map(|p| {
             let (mark, outcome_text) = match (report, &p.check) {
                 (None, _) => (Mark::NotYetRun, "not yet run".to_string()),
-                (Some(_), None) => match &p.outcome {
-                    Some(o) => (Mark::NotYetRun, o.clone()),
-                    None => (Mark::NotYetRun, "outcome not yet recorded".to_string()),
+                (Some(_), None) => match (&p.outcome, p.mark.as_deref()) {
+                    (Some(o), Some("met")) => (Mark::Met, o.clone()),
+                    (Some(o), Some("missed")) => (Mark::Missed, o.clone()),
+                    (Some(o), _) => (Mark::NotYetRun, o.clone()),
+                    (None, _) => (Mark::NotYetRun, "outcome not yet recorded".to_string()),
                 },
                 (Some(r), Some(c)) => evaluate(r, c),
             };
@@ -793,6 +827,7 @@ pub fn load_domain(paths: &Paths) -> Suite {
             tag: None,
             tables: vec![table],
             heat: vec![],
+            m8: None,
             progress: None,
             superseded_by: None,
         });
@@ -975,6 +1010,7 @@ pub fn load_gluing(paths: &Paths) -> Suite {
             tag: None,
             tables: vec![table],
             heat: vec![],
+            m8: None,
             progress: None,
             superseded_by: None,
         });
@@ -1159,6 +1195,7 @@ pub fn load_heat(paths: &Paths) -> Suite {
                 note: None,
             }],
             heat,
+            m8: None,
             progress: None,
             superseded_by: None,
         });
@@ -1227,6 +1264,7 @@ pub fn load_heat(paths: &Paths) -> Suite {
                 note: Some("T3 is reported only.".into()),
             }],
             heat: vec![],
+            m8: None,
             progress: None,
             superseded_by: None,
         });
@@ -1254,39 +1292,149 @@ pub fn load_heat(paths: &Paths) -> Suite {
 
 pub fn load_m8(paths: &Paths) -> Suite {
     let dir = paths.m8();
-    let reg = "M8 registration, amendments 1–4";
+    let reg = "M8 registration, amendments 1–5";
     let dirs = m8_dirs(&dir);
-    let reports: Vec<PathBuf> = dirs
-        .iter()
-        .map(|d| d.join("report.json"))
-        .filter(|p| p.exists())
-        .collect();
-    let src = reports
-        .first()
-        .map(|p| rel(&paths.root, p))
-        .unwrap_or_else(|| "research/m8-20261126/controls*/report.json".into());
-    let mut s = missing_suite(
-        "m8",
-        "M8",
-        reg,
-        src,
-        if reports.is_empty() {
-            "no controls report on this checkout"
-        } else {
-            "a report is present, but its format is not yet specified for the viewer; it is not drawn"
-        },
-        load_predictions(&dir, None),
-        false,
-    );
-    if !reports.is_empty() {
-        s.verdict = "receipt present".into();
+    // the current report is the latest controls directory that holds a report.json (controls-a5 after controls-a4)
+    let current = dirs.iter().rev().map(|d| d.join("report.json")).find(|p| p.exists());
+    let Some(path) = current else {
+        let mut s = missing_suite("m8", "M8", reg, "research/m8-20261126/controls*/report.json".into(), "no controls report on this checkout", load_predictions(&dir, None), false);
+        let mut prog = vec![];
+        for d in &dirs {
+            prog.extend(read_progress(d));
+        }
+        merge_progress(&mut s.tiles, prog);
+        return s;
+    };
+    let src = rel(&paths.root, &path);
+    let Some(r) = read_json(&path) else {
+        return missing_suite("m8", "M8", reg, src, "report.json does not parse", load_predictions(&dir, None), false);
+    };
+    let mut tiles = vec![];
+    for (i, p) in r.get("points").and_then(Value::as_array).into_iter().flatten().enumerate() {
+        let (Some(g2), mq) = (p.get("g2").and_then(Value::as_f64), p.get("Mq").and_then(Value::as_i64)) else { continue };
+        let Some(col) = column(g2, mq) else { continue };
+        let status = p.get("status").and_then(Value::as_str).unwrap_or("OPEN").to_string();
+        let orders: Vec<i64> = p.get("seam_orders").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_i64).collect()).unwrap_or_default();
+        let mut checks = vec![];
+        let mut rows = vec![];
+        let mut channels = vec![];
+        for ch in ["helike", "competitor"] {
+            let base = format!("/points/{i}/{ch}");
+            let c = p.get(ch);
+            let gate = |k: &str| Outcome::from_holds(c.and_then(|c| c.pointer(&format!("/gates/{k}"))).unwrap_or(&Value::Null));
+            let label = c.and_then(|c| c.get("label")).and_then(Value::as_str).unwrap_or("OPEN").to_string();
+            let own = Check::new("own share", Some(ch)).number(&r, &format!("{base}/own_share")).outcome(Outcome::from_word(&label)).text(label.clone());
+            let q0a = Check::new("Q0a identity", Some(ch)).number(&r, &format!("{base}/identity_rel_error")).tol(1e-4).outcome(gate("Q0a_identity"));
+            let q0b = Check::new("Q0b order seam", Some(ch)).number(&r, &format!("{base}/share_seam")).tol(1e-3).outcome(gate("Q0b_quadrature"));
+            let cut = Check::new("A5 cut seam", Some(ch)).number(&r, &format!("{base}/cut_seam")).tol(1e-3).outcome(gate("A5_cut_seam"));
+            let exc = Check::new("excluded 1e-12", Some(ch)).number(&r, &format!("{base}/excluded_fraction/1e-12")).tol(1e-3).outcome(gate("A5_cut_seam"));
+            let q2 = Check::new("Q2 cross-check", Some(ch)).number(&r, &format!("{base}/q2_difference")).outcome(gate("Q2_cross_check"));
+            let pos = Check::new("positivity", Some(ch)).outcome(gate("positivity"));
+            let res = Check::new("residual share", Some(ch)).number(&r, &format!("{base}/residual_share")).tol(1e-2).reported();
+            rows.push(vec![
+                cell(ch),
+                cell_o(own.value.map(sci).unwrap_or("—".into()), own.outcome),
+                cell_o(q0a.value.map(sci).unwrap_or("—".into()), q0a.outcome),
+                cell_o(q0b.value.map(sci).unwrap_or("—".into()), q0b.outcome),
+                cell_o(cut.value.map(sci).unwrap_or("—".into()), cut.outcome),
+                cell_o(exc.value.map(sci).unwrap_or("—".into()), exc.outcome),
+                cell_o(q2.value.map(sci).unwrap_or("—".into()), q2.outcome),
+                cell_o(oword(pos.outcome), pos.outcome),
+                cell(res.value.map(sci).unwrap_or("—".into())),
+            ]);
+            checks.extend([own, q0a, q0b, cut, exc, q2, pos, res]);
+            // geometry for the detail panels, both orders of the seam pair
+            let shares: Vec<(i64, [f64; 4])> = orders
+                .iter()
+                .filter_map(|o| {
+                    let sh = p.pointer(&format!("/orders/{o}/{ch}/shares"))?;
+                    let g = |k: &str| sh.get(k).and_then(Value::as_f64).unwrap_or(0.0);
+                    Some((*o, [g("H"), g("C"), g("S"), g("R")]))
+                })
+                .collect();
+            let fine = orders.last().copied().unwrap_or(0);
+            let raw: Vec<[[f64; 4]; 4]> = p
+                .pointer(&format!("/orders/{fine}/{ch}/raw"))
+                .and_then(Value::as_array)
+                .map(|levels| {
+                    levels
+                        .iter()
+                        .map(|m| {
+                            let mut out = [[0.0; 4]; 4];
+                            for (a, row) in m.as_array().into_iter().flatten().enumerate().take(4) {
+                                for (b, v) in row.as_array().into_iter().flatten().enumerate().take(4) {
+                                    out[a][b] = v.as_f64().unwrap_or(0.0);
+                                }
+                            }
+                            out
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            let block = c.and_then(|c| c.get("block")).and_then(Value::as_str).unwrap_or("").to_string();
+            channels.push(M8Channel {
+                name: ch.into(),
+                shape_price: p.pointer(&format!("/shape_price/{block}")).and_then(Value::as_f64),
+                discount: p.pointer(&format!("/dressing_discount/{block}")).and_then(Value::as_f64),
+                gap: c.and_then(|c| c.get("gap")).and_then(Value::as_f64),
+                block,
+                label,
+                shares,
+                raw,
+            });
+        }
+        let ordering_shapes = p.pointer("/ordering/shapes").and_then(Value::as_i64);
+        let ordering_levels = p.pointer("/ordering/levels").and_then(Value::as_i64);
+        let open: Vec<String> = p.get("open_reasons").and_then(Value::as_array).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
+        let table = Table {
+            title: "the M8 gates, per channel".into(),
+            // two-line headers so the table fits its panel
+            columns: ["channel", "own\nshare", "Q0a\n≤ 10⁻⁴", "Q0b seam\n≤ 10⁻³", "cut seam\n≤ 10⁻³", "excluded\n≤ 10⁻³", "Q2 vs\ndressed", "posi-\ntivity", "residual\nshare"]
+                .map(String::from)
+                .to_vec(),
+            reported_columns: vec![8],
+            rows,
+            note: Some(if open.is_empty() {
+                "Q2 is a cross-check (not decided on); the residual share is reported, flagged only above 10⁻².".to_string()
+            } else {
+                format!("open: {}", open.join("; "))
+            }),
+        };
+        let word = status.clone();
+        tiles.push(Tile {
+            col,
+            span: 1,
+            outcome: Outcome::from_word(&status),
+            word,
+            checks,
+            commit: None,
+            tag: (orders.len() == 2).then(|| format!("{}/{} · A4", orders[0], orders[1])),
+            tables: vec![table],
+            heat: vec![],
+            m8: Some(M8Detail { channels, ordering_shapes, ordering_levels }),
+            progress: None,
+            superseded_by: None,
+        });
     }
     let mut prog = vec![];
     for d in &dirs {
         prog.extend(read_progress(d));
     }
-    merge_progress(&mut s.tiles, prog);
-    s
+    merge_progress(&mut tiles, prog);
+    let n_res = tiles.iter().filter(|t| t.outcome == Outcome::Pass).count();
+    Suite {
+        key: "m8".into(),
+        name: "M8".into(),
+        registration: reg.into(),
+        source: src,
+        verdict: format!("{n_res}/{} RESOLVED", tiles.len()),
+        verdict_outcome: Outcome::worst(tiles.iter().map(|t| t.outcome)),
+        warning: None,
+        predictions: load_predictions(&dir, Some(&r)),
+        tiles,
+        superseded: vec![],
+        interval: false,
+    }
 }
 
 pub fn load_r2(paths: &Paths) -> Suite {
@@ -1345,6 +1493,7 @@ pub fn load_r2(paths: &Paths) -> Suite {
                 ),
             }],
             heat: vec![],
+            m8: None,
             progress: None,
             superseded_by: None,
         });
@@ -1361,6 +1510,55 @@ pub fn now_unix() -> f64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs_f64())
         .unwrap_or(0.0)
+}
+
+// ------------------------------------------------------------------------------------------------ plain English
+
+/// What each test suite does, in a few plain sentences.
+pub fn about_suite(key: &str) -> &'static str {
+    match key {
+        "domain" => "The solver works inside a finite box. This test measures how much of each state reaches the edge of that box, and how far cutting the state off there could move its energy. It passes when that shift is less than a tenth of the accuracy the grid reports energies to.",
+        "gluing" => "Every result is stitched together from choices: how Helike is picked out, how finely the integrals are sampled, how large the basis is, and where the box is cut. This test changes each of those choices on purpose and checks that the answer stays put. When it does, the answer belongs to the physics, not to the choices.",
+        "heat" => "Each source is a different way of plucking the system. The heat signal follows how fast each one rings down. When every source rings down to the same lowest note, that note is the corridor. The tone compares the overtones above that note at two couplings.",
+        "m8" => "This test asks where each state's energy lives: in bending along Helike's own directions, the competitor's, or the rest. A state is aligned when most of its energy sits in its own block. The other checks confirm that the bookkeeping adds back up to the solver's energy, at two samplings and two cutoffs.",
+        "r2" => "This is the rigorous lower-bound calculation for the separation between Helike and her competitors. It uses interval arithmetic, so every rounding error is carried along and accounted for.",
+        _ => "",
+    }
+}
+
+/// What one check does, in one plain sentence.
+pub fn about_check(name: &str) -> &'static str {
+    match name {
+        "e_cut" => "How far cutting the state at the edge of the box could move its energy. It must stay under 3·10⁻⁴.",
+        "tail² budget" => "How much of the state lies outside the region the bounds cover. It must stay under 10⁻¹².",
+        "norm width" => "How tightly the size of the state is pinned down. The uncertainty must stay under 10⁻¹⁰.",
+        "ℓ/r" => "The leakage divided by the state's residual: the old rule, kept on screen for reference.",
+        "r upper" => "The guaranteed upper bound on how far the state is from an exact solution.",
+        "S1 identification" => "Helike is picked out three different ways; all three must land on the same levels.",
+        "S2 quadrature" => "The integrals are sampled more finely; the weights must move by no more than 10⁻⁵.",
+        "S3 truncation" => "The basis grows from Mq 8 to Mq 10; the energies must move by no more than 0.003.",
+        "S5 cutoff radius" => "The box is cut at a second radius; the domain gate must give the same verdict.",
+        "T1 corridor" => "Every source in the sector reaches the same lowest note.",
+        "T1b vs identification" => "The corridor's note is the same level the grid identifies by name.",
+        "T4 truncation" => "The note moves by no more than 0.003 when the basis grows from Mq 8 to Mq 10.",
+        "T4 quadrature" => "The weights move by no more than 10⁻⁵ when the integrals are sampled more finely.",
+        "T4 levels k8 vs k12" => "Reading the signal from 8 levels or from 12 gives the same note.",
+        "T4 source dressing" => "The bare source and the registered source find the same note.",
+        "T4 verdict" => "All the seams of the heat signal hold together.",
+        "T2 max |Δr|" => "The overtone ratios at the two couplings differ by no more than 0.02.",
+        "T2 sup |Δc|" => "The whole ring-down curves at the two couplings differ by no more than 0.02.",
+        "T3 octave trend" => "Whether the lowest note rises or falls as the coupling grows.",
+        "own share" => "The fraction of the state's energy that sits in its own block.",
+        "Q0a identity" => "The energy rebuilt from the state's shape equals the solver's energy, to one part in 10⁴.",
+        "Q0b order seam" => "The integrals are sampled more finely; the shares must move by no more than 10⁻³.",
+        "A5 cut seam" => "The shares are read with two cutoffs where the ground state vanishes; they must agree to 10⁻³.",
+        "excluded 1e-12" => "How much of the state lies in the region left out by the cutoff. It must stay under 10⁻³.",
+        "Q2 cross-check" => "A second, independent route to the overlap the solver reports; the two must match.",
+        "positivity" => "The ground state is positive everywhere it is read.",
+        "residual share" => "The part of the energy that comes from the ground state being approximate.",
+        "stage" => "The most recent step the run has reached.",
+        _ => "",
+    }
 }
 
 // ------------------------------------------------------------------------------------------------ tests
@@ -1380,12 +1578,14 @@ mod tests {
     #[test]
     fn numbers_match_receipts() {
         let p = paths();
-        for (s, dir) in [
-            (load_domain(&p), p.domain()),
-            (load_gluing(&p), p.gluing()),
-            (load_heat(&p), p.heat()),
+        let m8_report = m8_dirs(&p.m8()).iter().rev().map(|d| d.join("report.json")).find(|x| x.exists()).expect("M8 report present on this branch");
+        for (s, report) in [
+            (load_domain(&p), p.domain().join("report.json")),
+            (load_gluing(&p), p.gluing().join("report.json")),
+            (load_heat(&p), p.heat().join("report.json")),
+            (load_m8(&p), m8_report),
         ] {
-            let r = read_json(&dir.join("report.json")).expect("report present on this branch");
+            let r = read_json(&report).expect("report present on this branch");
             let mut n = 0;
             for t in &s.tiles {
                 for c in &t.checks {
@@ -1569,6 +1769,34 @@ mod tests {
             .0,
             Mark::NotYetRun
         );
+    }
+
+    /// Every suite and every check the board shows has a plain-English line.
+    #[test]
+    fn every_test_is_explained() {
+        let (suites, _) = load_all(&paths());
+        for s in &suites {
+            assert!(!about_suite(&s.key).is_empty(), "suite {}", s.key);
+            for t in &s.tiles {
+                for c in &t.checks {
+                    assert!(!about_check(&c.name).is_empty(), "check {} in {}", c.name, s.key);
+                }
+            }
+        }
+    }
+
+    /// Acceptance 4 on M8 itself: the pre-amendment-4 Mq 10 tile and the amendment-4 g² 0.004 tile are kept, OPEN,
+    /// struck through and linked to the amendment that replaced them; the live tiles are the amendment-5 report's.
+    #[test]
+    fn m8_superseded_tiles_are_kept() {
+        let (suites, _) = load_all(&paths());
+        let m8 = suites.iter().find(|s| s.key == "m8").unwrap();
+        assert_eq!(m8.tiles.len(), 4);
+        assert!(m8.tiles.iter().all(|t| t.outcome == Outcome::Pass && t.m8.is_some()));
+        let sup: Vec<(usize, Outcome, Option<String>)> = m8.superseded.iter().map(|t| (t.col, t.outcome, t.superseded_by.clone())).collect();
+        assert!(sup.contains(&(1, Outcome::Open, Some("M8 A4".into()))), "{sup:?}");
+        assert!(sup.contains(&(3, Outcome::Open, Some("M8 A5".into()))), "{sup:?}");
+        assert_eq!(m8.verdict, "4/4 RESOLVED");
     }
 
     /// Acceptance 4 (mechanism): a superseded tile from the history file is kept beside the live one.

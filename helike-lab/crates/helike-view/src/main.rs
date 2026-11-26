@@ -71,7 +71,7 @@ fn parse_shot() -> (Scene, Option<std::path::PathBuf>) {
             let scene = match a[k + 1].as_str() {
                 "sphere" => Scene::Sphere,
                 "edge" => Scene::Edge,
-                "controls" | "controls-lower" => Scene::Controls,
+                "controls" | "controls-lower" | "controls-m8" => Scene::Controls,
                 "geometry" | "geometry-state" => Scene::Geometry,
                 _ => Scene::Ladder,
             };
@@ -130,7 +130,10 @@ impl App {
             },
             controls: {
                 let mut v = view_controls::ControlsView::new(root);
-                v.start_at_bottom = std::env::args().any(|a| a == "controls-lower");
+                v.start_at_bottom = std::env::args().any(|a| a == "controls-lower" || a == "controls-m8");
+                if std::env::args().any(|a| a == "controls-m8") {
+                    v.select("m8", 3);
+                }
                 v
             },
             dirty_ladder: true,
@@ -609,7 +612,7 @@ fn window_size() -> [f32; 2] {
             }
         }
     }
-    if a.iter().any(|s| s == "controls-lower") {
+    if a.iter().any(|s| s == "controls-lower" || s == "controls-m8") {
         [1440.0, 1900.0]
     } else {
         [1440.0, 900.0]

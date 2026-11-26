@@ -54,5 +54,41 @@
    "domain",
    "gluing"
   ]
+ },
+ {
+  "id": "M8 A4",
+  "date": "2026-11-26",
+  "title": "Quadrature seam pair set by the basis degree: (12, 14) at Mq 10, (10, 12) at Mq ≤ 8",
+  "doc": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md",
+  "changed": [
+   "m8"
+  ],
+  "supersedes": [
+   {
+    "suite": "m8",
+    "column": 1,
+    "report": "research/m8-20261126/controls/report_pre_amendment4.json",
+    "verdict_pointer": "/points/1/status",
+    "note": "before A4: the (10, 12) seam at Mq 10 failed Q0b"
+   }
+  ]
+ },
+ {
+  "id": "M8 A5",
+  "date": "2026-11-26",
+  "title": "Shares read where the trial vacuum is resolved (cut 10⁻¹²); cut seam 10⁻¹² vs 10⁻¹⁴",
+  "doc": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md",
+  "changed": [
+   "m8"
+  ],
+  "supersedes": [
+   {
+    "suite": "m8",
+    "column": 3,
+    "report": "research/m8-20261126/controls-a4/report.json",
+    "verdict_pointer": "/points/1/status",
+    "note": "A4: the (12, 14) share seam failed Q0b at g² 0.004, Mq 10"
+   }
+  ]
  }
 ]

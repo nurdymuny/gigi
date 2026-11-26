@@ -20,6 +20,11 @@ pub struct ControlsView {
 }
 
 impl ControlsView {
+    /// Open a tile's detail (used by the M8 screenshot).
+    pub fn select(&mut self, key: &str, col_index: usize) {
+        self.selected = Some((key.into(), col_index));
+    }
+
     pub fn new(root: Option<std::path::PathBuf>) -> Self {
         Self {
             suites: vec![],
@@ -370,6 +375,34 @@ impl ControlsView {
                     heat_panel(ui, t);
                     ui.add_space(10.0);
                 }
+                // what this test does, in plain English
+                let about = controls::about_suite(&s.key);
+                if !about.is_empty() {
+                    ui.label(eyebrow("What this test does"));
+                    ui.label(RichText::new(about).size(12.5).color(INK));
+                    ui.add_space(6.0);
+                    let mut seen: Vec<&str> = vec![];
+                    egui::Grid::new(("plain", &key, k)).num_columns(2).spacing(Vec2::new(14.0, 4.0)).show(ui, |ui| {
+                        for c in &t.checks {
+                            if seen.contains(&c.name.as_str()) {
+                                continue;
+                            }
+                            seen.push(&c.name);
+                            let line = controls::about_check(&c.name);
+                            if line.is_empty() {
+                                continue;
+                            }
+                            ui.label(RichText::new(&c.name).monospace().size(10.5).color(if c.reported_only { FAINT } else { MUTED }));
+                            ui.add(egui::Label::new(RichText::new(line).size(12.0).color(INK)).wrap());
+                            ui.end_row();
+                        }
+                    });
+                    ui.add_space(10.0);
+                }
+                if let Some(m8) = &t.m8 {
+                    m8_panels(ui, m8);
+                    ui.add_space(10.0);
+                }
                 for (ti, tab) in t.tables.iter().enumerate() {
                     ui.label(eyebrow(&tab.title));
                     egui::ScrollArea::horizontal()
@@ -394,7 +427,7 @@ impl ControlsView {
                                             if rep {
                                                 ui.add(
                                                     egui::Label::new(
-                                                        RichText::new("reported, not decided")
+                                                        RichText::new("reported,\nnot decided")
                                                             .monospace()
                                                             .size(9.0)
                                                             .color(FAINT)
@@ -479,22 +512,13 @@ impl ControlsView {
             ui.label(caption("research/controls-history.json not found."));
             return;
         }
-        egui::ScrollArea::horizontal()
+        // cards wrap onto new rows rather than running off the panel edge
+        egui::ScrollArea::vertical()
             .id_salt("history")
             .show(ui, |ui| {
-                ui.horizontal_top(|ui| {
-                    for (i, h) in self.history.iter().enumerate() {
-                        if i > 0 {
-                            let (r, _) =
-                                ui.allocate_exact_size(Vec2::new(18.0, 70.0), Sense::hover());
-                            ui.painter().line_segment(
-                                [
-                                    Pos2::new(r.left(), r.top() + 22.0),
-                                    Pos2::new(r.right(), r.top() + 22.0),
-                                ],
-                                Stroke::new(1.0, RULE),
-                            );
-                        }
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing = Vec2::new(14.0, 12.0);
+                    for h in self.history.iter() {
                         egui::Frame::new()
                             .fill(RAISED)
                             .stroke(Stroke::new(1.0, HAIRLINE))
@@ -1013,3 +1037,115 @@ fn elapsed(s: f64) -> String {
         format!("{}h {:02}m", s / 3600, (s % 3600) / 60)
     }
 }
+
+/// Spec section 4: where the energy lives (stacked positive shares, ½ rule, both seam orders), the raw signed block
+/// matrix (never stacked), and shape price against level as a dumbbell. Every number is the report's.
+fn m8_panels(ui: &mut egui::Ui, m8: &controls::M8Detail) {
+    const BLOCKS: [&str; 4] = ["H", "C", "S", "R"];
+    let block_col = |k: usize| match k {
+        0 => HELIKE,
+        1 => RIVAL,
+        2 => egui::Color32::from_rgb(150, 164, 176),
+        _ => FAINT,
+    };
+    ui.label(eyebrow("Where the energy lives"));
+    for ch in &m8.channels {
+        let accent = if ch.name == "helike" { HELIKE } else { RIVAL };
+        for (k, (order, sh)) in ch.shares.iter().enumerate() {
+            let (r, resp) = ui.allocate_exact_size(Vec2::new(ui.available_width(), if k + 1 == ch.shares.len() { 18.0 } else { 9.0 }), Sense::hover());
+            let p = ui.painter();
+            let label_w = 150.0;
+            let bar = Rect::from_min_max(Pos2::new(r.left() + label_w, r.top() + 2.0), Pos2::new(r.right() - 70.0, r.bottom() - 2.0));
+            if k + 1 == ch.shares.len() {
+                p.text(Pos2::new(r.left(), r.center().y), Align2::LEFT_CENTER, format!("{} · {}", ch.name, ch.label), FontId::monospace(10.0), accent);
+            } else {
+                p.text(Pos2::new(r.left() + 20.0, r.center().y), Align2::LEFT_CENTER, format!("order {order}"), FontId::monospace(8.5), FAINT);
+            }
+            let mut x = bar.left();
+            for (b, v) in sh.iter().enumerate() {
+                let w = (*v as f32).clamp(0.0, 1.0) * bar.width();
+                if w > 0.0 {
+                    let seg = Rect::from_min_max(Pos2::new(x, bar.top()), Pos2::new((x + w - 1.0).max(x), bar.bottom()));
+                    p.rect_filled(seg, CornerRadius::same(2), alpha(block_col(b), 0.85));
+                }
+                x += w;
+            }
+            let half = bar.left() + 0.5 * bar.width();
+            p.line_segment([Pos2::new(half, bar.top() - 2.0), Pos2::new(half, bar.bottom() + 2.0)], Stroke::new(1.0, INK));
+            if k + 1 == ch.shares.len() {
+                let own = BLOCKS.iter().position(|b| *b == ch.block).map(|i| sh[i]).unwrap_or(0.0);
+                p.text(Pos2::new(r.right() - 64.0, r.center().y), Align2::LEFT_CENTER, format!("{own:.5}"), FontId::monospace(10.0), INK);
+            }
+            resp.on_hover_text(format!("order {order}: H {:.6} · C {:.6} · S {:.6} · R {:.6}", sh[0], sh[1], sh[2], sh[3]));
+        }
+        ui.add_space(4.0);
+    }
+    ui.label(caption("Shares of the Dirichlet energy by block (H blue, C amber, S slate, R faint); they sum to 1. The white line is ½ of the channel's own block. Thin bar: the coarse order of the seam pair; thick: the fine."));
+    ui.add_space(8.0);
+
+    ui.label(eyebrow("Raw block matrix D_XY / D — raw, signed: not a distribution"));
+    ui.horizontal_wrapped(|ui| {
+        for ch in &m8.channels {
+            for (l, m) in ch.raw.iter().enumerate() {
+                let cell = 34.0;
+                let (r, _) = ui.allocate_exact_size(Vec2::new(cell * 4.0 + 30.0, cell * 4.0 + 34.0), Sense::hover());
+                let p = ui.painter();
+                p.text(r.left_top(), Align2::LEFT_TOP, format!("{} · level {}", ch.name, l + 1), FontId::monospace(9.0), if ch.name == "helike" { HELIKE } else { RIVAL });
+                let o = Pos2::new(r.left() + 16.0, r.top() + 16.0);
+                for (a, row) in m.iter().enumerate() {
+                    p.text(Pos2::new(r.left() + 6.0, o.y + cell * (a as f32 + 0.5)), Align2::CENTER_CENTER, BLOCKS[a], FontId::monospace(8.5), FAINT);
+                    for (b, v) in row.iter().enumerate() {
+                        let c = Rect::from_min_size(Pos2::new(o.x + cell * b as f32, o.y + cell * a as f32), Vec2::splat(cell - 2.0));
+                        // magnitude on a log scale from 1e-6 to 1; sign by hue
+                        let mag = if *v == 0.0 { 0.0 } else { ((v.abs().log10() + 6.0) / 6.0).clamp(0.0, 1.0) as f32 };
+                        let base = if *v >= 0.0 { HELIKE } else { RIVAL };
+                        p.rect_filled(c, CornerRadius::same(2), alpha(base, 0.08 + 0.75 * mag));
+                        let txt = if v.abs() >= 0.01 { format!("{v:+.2}") } else if *v == 0.0 { "0".into() } else { format!("{:+.0e}", v) };
+                        p.text(c.center(), Align2::CENTER_CENTER, txt, FontId::monospace(8.0), if mag > 0.6 { GROUND } else { INK });
+                    }
+                }
+                for (b, name) in BLOCKS.iter().enumerate() {
+                    p.text(Pos2::new(o.x + cell * (b as f32 + 0.5), o.y + cell * 4.0 + 6.0), Align2::CENTER_CENTER, *name, FontId::monospace(8.5), FAINT);
+                }
+            }
+        }
+    });
+    ui.label(caption("Blue positive, amber negative; strength on a log scale from 10⁻⁶ to 1. Off-diagonal cross terms are signed and can cancel, which is why the matrix is never stacked."));
+    ui.add_space(8.0);
+
+    ui.label(eyebrow("Shape against level"));
+    let vals: Vec<f64> = m8.channels.iter().flat_map(|c| [c.shape_price, c.gap]).flatten().collect();
+    if vals.len() >= 2 {
+        let lo = vals.iter().cloned().fold(f64::INFINITY, f64::min);
+        let hi = vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let pad = ((hi - lo) * 0.15).max(1e-4);
+        let (lo, hi) = (lo - pad, hi + pad);
+        let (r, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 30.0 * m8.channels.len() as f32 + 26.0), Sense::hover());
+        let p = ui.painter();
+        let axis = Rect::from_min_max(Pos2::new(r.left() + 150.0, r.top()), Pos2::new(r.right() - 20.0, r.bottom() - 18.0));
+        let x_of = |e: f64| axis.left() + ((e - lo) / (hi - lo)) as f32 * axis.width();
+        for (k, ch) in m8.channels.iter().enumerate() {
+            let y = axis.top() + 14.0 + 30.0 * k as f32;
+            let accent = if ch.name == "helike" { HELIKE } else { RIVAL };
+            p.text(Pos2::new(r.left(), y - 6.0), Align2::LEFT_CENTER, &ch.name, FontId::monospace(10.0), accent);
+            if let Some(d) = ch.discount {
+                p.text(Pos2::new(r.left(), y + 7.0), Align2::LEFT_CENTER, format!("discount {d:.5}"), FontId::monospace(9.0), MUTED);
+            }
+            if let (Some(sp), Some(g)) = (ch.shape_price, ch.gap) {
+                p.line_segment([Pos2::new(x_of(sp), y), Pos2::new(x_of(g), y)], Stroke::new(2.0, alpha(accent, 0.6)));
+                p.circle_stroke(Pos2::new(x_of(sp), y), 5.0, Stroke::new(1.5, accent));
+                p.circle_filled(Pos2::new(x_of(g), y), 5.0, accent);
+            }
+        }
+        for t in [lo + pad, (lo + hi) / 2.0, hi - pad] {
+            p.text(Pos2::new(x_of(t), axis.bottom() + 4.0), Align2::CENTER_TOP, format!("{t:.4}"), FontId::monospace(8.5), FAINT);
+        }
+    }
+    let by_shape = m8.ordering_shapes.is_some() && m8.ordering_shapes == m8.ordering_levels;
+    ui.label(caption(format!(
+        "Hollow: the bare-shape price P_X; filled: the level Δ_X; the segment is the dressing discount. Ordering {} (the report's ordering record).",
+        if by_shape { "decided by shape" } else { "decided by dressing" }
+    )));
+    ui.label(caption("The slow function f = ψ/ψ₀ itself is drawn in Geometry of the controls ▸ The state (DisplayGrade)."));
+}
+

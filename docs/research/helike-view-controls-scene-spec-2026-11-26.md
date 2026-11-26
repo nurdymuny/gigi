@@ -200,3 +200,23 @@ phase, not the two turns §4 expected.
 to their panel, and each plot reserves the measured height of its caption. The Controls board keeps a minimum width
 and scrolls sideways below it. The Geometry scene stacks its panels when narrow. The audit uses `--size WxH`.
 
+## 12. M8 on the board, and plain English for every test (26 November)
+
+- **M8 row.** It reads `research/m8-20261126/controls-a5/report.json`, and all four tiles are RESOLVED. Each tile shows
+  its seam order pair. Two earlier runs stay on the board, struck through:
+  - the pre-amendment-4 Mq 10 tile, OPEN on Q0b, linked to M8 A4;
+  - the amendment-4 g² 0.004, Mq 10 tile, OPEN on Q0b, linked to M8 A5.
+- **M8 tile detail (§4).** It shows:
+  - the shares at both seam orders, stacked against the ½ rule;
+  - the raw signed block matrix for each level, never stacked;
+  - the shape price P_X against the level Δ_X, as a dumbbell.
+
+  The slow-function slice is in Geometry of the controls ▸ The state.
+- **M8 predictions.** Conditions that can be read from the report are checked against it automatically. The others are
+  marked met or missed by hand, from the registration's own control results. A4's miss at g² 0.004, Mq 10 is shown in
+  amber.
+- **Plain English.** Every tile detail opens with "What this test does": a short paragraph for the suite, then one
+  plain sentence for each check. A test (`every_test_is_explained`) fails if any suite or check on the board has no
+  explanation.
+- **Tests.** 11 pass, including the bit-for-bit receipt check, which now covers the M8 report.
+

@@ -46,15 +46,24 @@ def selections(rec, order="fine"):
             "w_tilde": (bare_h / Z, bare_c / Z)}
 
 
+def cluster_of(rec, n):
+    """The degenerate cluster of level n: levels within 1e-6 in energy (§5.6: Helike's partners count together)."""
+    E = np.asarray(rec["levels"])
+    return tuple(m for m in range(1, len(E)) if abs(E[m] - E[n]) <= 1e-6)
+
+
 def s1(rec):
     sel = selections(rec)
     a, b, c = sel["bare"], sel["w_over_Z"], sel["dressed"]
-    return {"selected": {"bare": a, "w_over_Z": b, "dressed": c}, "holds": a == b == c}
+    cl = {k: tuple(cluster_of(rec, i) for i in v) for k, v in (("bare", a), ("w_over_Z", b), ("dressed", c))}
+    return {"selected": {"bare": a, "w_over_Z": b, "dressed": c}, "clusters": cl,
+            "holds": cl["bare"] == cl["w_over_Z"] == cl["dressed"]}
 
 
 def s2(rec):
     f, c = selections(rec, "fine"), selections(rec, "coarse")
-    same = f["w_over_Z"] == c["w_over_Z"] and f["dressed"] == c["dressed"]
+    cl = lambda v: tuple(cluster_of(rec, i) for i in v)
+    same = cl(f["w_over_Z"]) == cl(c["w_over_Z"]) and cl(f["dressed"]) == cl(c["dressed"])
     dw = max(float(np.max(np.abs(f["w_tilde"][i] - c["w_tilde"][i]))) for i in (0, 1))
     return {"max_w_tilde_change": dw, "indices_equal": same, "holds": bool(same and dw <= QUAD_W_TOL)}
 

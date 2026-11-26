@@ -36,6 +36,15 @@ class Seams(unittest.TestCase):
         F["d"] = d.ravel().tolist()
         self.assertFalse(gc.s1(r)["holds"])
 
+    def test_s1_degenerate_partners_count_together(self):
+        r = toy()
+        F = r["fine"]; d = np.array(F["d"]).reshape(NM, 12)
+        d[th.hs.IDX["h2"], 2] = 1.0001                                  # dressed argmax moves to the partner, level 2
+        F["d"] = d.ravel().tolist()
+        res = gc.s1(r)
+        self.assertEqual(res["selected"]["dressed"][0], 2)
+        self.assertTrue(res["holds"])
+
     def test_s2_quadrature(self):
         r = toy()
         self.assertTrue(gc.s2(r)["holds"])

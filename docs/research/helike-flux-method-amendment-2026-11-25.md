@@ -321,3 +321,44 @@ does not run on the grid until the cause is understood and disclosed.
 there is unknown; it was not computed. Van den Heuvel (hep-lat/9604017; Leiden thesis 1996) reported a 0⁺/2⁺
 crossing on S³ that he read as a breakdown of the effective Hamiltonian, not as physics. That is the kind of reading
 this test is built to separate from a real switch.
+
+### 5.6 Gluing test, first stage at the controls: one definition fixed; one real finding about the gate (26 November)
+
+The registered first stage of §5.5 ran on the four controls: g² = 0.002 and 0.004 at s = 1.15, t = 3, with Mq = 8 and
+10 (`research/gluing-check-20261126/controls/`). As §5.5 requires, the result is reported, and the test does not run on
+the grid until the causes are understood and disclosed. No grid value has been seen.
+
+**S1 and S2, a definition fixed (cause understood).**
+- At Mq = 10, the dressed reference selected level 2 where the registered rule selects level 1. Levels 1 and 2 are
+  Helike's two degenerate partners: energies equal to well under 10⁻⁶, dressed overlaps both about 0.999. The argmax
+  flipped on a negligible difference between the partners.
+- S1 compared raw level indices. It should compare **degenerate clusters**, levels within 10⁻⁶ in energy, as the
+  heat-signal amendment 2 does. S1 and S2 now compare clusters (`cluster_of` in `run_helike_gluing_check.py`). A new
+  test covers the partner case, so 10 tests pass and the registered mutants stay 4/4.
+- Re-evaluated on the same receipts, S1 and S2 hold at all four controls: clusters (1, 2) and (3).
+
+**S5 at g² = 0.004, Mq = 10: a real finding.**
+- At the registered plateau radius (ρ = 9.75), the relative leakage gate **fails** for both Helike partners:
+  ℓ/r = 5.58·10⁻⁶ / 4.03·10⁻³ = 1.39·10⁻³, against the registered limit of 10⁻³. The competitor passes, with ratio
+  4.1·10⁻⁴.
+- At the next proving radius (ρ = 9.5), the competitor fails too.
+
+**Why.** At the same control, Mq = 8 passes with room to spare: Helike's ℓ/r is 3·10⁻⁵, with r = 8.8·10⁻³ and
+ℓ = 2.7·10⁻⁷. From Mq = 8 to 10, the residual halves because the basis improves, while the leakage grows about twenty
+times because the richer states reach further toward the cutoff. **The registered relative gate becomes stricter
+exactly as the solution converges.** At g² = 0.002 the plateau radius is larger (13.75) and the gate passes trivially,
+with ℓ/r ≈ 10⁻²¹.
+
+**Consequence for the registered grid (stated before any grid value is seen).**
+- §3 requires a domain-gate PASS at the final rung, Mq = 10, for a point to be converged.
+- The gate already fails at the g² = 0.004 control. The grid couplings (0.03 to 0.07) are stronger, with smaller
+  plateau radii.
+- The gate may therefore fail at many grid points. Such points would be "not converged", and their cases UNRESOLVED,
+  for a reason that belongs to the cut, not to the field. This is the §5.5 principle applied to the gate itself.
+
+**Decision: Bee's.** The registered grid is running at 93a6de65, and its rule is not changed here. Options for her
+decision, to be recorded as a separate amendment, with the timing disclosed:
+1. Let the registered run stand, and read UNRESOLVED points as gate-limited.
+2. Register a gate that does not tighten with convergence, before any grid value is seen. For example, apply it at the
+   rung where the gap change is measured, or use an absolute leakage bound tied to the gap tolerance. Then rerun.
+3. Run the registered grid to completion, and separately rerun under option 2 as a disclosed second analysis.

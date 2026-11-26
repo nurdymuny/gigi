@@ -81,12 +81,15 @@ class Core:
     def q(self, p, dp, sl):
         return np.sqrt(self.w) * (dp[sl] - self.x[sl] * p[sl, None]) - 0.5 * self.ell * p[sl, None]
 
-    def analyse(self, p0, dp0, p, dp, E0, blocks, A, positivity_floor=1e-12):
-        """Energies, the (★) identity terms, positive shares and the raw block matrix for one real state p."""
+    def analyse(self, p0, dp0, p, dp, E0, blocks, A, positivity_floor=1e-12, cuts=(1e-12, 1e-14)):
+        """Energies, the (★) identity terms, positive shares and the raw block matrix for one real state p.
+        Amendment 5: shares and the raw matrix are integrated only where the vacuum weight W p0^2 exceeds cut x total;
+        the first cut decides, the second is the cut seam. The identity terms use the full domain."""
         names = list(blocks)
         idx = {b: list(blocks[b]) for b in names}
-        acc = dict(D=0.0, R=0.0, T=0.0, Vp=0.0, norm=0.0, pos={b: 0.0 for b in names},
-                   raw=np.zeros((len(names), len(names))))
+        acc = dict(D=0.0, R=0.0, T=0.0, Vp=0.0, norm=0.0,
+                   pos={c: {b: 0.0 for b in names} for c in cuts},
+                   raw={c: np.zeros((len(names), len(names))) for c in cuts}, Dcut={c: 0.0 for c in cuts})
         wtot = float(np.sum(self.W * p0 * p0))
         bad = 0.0
         for sl in self.chunks():
@@ -102,7 +105,8 @@ class Core:
             grad = np.sqrt(self.w) * (dp[sl] * P0[:, None] - P[:, None] * dp0[sl]) / (safe * safe)[:, None]
             q0, qa = self.q(p0, dp0, sl), self.q(p, dp, sl)
             wD = W * P0 * P0
-            acc["D"] += 0.5 * float(np.sum(wD * np.einsum("ni,nij,nj->n", grad, G, grad)))
+            dens = 0.5 * wD * np.einsum("ni,nij,nj->n", grad, G, grad)
+            acc["D"] += float(np.sum(dens))
             lhs = f[:, None] ** 2 * q0 + 2 * (f * P0)[:, None] * grad
             acc["R"] += float(np.sum(W * (0.5 * np.einsum("ni,nij,nj->n", lhs, G, q0) + (V - E0) * f * f * P0 * P0)))
             acc["T"] += 0.5 * float(np.sum(W * np.einsum("ni,nij,nj->n", qa, G, qa)))
@@ -110,16 +114,26 @@ class Core:
             acc["norm"] += float(np.sum(W * P * P))
             pc = positive_contributions(grad, G, A)
             rc = raw_contributions(grad, G, A)
-            for i, b in enumerate(names):
-                acc["pos"][b] += float(np.sum(wD[:, None] * pc[:, idx[b]]))
-                for j, c in enumerate(names):
-                    acc["raw"][i, j] += float(np.sum(wD[:, None, None] * rc[:, idx[b]][:, :, idx[c]]))
+            for cut in cuts:
+                m = wD > cut * wtot
+                acc["Dcut"][cut] += float(np.sum(dens[m]))
+                for i, b in enumerate(names):
+                    acc["pos"][cut][b] += float(np.sum(wD[m, None] * pc[m][:, idx[b]]))
+                    for j, c in enumerate(names):
+                        acc["raw"][cut][i, j] += float(np.sum(wD[m, None, None] * rc[m][:, idx[b]][:, :, idx[c]]))
         D = acc["D"]
-        tot = sum(acc["pos"].values())
+        c0 = cuts[0]
+        Dc = acc["Dcut"][c0]
+        tot = {c: sum(acc["pos"][c].values()) for c in cuts}
+        shares_by_cut = {c: {b: acc["pos"][c][b] / tot[c] for b in names} for c in cuts}
         return dict(D=D, R=acc["R"], identity=D + acc["R"], kinetic=acc["T"], potential=acc["Vp"], norm=acc["norm"],
                     rayleigh=(acc["T"] + acc["Vp"]) / acc["norm"] - E0,
-                    shares={b: acc["pos"][b] / tot for b in names}, share_sum=tot / D if D else None,
-                    raw=(acc["raw"] / D).tolist() if D else None, raw_sum=float(np.sum(acc["raw"]) / D) if D else None,
+                    shares=shares_by_cut[c0], shares_by_cut={repr(c): v for c, v in shares_by_cut.items()},
+                    D_by_cut={repr(c): acc["Dcut"][c] for c in cuts},
+                    excluded_fraction={repr(c): 1 - acc["Dcut"][c] / D for c in cuts},
+                    share_sum=tot[c0] / Dc if Dc else None,
+                    raw=(acc["raw"][c0] / Dc).tolist() if Dc else None,
+                    raw_sum=float(np.sum(acc["raw"][c0]) / Dc) if Dc else None,
                     nonpositive_weight=bad / wtot)
 
     def alignment(self, p0, p, modes):
@@ -346,14 +360,23 @@ def analyse_point(X, order, carriers):
             del p, dp
         D = sum(r["D"] for r in parts)
         R = sum(r["R"] for r in parts)
-        shares = {b: sum(r["shares"][b] * r["D"] for r in parts) / D for b in BLOCKS}
+        # amendment 5: the shares combine the partners' in-cut energies
+        def combine(key):
+            Dk = sum(r["D_by_cut"][key] for r in parts)
+            return {b: sum(r["shares_by_cut"][key][b] * r["D_by_cut"][key] for r in parts) / Dk for b in BLOCKS}, Dk
+        cut_keys = list(parts[0]["shares_by_cut"])
+        by_cut = {k: combine(k) for k in cut_keys}
+        shares = by_cut[cut_keys[0]][0]
         ritz = sum(float(X["levels"][l]) - E0 for l in lev)
         ident = D + R
         out[name] = dict(levels=list(lev), block=block, D=D, residual_term=R, identity=ident, ritz_excitation=ritz,
                          identity_rel_error=abs(ident - ritz) / ritz, residual_share=abs(R) / ritz,
                          quadrature_rayleigh=[r["rayleigh"] for r in parts], norms=[r["norm"] for r in parts],
                          shares=shares, own_share=shares[block],
-                         share_sum=sum(r["share_sum"] * r["D"] for r in parts) / D,
+                         shares_by_cut={k: v[0] for k, v in by_cut.items()},
+                         excluded_fraction={k: 1 - v[1] / D for k, v in by_cut.items()},
+                         cut_seam=max(abs(by_cut[cut_keys[0]][0][b] - by_cut[cut_keys[1]][0][b]) for b in BLOCKS),
+                         share_sum=sum(r["share_sum"] * r["D_by_cut"][cut_keys[0]] for r in parts) / by_cut[cut_keys[0]][1],
                          raw=[r["raw"] for r in parts], alignment_per_level=al, alignment=float(np.mean(al)),
                          nonpositive_weight=max(r["nonpositive_weight"] for r in parts))
     for block in ("H", "C"):

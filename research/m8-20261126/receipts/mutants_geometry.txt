@@ -3,4 +3,5 @@ CAUGHT  a Cholesky factor in place of the symmetric square root
 CAUGHT  the frame normalisation G(0)^{-1/2} skipped
 CAUGHT  the weight psi0^2 dropped from the measure
 CAUGHT  the residual term dropped from Q0a
-5/5 mutants caught
+CAUGHT  the vacuum-weight cut ignored (shares over the full domain)
+6/6 mutants caught

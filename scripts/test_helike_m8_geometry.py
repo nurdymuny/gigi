@@ -111,6 +111,25 @@ class Kernel(unittest.TestCase):
         self.assertGreater(abs(r["R"]), 1e-3)
         self.assertAlmostEqual(r["identity"], r["rayleigh"], places=8)
 
+    def test_ragged_vacuum_edge_is_cut(self):
+        """Amendment 5: a trial vacuum that collapses (and flips sign) where it carries < 1e-16 of its weight spikes the
+        full-domain Dirichlet integrand; the shares read above the 1e-12 floor are unaffected, and both cuts agree."""
+        core, p0, dp0, E0, G, _ = harmonic_core(order=10)
+        A = gm.frame_matrix(G, BLOCKS)
+        p, dp = linear_state(core, p0, dp0, np.eye(6)[0])
+        w0 = core.W * p0 * p0
+        edge = w0 < 1e-16 * w0.sum()
+        self.assertGreater(edge.sum(), 1000)
+        rag = p0.copy(); rag[edge] *= -1e-6                    # tiny and of the wrong sign at the edge
+        rdp = dp0.copy()                                        # and a ragged slope there
+        rdp[edge] = np.random.default_rng(5).normal(size=(int(edge.sum()), 6)) * p0[edge, None]
+        r = core.analyse(rag, rdp, p, dp, E0, BLOCKS, A, cuts=(1e-12, 1e-14, 0.0))
+        self.assertAlmostEqual(r["shares_by_cut"]["1e-12"]["H"], 1.0, places=10)
+        self.assertAlmostEqual(r["shares_by_cut"]["1e-14"]["H"], 1.0, places=10)
+        self.assertLess(r["shares_by_cut"]["0.0"]["H"], 0.999)  # the full domain is polluted by the edge
+        self.assertGreater(r["excluded_fraction"]["1e-12"], 1e-3)
+        self.assertEqual(r["nonpositive_weight"], 0.0)          # the flips sit below the positivity floor
+
     def test_reviewer_counterexample(self):
         """Raw normalised contributions (5, 5, -9); positive shares (1/2, 1/2); J in [0, 1]."""
         G = np.array([[[1.0, -0.9], [-0.9, 1.0]]])
@@ -224,6 +243,19 @@ def _m5():
         r["identity"] = r["D"]; r["R"] = 0.0
         return r
     gm.Core.analyse = analyse
+    return lambda: setattr(gm.Core, "analyse", orig)
+
+
+@mutant("the vacuum-weight cut ignored (shares over the full domain)")
+def _m6():
+    import inspect, textwrap
+    orig = gm.Core.analyse
+    src = textwrap.dedent(inspect.getsource(orig))
+    old = "                m = wD > cut * wtot"
+    assert src.count(old.strip()) == 1
+    ns = dict(gm.__dict__)
+    exec(src.replace("m = wD > cut * wtot", "m = wD > -1.0"), ns)
+    gm.Core.analyse = ns["analyse"]
     return lambda: setattr(gm.Core, "analyse", orig)
 
 

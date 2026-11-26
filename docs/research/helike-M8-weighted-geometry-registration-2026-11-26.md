@@ -612,3 +612,64 @@ either seam fails at (12, 14), that point is OPEN.
 
 **What is rerun.** Both Mq = 10 controls, under the rule. The Mq = 8 controls already used (10, 12), which the rule
 leaves unchanged, so they stand.
+
+---
+
+## Amendment 5 (26 November): shares are read where the trial vacuum is resolved
+
+**Disclosure first.** This amendment comes **after** control values were seen. Under amendment 4, the point at
+g² = 0.004 and Mq = 10 was OPEN:
+- the share seam between orders 12 and 14 was 9.5·10⁻³ for Helike and 6.8·10⁻³ for the competitor;
+- the shares seen were 0.9860 and 0.9955 for Helike, and 0.9925 and 0.9993 for the competitor, at the two orders;
+- amendment 4's prediction for that point was missed.
+
+A diagnostic followed. It decided nothing, and its result is recorded here. Bee decided to register this amendment.
+
+**What the diagnostic found.** The seam comes from the edge of the trial vacuum. The Ritz ground state is a
+polynomial times a Gaussian.
+- **The edge.** Where the vacuum carries less than about 10⁻¹⁶ of its total weight, ψ₀ falls to about 10⁻¹⁰ of its
+  peak and changes sign. The exact ground state never does this. 144,008 nodes at order 12 and 447,520 at order 14
+  have ψ₀ ≤ 0, together carrying about 10⁻¹² of the vacuum weight.
+- **The spike.** The Dirichlet integrand ψ₀²|∇f|², with f = ψ/ψ₀, contains 1/ψ₀², and it spikes at that edge. The
+  size of the spike depends on where the nodes fall.
+- **Its size.** The nodes below 10⁻¹⁶ carry this fraction of D:
+
+  | | order 12 | order 14 |
+  |---|---|---|
+  | Helike, level 2 | 2.0% | 0.03% |
+  | competitor | 2.5% | 0.01% |
+  | Helike, level 1 | 0.08% | 0.008% |
+
+  That energy is almost entirely outside the channel's own block, so it dilutes the share. The region carrying
+  vacuum weight above 10⁻⁶ is stable.
+- **Why the identity Q0a still holds.** The residual term spikes at the same nodes with the opposite sign, and (★) is
+  exact for any positive ψ₀ wherever it is positive.
+
+**The registration was internally inconsistent.** §2 lets ψ₀ change sign at nodes carrying less than 10⁻¹² of the
+vacuum weight (the positivity floor). Yet §3 integrated the shares through exactly those nodes, where f = ψ/ψ₀ is not
+defined. The trial vacuum's ragged edge, a seam of the calculation, entered the reading. This amendment removes the
+inconsistency.
+
+**The rule.**
+- **The share region.** The positive shares π_X and the raw block matrix are integrated only over nodes whose vacuum
+  weight W ψ₀² exceeds ε times the total. The decided cut is ε = 10⁻¹², the positivity floor already registered in
+  §2. So one region serves both purposes: positivity is required there, and the shares are read there.
+- **The cut seam (new).** The shares at ε = 10⁻¹² and at ε = 10⁻¹⁴ must agree to 10⁻³, at the fine order. Otherwise
+  the point is OPEN. This shows that the cut does not drive the reading.
+- **The order seam Q0b** is unchanged: (12, 14) at Mq = 10 and (10, 12) at Mq ≤ 8, on the shares at ε = 10⁻¹², with
+  tolerance 10⁻³.
+- **The excluded fraction** 1 − D_ε/D is reported at both cuts, at every point. It decides nothing.
+- **Unchanged:**
+  - Q0a, on the full domain, where (★) is an algebraic identity;
+  - Q2, the alignment, and Q3, the shape price, which contain no 1/ψ₀² and stay on the full domain;
+  - positivity;
+  - every threshold and verdict rule.
+- **One cut pair, no search.** If either seam fails, the point is OPEN.
+
+**Predictions, stated now.**
+- At all four controls, both seams pass, and the shares at ε = 10⁻¹² are ≥ 0.9 for both channels.
+- At g² = 0.004 and Mq = 10, the order-12 and order-14 shares agree to 10⁻³.
+- The excluded fraction is ≤ 10⁻³ at ε = 10⁻¹² at every control.
+
+**What is rerun.** All four controls. The Mq = 8 and g² = 0.002 results stand as recorded, but they are rerun under
+the amended rule, so that every control reads by the same rule.

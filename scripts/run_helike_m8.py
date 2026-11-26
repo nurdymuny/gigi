@@ -15,7 +15,8 @@ import helike_m8_geometry as gm
 ROOT = Path(__file__).resolve().parents[1]
 BIN = ROOT / ("helike-lab/target/release/helike" + (".exe" if sys.platform == "win32" else ""))
 Q0A_TOL = 1e-4          # relative
-Q0B_TOL = 1e-3          # shares, order 10 vs 12
+Q0B_TOL = 1e-3          # shares, order seam
+CUT_TOL = 1e-3          # amendment 5: shares at cut 1e-12 vs 1e-14
 Q2_TOL = 1e-6           # alignment vs the solver's §5.3 dressed overlap
 RESIDUAL_FLAG = 1e-2
 POSITIVITY_FLOOR = 1e-12
@@ -73,6 +74,7 @@ def point(s, t, g2, mq, out):
         q2 = max(abs(a - solver[l]) for a, l in zip(f["alignment_per_level"], lev)) if all(solver[l] is not None for l in lev) else None
         seam = max(abs(f["shares"][b] - c["shares"][b]) for b in gm.BLOCKS)
         gates = {"Q0a_identity": f["identity_rel_error"] <= Q0A_TOL, "Q0b_quadrature": seam <= Q0B_TOL,
+                 "A5_cut_seam": f["cut_seam"] <= CUT_TOL,
                  "Q2_cross_check": q2 is not None and q2 <= Q2_TOL,
                  "positivity": f["nonpositive_weight"] == 0.0}
         for k, v in gates.items():
@@ -80,7 +82,8 @@ def point(s, t, g2, mq, out):
                 open_reasons.append(f"{name}: {k}")
         rep[name] = dict(levels=list(lev), block=block, own_share=f["own_share"], shares=f["shares"],
                          label=label(f["own_share"], f["shares"], block), gates=gates,
-                         identity_rel_error=f["identity_rel_error"], share_seam=seam, q2_difference=q2,
+                         identity_rel_error=f["identity_rel_error"], share_seam=seam, cut_seam=f["cut_seam"],
+                         excluded_fraction=f["excluded_fraction"], q2_difference=q2,
                          residual_share=f["residual_share"], ground_state_limited=f["residual_share"] > RESIDUAL_FLAG,
                          gap=f["ritz_excitation"] / len(lev), alignment=f["alignment"])
     rep["shape_price"] = {"H": fine["shape_price_H"], "C": fine["shape_price_C"]}
@@ -95,7 +98,7 @@ def point(s, t, g2, mq, out):
 
 def controls(out_dir, mqs=(8, 10)):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
-    rep = {"stage": "M8 controls", "amendment": "4 (seam orders by basis degree)", "points": []}
+    rep = {"stage": "M8 controls", "amendments": "4 (seam orders by basis degree), 5 (shares where the vacuum is resolved)", "points": []}
     for g2 in (0.002, 0.004):
         for mq in mqs:
             t0 = time.time()
@@ -103,8 +106,8 @@ def controls(out_dir, mqs=(8, 10)):
             r["seconds"] = time.time() - t0
             rep["points"].append(r)
             print(json.dumps({k: r[k] for k in ("g2", "Mq", "status", "open_reasons")} |
-                             {"helike": {k: r["helike"][k] for k in ("own_share", "label", "identity_rel_error", "share_seam", "q2_difference", "residual_share")},
-                              "competitor": {k: r["competitor"][k] for k in ("own_share", "label", "identity_rel_error", "share_seam", "q2_difference", "residual_share")},
+                             {"helike": {k: r["helike"][k] for k in ("own_share", "label", "identity_rel_error", "share_seam", "cut_seam", "excluded_fraction", "q2_difference", "residual_share")},
+                              "competitor": {k: r["competitor"][k] for k in ("own_share", "label", "identity_rel_error", "share_seam", "cut_seam", "excluded_fraction", "q2_difference", "residual_share")},
                               "ordering": r["ordering"], "discount": r["dressing_discount"]}, default=float), flush=True)
             (out / "report.json").write_text(json.dumps(rep, indent=1, default=float) + "\n")
     print("m8_controls_done", flush=True)

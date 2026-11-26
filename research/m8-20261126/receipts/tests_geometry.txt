@@ -9,13 +9,15 @@ f = its coordinate: share 1 on its block, alignment 1, price = gap = w_j, residu
 test_planted_mixture (test_helike_m8_geometry.Kernel.test_planted_mixture)
 f = cos t yH + sin t yS (unit coordinates): pi_H = cos^2 w_H / (cos^2 w_H + sin^2 w_S), cross 0, a = cos^2. ... ok
 test_positivity_is_checked (test_helike_m8_geometry.Kernel.test_positivity_is_checked) ... ok
+test_ragged_vacuum_edge_is_cut (test_helike_m8_geometry.Kernel.test_ragged_vacuum_edge_is_cut)
+Amendment 5: a trial vacuum that collapses (and flips sign) where it carries < 1e-16 of its weight spikes the ... ok
 test_reviewer_counterexample (test_helike_m8_geometry.Kernel.test_reviewer_counterexample)
 Raw normalised contributions (5, 5, -9); positive shares (1/2, 1/2); J in [0, 1]. ... ok
 test_sheared_gaussian_chart (test_helike_m8_geometry.Kernel.test_sheared_gaussian_chart)
 Constant non-identity G (block-diagonal across blocks, sheared within) and a ground state that is not the ... ok
 
 ----------------------------------------------------------------------
-Ran 8 tests in 37.016s
+Ran 9 tests in 57.977s
 
 OK
 exit 0

@@ -207,6 +207,9 @@ def main():
     ap.add_argument("--steps", required=True)
     ap.add_argument("--rho-C", type=float, default=None)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--soft-cut", type=float, default=None, help="keep soft base functions with E_u below this")
+    ap.add_argument("--stiff-cut", type=float, default=None, help="keep stiff base functions with E_v below this")
+    ap.add_argument("--probe-cuts", action="store_true", help="only report the trial norm lost at candidate cuts")
     a = ap.parse_args()
     log = lambda s: print(s, flush=True)
     import dryrun_helike_sc_lehmann_homotopy as dr
@@ -231,11 +234,24 @@ def main():
     t0 = time.time(); V = vs.VSCF(a.g2, E0, log); log(f"  VSCF built in {time.time() - t0:.0f}s")
     rho_b = E0 + gb.RHO_B_REL
     rho_C = a.rho_C if a.rho_C is not None else E0 + 1.75 * math.sqrt(float(min(M.w2, key=lambda x: float(x.mid())).mid()))
+    steps = [(float(x.split(":")[0]), int(x.split(":")[1])) for x in a.steps.split(",")]
+    if a.probe_cuts:
+        for s_, N_ in steps:
+            C = V.trial(s_, N_)
+            for cu in (8, 9, 10, 11, 12, 13, 14.7):
+                for cv in (8, 10, 12, 20.1):
+                    Pu = V.Eu < cu; Pv = V.Ev < cv
+                    kept = np.einsum("nij,nij->n", C[:, Pu][:, :, Pv], C[:, Pu][:, :, Pv])
+                    log(f"  probe s={s_} N={N_} soft<{cu} ({Pu.sum()}) stiff<{cv} ({Pv.sum()}): max lost norm^2 {1 - kept.min():.2e}")
+        return
+    Pu = np.arange(len(V.ui)) if a.soft_cut is None else np.flatnonzero(V.Eu < a.soft_cut)
+    Pv = np.arange(len(V.vi)) if a.stiff_cut is None else np.flatnonzero(V.Ev < a.stiff_cut)
+    log(f"  restricted span: soft {len(Pu)}/{len(V.ui)}, stiff {len(Pv)}/{len(V.vi)} (cuts {a.soft_cut}, {a.stiff_cut})")
     log(f"  exact blocks (soft w2 {w2s:.9f}, stiff w2 {w2t:.9f}):")
-    Umats, Eu = exact_block_mats(V.ublock, list(V.ui), w2s, dr.LU, a.beta_u, a.vj, log=log)
-    Vmats, Ev = exact_block_mats(V.vblock, list(V.vi), w2t, dr.LV, a.beta_v, 0, log=log)
-    for name, mats, fl in (("soft", Umats, V.U), ("stiff", Vmats, V.V)):
-        worst = max(np.abs(mats[k][0] - fl[k]).max() for k in fl if k in mats)
+    Umats, Eu = exact_block_mats(V.ublock, [V.ui[p] for p in Pu], w2s, dr.LU, a.beta_u, a.vj, log=log)
+    Vmats, Ev = exact_block_mats(V.vblock, [V.vi[p] for p in Pv], w2t, dr.LV, a.beta_v, 0, log=log)
+    for name, mats, fl, P in (("soft", Umats, V.U, Pu), ("stiff", Vmats, V.V, Pv)):
+        worst = max(np.abs(mats[k][0] - fl[k][np.ix_(P, P)]).max() for k in fl if k in mats)
         log(f"    check {name}: max |exact - floating| over the monomial matrices = {worst:.2e}")
     D = exact_D(M, w2s, w2t); D2 = D * D
     gD, gD2 = groups_mr(D, Vmats), groups_mr(D2, Vmats)
@@ -250,7 +266,11 @@ def main():
         if rho is None:
             rho = float(base[N].lower())                                  # lambda_{N+1}(H_0), lower end
         t0 = time.time()
-        C = V.trial(s, N)
+        Cfull = V.trial(s, N)
+        C = Cfull[:, Pu][:, :, Pv]
+        kept = np.sqrt(np.einsum("nij,nij->n", C, C))
+        C = C / kept[:, None, None]                                   # any trial functions are admissible
+        log(f"    trial norm lost to the restriction: max {1 - kept.min() ** 2:.2e}")
         Z = np.zeros_like(C)
         DCm, DCr = apply_mr(gD, Umats, C)
         D2Cm, D2Cr = apply_mr(gD2, Umats, C)

@@ -199,3 +199,137 @@ pub fn export_point(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> 
         max_in_space_lanczos_residual: eigs.residuals.iter().cloned().fold(0.0, f64::max),
     })
 }
+
+// ------------------------------------------------------------------------------------------------------------------
+// M8 (docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md): every Ritz level at a point, so the
+// carrier can be followed by physical overlap and crossings verified. Report-only data; it decides nothing here.
+
+pub const LEVELS_SCHEMA: &str = "helike-lab/cone-levels-export/v1";
+
+#[derive(Clone, Debug, Serialize)]
+pub struct LevelsExport {
+    pub schema: &'static str,
+    pub s: f64,
+    pub t: f64,
+    pub g2: f64,
+    pub g: f64,
+    #[serde(rename = "Mq")]
+    pub mq: usize,
+    pub moments: &'static str,
+    pub u0: Vec<u64>,
+    #[serde(rename = "S")]
+    pub s_mat: Vec<u64>,
+    pub w: Vec<u64>,
+    #[serde(rename = "G0")]
+    pub g0: Vec<u64>,
+    #[serde(rename = "M")]
+    pub m: Vec<u64>,
+    pub basis: Vec<Vec<u8>>,
+    /// N × k real, row-major: every Ritz vector
+    pub coeff: Vec<u64>,
+    pub coeff_shape: [usize; 2],
+    pub energy_shift: f64,
+    /// Ritz values (without the energy shift), ascending
+    pub levels: Vec<f64>,
+    /// true in-space residual norms ‖Hx − θx‖; for the finite symmetric matrix |θ − λ| ≤ ‖Hx − θx‖ (the recorded
+    /// per-level numerical uncertainty; it excludes floating-point error in assembling H)
+    pub in_space_residuals: Vec<f64>,
+    pub uncertainty_method: &'static str,
+    /// k × k, row-major: Im <v_a, L v_b> (antisymmetric). A charge-±m pair (a, b) has |Im| ≈ m.
+    pub charge_im: Vec<f64>,
+    /// <v_a, L v_a>, expected 0 for real vectors (a check)
+    pub charge_diag: Vec<f64>,
+    /// [h1, h2, c, x, s1, s2] mode indices (heat-signal amendment 1)
+    pub roles: [usize; 6],
+    /// §5.3 dressed overlap per level on Helike's doublet and on the competitor's mode (resolved fine order)
+    pub dressed_overlap_helike: Vec<Option<f64>>,
+    pub dressed_overlap_competitor: Vec<Option<f64>>,
+    pub identification: ritz::HelikeCompetitor,
+}
+
+/// Solve one point with exact moments and export every Ritz level (M8).
+pub fn export_levels(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> Result<LevelsExport, String> {
+    if !(g2 > 0.0) {
+        return Err("g^2 must be positive".into());
+    }
+    let g = g2.sqrt();
+    let bg = Background::maurer_cartan(s, t, g)?;
+    let op = ConeOperator::exact(bg.clone(), mq, OpMutation::None)?;
+    let eigs = ritz::spectrum(&op, set);
+    let wh = ritz::helike_frequency(s, t);
+    let identification = ritz::helike_and_competitor(&op, &eigs, wh)?;
+    let roles = ritz::mode_roles(&bg.w, wh)?;
+    let k = eigs.vectors.len();
+    let n = op.dim();
+    let mut coeff = vec![0.0; n * k];
+    for c in 0..k {
+        for r in 0..n {
+            coeff[r * k + c] = eigs.vectors[c][r];
+        }
+    }
+    // the charge compression over all levels: Im <v_a, L v_b> by polarization (L is Hermitian and imaginary in the real
+    // basis, so <v_a, L v_a> = 0 and the a-b block is [[0, i m], [-i m, 0]] with charges -|m|, +|m|). Pairs are found
+    // from this coupling, not from an energy tolerance: the trial space splits Helike's exact pair slightly.
+    let chart = ChartIv::new(op.chart.u0, op.chart.s)?;
+    let r = Iv::point(0.5).sqrt();
+    let pairs: Vec<(usize, usize)> = (0..k).flat_map(|a| ((a + 1)..k).map(move |b| (a, b))).collect();
+    // columns: the k real vectors, then (v_a + i v_b)/sqrt 2 for every pair; the charge routine takes four at a time
+    let column = |j: usize, row: usize| -> Cx {
+        if j < k {
+            Cx::real(Iv::point(eigs.vectors[j][row]))
+        } else {
+            let (a, b) = pairs[j - k];
+            Cx::new(Iv::point(eigs.vectors[a][row]) * r, Iv::point(eigs.vectors[b][row]) * r)
+        }
+    };
+    let total = k + pairs.len();
+    let mut d = Vec::with_capacity(total);
+    for start in (0..total).step_by(4) {
+        let nc = (total - start).min(4);
+        let mut cols = vec![Cx::new(Iv::point(0.0), Iv::point(0.0)); n * nc];
+        for row in 0..n {
+            for c in 0..nc {
+                cols[row * nc + c] = column(start + c, row);
+            }
+        }
+        d.extend(charge_expectations(&chart, &op.basis, bg.w, &cols, nc)?);
+    }
+    let mut charge_im = vec![0.0; k * k];
+    for (j, &(a, b)) in pairs.iter().enumerate() {
+        let im = 0.5 * (d[a] + d[b]) - d[k + j];
+        charge_im[a * k + b] = im;
+        charge_im[b * k + a] = -im;
+    }
+    let charge_diag: Vec<f64> = d[..k].to_vec();
+    let terms = ritz::dressed_overlap_terms(&op, &eigs.vectors, identification.overlap_orders[1]).ok();
+    let per_level = |modes: &[usize]| -> Vec<Option<f64>> {
+        (0..k).map(|c| terms.as_ref().and_then(|t| ritz::dressed_overlap_weight(t, k, modes, c))).collect()
+    };
+    Ok(LevelsExport {
+        schema: LEVELS_SCHEMA,
+        s,
+        t,
+        g2,
+        g,
+        mq,
+        moments: op.moments(),
+        u0: bits(&op.chart.u0),
+        s_mat: bits(&op.chart.s.iter().flatten().cloned().collect::<Vec<_>>()),
+        w: bits(&bg.w),
+        g0: bits(&bg.g0.iter().flatten().cloned().collect::<Vec<_>>()),
+        m: bits(&bg.m.iter().flatten().cloned().collect::<Vec<_>>()),
+        basis: op.basis.iter().map(|st| st.to_vec()).collect(),
+        coeff: bits(&coeff),
+        coeff_shape: [n, k],
+        energy_shift: op.energy_shift,
+        levels: eigs.values.clone(),
+        in_space_residuals: eigs.residuals.clone(),
+        uncertainty_method: "in-space residual norm |Hx - theta x| (bound for the finite symmetric matrix; excludes assembly rounding)",
+        charge_im,
+        charge_diag,
+        roles,
+        dressed_overlap_helike: per_level(&[roles[0], roles[1]]),
+        dressed_overlap_competitor: per_level(&[roles[2]]),
+        identification,
+    })
+}

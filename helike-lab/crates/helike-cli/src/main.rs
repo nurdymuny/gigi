@@ -176,6 +176,20 @@ enum Cmd {
         #[arg(long)]
         states_out: PathBuf,
     },
+    /// M8: solve one point with exact moments and export every Ritz level (vectors, residuals, degenerate clusters with
+    /// charges, dressed overlaps, identification). Writes `--levels-out`. Report-only data.
+    ConeLevels {
+        #[arg(long)]
+        s: f64,
+        #[arg(long)]
+        t: f64,
+        #[arg(long)]
+        g2: f64,
+        #[arg(long)]
+        mq: usize,
+        #[arg(long)]
+        levels_out: PathBuf,
+    },
     ConeTemple {
         #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
         states: PathBuf,
@@ -321,6 +335,13 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
              json!({"compressed_charges": e.compressed_charges, "pair_weights": e.pair_weights,
                     "competitor_weight": e.competitor_weight, "level_indices": e.level_indices,
                     "states_sha256_lf": helike_stream::text_sha256(states_out)}))
+        }
+        Cmd::ConeLevels { s, t, g2, mq, levels_out } => {
+            let e = helike_quantum::export::export_levels(*s, *t, *g2, *mq, &SolveSettings::default())?;
+            std::fs::write(levels_out, serde_json::to_string(&e).unwrap()).map_err(|x| x.to_string())?;
+            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "levels_out": levels_out,
+                    "registration": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md"}),
+             json!({"levels": e.levels, "levels_sha256_lf": helike_stream::text_sha256(levels_out)}))
         }
         Cmd::ConeTemple { states, inputs, assume, delta, g2, mq } => {
             let sep = match assume.as_deref() {

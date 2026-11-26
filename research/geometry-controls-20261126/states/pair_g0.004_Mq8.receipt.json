@@ -1,0 +1,56 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795720110,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "bcc0eb9d5af327bcb77d2cd041f51c021c09b15a",
+    "git_dirty": true,
+    "source_sha256": "e5a90b8270eb9d295c872c943dff151464a1803ffe00899c7280feb89db5c228",
+    "source_hash_policy": "sha256-universal-newline-v1",
+    "platform": "windows-x86_64",
+    "threads": 16
+  },
+  "command": [
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-flux\\helike-lab\\target\\release\\helike.exe",
+    "--out",
+    "research/geometry-controls-20261126/states/pair_g0.004_Mq8.receipt.json",
+    "cone-export",
+    "--s",
+    "1.15",
+    "--t",
+    "3",
+    "--g2",
+    "0.004",
+    "--mq",
+    "8",
+    "--states-out",
+    "research/geometry-controls-20261126/states/pair_g0.004_Mq8.json"
+  ],
+  "status": "COMPUTED",
+  "params": {
+    "Mq": 8,
+    "g2": 0.004,
+    "s": 1.15,
+    "states_out": "research/geometry-controls-20261126/states/pair_g0.004_Mq8.json",
+    "t": 3.0
+  },
+  "results": {
+    "competitor_weight": 0.981198659143847,
+    "compressed_charges": [
+      -2.000000126882009,
+      2.000000126882009
+    ],
+    "level_indices": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "pair_weights": [
+      0.9957471438078924,
+      0.9957440478233728
+    ],
+    "states_sha256_lf": "365ab185634d6614e79a6df88087b3b6c9941787b27ddd49f6df4aa1d305db8e"
+  }
+}

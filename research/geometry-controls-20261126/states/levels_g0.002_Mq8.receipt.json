@@ -1,0 +1,56 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795719925,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "bcc0eb9d5af327bcb77d2cd041f51c021c09b15a",
+    "git_dirty": false,
+    "source_sha256": "338466f46424c9534c7ac0ce835c65331c773c1798bf5fd2df95f15e51007ac1",
+    "source_hash_policy": "sha256-universal-newline-v1",
+    "platform": "windows-x86_64",
+    "threads": 16
+  },
+  "command": [
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\claude\\c1f45fde8580c2d1\\b37c5552-3973-44ff-8ddd-a1bb403cae11\\scratchpad\\wt-flux\\helike-lab\\target\\release\\helike.exe",
+    "--out",
+    "research/geometry-controls-20261126/states/levels_g0.002_Mq8.receipt.json",
+    "cone-levels",
+    "--s",
+    "1.15",
+    "--t",
+    "3",
+    "--g2",
+    "0.002",
+    "--mq",
+    "8",
+    "--levels-out",
+    "research/geometry-controls-20261126/states/levels_g0.002_Mq8.json"
+  ],
+  "status": "COMPUTED",
+  "params": {
+    "Mq": 8,
+    "g2": 0.002,
+    "levels_out": "research/geometry-controls-20261126/states/levels_g0.002_Mq8.json",
+    "registration": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md",
+    "s": 1.15,
+    "t": 3.0
+  },
+  "results": {
+    "levels": [
+      5.409172325854664,
+      6.498214790727003,
+      6.498215059510606,
+      6.510317898604729,
+      7.582633480513891,
+      7.587126739204135,
+      7.5871273868698905,
+      7.59843379562912,
+      7.598446009763756,
+      7.608830048406861,
+      7.837536609534111,
+      7.837536609613315
+    ],
+    "levels_sha256_lf": "abaec2d5e448fb1ba4b5259387e672448ea7bad837f7e3b892b60791fa3bc351"
+  }
+}

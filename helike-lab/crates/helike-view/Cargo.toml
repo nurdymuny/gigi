@@ -13,6 +13,8 @@ path = "src/main.rs"
 [dependencies]
 helike-core = { path = "../helike-core" }
 helike-stream = { path = "../helike-stream" }
+# the Hermite basis for the state slices (spec section 4): the solver's own functions, not a copy
+helike-quantum = { path = "../helike-quantum" }
 eframe = { version = "=0.35.0", default-features = false, features = ["default_fonts", "wgpu", "accesskit"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

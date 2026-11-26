@@ -103,6 +103,16 @@ pub fn apply(ctx: &egui::Context) {
     ctx.set_style_of(egui::Theme::Dark, style);
 }
 
+/// Text wrapped to `width`, anchored at its top-left (`bottom = false`) or bottom-left (`bottom = true`). Every long
+/// caption drawn with a painter goes through this, so no caption runs past its panel or into a neighbour.
+pub fn wrapped(p: &egui::Painter, anchor: egui::Pos2, bottom: bool, text: impl Into<String>, font: FontId, color: Color32, width: f32) -> f32 {
+    let g = p.layout(text.into(), font, color, width.max(40.0));
+    let h = g.size().y;
+    let pos = if bottom { anchor - egui::vec2(0.0, h) } else { anchor };
+    p.galley(pos, g, color);
+    h
+}
+
 /// A small spaced uppercase label that names a section.
 pub fn eyebrow(text: &str) -> RichText {
     RichText::new(text.to_uppercase())

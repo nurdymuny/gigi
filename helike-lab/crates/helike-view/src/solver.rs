@@ -21,6 +21,8 @@ pub enum Request {
     Probe { m: Member, jmax: usize },
     /// Read the registered control runs under this repository root and keep rescanning when their files change.
     LoadControls(std::path::PathBuf),
+    /// f = psi/psi_0 and densities on a slice of normal coordinates (DisplayGrade)
+    StateSlice(crate::view_state::SliceRequest),
 }
 
 impl Request {
@@ -31,6 +33,7 @@ impl Request {
             Request::EdgeMap { .. } => "edge",
             Request::Probe { .. } => "probe",
             Request::LoadControls(_) => "controls",
+            Request::StateSlice(_) => "state",
         }
     }
 }
@@ -169,6 +172,24 @@ pub fn spawn(repaint: impl Fn() + Send + 'static) -> SolverHandle {
                     Request::Ladder { m, jmax } => send("ladder", serde_json::to_value(ladder(&m, jmax)).unwrap(), &mut seq),
                     Request::Sphere { t, j, fibres, samples } => send("sphere", serde_json::to_value(sphere(t, j, fibres, samples)).unwrap(), &mut seq),
                     Request::Probe { m, jmax } => send("probe", serde_json::to_value(probe(&m, jmax)).unwrap(), &mut seq),
+                    Request::StateSlice(r) => {
+                        let req = crate::state_slice::Request {
+                            levels_path: &r.levels_path,
+                            pair_path: &r.pair_path,
+                            which: r.which,
+                            axes: r.axes,
+                            fixed: r.fixed,
+                            extent: r.extent,
+                            res: r.res,
+                        };
+                        seq += 1;
+                        let frame = match crate::state_slice::compute(&req) {
+                            Ok(sl) => Frame { scene: "state".into(), seq, status: Status::DisplayGrade, params: serde_json::Value::Null, data: serde_json::to_value(&sl).unwrap() },
+                            Err(e) => Frame { scene: "state-error".into(), seq, status: Status::DisplayGrade, params: serde_json::Value::Null, data: serde_json::Value::String(e) },
+                        };
+                        let _ = tx_frame.send(frame);
+                        repaint();
+                    }
                     Request::LoadControls(root) => {
                         let paths = controls::Paths { root };
                         emit_controls(&paths, &mut seq);

@@ -4,9 +4,11 @@
 
 mod controls;
 mod solver;
+mod state_slice;
 mod theme;
 mod view_controls;
 mod view_geometry;
+mod view_state;
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Vec2};
 use helike_core::helike::{berger_xy, Member, Spectrum};
@@ -70,7 +72,7 @@ fn parse_shot() -> (Scene, Option<std::path::PathBuf>) {
                 "sphere" => Scene::Sphere,
                 "edge" => Scene::Edge,
                 "controls" | "controls-lower" => Scene::Controls,
-                "geometry" => Scene::Geometry,
+                "geometry" | "geometry-state" => Scene::Geometry,
                 _ => Scene::Ladder,
             };
             (scene, Some(a[k + 2].clone().into()))
@@ -119,7 +121,13 @@ impl App {
             probe: None,
             edge_tex: None,
             edge_tex_seq: 0,
-            geometry: view_geometry::GeometryView::new(),
+            geometry: {
+                let mut g = view_geometry::GeometryView::new(root.clone());
+                if std::env::args().any(|a| a == "geometry-state") {
+                    g.tab = 1;
+                }
+                g
+            },
             controls: {
                 let mut v = view_controls::ControlsView::new(root);
                 v.start_at_bottom = std::env::args().any(|a| a == "controls-lower");
@@ -140,7 +148,13 @@ impl App {
                 "probe" => self.probe = serde_json::from_value(f.data.clone()).ok().map(|d| (f, d)),
                 "controls" | "controls-history" => self.controls.accept(f),
                 "geometry" => self.geometry.accept(f),
+                "state" | "state-error" => self.geometry.state.accept(f),
                 _ => {}
+            }
+        }
+        if self.scene == Scene::Geometry && self.geometry.tab == 1 {
+            if let Some(r) = self.geometry.state.take_request() {
+                let _ = self.solver.tx.send(Request::StateSlice(r));
             }
         }
         if self.dirty_ladder {
@@ -343,7 +357,8 @@ impl App {
         painter.text(fan.left_top(), Align2::LEFT_TOP, "flux fan: the nine eigenvalues of φ", font.clone(), INK);
         let lo = d.flux_closed.iter().cloned().fold(f64::INFINITY, f64::min).min(0.0) - 0.5;
         let hi = d.flux_closed.iter().cloned().fold(f64::NEG_INFINITY, f64::max).max(0.0) + 0.5;
-        let plot = Rect::from_min_max(fan.min + Vec2::new(36.0, 22.0), fan.max - Vec2::new(8.0, 26.0));
+        let fan_cap = painter.layout(format!("B = {:.4}, Θ = {:.4}\ndots computed, ticks closed form: Δ {:.1e}", d.fibre_field, d.cross_field, d.flux_check), mono.clone(), MUTED, (fan.width() - 8.0).max(40.0));
+        let plot = Rect::from_min_max(fan.min + Vec2::new(36.0, 22.0), fan.max - Vec2::new(8.0, fan_cap.size().y + 16.0));
         let ymap = |v: f64| plot.bottom() - ((v - lo) / (hi - lo)) as f32 * plot.height();
         painter.line_segment([Pos2::new(plot.left(), ymap(0.0)), Pos2::new(plot.right(), ymap(0.0))], Stroke::new(1.0, RULE));
         for (k, (c, v)) in d.flux_closed.iter().zip(&d.flux_computed).enumerate() {
@@ -353,52 +368,52 @@ impl App {
             painter.circle_filled(Pos2::new(xk, ymap(*v)), 3.5, col);
         }
         painter.text(Pos2::new(plot.left() - 4.0, ymap(-d.fibre_field)), Align2::RIGHT_CENTER, "−B", mono.clone(), HELIKE);
-        painter.text(
-            Pos2::new(fan.left(), fan.bottom() - 4.0),
-            Align2::LEFT_BOTTOM,
-            format!("B = {:.4}, Θ = {:.4}\ndots computed, ticks closed form: Δ {:.1e}", d.fibre_field, d.cross_field, d.flux_check),
-            mono.clone(),
-            MUTED,
-        );
+        painter.galley(Pos2::new(fan.left(), fan.bottom() - 4.0 - fan_cap.size().y), fan_cap, MUTED);
 
         // The ladder in sector j_focus: rungs at h_m, leak arrows proportional to the leak, the top rung exact.
         let j = self.j_focus.min(d.sectors.len().saturating_sub(1));
         if let Some(row) = d.sectors.get(j) {
-            painter.text(rungs.left_top(), Align2::LEFT_TOP, format!("the ladder in sector j = {j}: curl ψ = h ψ + χ"), font.clone(), INK);
+            theme::wrapped(&painter, rungs.left_top(), false, format!("the ladder in sector j = {j}: curl ψ = h ψ + χ"), font.clone(), INK, rungs.width());
             let hs: Vec<f64> = row.rungs.iter().map(|r| r.h).collect();
             let (hlo, hhi) = (hs.iter().cloned().fold(f64::INFINITY, f64::min) - 0.5, hs.iter().cloned().fold(f64::NEG_INFINITY, f64::max) + 0.5);
-            let pl = Rect::from_min_max(rungs.min + Vec2::new(50.0, 40.0), rungs.max - Vec2::new(8.0, 26.0));
+            let worst = row.rungs.iter().map(|rg| (rg.leak - rg.leak_computed).abs()).fold(0.0f64, f64::max);
+            let rung_cap = painter.layout(format!("arrows: the leak ‖χ‖² = 2[l(l+1) − m(m+1)]; the blue top rung leaks nothing (the twist)\ncomputed − formula: {worst:.1e}"), mono.clone(), MUTED, rungs.width().max(40.0));
+            let pl = Rect::from_min_max(rungs.min + Vec2::new(50.0, 40.0), rungs.max - Vec2::new(8.0, rung_cap.size().y + 18.0));
             let ym = |v: f64| pl.bottom() - ((v - hlo) / (hhi - hlo)) as f32 * pl.height();
             let maxleak = row.rungs.iter().map(|r| r.leak).fold(1e-9, f64::max);
-            let mut worst = 0.0f64;
             for rg in &row.rungs {
-                worst = worst.max((rg.leak - rg.leak_computed).abs());
                 let col_x = if rg.branch == 1 { pl.left() + pl.width() * 0.25 } else { pl.left() + pl.width() * 0.7 };
                 let yv = ym(rg.h);
                 let exact = rg.leak.abs() < 1e-12;
-                painter.line_segment([Pos2::new(col_x - 60.0, yv), Pos2::new(col_x + 60.0, yv)], Stroke::new(if exact { 3.0 } else { 1.5 }, if exact { HELIKE } else { INK }));
+                // rung, arrow and label scale with the panel so the two branches never run into each other
+                let hl = (pl.width() * 0.09).min(60.0);
+                painter.line_segment([Pos2::new(col_x - hl, yv), Pos2::new(col_x + hl, yv)], Stroke::new(if exact { 3.0 } else { 1.5 }, if exact { HELIKE } else { INK }));
                 if !exact {
-                    let len = (rg.leak_computed / maxleak) as f32 * 70.0;
-                    painter.arrow(Pos2::new(col_x + 64.0, yv), Vec2::new(len, 0.0), Stroke::new(1.2, RIVAL));
+                    let len = (rg.leak_computed / maxleak) as f32 * hl * 1.15;
+                    painter.arrow(Pos2::new(col_x + hl + 4.0, yv), Vec2::new(len, 0.0), Stroke::new(1.2, RIVAL));
                 }
-                painter.text(Pos2::new(col_x - 64.0, yv), Align2::RIGHT_CENTER, format!("m={:+.1}", rg.mm), mono.clone(), MUTED);
+                painter.text(Pos2::new(col_x - hl - 4.0, yv), Align2::RIGHT_CENTER, format!("m={:+.1}", rg.mm), mono.clone(), MUTED);
             }
             painter.text(Pos2::new(pl.left() + pl.width() * 0.25, pl.top() + 2.0), Align2::CENTER_BOTTOM, "branch +", mono.clone(), MUTED);
             painter.text(Pos2::new(pl.left() + pl.width() * 0.7, pl.top() + 2.0), Align2::CENTER_BOTTOM, "branch −", mono.clone(), MUTED);
-            painter.text(
-                Pos2::new(rungs.left(), rungs.bottom() - 4.0),
-                Align2::LEFT_BOTTOM,
-                format!("arrows: the leak ‖χ‖² = 2[l(l+1) − m(m+1)]; the blue top rung leaks nothing (the twist)\ncomputed − formula: {worst:.1e}"),
-                mono.clone(),
-                MUTED,
-            );
+            painter.galley(Pos2::new(rungs.left(), rungs.bottom() - 4.0 - rung_cap.size().y), rung_cap, MUTED);
         }
 
         // Two prices per sector: the twist and her cheapest gauge-orthogonal rival.
-        painter.text(prices.left_top(), Align2::LEFT_TOP, "two prices per sector: Helike (blue) and the cheapest gauge-orthogonal rival (amber)", font.clone(), INK);
+        let head_h = theme::wrapped(&painter, prices.left_top(), false, "two prices per sector: Helike (blue) and the cheapest gauge-orthogonal rival (amber)", font.clone(), INK, prices.width());
         let vals: Vec<f64> = d.sectors.iter().flat_map(|s| [s.twist, s.competitor_slice]).collect();
         let (plo, phi) = (vals.iter().cloned().fold(0.0, f64::min) - 1.0, vals.iter().cloned().fold(0.0, f64::max) + 1.0);
-        let pl = Rect::from_min_max(prices.min + Vec2::new(36.0, 44.0), prices.max - Vec2::new(8.0, 22.0));
+        let worst_twist = d.sectors.iter().map(|s| s.twist_check.abs()).fold(0.0, f64::max);
+        let sub_h = theme::wrapped(
+            &painter,
+            prices.left_top() + Vec2::new(0.0, head_h + 2.0),
+            false,
+            format!("green dot: the ladder's sufficient condition holds there (a proved floor) · twist closed form vs its block: {worst_twist:.1e}"),
+            mono.clone(),
+            MUTED,
+            prices.width(),
+        );
+        let pl = Rect::from_min_max(prices.min + Vec2::new(36.0, head_h + sub_h + 14.0), prices.max - Vec2::new(8.0, 22.0));
         let ym = |v: f64| pl.bottom() - ((v - plo) / (phi - plo)) as f32 * pl.height();
         painter.line_segment([Pos2::new(pl.left(), ym(0.0)), Pos2::new(pl.right(), ym(0.0))], Stroke::new(1.0, RULE));
         let n = d.sectors.len() as f32;
@@ -417,18 +432,11 @@ impl App {
                 painter.circle_filled(Pos2::new(x0 + bw * 0.5, pl.top() + 4.0), 3.0, PROVED);
             }
         }
-        let worst_twist = d.sectors.iter().map(|s| s.twist_check.abs()).fold(0.0, f64::max);
-        painter.text(
-            prices.left_top() + Vec2::new(0.0, 16.0),
-            Align2::LEFT_TOP,
-            format!("green dot: the ladder's sufficient condition holds there (a proved floor) · twist closed form vs its block: {worst_twist:.1e}"),
-            mono,
-            MUTED,
-        );
+
     }
 
     fn draw_sphere(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             status_chip(ui, self.sphere.as_ref().map(|x| &x.0));
             ui.label(egui::RichText::new("closed forms: |f|² = cos^{2j}(η/2), phase j·(fibre angle); stereographic picture, the stretch t is not drawn to scale").color(MUTED).size(11.0));
         });
@@ -475,12 +483,14 @@ impl App {
             painter.line_segment([p, tip], Stroke::new(1.2, col));
             painter.circle_filled(p, 1.6 + 2.0 * a, col);
         }
-        painter.text(
+        theme::wrapped(
+            &painter,
             r.left_bottom() + Vec2::new(8.0, -8.0),
-            Align2::LEFT_BOTTOM,
+            true,
             format!("sector j = {}: colour = arg f, opacity = |f|², ticks = Re(f)e₁ + Im(f)e₂ (her winding); she gathers about the pole as j rises", d.j),
             FontId::monospace(11.0),
             MUTED,
+            r.width() - 16.0,
         );
     }
 
@@ -519,7 +529,15 @@ impl App {
         }
         let avail = ui.available_size();
         let (resp, painter) = ui.allocate_painter(avail, Sense::click());
-        let plot = Rect::from_min_max(resp.rect.min + Vec2::new(48.0, 10.0), resp.rect.max - Vec2::new(16.0, 56.0));
+        // the caption is laid out first and wrapped to the panel, and the plot leaves room for it
+        let caption = painter.layout(
+            format!("x along the long circle →, stretch t ↑ · φ_{} over sectors j ≤ {} · white line: the edge φ = 0 · ring: the Berger field
+blue: she is the floor · amber: a rival undercuts her · green: ladder-proved cells and x_flux · box: the certificate domain D", if d.which == Spectrum::A { "A" } else { "S" }, d.jmax),
+            FontId::monospace(11.0),
+            MUTED,
+            (resp.rect.width() - 64.0).max(80.0),
+        );
+        let plot = Rect::from_min_max(resp.rect.min + Vec2::new(48.0, 10.0), resp.rect.max - Vec2::new(16.0, 30.0 + caption.size().y));
         painter.image(self.edge_tex.as_ref().unwrap().id(), plot, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), Color32::WHITE);
         let (x0, x1, t0, t1) = (d.xs[0], d.xs[nx - 1], d.ts[0], d.ts[nt - 1]);
         let px = |x: f64| plot.left() + ((x - x0) / (x1 - x0)) as f32 * plot.width();
@@ -568,14 +586,7 @@ impl App {
         for t in [2.0, 4.0, 6.0, 8.0, 10.0] {
             painter.text(Pos2::new(plot.left() - 6.0, py(t)), Align2::RIGHT_CENTER, format!("{t}"), FontId::monospace(11.0), MUTED);
         }
-        painter.text(
-            Pos2::new(plot.left(), resp.rect.bottom() - 4.0),
-            Align2::LEFT_BOTTOM,
-            format!("x along the long circle →, stretch t ↑ · φ_{} over sectors j ≤ {} · white line: the edge φ = 0 · ring: the Berger field
-blue: she is the floor · amber: a rival undercuts her · green: ladder-proved cells and x_flux · box: the certificate domain D", if d.which == Spectrum::A { "A" } else { "S" }, d.jmax),
-            FontId::monospace(11.0),
-            MUTED,
-        );
+        painter.galley(Pos2::new(plot.left(), resp.rect.bottom() - 4.0 - caption.size().y), caption, MUTED);
         if resp.clicked() {
             if let Some(pos) = resp.interact_pointer_pos() {
                 if plot.contains(pos) {
@@ -585,6 +596,23 @@ blue: she is the floor · amber: a rival undercuts her · green: ladder-proved c
                 }
             }
         }
+    }
+}
+
+/// Window size: `--size WxH` (used for layout audits at the minimum size), the tall controls-lower shot, or the default.
+fn window_size() -> [f32; 2] {
+    let a: Vec<String> = std::env::args().collect();
+    if let Some(k) = a.iter().position(|s| s == "--size") {
+        if let Some((w, h)) = a.get(k + 1).and_then(|v| v.split_once('x')) {
+            if let (Ok(w), Ok(h)) = (w.parse(), h.parse()) {
+                return [w, h];
+            }
+        }
+    }
+    if a.iter().any(|s| s == "controls-lower") {
+        [1440.0, 1900.0]
+    } else {
+        [1440.0, 900.0]
     }
 }
 
@@ -613,7 +641,7 @@ fn main() -> eframe::Result {
     let opts = eframe::NativeOptions {
         // the lower-half shot uses a tall window so the detail, predictions and history fit
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size(if std::env::args().any(|a| a == "controls-lower") { [1440.0, 1900.0] } else { [1440.0, 900.0] }).with_min_inner_size([960.0, 640.0]).with_title("helike-lab"),
+            .with_inner_size(window_size()).with_min_inner_size([960.0, 640.0]).with_title("helike-lab"),
         renderer: eframe::Renderer::Wgpu,
         ..Default::default()
     };

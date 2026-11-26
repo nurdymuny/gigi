@@ -172,3 +172,31 @@ predictions and history). Modules: `controls.rs` (adapters and model), `view_con
   records only whether each budget passed, and the detail table says so.
 - **Not yet built:** the R2 interval result, drawn as an error bar against ρ_C. It waits for the R2 result file
   format.
+
+## 11. The Geometry scene (26 November, built)
+
+A fifth scene, "Geometry of the controls", draws the data as it runs through the controls. It has two tabs.
+
+**Spectrum and signals.** The data comes from `research/geometry-controls-20261126/geometry.json`, written by
+`scripts/export_helike_geometry.py` from the committed cone-heat receipts. The export uses the heat-signal module's own
+functions, and its plateaus and missing weights equal the heat-signal report's.
+- **Ladder:** every Ritz level, g² 0.002 to 0.004 and Mq 6 to 10. The axis is broken into one zoomed band per cluster of
+  levels. A line joins each level from one rung to the next.
+- **Roses:** what each level is made of, at the fine and the coarse quadrature order (the S2 seam).
+- **Octave circle:** the registered tones, with their offsets in cents.
+- **Corridor:** log C_S(τ) for every source.
+
+**The state.** f = ψ/ψ₀ and |ψ|² on a slice of normal coordinates, drawn over the contours of ψ₀². The inputs are the
+`helike cone-levels` and `cone-export` files in `research/geometry-controls-20261126/states/`, with their CLI receipts
+beside them. The Hermite basis comes from `helike-quantum` (`hermite::normalized`), which the viewer now depends on.
+This is DisplayGrade.
+
+**Finding about §4's expectation.** In the h1 × h2 plane, the chiral Helike state winds **once** (winding −1.000 at
+g² 0.004, Mq 10). The export's charge compression on the pair is ∓2.000000. This plane is the plane of her one-quantum
+doublet, so f ∝ z₁ ± i z₂. The charge operator acts on this plane as twice a rotation. The picture shows one turn of
+phase, not the two turns §4 expected.
+
+**Layout audit.** Every scene was captured at 1440×900 and at the minimum window size, 960×640. Long captions are wrapped
+to their panel, and each plot reserves the measured height of its caption. The Controls board keeps a minimum width
+and scrolls sideways below it. The Geometry scene stacks its panels when narrow. The audit uses `--size WxH`.
+

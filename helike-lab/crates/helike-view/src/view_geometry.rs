@@ -23,6 +23,8 @@ pub struct GPoint {
     #[serde(rename = "Mq")]
     pub mq: i64,
     pub levels: Vec<f64>,
+    #[serde(default)]
+    pub roles: BTreeMap<String, usize>,
     pub identified: Identified,
     pub orders: BTreeMap<String, OrderData>,
     pub sources: BTreeMap<String, Source>,
@@ -90,26 +92,51 @@ pub struct GeometryView {
     pub playing: bool,
     pub selected_level: Option<usize>,
     pub show_roses: bool,
+    /// 0: spectrum and signals; 1: the state itself
+    pub tab: u8,
+    pub state: crate::view_state::StateView,
 }
 
 impl GeometryView {
-    pub fn new() -> Self {
-        Self { doc: None, head: 5.0, playing: false, selected_level: None, show_roses: true }
+    pub fn new(root: Option<std::path::PathBuf>) -> Self {
+        Self { doc: None, head: 5.0, playing: false, selected_level: None, show_roses: true, tab: 0, state: crate::view_state::StateView::new(root) }
     }
 
     pub fn accept(&mut self, f: helike_stream::Frame) {
         if let Ok(d) = serde_json::from_value::<GeometryDoc>(f.data.clone()) {
             let n = d.points.len().max(1) as f32;
             self.head = self.head.min(n - 1.0);
+            if let Some(p) = d.points.first() {
+                self.state.roles = p.roles.iter().map(|(k, v)| (k.clone(), *v)).collect();
+            }
             self.doc = Some((f, d));
         }
     }
 
     pub fn ready(&self) -> bool {
-        self.doc.is_some()
+        if self.tab == 1 {
+            self.state.slice.is_some() || self.state.error.is_some()
+        } else {
+            self.doc.is_some()
+        }
     }
 
     pub fn side_controls(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            for (t, name) in [(0u8, "Spectrum and signals"), (1, "The state")] {
+                if ui.selectable_label(self.tab == t, name).clicked() {
+                    self.tab = t;
+                    if t == 1 && self.state.slice.is_none() {
+                        self.state.dirty = true;
+                    }
+                }
+            }
+        });
+        ui.add_space(8.0);
+        if self.tab == 1 {
+            self.state.side_controls(ui);
+            return;
+        }
         ui.label(eyebrow("Run through the controls"));
         let n = self.doc.as_ref().map(|d| d.1.points.len()).unwrap_or(1).max(1);
         ui.horizontal(|ui| {
@@ -152,6 +179,15 @@ impl GeometryView {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
+        if self.tab == 1 {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(RichText::new("The state itself").size(19.0).color(INK));
+                ui.add_space(8.0);
+                ui.label(caption("the slow function f = ψ/ψ₀ over the ground state's contours, on a slice of normal coordinates"));
+            });
+            self.state.ui(ui);
+            return;
+        }
         let Some((_, doc)) = &self.doc else {
             ui.label(RichText::new("No geometry export found. Run: python scripts/export_helike_geometry.py research/gluing-check-20261126/controls research/geometry-controls-20261126/geometry.json").color(RIVAL));
             return;
@@ -170,22 +206,32 @@ impl GeometryView {
             ui.ctx().request_repaint();
         }
         let doc = doc.clone();
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new("The controls, as geometry").size(19.0).color(INK));
             ui.add_space(8.0);
             ui.label(caption("the levels, what they are made of, and how their signals fall, through the control points"));
         });
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             crate::status_chip(ui, self.doc.as_ref().map(|x| &x.0));
             ui.label(caption("research/geometry-controls-20261126/geometry.json · scripts/export_helike_geometry.py · floating point, not a bound"));
         });
         ui.add_space(10.0);
+        // wide: ladder beside the panels; narrow: stacked, and the scene scrolls (nothing is squeezed into overlap)
         let avail = ui.available_size();
-        let (rect, resp) = ui.allocate_exact_size(Vec2::new(avail.x, avail.y.max(660.0)), Sense::click());
+        let wide = avail.x >= 1100.0;
+        egui::ScrollArea::vertical().id_salt("geometry").auto_shrink([false, false]).show(ui, |ui| {
+        let w = ui.available_width().max(620.0);
+        let total_h = if wide { avail.y.max(660.0) } else { 560.0 + 20.0 + 760.0 };
+        let (rect, resp) = ui.allocate_exact_size(Vec2::new(w, total_h), Sense::click());
         let p = ui.painter_at(rect);
-        let left_w = (rect.width() * 0.44).clamp(460.0, 760.0);
-        let ladder = Rect::from_min_size(rect.min, Vec2::new(left_w, rect.height()));
-        let right = Rect::from_min_max(Pos2::new(ladder.right() + 28.0, rect.top()), rect.max);
+        let (ladder, right) = if wide {
+            let left_w = (rect.width() * 0.44).clamp(460.0, 760.0);
+            let l = Rect::from_min_size(rect.min, Vec2::new(left_w, rect.height()));
+            (l, Rect::from_min_max(Pos2::new(l.right() + 28.0, rect.top()), rect.max))
+        } else {
+            let l = Rect::from_min_size(rect.min, Vec2::new(rect.width(), 560.0));
+            (l, Rect::from_min_max(Pos2::new(rect.left(), l.bottom() + 20.0), rect.max))
+        };
         let click = if resp.clicked() { resp.interact_pointer_pos() } else { None };
         self.draw_ladder(&p, ladder, &doc, click, resp.hover_pos());
         let pt = &doc.points[self.head.round() as usize];
@@ -197,6 +243,7 @@ impl GeometryView {
         self.draw_roses(&p, roses, pt);
         octave_circle(&p, circle, pt, &doc);
         draw_heat(&p, heat, pt);
+        });
     }
 
     fn draw_ladder(&mut self, p: &egui::Painter, r: Rect, doc: &GeometryDoc, click: Option<Pos2>, hover: Option<Pos2>) {

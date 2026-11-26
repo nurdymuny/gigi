@@ -96,7 +96,7 @@ impl ControlsView {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             ui.add_space(4.0);
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label(RichText::new("Registered controls").size(19.0).color(INK));
                 ui.add_space(8.0);
                 ui.label(caption("what each receipt says, beside what was predicted before it ran"));
@@ -111,7 +111,8 @@ impl ControlsView {
                 return;
             }
             ui.add_space(10.0);
-            self.board(ui);
+            // below its minimum width the board scrolls sideways rather than letting columns overlap
+            egui::ScrollArea::horizontal().id_salt("board").show(ui, |ui| self.board(ui));
             ui.add_space(18.0);
             let w = ui.available_width();
             if w > 980.0 {
@@ -139,8 +140,9 @@ impl ControlsView {
         let label_w = 190.0;
         let verdict_w = 150.0;
         let gap = 8.0;
-        let width = ui.available_width();
-        let col_w = ((width - label_w - verdict_w - gap * 6.0) / 5.0).max(118.0);
+        let min_col = 128.0;
+        let width = ui.available_width().max(label_w + verdict_w + gap * 6.0 + 5.0 * min_col);
+        let col_w = (width - label_w - verdict_w - gap * 6.0) / 5.0;
         // column heads
         let (head, _) = ui.allocate_exact_size(Vec2::new(width, 18.0), Sense::hover());
         let p = ui.painter();

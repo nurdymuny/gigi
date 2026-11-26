@@ -45,51 +45,90 @@ the sphere.
 
 ## 3. What others have done (the map I am working inside)
 
+*Citations checked on 26 November against publisher pages, arXiv abstracts and the authors' own texts. Where a
+source could not be read in full, the scope is stated from what could be read.*
+
 **The constructive programme (existence).**
-- Glimm and Jaffe and collaborators built interacting quantum field theories in two and three dimensions (φ⁴ and
-  related models). Four dimensions resisted.
-- For Yang–Mills in four dimensions, Bałaban's renormalization-group series (Commun. Math. Phys., mid-1980s) proved
-  ultraviolet stability for lattice Yang–Mills in a finite box. As far as I know it is the deepest rigorous progress
-  on the existence half (*verify* exact scope).
-- Magnen, Rivasseau and Sénéor constructed four-dimensional Yang–Mills with an infrared cutoff (Commun. Math. Phys.
-  155, 1993; *verify*).
+- Glimm, Jaffe and collaborators built interacting quantum field theories in two and three dimensions (φ⁴ and related
+  models). Four dimensions resisted.
+- **Bałaban** (Commun. Math. Phys., 1983–89; the four-dimensional ultraviolet-stability papers are 1987–89: CMP 109
+  (1987) 249; 116 (1988) 1; 119 (1988) 243; 122 (1989) 175 and 355) gave a renormalization-group construction for
+  pure four-dimensional lattice Yang–Mills in a finite periodic box. It proves **ultraviolet stability**: upper and
+  lower bounds on the normalised partition function and effective actions, uniform in the lattice spacing.
+  - **Not done:** continuum correlation functions or Wilson loops, the existence of the limit itself, the
+    Osterwalder–Schrader axioms, infinite volume, a mass gap.
+- **Magnen, Rivasseau and Sénéor**, "Construction of YM₄ with an infrared cutoff", Commun. Math. Phys. 155 (1993)
+  325–383. They construct the Schwinger functions of pure SU(2) Yang–Mills in four dimensions, in the trivial
+  topological sector, with the ultraviolet cutoff removed and an infrared cutoff kept. They used a continuum momentum
+  cutoff, regularised axial gauge for large fields, and non-perturbative Slavnov identities. The OS axioms are not
+  established, because the infrared cutoff is never removed.
 - Two-dimensional Yang–Mills is exactly solvable (Migdal; Gross, King and Sengupta; and others).
 
 **The geometry of the space of field shapes.**
-- Gribov (1978) showed that gauge fixing cannot pick one representative per orbit: the space of fields modulo gauge
-  is *folded*.
-- Singer (1978) showed this is topological, not a defect of a method.
-- Babelon and Viallet (Commun. Math. Phys. 81, 1981) computed the curvature of the orbit space (*verify* details).
-- Feynman (Nucl. Phys. B188, 1981) argued qualitatively that in 2+1 dimensions this geometry makes the configuration
-  space effectively bounded, so that fluctuations have a lowest note: a gap.
-- Karabali, Kim and Nair (Nucl. Phys. B524, 1998, and related work) turned that picture into calculations of the 2+1
-  string tension and vacuum wavefunctional. These are not proofs (*verify*).
+- **Gribov**, "Quantization of non-Abelian gauge theories", Nucl. Phys. B139 (1978) 1–19, showed that gauge fixing
+  cannot pick one representative per orbit: the space of fields modulo gauge is *folded*.
+- **Singer**, "Some remarks on the Gribov ambiguity", Commun. Math. Phys. 60 (1978) 7–12, showed this is topological,
+  not a defect of a method.
+- **Babelon and Viallet**, "The Riemannian geometry of the configuration space of gauge theories", Commun. Math.
+  Phys. 81 (1981) 515–525, computed the metric, connection, curvature tensor and sectional curvature of the orbit
+  space, and tied the Gribov horizon to its focal points.
+- The **sign** of that curvature I take from Orland (hep-th/0402003, 2004): sectional, Ricci and scalar curvature are
+  formally non-negative (O'Neill-type). This is in infinite dimensions, and regularisation is needed. Vergeles
+  (Lett. Math. Phys., 1983) reports a positive Ricci tensor.
+- **Feynman**, "The qualitative behavior of Yang–Mills theory in 2+1 dimensions", Nucl. Phys. B188 (1981) 479, argued
+  qualitatively that this geometry makes the configuration space effectively bounded, so that fluctuations have a
+  lowest note: a gap.
+- **Karabali and Nair**, Nucl. Phys. B464 (1996) 135–152, and **Karabali, Kim and Nair**, Nucl. Phys. B524 (1998)
+  661–694 and Phys. Lett. B434 (1998) 103–109, turned that picture into a gauge-invariant Hamiltonian analysis in 2+1
+  dimensions. It has a mass gap in the kinetic term and a string tension "in very good agreement" with lattice
+  results. These are physics approximations, not proofs.
 
 **Small volume (the bridge).**
-- Lüscher (Nucl. Phys. B219, 1983) showed that in a small box the low-energy physics of Yang–Mills reduces, to
-  leading order, to a finite-dimensional quantum system of the constant modes, dressed by the stiff ones.
-- Koller and van Baal (Nucl. Phys. B302, 1988) followed this into larger boxes, where tunnelling between
-  gauge-equivalent vacua and the sphaleron pass shape the spectrum.
-- On the three-sphere, van Baal and Hari Dass (Nucl. Phys. B385, 1992) treated the constant-mode potential and its θ
-  boundary. My Phase 1–2 reproduce their eqs. (54), (88), (92) and (101).
-- Van den Heuvel with van Baal (hep-lat/9604017 and related papers; Leiden thesis 1996) computed glueballs on S³,
-  reporting a 0⁺/2⁺ crossing for f = g²(R)/2π² > 0.3. They read it as a breakdown of the one-loop effective
-  Hamiltonian.
-- Kumar, Lechtenfeld and Picanço Costa (Nucl. Phys. B973, 2021) have, on the round sphere, the closed form that
-  matches my λ = h² − B on the isotropic slice.
-- Van Baal's review "QCD in a finite volume" (hep-ph/0008206) is the overview.
+- **Lüscher**, "Some analytic results concerning the mass spectrum of Yang–Mills gauge theories on a torus", Nucl.
+  Phys. B219 (1983) 233–261: in a small box, the low-energy physics reduces at weak coupling to the constant modes,
+  dressed by the stiff ones. The expansion is worked to one loop.
+- **Koller and van Baal**, "A non-perturbative analysis in finite volume gauge theory", Nucl. Phys. B302 (1988) 1–64,
+  followed this into larger boxes. There, tunnelling between gauge-equivalent vacua and the sphaleron shape the
+  spectrum.
+- **van Baal and Hari Dass**, "The theta dependence beyond steepest descent", Nucl. Phys. B385 (1992) 185–226, treated
+  the three-sphere constant-mode potential and its θ boundary. My Phase 1–2 reproduce their eqs. (54), (88), (92) and
+  (101).
+- **van den Heuvel**, "One-loop effective action for SU(2) gauge theory on S³", Phys. Lett. B386 (1996) 233–240
+  (hep-lat/9604017), computed glueballs on S³. Near f = g²(R)/2π² ≈ 0.25 he found m(2⁺)/m(0⁺) ≈ 1.5, in agreement
+  with the lattice. He reads the scalar/tensor crossing beyond f = 0.3 explicitly as **a sign that the approximation
+  breaks down, not physics**. See also his "Glueballs on the three-sphere", hep-lat/9608101 (Nucl. Phys. B488,
+  1997).
+- **Kumar, Lechtenfeld and Picanço Costa**, "Instability of cosmic Yang–Mills fields", Nucl. Phys. B973 (2021) 115583,
+  has the round-sphere closed form that matches my λ = h² − B on the isotropic slice.
+- **van Baal**, "QCD in a finite volume" (hep-ph/0008206; Ioffe Festschrift, World Scientific 2001), is the overview.
 
-**Scaling and step scaling.** Lüscher, Weisz and Wolff (Nucl. Phys. B359, 1991) defined the running coupling *by the
-finite box itself* and measured how it changes as the box doubles. Chaining doublings walks numerically from the
-small perturbative box to the large hadronic one.
+**Scaling and step scaling.**
+- **Lüscher, Weisz and Wolff**, "A numerical method to compute the running coupling in asymptotically free
+  theories", Nucl. Phys. B359 (1991) 221–243, defined the coupling *by the finite box itself* and measured its change
+  as the box doubles. This was first done for the O(3) sigma model.
+- The SU(2) gauge theory followed (Lüscher, Sommer, Weisz and Wolff, Nucl. Phys. B389, 1993).
 
-**Lattice spectroscopy.** Large-scale lattice computations put the lightest glueball (0⁺⁺) of pure SU(3) near
-1.7 GeV (Morningstar–Peardon, Phys. Rev. D60, 1999, and later work). Physically, the gap is not in doubt; its proof
-is.
+**Lattice spectroscopy.** **Morningstar and Peardon**, "The glueball spectrum from an anisotropic lattice study",
+Phys. Rev. D60 (1999) 034509, give SU(3) glueballs below 4 GeV, extrapolated to the continuum. The lightest 0⁺⁺ is
+near 1.7 GeV. Physically, the gap is not in doubt; its proof is.
 
-**Probability.** Chatterjee and collaborators have opened a probabilistic attack on lattice Yang–Mills (from 2016).
-It includes rigorous large-N and strong-coupling results, and a careful restatement of what remains (*verify*
-specifics).
+**Probability (from 2015).** **Chatterjee** and collaborators have produced rigorous results of four kinds:
+- large-N strong-coupling results (CMP 366, 2019; arXiv 2015);
+- weak-coupling Wilson loops for finite gauge groups (Chatterjee; Cao);
+- a conditional confinement mechanism, where a strengthened mass gap would imply an area law (CMP 385, 2021);
+- Gaussian scaling limits with a Higgs field.
+
+"Yang–Mills for probabilists" (arXiv:1803.01950) is the careful restatement of what remains. None of it constructs a
+non-Gaussian four-dimensional continuum theory or proves a mass gap at weak coupling.
+
+**A curvature route to the gap, already proved where it is easiest.** **Shen, Zhu and Zhu**, "A stochastic analysis
+approach to lattice Yang–Mills at strong coupling", Commun. Math. Phys. 400 (2023) 805–851, prove a unique
+infinite-volume measure, log-Sobolev and Poincaré inequalities, and exponential decay of correlations (a positive
+mass gap) for lattice Yang–Mills at **strong coupling**, in any dimension d > 1, uniformly in N.
+- The mechanism is a Bakry–Émery-type curvature condition: the Ricci curvature of the group dominates the Hessian of
+  the Wilson action when the coupling is strong.
+- This is the dimension-free geometric mechanism my heat-signal registration (T5) probes in the reduction. The hard
+  case is the opposite regime, weak coupling, where the continuum limit lives.
 
 ## 4. My theory
 

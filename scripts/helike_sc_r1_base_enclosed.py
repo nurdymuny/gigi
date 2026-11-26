@@ -29,10 +29,15 @@ def arg(name):
 def main():
     g2 = float(arg("g2")); t0 = time.time()
     M = r1.Model(g2)
-    C3, vJ, bu, bv = arb(arg("c3")), arb(arg("vj")), arb(arg("beta-u")), arb(arg("beta-v"))
+    C3 = arb(arg("c3")) if any(a.startswith("--c3=") for a in sys.argv) else arb(0)
+    vJ, bu, bv = arb(arg("vj")), arb(arg("beta-u")), arb(arg("beta-v"))
     Lr = (arb(LU) ** 2 + arb(LV) ** 2).sqrt()
     w2s_min = min(M.w2[:3], key=lambda x: float(x.mid())); w2t_min = min(M.w2[3:], key=lambda x: float(x.mid()))
     w2s = arb((w2s_min - 2 * C3 * Lr).lower()); w2t = arb((w2t_min - 2 * C3 * Lr).lower())
+    fold = [a.split("=", 1)[1] for a in sys.argv if a.startswith("--fold=")]
+    if fold:                                    # ray-aware fold (R1.8.4): per-block reductions (a, b), D >= 0 proved
+        fa, fb = (arb(x) for x in fold[0].split(","))
+        w2s = arb((w2s_min - fa).lower()); w2t = arb((w2t_min - fb).lower())
     rho_b = arb(E0REL[g2]) + arb(RHO_B_REL)
     print(f"=== g2 = {g2}: w2s = {float(w2s.mid()):.6f}  w2t = {float(w2t.mid()):.6f}  vJ = {arg('vj')}  "
           f"beta_u = {arg('beta-u')}  beta_v = {arg('beta-v')}  rho_b = {float(rho_b.mid()):.5f}", flush=True)

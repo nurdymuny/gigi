@@ -62,3 +62,17 @@ VSCF-like coefficients fit) and η a smooth cutoff that is ≡ 1 well inside the
   larger steps are possible if the planner is re-run with the cut-Hermite trial quality.
 - **Interval widening** in a 2,000-function pencil. The verified-eigenvalue route must use the floating eigenvectors as
   a preconditioner, or the Gershgorin discs will be too wide.
+
+## R2.0 result, 26 November: done
+
+This used `scripts/helike_sc_r1_base_enclosed.py --fold=a,b`, with ω²_red at the lower endpoint of w²_min − a (and
+likewise for the stiff block), the enclosed β, and v_J. Log: `research/sc-r1-20261125/r2_0_folded_base_enclosed.txt`.
+
+| | g² = 0.002, fold (0.36, 0.17) | g² = 0.004, fold (0.45, 0.25) |
+|---|---|---|
+| enclosed product levels below ρ_b (none ambiguous) | 23 | 23 |
+| base λ₁ / λ₁₁ | 4.94169 / 7.26443 | 4.83880 / 7.14161 |
+| floating Galerkin count, max diff | 23, 1.4·10⁻⁹ | 23, 1.1·10⁻⁹ |
+| max enclosure radius | 9.1·10⁻¹⁴ | 9.1·10⁻¹⁴ |
+
+For comparison, the uniform base had 38 and 92 levels, with λ₁₁ of 6.83 and 6.09 (R1.8.3).

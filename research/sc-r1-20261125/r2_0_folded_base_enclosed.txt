@@ -1,0 +1,6 @@
+=== g2 = 0.002: w2s = 0.828333  w2t = 5.733333  vJ = -0.000939  beta_u = 0.046285  beta_v = 0.003756  rho_b = 7.72917
+  soft radial levels 6 (l < 4), stiff 2 (l < 3); product levels below rho_b: 23 (ambiguous at rho_b: 0); base lambda_1 = 4.941690, lambda_11 = 7.264430; max radius 9.1e-14; 130 s
+  floating Galerkin count at the same constants: 23; max |Galerkin - enclosure| over the first 30: 1.4e-09
+=== g2 = 0.004: w2s = 0.738333  w2t = 5.653333  vJ = -0.001616  beta_u = 0.071876  beta_v = 0.005457  rho_b = 7.72626
+  soft radial levels 6 (l < 4), stiff 2 (l < 3); product levels below rho_b: 23 (ambiguous at rho_b: 0); base lambda_1 = 4.838798, lambda_11 = 7.141608; max radius 9.1e-14; 105 s
+  floating Galerkin count at the same constants: 23; max |Galerkin - enclosure| over the first 30: 1.1e-09

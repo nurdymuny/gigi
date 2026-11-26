@@ -30,5 +30,6 @@ pub mod operator;
 pub mod projection;
 pub mod residual;
 pub mod ritz;
+pub mod m8;
 pub mod run;
 pub mod temple;

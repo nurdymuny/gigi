@@ -190,6 +190,16 @@ enum Cmd {
         #[arg(long)]
         levels_out: PathBuf,
     },
+    /// M8: signed physical overlaps <Psi_a(A), Psi_b(B)> between every level of two cone-levels exports, on B's grid
+    /// at the given quadrature order (A3.1). Report-only data.
+    ConeOverlap {
+        #[arg(long)]
+        a: PathBuf,
+        #[arg(long)]
+        b: PathBuf,
+        #[arg(long)]
+        order: usize,
+    },
     ConeTemple {
         #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
         states: PathBuf,
@@ -342,6 +352,16 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
             (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "levels_out": levels_out,
                     "registration": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md"}),
              json!({"levels": e.levels, "levels_sha256_lf": helike_stream::text_sha256(levels_out)}))
+        }
+        Cmd::ConeOverlap { a, b, order } => {
+            let la = helike_quantum::m8::Levels::from_json(&std::fs::read_to_string(a).map_err(|x| x.to_string())?)?;
+            let lb = helike_quantum::m8::Levels::from_json(&std::fs::read_to_string(b).map_err(|x| x.to_string())?)?;
+            let t0 = std::time::Instant::now();
+            let o = helike_quantum::m8::overlap(&la, &lb, *order)?;
+            (json!({"a": a, "b": b, "order": order, "a_sha256_lf": helike_stream::text_sha256(a),
+                    "b_sha256_lf": helike_stream::text_sha256(b),
+                    "registration": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md"}),
+             json!({"shape": [la.k, lb.k], "overlap": o, "seconds": t0.elapsed().as_secs_f64()}))
         }
         Cmd::ConeTemple { states, inputs, assume, delta, g2, mq } => {
             let sep = match assume.as_deref() {

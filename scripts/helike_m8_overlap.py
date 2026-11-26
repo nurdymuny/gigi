@@ -60,10 +60,28 @@ def overlap_matrix(XA, colsA, XB, colsB, order):
     return pA.T @ (fac[:, None] * pB)
 
 
+def rust_overlap(pathA, pathB, order, cache_dir):
+    """The Rust port (helike cone-overlap): the full signed matrix, cached on disk by export hashes and order.
+    Python's overlap_matrix stays as the reference; their parity is a registered test."""
+    import hashlib, json
+    h = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()[:16]
+    cache = Path(cache_dir) / f"overlap_{h(pathA)}_{h(pathB)}_o{order}.json"
+    if not cache.exists():
+        subprocess.run([str(BIN), "--out", str(cache), "cone-overlap", "--a", str(pathA), "--b", str(pathB),
+                        "--order", str(order)], check=True, capture_output=True, text=True)
+    r = json.loads(cache.read_text())["results"]
+    return np.array(r["overlap"]).reshape(r["shape"])
+
+
 def resolved_overlap(XA, colsA, XB, colsB, orders=(10, 12)):
     """Squared overlaps at the fine order, with the order-10 vs order-12 seam (A3.1: within 1e-4)."""
-    Oc = overlap_matrix(XA, colsA, XB, colsB, orders[0]) ** 2
-    Of = overlap_matrix(XA, colsA, XB, colsB, orders[1]) ** 2
+    if "path" in XA and "path" in XB:
+        cache = Path(XB["path"]).parent
+        Oc = rust_overlap(XA["path"], XB["path"], orders[0], cache)[np.ix_(colsA, colsB)] ** 2
+        Of = rust_overlap(XA["path"], XB["path"], orders[1], cache)[np.ix_(colsA, colsB)] ** 2
+    else:
+        Oc = overlap_matrix(XA, colsA, XB, colsB, orders[0]) ** 2
+        Of = overlap_matrix(XA, colsA, XB, colsB, orders[1]) ** 2
     seam = float(np.max(np.abs(Of - Oc)))
     if seam > SEAM:
         raise ArithmeticError(f"overlap quadrature seam {seam:.2e} exceeds {SEAM}")
@@ -87,7 +105,9 @@ class PhysicalFamily:
             subprocess.run([str(BIN), "--out", str(path.with_suffix(".receipt.json")), "cone-levels", "--s", repr(s),
                             "--t", str(self.t), "--g2", str(self.g2), "--mq", str(self.mq), "--levels-out", str(path)],
                            check=True, capture_output=True, text=True)
-        return gm.load_levels(path)
+        X = gm.load_levels(path)
+        X["path"] = str(path)
+        return X
 
     def sample(self, s):
         X = self.export(s)

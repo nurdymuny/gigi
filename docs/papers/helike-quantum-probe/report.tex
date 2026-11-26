@@ -769,6 +769,32 @@ windows, each containing a true eigenvalue. Ticks: Helike's upper bound and the
 competitor's Kato--Temple lower bound under $S_C$. ORDERED means the gold tick
 lies right of the teal one.}
 
+\medskip
+\noindent\textbf{How these results are made.} Each number in this report is
+produced under one protocol. The protocol is the main reason to trust them.
+\begin{itemize}\setlength\itemsep{1pt}
+\item \textbf{Registered first.} Before any code is run or any value is seen,
+each experiment is written down: what is computed, every tolerance, the
+decision rule, and predictions. The registration is committed and dated.
+\item \textbf{Amended in the open.} A change is a dated amendment, never a
+silent edit. An amendment made after a value was seen says so, names the value,
+and is applied to every point alike.
+\item \textbf{Refusals are results.} When a check cannot be resolved, the
+verdict is OPEN. It is never rounded up to a pass. Superseded runs are kept,
+labelled, and not deleted.
+\item \textbf{Mechanisms must be killed.} Every decision rule has tests, and
+deliberately broken versions of it (``mutants'') that the tests must catch.
+No result is reported from code whose mutants survive.
+\item \textbf{Seams are varied on purpose.} Quadrature order, basis size,
+cutoff radius and identification reference are changed deliberately. A reading
+that moves with the stitching belongs to the stitching, not the physics.
+\item \textbf{Controls before the grid.} Each experiment must pass at the weak
+coupling controls, where every bound can be checked, before it touches the
+registered grid.
+\end{itemize}
+The registrations, amendments, receipts and test logs are in the repository
+(\texttt{docs/research/}, \texttt{research/}), each pinned by its hash.
+
 \newpage
 \pagetitle{15 / TOWARD S$_C$}{Fold the base the way the geometry folds}
 {\small\color{teal}\textbf{Update, 26 November 2026.} Page 15 is new.}\par\smallskip

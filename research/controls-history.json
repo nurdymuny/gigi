@@ -1,0 +1,58 @@
+[
+ {
+  "id": "§5.5",
+  "date": "2026-11-26",
+  "title": "Gluing-invariance qualifier registered",
+  "doc": "docs/research/helike-flux-method-amendment-2026-11-25.md",
+  "changed": [
+   "gluing"
+  ]
+ },
+ {
+  "id": "§5.6",
+  "date": "2026-11-26",
+  "title": "S1/S2 compare degenerate clusters; the relative gate tightens as the basis converges",
+  "doc": "docs/research/helike-flux-method-amendment-2026-11-25.md",
+  "changed": [
+   "gluing"
+  ],
+  "supersedes": [
+   {
+    "suite": "gluing",
+    "column": 1,
+    "report": "research/gluing-check-20261126/controls/report.json",
+    "verdict_pointer": "/points/1/verdict",
+    "note": "first stage: S1 compared raw level indices (Helike's partners flipped)"
+   }
+  ]
+ },
+ {
+  "id": "§5.7",
+  "date": "2026-11-26",
+  "title": "Domain gate re-registered as the cut energy e_cut = ℓ + 2tr ≤ 3·10⁻⁴",
+  "doc": "docs/research/helike-flux-method-amendment-2026-11-25.md",
+  "changed": [
+   "domain",
+   "gluing"
+  ],
+  "supersedes": [
+   {
+    "suite": "gluing",
+    "column": 3,
+    "report": "research/gluing-check-20261126/controls/report.json",
+    "verdict_pointer": "/points/3/verdict",
+    "note": "first stage: S1 raw indices; S5 under the retired relative gate (ℓ/r 1.39·10⁻³)"
+   }
+  ]
+ },
+ {
+  "id": "§5.8",
+  "date": "2026-11-26",
+  "title": "Resolved budget failure reads FAIL; S5 compares the full gate verdict",
+  "doc": "docs/research/helike-flux-method-amendment-2026-11-25.md",
+  "changed": [
+   "domain",
+   "gluing"
+  ]
+ }
+]

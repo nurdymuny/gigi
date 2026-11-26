@@ -196,21 +196,26 @@ def qualify(grid_verdict, qualifier):
 def controls(out_dir):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     rep = {"stage": "controls (registered first stage of §5.5)", "points": []}
+    import helike_progress as hp                 # viewer progress lines only (Controls scene spec section 5)
     for g2 in (0.002, 0.004):
         ladder = []
         recs = {}
         for mq in (6, 8, 10):
+            if mq in (8, 10):
+                hp.emit(out, "gluing", g2, mq, "cone-heat solve")
             r = hs.cone_heat(1.15, 3.0, g2, mq)
             recs[mq] = r
             ident = r["identification"]
             ladder.append({"Mq": mq, "helike": {"gap": ident["helike"]["gap"]}, "competitor": {"gap": ident["competitor"]["gap"]}})
             (out / f"cone_heat_g{g2}_Mq{mq}.json").write_text(json.dumps(r) + "\n")
         for mq in (8, 10):
+            hp.emit(out, "gluing", g2, mq, "seams S1-S5 (S5: domain gate at two radii)")
             seams = {"S1": s1(recs[mq]), "S2": s2(recs[mq]),
                      "S3": s3([x for x in ladder if x["Mq"] <= mq]) if mq == 10 else {"holds": None, "note": "ladder ends at 10"},
                      "S5": s5(1.15, 3.0, g2, mq)}
             v, moved = point_verdict(seams)
             rep["points"].append({"g2": g2, "Mq": mq, "seams": seams, "verdict": v, "moved": moved})
+            hp.emit(out, "gluing", g2, mq, "done")
             (out / "report.json").write_text(json.dumps(rep, indent=1, default=str) + "\n")
     rep["controls_invariant"] = all(p["verdict"] == "GLUING-INVARIANT" for p in rep["points"])
     (out / "report.json").write_text(json.dumps(rep, indent=1, default=str) + "\n")

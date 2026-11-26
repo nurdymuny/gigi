@@ -1,0 +1,16 @@
+{
+ "suite": "gluing",
+ "predictions": [
+  {
+   "quote": "Expectation, stated now: invariant at all four.",
+   "source": "amendment §5.5, controls first",
+   "check": {
+    "op": "equals",
+    "pointers": [
+     "/controls_invariant"
+    ],
+    "value": true
+   }
+  }
+ ]
+}

@@ -1,26 +1,26 @@
 //! helike-view: draws what the solver streams. Scenes: the ladder and the flux fan; Helike on the three-sphere; the
-//! edge forming. Every number drawn comes from a frame; every panel shows its frame's status label.
+//! edge forming; the registered controls. Every number drawn comes from a frame; every panel shows its frame's status
+//! label.
 
+mod controls;
 mod solver;
+mod theme;
+mod view_controls;
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Pos2, Rect, Sense, Stroke, StrokeKind, Vec2};
 use helike_core::helike::{berger_xy, Member, Spectrum};
 use helike_stream::{Frame, Status};
 use solver::{EdgeMapData, LadderData, ProbeData, Request, SphereData};
 
-// Palette: a cool ink for Helike, a warm amber for her competitors, neutral slate for structure.
-const INK: Color32 = Color32::from_rgb(222, 228, 232);
-const MUTED: Color32 = Color32::from_rgb(132, 146, 156);
-const RULE: Color32 = Color32::from_rgb(58, 66, 74);
-const HELIKE: Color32 = Color32::from_rgb(88, 170, 236);
-const RIVAL: Color32 = Color32::from_rgb(232, 160, 72);
-const PROVED: Color32 = Color32::from_rgb(120, 196, 140);
+// Palette (theme.rs): a cool ink for Helike, a warm amber for her competitors, neutral slate for structure.
+use theme::{HELIKE, INK, MUTED, PROVED, RIVAL, RULE};
 
 #[derive(PartialEq, Clone, Copy)]
 enum Scene {
     Ladder,
     Sphere,
     Edge,
+    Controls,
 }
 
 struct App {
@@ -49,6 +49,7 @@ struct App {
     probe: Option<(Frame, ProbeData)>,
     edge_tex: Option<egui::TextureHandle>,
     edge_tex_seq: u64,
+    controls: view_controls::ControlsView,
     dirty_ladder: bool,
     dirty_sphere: bool,
     dirty_edge: bool,
@@ -65,6 +66,7 @@ fn parse_shot() -> (Scene, Option<std::path::PathBuf>) {
             let scene = match a[k + 1].as_str() {
                 "sphere" => Scene::Sphere,
                 "edge" => Scene::Edge,
+                "controls" | "controls-lower" => Scene::Controls,
                 _ => Scene::Ladder,
             };
             (scene, Some(a[k + 2].clone().into()))
@@ -75,10 +77,17 @@ fn parse_shot() -> (Scene, Option<std::path::PathBuf>) {
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // One deliberate visual world: a dark instrument panel (the palette below is tuned for it).
-        cc.egui_ctx.set_theme(egui::Theme::Dark);
+        // One deliberate visual world: a dark instrument panel (theme.rs).
+        theme::apply(&cc.egui_ctx);
         let ctx = cc.egui_ctx.clone();
         let solver = solver::spawn(move || ctx.request_repaint());
+        let root = std::env::current_dir()
+            .ok()
+            .and_then(|d| controls::find_root(&d))
+            .or_else(|| std::env::current_exe().ok().and_then(|e| e.parent().and_then(controls::find_root)));
+        if let Some(r) = &root {
+            let _ = solver.tx.send(Request::LoadControls(r.clone()));
+        }
         let (x, y) = berger_xy(3.0);
         let (scene, shot) = parse_shot();
         Self {
@@ -106,6 +115,11 @@ impl App {
             probe: None,
             edge_tex: None,
             edge_tex_seq: 0,
+            controls: {
+                let mut v = view_controls::ControlsView::new(root);
+                v.start_at_bottom = std::env::args().any(|a| a == "controls-lower");
+                v
+            },
             dirty_ladder: true,
             dirty_sphere: true,
             dirty_edge: true,
@@ -119,6 +133,7 @@ impl App {
                 "sphere" => self.sphere = serde_json::from_value(f.data.clone()).ok().map(|d| (f, d)),
                 "edge" => self.edge = serde_json::from_value(f.data.clone()).ok().map(|d| (f, d)),
                 "probe" => self.probe = serde_json::from_value(f.data.clone()).ok().map(|d| (f, d)),
+                "controls" | "controls-history" => self.controls.accept(f),
                 _ => {}
             }
         }
@@ -153,21 +168,28 @@ fn status_chip(ui: &mut egui::Ui, f: Option<&Frame>) {
         Some(Status::IntervalEnclosure) => ("INTERVAL_ENCLOSURE · bounds, not a pass", PROVED),
         None => ("waiting for the solver", MUTED),
     };
-    ui.label(egui::RichText::new(txt).color(col).monospace().size(11.0));
+    theme::pill(ui, txt, col);
     if let Some(f) = f {
-        ui.label(egui::RichText::new(format!("frame #{}", f.seq)).color(MUTED).monospace().size(11.0));
+        ui.label(egui::RichText::new(format!("frame #{}", f.seq)).color(theme::FAINT).monospace().size(10.5));
     }
 }
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.pump();
-        egui::Panel::top("scenes").show(ui, |ui| {
+        let bar = egui::Frame::new().fill(theme::GROUND).inner_margin(egui::Margin::symmetric(16, 10)).stroke(Stroke::new(1.0, theme::HAIRLINE));
+        egui::Panel::top("scenes").frame(bar).show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("helike-lab").strong().color(HELIKE));
-                ui.separator();
-                for (s, name) in [(Scene::Ladder, "Ladder and flux fan"), (Scene::Sphere, "Helike on the three-sphere"), (Scene::Edge, "The edge forming")] {
-                    if ui.selectable_label(self.scene == s, name).clicked() {
+                ui.label(egui::RichText::new("helike").size(16.0).color(INK));
+                ui.label(egui::RichText::new("lab").size(16.0).color(HELIKE));
+                ui.add_space(18.0);
+                for (s, name) in [
+                    (Scene::Ladder, "Ladder and flux fan"),
+                    (Scene::Sphere, "Helike on the three-sphere"),
+                    (Scene::Edge, "The edge forming"),
+                    (Scene::Controls, "Controls"),
+                ] {
+                    if scene_tab(ui, self.scene == s, name).clicked() {
                         self.scene = s;
                         if s == Scene::Edge && self.edge.is_none() {
                             self.dirty_edge = true;
@@ -176,11 +198,14 @@ impl eframe::App for App {
                 }
             });
         });
-        egui::Panel::left("controls").default_size(250.0).show(ui, |ui| self.controls(ui));
-        egui::CentralPanel::default().show(ui, |ui| match self.scene {
+        let side = egui::Frame::new().fill(theme::SURFACE).inner_margin(egui::Margin::symmetric(16, 14)).stroke(Stroke::new(1.0, theme::HAIRLINE));
+        egui::Panel::left("controls").frame(side).default_size(268.0).show(ui, |ui| self.controls(ui));
+        let main = egui::Frame::new().fill(theme::GROUND).inner_margin(egui::Margin::symmetric(22, 16));
+        egui::CentralPanel::default().frame(main).show(ui, |ui| match self.scene {
             Scene::Ladder => self.draw_ladder(ui),
             Scene::Sphere => self.draw_sphere(ui),
             Scene::Edge => self.draw_edge(ui),
+            Scene::Controls => self.controls.ui(ui),
         });
         self.handle_shot(ui.ctx());
     }
@@ -193,6 +218,7 @@ impl App {
             Scene::Ladder => self.ladder.is_some(),
             Scene::Sphere => self.sphere.is_some(),
             Scene::Edge => self.edge.as_ref().is_some_and(|(_, d)| d.rows_done == d.ts.len()),
+            Scene::Controls => self.controls.ready(),
         };
         if !ready {
             ctx.request_repaint_after(std::time::Duration::from_millis(100));
@@ -225,10 +251,10 @@ impl App {
     }
 
     fn controls(&mut self, ui: &mut egui::Ui) {
-        ui.add_space(6.0);
         match self.scene {
+            Scene::Controls => self.controls.side_controls(ui),
             Scene::Ladder | Scene::Sphere => {
-                ui.label(egui::RichText::new("The family member").strong());
+                ui.label(theme::eyebrow("The family member"));
                 let mut ch = false;
                 ch |= ui.add(egui::Slider::new(&mut self.t, 0.5..=12.0).text("stretch t")).changed();
                 ch |= ui.checkbox(&mut self.on_berger, "on the Berger field").changed();
@@ -257,7 +283,7 @@ impl App {
                 }
             }
             Scene::Edge => {
-                ui.label(egui::RichText::new("The (x, t) map at fixed y").strong());
+                ui.label(theme::eyebrow("The (x, t) map at fixed y"));
                 let mut ch = ui.add(egui::Slider::new(&mut self.edge_y, 0.25..=3.0).text("cross field y")).changed();
                 ui.horizontal(|ui| {
                     ch |= ui.radio_value(&mut self.edge_which, Spectrum::A, "H + GG*").changed();
@@ -552,6 +578,22 @@ blue: she is the floor · amber: a rival undercuts her · green: ladder-proved c
     }
 }
 
+/// A scene tab: text with an underline in Helike blue when selected.
+fn scene_tab(ui: &mut egui::Ui, selected: bool, name: &str) -> egui::Response {
+    let col = if selected { INK } else { MUTED };
+    let g = ui.painter().layout_no_wrap(name.to_string(), FontId::proportional(13.0), col);
+    let (rect, resp) = ui.allocate_exact_size(Vec2::new(g.size().x + 20.0, 28.0), Sense::click());
+    let p = ui.painter();
+    if resp.hovered() && !selected {
+        p.rect_filled(rect, CornerRadius::same(5), theme::RAISED);
+    }
+    p.galley(Pos2::new(rect.left() + 10.0, rect.center().y - g.size().y / 2.0), g, col);
+    if selected {
+        p.line_segment([Pos2::new(rect.left() + 10.0, rect.bottom() - 1.0), Pos2::new(rect.right() - 10.0, rect.bottom() - 1.0)], Stroke::new(2.0, HELIKE));
+    }
+    resp
+}
+
 fn lerp(a: Color32, b: Color32, s: f32) -> Color32 {
     let m = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * s).round() as u8;
     Color32::from_rgb(m(a.r(), b.r()), m(a.g(), b.g()), m(a.b(), b.b()))
@@ -559,7 +601,9 @@ fn lerp(a: Color32, b: Color32, s: f32) -> Color32 {
 
 fn main() -> eframe::Result {
     let opts = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1280.0, 820.0]).with_title("helike-lab"),
+        // the lower-half shot uses a tall window so the detail, predictions and history fit
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size(if std::env::args().any(|a| a == "controls-lower") { [1440.0, 1900.0] } else { [1440.0, 900.0] }).with_min_inner_size([960.0, 640.0]).with_title("helike-lab"),
         renderer: eframe::Renderer::Wgpu,
         ..Default::default()
     };

@@ -1,0 +1,30 @@
+{
+ "suite": "domain",
+ "predictions": [
+  {
+   "quote": "The four controls, g² = 0.002 and 0.004 at Mq = 8 and 10: expected PASS.",
+   "source": "amendment §5.7, check 1",
+   "check": {
+    "op": "equals",
+    "pointers": [
+     "/points/0/verdict",
+     "/points/1/verdict",
+     "/points/2/verdict",
+     "/points/3/verdict"
+    ],
+    "value": "PASS"
+   }
+  },
+  {
+   "quote": "at g² = 0.004, Mq = 10, e_cut ≈ 5.6·10⁻⁶",
+   "source": "amendment §5.7, check 1",
+   "column": 3,
+   "check": {
+    "op": "rounds_to",
+    "pointer": "/points/3/states/helike_plus/cut_energy_upper",
+    "value": 5.6e-06,
+    "sig": 2
+   }
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "suite": "heat",
+ "predictions": [
+  {
+   "quote": "Controls: TONE-STABLE, and close to harmonic ratios.",
+   "source": "heat-signal registration, T2 expectation",
+   "column": 4,
+   "check": {
+    "op": "equals",
+    "pointers": [
+     "/T2_controls/helike/verdict",
+     "/T2_controls/competitor/verdict"
+    ],
+    "value": "TONE-STABLE"
+   }
+  }
+ ]
+}

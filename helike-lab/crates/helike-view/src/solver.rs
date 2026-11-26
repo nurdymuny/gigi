@@ -9,7 +9,9 @@ use helike_core::sector::Sector;
 use helike_stream::{Frame, Status};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender, TryRecvError};
+
+use crate::controls;
 
 #[derive(Clone, Debug)]
 pub enum Request {
@@ -17,6 +19,8 @@ pub enum Request {
     Sphere { t: f64, j: usize, fibres: usize, samples: usize },
     EdgeMap { y: f64, t: (f64, f64, usize), x: (f64, f64, usize), jmax: usize, which: Spectrum },
     Probe { m: Member, jmax: usize },
+    /// Read the registered control runs under this repository root and keep rescanning when their files change.
+    LoadControls(std::path::PathBuf),
 }
 
 impl Request {
@@ -26,6 +30,7 @@ impl Request {
             Request::Sphere { .. } => "sphere",
             Request::EdgeMap { .. } => "edge",
             Request::Probe { .. } => "probe",
+            Request::LoadControls(_) => "controls",
         }
     }
 }
@@ -100,11 +105,39 @@ pub fn spawn(repaint: impl Fn() + Send + 'static) -> SolverHandle {
     std::thread::spawn(move || {
         let mut seq = 0u64;
         let mut pending: Vec<Request> = vec![];
+        let mut watch: Option<(controls::Paths, Vec<(std::path::PathBuf, u64, u128)>)> = None;
+        // one frame per suite on scene "controls", plus the amendment history on "controls-history"
+        let emit_controls = |paths: &controls::Paths, seq: &mut u64| {
+            let (suites, history) = controls::load_all(paths);
+            for s in suites {
+                *seq += 1;
+                let status = if s.interval { Status::IntervalEnclosure } else { Status::Computed };
+                let _ = tx_frame.send(Frame { scene: "controls".into(), seq: *seq, status, params: serde_json::Value::Null, data: serde_json::to_value(&s).unwrap() });
+            }
+            *seq += 1;
+            let _ = tx_frame.send(Frame { scene: "controls-history".into(), seq: *seq, status: Status::Computed, params: serde_json::Value::Null, data: serde_json::to_value(&history).unwrap() });
+            repaint();
+        };
         loop {
             if pending.is_empty() {
-                match rx_req.recv() {
-                    Ok(r) => pending.push(r),
-                    Err(_) => return,
+                if let Some((paths, fp)) = watch.as_mut() {
+                    match rx_req.recv_timeout(std::time::Duration::from_millis(1000)) {
+                        Ok(r) => pending.push(r),
+                        Err(RecvTimeoutError::Timeout) => {
+                            let now = controls::fingerprint(paths);
+                            if now != *fp {
+                                *fp = now;
+                                emit_controls(paths, &mut seq);
+                            }
+                            continue;
+                        }
+                        Err(RecvTimeoutError::Disconnected) => return,
+                    }
+                } else {
+                    match rx_req.recv() {
+                        Ok(r) => pending.push(r),
+                        Err(_) => return,
+                    }
                 }
             }
             loop {
@@ -132,6 +165,12 @@ pub fn spawn(repaint: impl Fn() + Send + 'static) -> SolverHandle {
                     Request::Ladder { m, jmax } => send("ladder", serde_json::to_value(ladder(&m, jmax)).unwrap(), &mut seq),
                     Request::Sphere { t, j, fibres, samples } => send("sphere", serde_json::to_value(sphere(t, j, fibres, samples)).unwrap(), &mut seq),
                     Request::Probe { m, jmax } => send("probe", serde_json::to_value(probe(&m, jmax)).unwrap(), &mut seq),
+                    Request::LoadControls(root) => {
+                        let paths = controls::Paths { root };
+                        emit_controls(&paths, &mut seq);
+                        let fp = controls::fingerprint(&paths);
+                        watch = Some((paths, fp));
+                    }
                     Request::EdgeMap { y, t, x, jmax, which } => {
                         let ts = helike_core::roots::linspace(t.0, t.1, t.2);
                         let xs = helike_core::roots::linspace(x.0, x.1, x.2);

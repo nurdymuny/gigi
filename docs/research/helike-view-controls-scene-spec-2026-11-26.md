@@ -146,3 +146,29 @@ That view is specified when the grid's receipt format is fixed.
 The scene is a reading aid for the registered controls. It shows what the receipts say, and how each run compares with
 what was predicted before it ran. It adds no claim, and no picture it draws is evidence of anything a receipt does not
 already say.
+
+## 10. Build status (26 November)
+
+Built in `helike-view` as the fourth scene, "Controls" (`--shot controls`; `--shot controls-lower` for the detail,
+predictions and history). Modules: `controls.rs` (adapters and model), `view_controls.rs` (drawing), `theme.rs`
+(the shared look, now applied to every scene).
+
+- **Suites drawn from receipts:** domain gate (§5.7), gluing (§5.5/§5.8), heat signal. M8 and S_C R2 have no
+  controls report on this branch, so their rows show the missing receipt in amber, with the expected path.
+- **Predictions:** a `predictions.json` beside each suite, quoting its registration. A machine-readable condition
+  (equals, an inequality, or agreement to the quoted significant figures) is compared with the report value. A
+  condition that is not machine-readable stays "not yet", and its outcome is written by hand.
+- **History:** `research/controls-history.json`. The two first-stage gluing tiles that §5.6 and §5.7 replaced are
+  read from the archived report, and drawn struck through under their columns.
+- **Progress:** `scripts/helike_progress.py` appends the §5 lines. The heat-signal and gluing control runners call it.
+- **Acceptance:**
+  - **1:** every drawn value is compared bit for bit with the report, through its JSON pointer.
+  - **2 and 3:** OPEN, FAIL and reported-only checks are tested.
+  - **4:** the mechanism is tested on the gluing tiles that §5.6 and §5.7 replaced.
+  - **5:** a missing receipt is tested.
+  - **6:** not done. The M8 geometry panels (§4), including the DisplayGrade slice, wait for an M8 report and its
+    coefficient export.
+- **Not drawn because the receipt lacks it:** the domain gate's tail² and normalisation-width values. Its report
+  records only whether each budget passed, and the detail table says so.
+- **Not yet built:** the R2 interval result, drawn as an error bar against ρ_C. It waits for the R2 result file
+  format.

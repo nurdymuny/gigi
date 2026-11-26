@@ -1,0 +1,35 @@
+{
+ "suite": "m8",
+ "predictions": [
+  {
+   "quote": "Q0a holds. The residual share is ≤ 10⁻³.",
+   "source": "M8 registration §5 (unchanged in A1.5)"
+  },
+  {
+   "quote": "Q2 reproduces the dressed weights the grid reports there (about 0.97 for Helike).",
+   "source": "M8 registration §5"
+  },
+  {
+   "quote": "At the controls, π_H ≥ 0.9 for Helike and π_C ≥ 0.9 for the competitor (replacing σ ≥ 0.9).",
+   "source": "M8 amendment 2, A2.4"
+  },
+  {
+   "quote": "P_X − Δ_X is small and positive, of order g².",
+   "source": "M8 registration §5"
+  },
+  {
+   "quote": "The shape ordering matches the level ordering.",
+   "source": "M8 registration §5"
+  },
+  {
+   "quote": "At g² = 0.002 and Mq = 10, the (12, 14) seam is ≤ 10⁻³ for both channels, and the order-14 shares agree with the seen order-12 values to that tolerance.",
+   "source": "M8 amendment 4",
+   "column": 1
+  },
+  {
+   "quote": "At g² = 0.004 and Mq = 10, the same holds.",
+   "source": "M8 amendment 4",
+   "column": 3
+  }
+ ]
+}

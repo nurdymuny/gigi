@@ -240,11 +240,14 @@ def cone_heat(s, t, g2, mq):
 def controls(out_dir):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     recs = {}
+    import helike_progress as hp                 # viewer progress lines only (Controls scene spec section 5)
     for g2 in (0.002, 0.004):
         for mq in (8, 10):
+            hp.emit(out, "heat", g2, mq, "cone-heat solve")
             r = cone_heat(1.15, 3.0, g2, mq)
             recs[(g2, mq)] = r
             (out / f"cone_heat_g{g2}_Mq{mq}.json").write_text(json.dumps(r) + "\n")
+            hp.emit(out, "heat", g2, mq, "done")
     report = {"stage": "controls (registered first stage)", "points": {}}
     for g2 in (0.002, 0.004):
         r = recs[(g2, 10)]

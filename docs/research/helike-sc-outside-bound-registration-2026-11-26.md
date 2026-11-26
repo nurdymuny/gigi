@@ -72,3 +72,34 @@ is ≥ 0 > ρ_C). If B_lo ≥ 0, or the discriminant is ≤ 0, the box is clear 
 
 ρ_C is the recomputed value of R1.9.2 until the frozen receipt value is substituted. The threshold is inclusive of
 the slack only through ρ_C itself.
+
+## Amendments, 26 November (written before the O2 verdict)
+
+**O-amendment 1: a second ray bound (the cofactor catch).**
+
+The first O2 run stopped at its budget, splitting directions near rank-one matrices (the s₁₁ axis). There B and C both
+vanish, and the interval slop leaves B_lo < 0 with C_lo = 0, so the ray quartic alone cannot cap the ray.
+
+The geometry fixes it. With singular values σᵢ, det² = (σ₁σ₂)(σ₁σ₃)(σ₂σ₃) and |cof|² is the sum of squares of the
+same three products, so AM–GM gives |det| ≤ (|cof|²/3)^{3/4}. (A floating check gives a worst ratio of 0.9997, so the
+bound is sharp.) Hence along every ray
+
+    V(r·x) ≥ r²A(x) + h(c),   c = |cof(r·x)|²,   h(c) = (g²/2)c − g(Σω)(c/3)^{3/4}.
+
+h has one minimum, at c* = (3^{1/4}Σω/(2g))⁴, with value −g²c*/6 (−542.5 at g² = 0.004). A cell is also cleared if
+r₀²A_lo + min over [r₀⁴K_lo, r₁⁴K_hi] of h is ≥ ρ_C, with K = |cof x|². Every ray is capped at
+r ≤ √((ρ_C − h(c*))/A_lo). In words: the quartic always catches the determinant's pull, and near the rank-one creases
+there is almost nothing to catch.
+
+**O-amendment 2: R_n = 12 (was 8).**
+
+With amendment 1, the second O2 run was still open after 10⁶ cells. The open cells were next to the valley point
+diag(q₁, −q₂, −q₃) of reduced Sym, where V really does dip below ρ_C. The near test failed only because a cell of
+about 1.5 units was being tested against distance 8. R_n is a free parameter of the proof: any value works if O1
+holds up to it. O1 at R_n = 12 is PROVED at both controls (5,167 and 6,130 boxes). The shell minimum at r = 12 is
+about 37, against τ = 7.31.
+
+**O1 results (R_n = 12):** PROVED at g² = 0.002 and g² = 0.004.
+
+**Negative control:** O1 with τ = 12 (above the true wall minimum of about 11) is not proved; τ = 10 is still open
+after 30,000 boxes.

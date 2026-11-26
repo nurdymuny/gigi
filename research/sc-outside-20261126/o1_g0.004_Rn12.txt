@@ -1,0 +1,2 @@
+=== g2 = 0.004: tau = rho_C - V_bg = 7.31395; V_bg = -47.5273; R_n = 12
+  O1: PROVED; min margin over closed boxes 0.0001; 6130 boxes; 16 s

@@ -14,3 +14,4 @@ VSCF-trial Lehmann homotopy on B3' (L_u = 5, L_v = 2); floating point, not a bou
     real step  8: s = 0.9788  N =  12  rho = 7.7589  l_11 = 7.7266 (mu_11 7.7357, rho_b 7.7263)  max resid 1.5e-02  plan said 1 steps
   [planning LOSS = 0.01] PASS (real l_11 = 7.7266 >= rho_b = 7.7263 at s = 0.9788, 8 real steps)
   [planning LOSS = 0.03]
+[stopped by hand 26 Nov during LOSS 0.03 planning: superseded by the folded base (R1.9); LOSS 0.01 result above stands]

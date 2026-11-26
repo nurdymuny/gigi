@@ -639,10 +639,10 @@ the quadratic part of $H_{\rm src}$ has coefficients
 The second is positive exactly when $s<(t+2)/(t+1)$, the registered window.
 Figure~9 shows it against every registered point.
 
-\textbf{The registered grid is held.} The full flux-edge grid runs at
-$g^2=0.03$--$0.07$. Everything below is at the two weak-coupling controls,
-$g^2=0.004$ and $0.002$, where every bound can be checked. The grid is released
-only through a recorded method amendment, which is not yet written.
+\textbf{The registered grid is cleared; no grid value is released.} It runs at
+$g^2=0.03$--$0.07$; everything below is at the controls $g^2=0.004$, $0.002$.
+The method amendment is recorded (\S\S3--5.8): its domain gate passes at all four
+controls, which are gluing-invariant. The grid is being rerun.
 
 \figw{0.8}{12-flux-window}{Why the window is the stability condition. The quadratic
 coefficient $\omega_1^2-b$ (teal) is positive exactly for $s<(t+2)/(t+1)$
@@ -704,7 +704,8 @@ The projected state then satisfies $\|(H-E)\phi\|\leq R=(r+\ell)/q$.
 line on the leakage was never derived. It was replaced, before any further run,
 by the rule the certificate actually needs: $\ell\leq10^{-3}\,r_{\rm lower}$.
 All sixteen states pass. The worst ratio is $3.1\times10^{-5}$, as predicted in
-advance (Figure~11).
+advance (Figure~11). This rule is the certificate's; the flux grid's domain gate
+instead bounds the cut's energy shift, $\ell+2tr\leq3\times10^{-4}$ (amendment \S5.7).
 
 \textbf{One defect found and fixed on the way.} The first gate evaluation
 refused at its endpoint-pairing check. A JSON parser that is not correctly

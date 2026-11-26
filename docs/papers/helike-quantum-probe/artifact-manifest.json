@@ -4,7 +4,7 @@
   "source_receipt_sha256": "48d0e7994b0babf799a37507f6d9eb86140ff32f221e696d41a9813b1edebc68",
   "source_verification_sha256": "ff3d0b00f00e068bcf38a614a2114ac81aa91a7a947a056700173c4515130385",
   "builder_sha256": "83bd486c0e60057a610c138ebb4cb68ba2903d267ba2e7a81245702abd62534c",
-  "latex_sha256": "19be40a0aa8f6a7723b1dfc0220e1b03d8d5f86606b286ebb2aece9f5d267e68",
+  "latex_sha256": "dbc6dfc52191b69ace25a42f178d743c57399e98703284cfd2b462ffd4f71354",
   "sector_source_revision": "abd81f978faf4b3c29fbc44d5ac6d7df02a75aae",
   "sector_receipt_sha256": "b621f7c5587bb285eea991173dfbfb4146a7764fdd61864b02e881108aab6ae0",
   "sector_verification_sha256": "a2ce96fbaa5af027cb276dd63c11c5c0cc94fb2e4b3839f713917cf6e6de20a9",
@@ -75,6 +75,6 @@
     "sector-summary.csv": "fc1352257253db2733c6547401e36d23297ab2ca165706725c20b548e101a3ab",
     "flux-plot-data.json": "8c901e38175059438ebbf8bdc47319b914a5980f1bd1c56ad6a98fd2f7c727ae",
     "sc-plot-data.json": "cef1a54e49231d4977d1da50ed2f3c3a8962848974f1fb5fb08d901d895f60ae",
-    "report.pdf": "d293aa67aeb653eb78e188b6a6e7ecf627901841291363a4bbb7dfe69feb5391"
+    "report.pdf": "c2bd03b7a20a749048425d1542f5d892cda2b0ac62f606014ad36e4ce8c340dd"
   }
 }

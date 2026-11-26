@@ -256,3 +256,68 @@ new amendment, disclosed as made after seeing these values.
   - runner tests passed 28/28;
   - grid mutants were 10/10 caught;
   - no release conditions were unmet.
+
+### 5.5 Gluing-invariance test (REGISTERED before any grid value is seen; report-only qualifier; Bee's principle, 26 November)
+
+**The principle.** The gluing must not become part of the reading. Every reading the grid reports is stitched together
+from choices: a truncation, a reference vacuum, a quadrature, an interpolation between grid points, a cutoff for the
+certificate. A reading that belongs to the field does not move when the stitching changes. A reading that moves
+belongs to the seams. This section registers which seams are varied, what must not move, and what is reported. It is
+fixed now, while the registered grid of §5.4 runs (`research/flux-grid-20261126/`, commit 93a6de65), and before any
+gap, weight or verdict from that run has been seen.
+
+**Relation to the registered grid.** The test is a **qualifier**. It never changes a registered point verdict, case
+verdict or the overall verdict. Every published statement of a grid verdict must carry the qualifier beside it, for
+example "SUPPORTED; gluing-invariant", or "SUPPORTED; gluing-sensitive at the interpolation seam". It runs after the
+registered grid completes. It uses the grid's receipts, plus re-solves of the final rung (Mq = 10) at each point that
+the grid did not refuse.
+
+**The seams varied, and what must not move.**
+
+| seam | variation | must not move (tolerance) |
+|---|---|---|
+| S1. Identification reference | Select Helike and the competitor by (a) the bare weight w, (b) w̃ = w/Z (registered), (c) the dressed overlap of §5.3, computed for **every** candidate level, not only the selected one | The selected level indices: identical under (a), (b) and (c) |
+| S2. Quadrature | The resolved order pair (o, o+2) against the next pair (o+2, o+4) | Selected indices identical; w̃ changes ≤ 10⁻⁵ |
+| S3. Truncation | The registered Mq ladder 6 → 8 → 10 (already registered as convergence) | Restated as a seam: the last-step change ≤ 0.003, unchanged from §3 |
+| S4. Switch interpolation | Registered linear bracket crossing; quadratic through the three points nearest the bracket; natural cubic spline through all points of the case | The measured switch s*: max pairwise difference ≤ 0.005 (one third of the registered s-tolerance 0.015) |
+| S5. Certificate cutoff | The domain gate at its registered plateau radius against the next registered radius that also proves a complete plateau ball (if none exists, S5 is reported as not testable at that point) | The relative-gate verdict (PASS / FAIL / OPEN) for Helike and the competitor: identical |
+
+Notes on the seams:
+- S1 also asks whether the identity of the lowest Helike-channel and competitor levels depends on the vacuum it is
+  measured against. Under (c), selection is by the largest dressed overlap among levels 1 onward, the same argmax
+  rule as the registered selection.
+- S4 tests whether a switch point is a property of the gap curves or of how the curves are drawn between points.
+- S5 tests that the certificate's verdict does not depend on where the cut is made.
+
+**Verdicts.**
+- **Per point:** GLUING-INVARIANT if S1, S2, S3 and S5 all hold. Otherwise GLUING-SENSITIVE, naming each seam that
+  moved, with the size of the move.
+- **Per case:** the switch is GLUING-INVARIANT if S4 holds and every point within one grid spacing of the bracket is
+  GLUING-INVARIANT. Otherwise GLUING-SENSITIVE.
+- **Overall:** the number of invariant points and cases, reported next to the registered overall verdict.
+
+There is no "fail" outcome that overturns physics. A seam-sensitive reading is reported as a property of the method
+at that point.
+
+**Code and tests, before any variation is computed.** The solver gains an option that writes the dressed overlap of
+every level (an extension of §5.3, report-only), and the runner gains a `gluing_check` stage that reads the
+completed grid receipt. Tests:
+- the qualifier cannot change `assess_point`, `assess_case` or `overall`;
+- each seam's tolerance is enforced as registered;
+- S4 computes all three interpolants on synthetic cases with known crossings.
+
+Mutants that must be caught:
+- S1 compares only the selected level instead of all candidates;
+- S4 tolerance loosened;
+- the qualifier allowed to flip a verdict;
+- S5 reusing the same radius twice.
+
+**Controls first.** The test runs at the four g² = 0.002 and 0.004 controls before the grid points. Expectation,
+stated now: invariant at all four. If a control is seam-sensitive, the test is reported as not yet meaningful and
+does not run on the grid until the cause is understood and disclosed.
+
+**Known context, disclosed.** At the unregistered exposure point (§5.1, §5.3), the dressed overlaps of the
+**selected** levels were 0.990 (Helike) and 0.971 (competitor). Whether the dressed overlap selects the same levels
+there is unknown; it was not computed. Van den Heuvel (hep-lat/9604017; Leiden thesis 1996) reported a 0⁺/2⁺
+crossing on S³ that he read as a breakdown of the effective Hamiltonian, not as physics. That is the kind of reading
+this test is built to separate from a real switch.

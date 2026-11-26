@@ -9,6 +9,7 @@ import sys
 
 import dryrun_helike_sc_lehmann_homotopy as dr
 import estimate_helike_sc_gbase as gb
+import plan_helike_sc_lehmann_path as pl
 import vscf_helike_sc_lehmann as vs
 
 ap = argparse.ArgumentParser()
@@ -21,6 +22,7 @@ a = ap.parse_args()
 
 dr.KMAX = a.kmax
 vs.FOLD = (a.a, a.b)
+pl.FOLD = (a.a, a.b)                                            # the planner's proxy must chart the same family
 gb.curvature = lambda m, L, rng, n=0: (a.vj, a.vj, a.beta_u)
 _Block = dr.Block
 

@@ -1,0 +1,6 @@
+VSCF-trial Lehmann homotopy on B3' (L_u = 5, L_v = 2); floating point, not a bound
+
+=== control g2 = 0.004
+  VSCF representation: soft 696 (E_u < 13.946), stiff 78; tensor 54288; mixed u-groups 19; D^2 u-groups 165; built in 126 s
+  built: 1986 basis functions, C3 0.07496, 1267 s
+  [planning LOSS = 0.01]

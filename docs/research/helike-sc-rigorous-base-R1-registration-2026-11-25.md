@@ -284,3 +284,71 @@ decision rule** (R2 to confirm):
 - **Otherwise UNRESOLVED.**
 
 ρ_b remains the registered target of the base step and is not changed.
+
+## R1.9 Results, 26 November: the folded base, and S_C's own margin
+
+### R1.9.1 A void run, disclosed
+
+The first folded runs applied `FOLD` only to the VSCF executor. The planner's proxy Ritz curves
+(`plan_helike_sc_lehmann_path.build`) still used the uniform base, so the planner charted a different family, and its
+starting ρ (a uniform-base level) was not a lower bound for the folded family. The symptom was ℓ₁₁ = −∞ at the first
+real step. The fix is `plan_helike_sc_lehmann_path.FOLD`, set by `scripts/vscf_folded_base.py`. The void logs are
+kept as `research/sc-fold-homotopy-20261126/VOID_planner_mismatch_*`. They carry no result.
+
+### R1.9.2 The folded homotopy (floating point; every input constant rigorous)
+
+The inputs are:
+- the proved folds (R1.8.4): (0.36, 0.17) at g² = 0.002 and (0.45, 0.25) at g² = 0.004;
+- the enclosed v_J and face-wise β (R1.7).
+
+Logs are in `research/sc-fold-homotopy-20261126/v2_*`. ρ_C here is E₀ + 2ω_H − ω_min/4, recomputed from the same
+E₀ − V_bg as ρ_b: 7.3169 at g² = 0.002 and 7.3139 at g² = 0.004. The rigorous step must use the frozen ρ_C of the
+Temple ordering receipt.
+
+| control | base | LOSS | real steps | ℓ₁₁ − ρ_b | ℓ₅ − ρ_C (same last step) |
+|---|---|---|---|---|---|
+| g² = 0.002 | uniform, C₃ sym (R1.8.2) | 0.03 | 4 | +0.0298 | (not logged) |
+| g² = 0.002 | **folded** | 0.01 | **2** | +0.0102 | **+0.212** |
+| g² = 0.002 | **folded** | 0.03 | **2** | **+0.0300** | **+0.244** |
+| g² = 0.004 | uniform, C₃ sym (R1.8.2) | 0.01 | 8 | +0.0003 | (not logged) |
+| g² = 0.004 | **folded** | 0.01 | **3** | +0.0101 | **+0.209** |
+| g² = 0.004 | **folded** | 0.03 | **3** | **+0.0296** | **+0.241** |
+
+LOSS 0.06 finds no plan in any run. That is structural: μ₁₁(1) − ρ_b is only about 0.03.
+
+At every logged last step, the real Lehmann bounds sit within 4·10⁻⁴ of the Ritz values, with residuals
+≤ 1.5·10⁻².
+
+**Reading.**
+- With rigorous constants throughout, the base step now passes at both controls with the full floating margin of
+  §13 (+0.030 and +0.030, against +0.030 and +0.024 there). It takes 2–3 real steps instead of 4–9.
+- On the route of R1.8.5, the same homotopy gives ℓ₅(H_s) ≥ ρ_C with a margin of about **0.21–0.24** at both
+  controls. That is the S_C margin itself, about 8 times the ρ_b margin. Interval widening of order 10⁻² would not
+  threaten it.
+
+### R1.9.3 Tests and mutants for the R1.8 pieces
+
+`scripts/test_helike_sc_r1_fold.py`; log in `research/sc-r1-20261125/r1_8_tests_and_mutants.txt`.
+
+**Five tests, all passing:**
+- C₃ dominates the full-sphere sampled maximum and sits within 2·10⁻³ of it;
+- the seven registered faces;
+- the registered folds are proved;
+- a fold that needs the quartic is proved: (0.41, 0.21) at g² = 0.004, where sampled D < 0 without P₄;
+- an infeasible fold is not proved.
+
+**Five mutants, all caught:**
+- two dropped C₃ faces (caught only by the face-count test; a numerical catch would be better);
+- the dropped quartic;
+- the exit parameter halved;
+- the reductions given the wrong sign.
+
+### R1.9.4 What remains for S_C at the controls
+
+1. **The outside bound, rigorous.** inf H_out^N ≥ ρ_C on the complement of the gauge-swept product tube. Floating
+   point gives about 11 on the walls, against 7.31.
+2. **R2: interval A₀, A₁ and A₂ for the VSCF trial functions, and a verified pencil**, at the 2–3 steps of the
+   folded path. The decision rule is the one of R1.8.5: PROVED if some real step has ℓ₅ ≥ ρ_C in interval
+   arithmetic and item 1 holds. Otherwise UNRESOLVED.
+3. **Bookkeeping.** The frozen ρ_C, and the fold constants pinned as exact rationals; they are already strings into
+   Arb.

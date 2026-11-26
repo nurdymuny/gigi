@@ -34,6 +34,9 @@ NMIN = 12                          # section 9.5: N' >= 12
 CONFIGS = ((0.0, 0.0), (0.02, 0.0), (0.02, 0.01))   # (DELTA, LOSS); the last is the registered judging config
 
 
+FOLD = None                                                   # (a, b): overrides the uniform 2 C3 L reduction
+
+
 def build(g2, E0rel, cache, log):
     f = os.path.join(cache, f"ops_g{g2}.npz") if cache else None
     if f and os.path.exists(f):
@@ -46,6 +49,8 @@ def build(g2, E0rel, cache, log):
     vlo, _, beta = gb.curvature(m, math.hypot(dr.LU, dr.LV), np.random.default_rng(2), n=300)
     w2 = m["w2"]; Lt = math.hypot(dr.LU, dr.LV)
     ws, wt = w2[:3].min() - 2 * C3 * Lt, w2[3:].min() - 2 * C3 * Lt
+    if FOLD is not None:                                      # per-block reductions (a, b): the ray-aware fold
+        ws, wt = w2[:3].min() - FOLD[0], w2[3:].min() - FOLD[1]
     D = dict(P)
     for k in range(6):
         e = tuple(2 if i == k else 0 for i in range(6))

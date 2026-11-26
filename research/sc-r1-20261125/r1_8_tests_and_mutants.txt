@@ -1,0 +1,89 @@
+----------------------------------------------------------------------
+Ran 5 tests in 794.583s
+
+OK
+tests exit 0
+======================================================================
+FAIL: test_the_reduced_faces_are_the_registered_seven (__main__.C3Sym.test_the_reduced_faces_are_the_registered_seven)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_sc_r1_fold.py", line 65, in test_the_reduced_faces_are_the_registered_seven
+    self.assertEqual(len(faces), 7)
+AssertionError: 6 != 7
+
+----------------------------------------------------------------------
+Ran 5 tests in 617.629s
+
+FAILED (failures=1)
+CAUGHT  c3: drop the z3 = +1 face
+======================================================================
+FAIL: test_the_reduced_faces_are_the_registered_seven (__main__.C3Sym.test_the_reduced_faces_are_the_registered_seven)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_sc_r1_fold.py", line 65, in test_the_reduced_faces_are_the_registered_seven
+    self.assertEqual(len(faces), 7)
+AssertionError: 6 != 7
+
+----------------------------------------------------------------------
+Ran 5 tests in 626.704s
+
+FAILED (failures=1)
+CAUGHT  c3: drop the z5 = -1 face
+======================================================================
+FAIL: test_a_fold_that_needs_the_quartic_is_proved (__main__.Fold.test_a_fold_that_needs_the_quartic_is_proved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_sc_r1_fold.py", line 95, in test_a_fold_that_needs_the_quartic_is_proved
+    self.assertEqual(verdict, "PROVED")
+AssertionError: 'UNRESOLVED' != 'PROVED'
+- UNRESOLVED
++ PROVED
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 428.548s
+
+FAILED (failures=1)
+CAUGHT  fold: drop P4 (the quartic that unfolds the walls)
+======================================================================
+FAIL: test_an_infeasible_fold_is_not_proved (__main__.Fold.test_an_infeasible_fold_is_not_proved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_sc_r1_fold.py", line 102, in test_an_infeasible_fold_is_not_proved
+    self.assertNotEqual(verdict, "PROVED", (g2, a, b))
+AssertionError: 'PROVED' == 'PROVED' : (0.004, 0.3, 0.1)
+
+----------------------------------------------------------------------
+Ran 5 tests in 161.334s
+
+FAILED (failures=1)
+CAUGHT  fold: exit parameter S halved (rays stop short of the wall)
+======================================================================
+FAIL: test_a_fold_that_needs_the_quartic_is_proved (__main__.Fold.test_a_fold_that_needs_the_quartic_is_proved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_sc_r1_fold.py", line 95, in test_a_fold_that_needs_the_quartic_is_proved
+    self.assertEqual(verdict, "PROVED")
+AssertionError: 'UNRESOLVED' != 'PROVED'
+- UNRESOLVED
++ PROVED
+
+
+======================================================================
+FAIL: test_registered_folds_are_proved (__main__.Fold.test_registered_folds_are_proved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_sc_r1_fold.py", line 78, in test_registered_folds_are_proved
+    self.assertEqual(verdict, "PROVED", (g2, a, b))
+AssertionError: 'UNRESOLVED' != 'PROVED'
+- UNRESOLVED
++ PROVED
+ : (0.002, '0.36', '0.17')
+
+----------------------------------------------------------------------
+Ran 5 tests in 802.046s
+
+FAILED (failures=2)
+CAUGHT  fold: base reductions applied with the wrong sign (W0 above the quadratic)
+5/5 mutants caught
+mutants exit 0

@@ -7,3 +7,7 @@ g2=0.004   FOLD (a, b) = (0.50, 0.30): PROVED; min lower bound of D/s^2 over clo
 g2=0.004   FOLD (a, b) = (0.55, 0.35): PROVED; min lower bound of D/s^2 over closed boxes 4.535e-05; 3824 boxes; 16 s
 
 [exited with code 0]
+  FOLD (a, b) = (0.41, 0.21): PROVED; min lower bound of D/s^2 over closed boxes 3.969e-08; 92409 boxes; 316 s
+  FOLD (a, b) = (0.42, 0.22): PROVED; min lower bound of D/s^2 over closed boxes 3.703e-07; 48586 boxes; 149 s
+
+[exited with code 0]

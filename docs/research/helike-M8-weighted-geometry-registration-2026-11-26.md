@@ -410,7 +410,9 @@ changes, and nothing crosses.
   - If a route is ambiguous or the routes disagree, discard that coarse match and refine its two child steps. A
     resolved sequence of child matches replaces the discarded match; the coarse assignment never survives as
     crossing evidence. Midpoint checks consume the same six-level budget as A2.2(b), down to 1/64 of the original
-    grid step. There is no extra unreported refinement. If the required checks cannot resolve within that budget,
+    grid step. *Clarified before code:* the budget counts sample spacing. The finest sample spacing is 1/64 of the
+    grid step, so the deepest step that can be accepted is 1/32 of it, checked through its midpoint at 1/64. A step
+    of 1/64 cannot be accepted, because its own midpoint would fall outside the budget. There is no extra unreported refinement. If the required checks cannot resolve within that budget,
     the step is OPEN.
   - At a degeneracy, retain the whole degenerate subspace. An independently defined exact symmetry label may
     distinguish the branches; an arbitrary eigensolver basis may not. If branch identity remains ambiguous, report

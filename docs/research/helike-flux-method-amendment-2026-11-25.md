@@ -467,3 +467,7 @@ The run launched from c839dab4 (§5.8) was stopped by Bee before it completed. I
 - **Check 2.** It is taken from the committed `research/flux-grid-20261126/gluing-controls-gate57/report.json`.
 - **Rerun.** The registered grid reruns from scratch, from the commit that records this section, into `research/flux-grid-20261126-gate57/`. No rule, threshold or prediction changes.
 
+**The 93a6de65 run is void too.** Its partial output is archived **unread** as
+`research/flux-grid-20261126-VOID_partial-93a6de65/`, the same way. Nobody opened the receipt. This is the §5.4 run,
+stopped for the §5.7 re-registration.
+

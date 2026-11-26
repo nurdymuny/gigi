@@ -161,6 +161,13 @@ R1.4 check at the floating constants: the soft block has 39 radial levels below 
   - The §13 floating PASS at this control (+0.024) used the sampled C₃ = 0.0733. The enclosure is 19 % looser and
     stops at its box budget, so it is the first suspect.
 
+**Isolation run (g² = 0.004).** I reran with every enclosed constant except C₃, which is set to the sampled value. The driver takes max(passed, model-sampled), so the run used C₃ = 0.07496.
+- LOSS 0.01: **PASS**, real ℓ₁₁ − ρ_b = +0.0007 after 7 steps.
+- LOSS 0.03: **PASS**, real ℓ₁₁ − ρ_b = +0.0244 after 9 steps.
+- LOSS 0.06: no plan.
+
+So the g² = 0.004 failure is caused by the looseness of the C₃ enclosure. v_J and the face-wise β cost nothing decisive. A rigorous C₃ near 0.075 would pass in floating point. Log: `stdout_g0.004_c3sampled.txt`.
+
 **Status.** R1 is INCOMPLETE at both controls.
 - R1.4 has not yet been run at the enclosed constants (reduced ω² = w2min − 2·C₃·√29, per-face β, v_J shift).
 - The R1.5 tests and mutants are not yet written.

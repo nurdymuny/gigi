@@ -1,0 +1,27 @@
+VSCF-trial Lehmann homotopy on B3' (L_u = 5, L_v = 2); floating point, not a bound
+
+=== control g2 = 0.004
+  VSCF representation: soft 696 (E_u < 11.227), stiff 78; tensor 54288; mixed u-groups 19; D^2 u-groups 165; built in 86 s
+  built: 1986 basis functions, C3 0.07496, 902 s
+  [planning LOSS = 0.01]
+    real step  1: s = 0.0550  N = 186  rho = 8.8550  l_11 = 6.3164 (mu_11 6.3164, rho_b 7.7263)  max resid 1.8e-02  plan said 7 steps
+    real step  2: s = 0.0988  N = 115  rho = 8.4860  l_11 = 6.4573 (mu_11 6.4573, rho_b 7.7263)  max resid 1.9e-02  plan said 6 steps
+    real step  3: s = 0.1875  N =  86  rho = 8.2911  l_11 = 6.7254 (mu_11 6.7254, rho_b 7.7263)  max resid 1.3e-02  plan said 5 steps
+    real step  4: s = 0.3862  N =  47  rho = 8.1345  l_11 = 7.0154 (mu_11 7.0155, rho_b 7.7263)  max resid 1.1e-02  plan said 4 steps
+    real step  5: s = 0.6075  N =  23  rho = 7.8462  l_11 = 7.2998 (mu_11 7.2999, rho_b 7.7263)  max resid 1.3e-02  plan said 3 steps
+    real step  6: s = 0.8087  N =  13  rho = 7.7981  l_11 = 7.5411 (mu_11 7.5417, rho_b 7.7263)  max resid 1.6e-02  plan said 2 steps
+    real step  7: s = 0.9788  N =  12  rho = 7.7594  l_11 = 7.7270 (mu_11 7.7359, rho_b 7.7263)  max resid 1.4e-02  plan said 1 steps
+  [planning LOSS = 0.01] PASS (real l_11 = 7.7270 >= rho_b = 7.7263 at s = 0.9788, 7 real steps)
+  [planning LOSS = 0.03]
+    real step  1: s = 0.0425  N = 294  rho = 9.3780  l_11 = 6.2748 (mu_11 6.2748, rho_b 7.7263)  max resid 2.1e-02  plan said 9 steps
+    real step  2: s = 0.0775  N = 186  rho = 8.9735  l_11 = 6.3897 (mu_11 6.3897, rho_b 7.7263)  max resid 2.4e-02  plan said 8 steps
+    real step  3: s = 0.0875  N = 171  rho = 8.9402  l_11 = 6.4217 (mu_11 6.4217, rho_b 7.7263)  max resid 2.7e-02  plan said 7 steps
+    real step  4: s = 0.1212  N = 150  rho = 8.8014  l_11 = 6.5274 (mu_11 6.5274, rho_b 7.7263)  max resid 2.2e-02  plan said 6 steps
+    real step  5: s = 0.2238  N =  86  rho = 8.4172  l_11 = 6.7901 (mu_11 6.7901, rho_b 7.7263)  max resid 1.4e-02  plan said 5 steps
+    real step  6: s = 0.4300  N =  47  rho = 8.2856  l_11 = 7.0735 (mu_11 7.0735, rho_b 7.7263)  max resid 1.2e-02  plan said 4 steps
+    real step  7: s = 0.6325  N =  23  rho = 7.9249  l_11 = 7.3306 (mu_11 7.3308, rho_b 7.7263)  max resid 1.3e-02  plan said 3 steps
+    real step  8: s = 0.8363  N =  13  rho = 7.8556  l_11 = 7.5731 (mu_11 7.5737, rho_b 7.7263)  max resid 1.6e-02  plan said 2 steps
+    real step  9: s = 0.9962  N =  12  rho = 7.8010  l_11 = 7.7507 (mu_11 7.7554, rho_b 7.7263)  max resid 1.5e-02  plan said 1 steps
+  [planning LOSS = 0.03] PASS (real l_11 = 7.7507 >= rho_b = 7.7263 at s = 0.9962, 9 real steps)
+  [planning LOSS = 0.06]
+  [planning LOSS = 0.06] FAIL (no plan from the real state after 0 steps)

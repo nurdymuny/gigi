@@ -24,7 +24,11 @@ the first controls show, and the milestones and falsifiers follow.
 - T5 is described as proposed, not computed.
 
 *Added the same evening:* §4.9, the inherited note: the gap descends from the intrinsic geometry of one turn, with M9
-and a falsifier.
+and a falsifier. *Tightened after a third review:*
+- what a gap does and does not price;
+- the group-metric normalisation;
+- M9 now needs a measurable inherited property, plus cutoff checks and a compact-U(1) control;
+- M8's fingerprint and refinement are corrected (amendment 2).
 
 ---
 
@@ -410,16 +414,20 @@ let me fool myself on the way.
 
 ### 4.9 The inherited note: the gap descends from the intrinsic geometry of one turn
 
-**The picture.** A thing that exists has to take up space equally in every direction. So it is curved, just because it
-exists (my note `unit-curvature-2026-11-18.md`). A curved, closed shape has a lowest nonzero note. My gut says the gap
-we see in every field is that note: the note of the first thing that turned, inherited by everything after it.
+**The picture (motivation, not a deduction).** A thing that exists has to take up space equally in every direction.
+So it is curved, just because it exists (my note `unit-curvature-2026-11-18.md`). A curved, closed shape has a lowest
+nonzero note. My gut says the gap we see in every field is that note: the note of the first thing that turned,
+inherited by everything after it. This is the picture that led me here. Nothing below is derived from it.
 
-The same gap explains two things that look opposite.
-- **Things do not fall into one another.** With a gap, no change is free. Without one, configurations could slide
-  continuously into each other along flat directions. The gap puts a minimum price on every change, so distinct
-  things stay distinct.
-- **And yet they share.** They share information through transport, and only at that price. Distinct but connected is
-  what a gapped connection gives.
+The same gap bears on two things that look opposite, and I state precisely what it does.
+- **It does not price every change.** A state can carry an arbitrarily small admixture of an excitation, and so sit
+  arbitrarily little above the vacuum on average. What the gap prices is the spectrum: every stationary state other
+  than the vacuum costs at least Δ. As a consequence, correlations between distant regions die off like e^{−Δ·distance}.
+- **So "not falling into one another" means this.** There is no massless mode, nothing that can carry an influence
+  arbitrarily far for arbitrarily little. Distant regions stay effectively separate.
+- **And yet they share.** Their influence passes through transport, and it fades at the rate the gap sets. Distinct
+  but connected is the picture a gapped connection fits. Making "distinct things stay distinct" precise beyond the
+  decay of correlations is open.
 
 **Parallel transport is the gauge field.** A connection is the rule for carrying a frame from one point to another
 and comparing it. Carry it around a small loop and it comes back turned, by a holonomy U, and that turn is the field
@@ -429,11 +437,17 @@ prices for the turn that transport makes.
 
 **Proved: at strong coupling the gap is the note of the turn.** In the Hamiltonian lattice theory (Kogut and
 Susskind, Phys. Rev. D 11 (1975) 395), the energy at strong coupling is the electric term.
-- On each link, that term is g²/(2a) times the Laplacian on the group itself, SU(2) = S³: a compact, positively
-  curved shape.
-- Gauss's law allows only closed loops of flux. So the lightest excitation is the smallest loop, one plaquette of four
-  links, each carrying the first nonzero note of S³, the Casimir j(j+1) = 3/4.
-- Its energy is 4 · (g²/2a) · 3/4 = 3g²/(2a), at leading order.
+- On each link, that term is g²/(2a) times the quadratic Casimir. It is the Laplacian on the group itself, SU(2) = S³,
+  a compact, positively curved shape.
+- **The normalisation, explicitly.** The Casimir is the group Laplacian in the bi-invariant metric for which S³ has
+  radius 2. Its first nonzero value is j(j+1) = 3/4 at j = ½. On the unit-radius S³, the first nonzero value of the
+  Laplacian is 3, four times larger. The energies below use the Casimir convention.
+- Gauss's law allows only closed loops of flux. Take the electric-only Hamiltonian on a square or cubic lattice, with
+  no external charges and no winding loops shorter than a plaquette. The lightest excitation is then the smallest
+  loop, one plaquette of four links, each carrying j = ½.
+- Its energy is 4 · (g²/2a) · 3/4 = 3g²/(2a). This is the leading strong-coupling result, not the exact gap: the
+  magnetic term mixes the loop with other configurations at the next orders. (For the standard Hamiltonian
+  treatment, see Zohar, Cirac and Reznik, Rep. Prog. Phys. 79 (2016) 014401.)
 - The higher levels at that order follow from the same two ingredients: the Casimirs of the group (j = 1 gives 2, a
   ratio of 8/3 to the first) and the lengths of the loops (a two-plaquette loop gives 6/4).
 
@@ -454,6 +468,20 @@ anything I can test. I state it as the picture that led me here, not as a claim.
 **Where it can be tested.** On the lattice (Halcyon), not in my homogeneous reduction. At strong coupling the
 reduction's kinetic term is a Laplacian on its reduced configuration space, not on the group, so the clean comparison
 with Casimirs belongs to the lattice.
+
+**What "inherited" must mean.** Following an eigenstate continuously is not enough. In a finite calculation, isolated
+eigenstates can usually be followed as parameters change, so "we followed it" would prove nothing. Inheritance has to
+be a **measurable property of the starting carrier** that persists as the dynamics change, and persists as the cutoffs
+are removed. Candidates:
+- **Representation content:** the share of the excitation's electric energy carried in j = ½ flux.
+- **Loop structure:** the spatial extent of its excess electric energy, against the single plaquette.
+- **Creation:** its overlap with the state the fundamental plaquette Wilson loop creates from the vacuum.
+
+**The control that keeps me honest: compact U(1).** Compact U(1) also has a discrete electric spectrum on each link,
+and its strong-coupling excitations are flux loops too. But in four dimensions it has a weak-coupling phase with a
+massless photon: the starting note is *not* inherited there. In three dimensions, Polyakov showed that compact U(1)
+stays gapped at all couplings. A diagnostic that calls SU(2)'s note inherited must also call four-dimensional U(1)'s
+note lost at its transition. Otherwise it measures nothing.
 
 ## 5. What a proof requires, and my answer to each part
 
@@ -493,13 +521,21 @@ with Casimirs belongs to the lattice.
    its Dirichlet energy lives, and its alignment with Helike's registered structure. *Fails if* the subspace cannot be
    followed continuously except at a recorded switch, or its alignment collapses with no switch recorded. These are
    the stated jump and alignment thresholds of amendment 1. A smooth rotation of the carrier is tracking, not failure.
+   Amendment 2 makes the decided quantity a measurable property of the carrier: the share of its energy carried in
+   its own coordinates, which must stay at least one half without a switch. Continuity only describes how the
+   carrier changes.
    Registered: `helike-M8-weighted-geometry-registration-2026-11-26.md`.
-9. **M9. The inherited note (§4.9), proposed.** On the SU(2) lattice (Halcyon), follow the lowest levels and their
-   tone from strong coupling, where they are fixed by the Casimirs and the loop lengths, toward weak coupling. Use
-   the same tracking as M8: the carrier subspace, its continuity, and seams varied on purpose. *Fails if* the lowest
-   note's descent from the plaquette loop cannot be followed continuously, with no identifiable switch. A clean
-   handover to another loop or representation does not fail it: that would be a switch, as with Helike. Not yet
-   registered.
+9. **M9. The inherited note (§4.9), proposed.** On the SU(2) lattice (Halcyon), follow the lowest levels from strong
+   coupling, where they are fixed by the Casimirs and the loop lengths, toward weak coupling.
+   - Measure the starting carrier's properties along the way: representation content, loop extent and Wilson-loop
+     overlap.
+   - Check them as the lattice spacing, the volume and the representation cutoff change.
+   - Run the same diagnostic on compact U(1) in four dimensions, which must show the note lost at its transition, and
+     in three dimensions, which must show it kept.
+
+   *Fails if* the starting carrier's properties are lost at weak coupling with no identifiable switch, or if the
+   diagnostic cannot tell four-dimensional U(1) from SU(2). A clean handover to another loop or representation does
+   not fail it: that would be a switch, as with Helike. Not yet registered.
 
 ## 7. What would show me wrong
 
@@ -509,8 +545,9 @@ with Casimirs belongs to the lattice.
 - **The corridor splits**, or its weight collapses, for the stated source class. The gap would not be a common exit.
 - **The tone shifts** where only the octave should move. This would refute H3, the strongest form, and leave the
   carrier and the gap standing.
-- **The inherited note breaks.** The lowest note at weak coupling has no continuous descent from the strong-coupling
-  note of the turn, and no identifiable switch. Then the gap would be made at weak coupling, not inherited.
+- **The inherited note breaks.** At weak coupling the lowest note keeps none of the strong-coupling carrier's
+  measurable properties, and there is no identifiable switch. Then the gap would be made at weak coupling, not
+  inherited.
 - **The van den Heuvel crossing** turns out to be the same object as my switch, and it is an artefact of the
   truncation. My switch would then be an artefact too.
 

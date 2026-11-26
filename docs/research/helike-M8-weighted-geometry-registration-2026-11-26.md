@@ -259,3 +259,106 @@ from the alignment instead of the fingerprint".
 - At the controls: unchanged.
 - On the grid: Helike PERSISTS up to the switch. Small deformation is allowed, and I predict her largest block stays
   H. The two channels exchange the lowest place at the switch without a concentrated jump in either fingerprint.
+
+---
+
+## Amendment 2 (26 November; before any code and before any value): a third review
+
+A third review found two defects in amendment 1's gate. Both are real. Nothing has been coded or computed yet.
+
+### A2.1 The fingerprint was not a probability vector
+
+Amendment 1 treated the energy shares σ_X = D_XX/D, plus the aggregated cross term, as a vector in a simplex. It is
+not one. Cross terms can be negative. A positive-definite metric on two coordinates can give normalised contributions
+(5, 5, −9). The reviewer computed a half-L1 "jump" of 9.47 in an explicit example, where amendment 1 assumed a number
+in [0, 1].
+
+**Correction: a nonnegative split that is canonical.** At each node, let G = (g^{ij}) be the positive-definite kinetic
+form, and let G^{1/2} be its symmetric positive square root. Then v = G^{1/2} ∂f satisfies
+
+  ½ g^{ij} ∂ᵢf̄ ∂ⱼf = ½ Σₖ |vₖ|².
+
+Each term ½|vₖ|² is nonnegative, and it is assigned to the block of coordinate k. The **positive shares**
+
+  π_X = ½ ∫ Σ_{k∈X} |vₖ|² ψ₀² dμ / D
+
+are nonnegative, and they sum to 1 (checked to 10⁻¹⁰).
+- The symmetric square root needs no ordering choice, unlike a Cholesky factor.
+- Where G is block-diagonal, π_X equals D_XX/D.
+- The raw block matrix D_XY, negative cross terms included, is still reported. It is never used as a distribution.
+
+The jump between two points is the total variation J = ½‖Δπ‖₁, which lies in [0, 1].
+
+### A2.2 One bisection cannot tell a discontinuity from a narrow smooth transition
+
+An avoided crossing can be perfectly continuous while concentrated inside one half-step. Amendment 1's single
+bisection could have called it a jump, and so DISSOLVES. There is also a deeper point. For an isolated level,
+perturbation theory makes the eigenvector analytic in the parameters. A genuine jump of an isolated carrier cannot
+happen. A jump only happens at a level crossing, or reflects a step that has not been resolved. **So continuity
+cannot be the failure criterion, and I stop using it as one.**
+
+**Correction, in two parts.**
+
+**(a) The decided quantity is a measurable property of the carrier.** For each channel, the decided quantity is its
+**own-block share**: π_H for the lowest charge-2 state, which is Helike's channel, and π_C for the competitor. This is
+the property that makes it *her* carrier: most of its excitation energy is spent in her own coordinates.
+- **PERSISTS** if the own-block share is ≥ 0.5 at every point of the case.
+- **HANDS OVER** if the own-block share falls below 0.5 only at points beyond a recorded switch. A recorded switch is
+  the registered switch bracket, or a change of the identified level index, between that point and the previous one.
+- **DISSOLVES** if the own-block share falls below 0.5 at a point where the state is still the channel's identified
+  level, and no switch is recorded since the previous point. **M8 fails** for that case. The level went on, but its
+  defining geometry did not.
+- **OPEN** if any point is OPEN under Q0, or Q2's cross-check fails, or the grid case is unresolved, or a step stays
+  unresolved under (b).
+
+The threshold of one half is the stated amount of structural change that contradicts the prediction. Any deformation
+that keeps more than half of the energy in the carrier's own coordinates is tracking.
+
+**(b) Continuity is described, and refined until it is resolved.** For each adjacent pair with J > 0.2:
+- The step is refined adaptively. Bisect it, then bisect again, recursively, every sub-step whose jump is still above
+  0.2.
+- The limit is six levels: a sub-step of 1/64 of the grid step.
+- Midpoints are solved at the same settings (Mq = 10). They are M8 diagnostic points only, and never enter the grid.
+- **Resolved** if every final sub-step has J ≤ 0.2. The width of the transition, meaning the span of the sub-steps
+  that carried the change, is reported.
+- **Unresolved** if any sub-step at the limit still has J > 0.2. That step is OPEN for the continuity description. If
+  the own-block rule (a) needs that step, the case is OPEN. It never counts as DISSOLVES.
+- An identified level index that changes inside a refined step is reported as a level crossing there. It counts as a
+  recorded switch.
+
+The continuity description sits beside the verdict. It says how the carrier changed (smoothly, through a narrow
+avoided crossing of stated width, or unresolved), and it decides nothing.
+
+### A2.3 Tests and mutants, amended
+
+**Replaced:**
+- **"A smooth rotation"** is now a family whose own-block share drifts from 0.95 to 0.6 with no level crossing. It
+  must give PERSISTS, with a resolved continuity description.
+- **"A planted jump"** becomes two tests:
+  - A narrow avoided crossing of width 1/40 of the grid step. Refinement must resolve it, report its width, and leave
+    the verdict to rule (a).
+  - A true level crossing, a symmetry-protected exchange. It must be recorded as a switch, giving HANDS OVER when the
+    own-block share drops beyond it.
+
+**Added:**
+- **The reviewer's counterexample.** A two-coordinate positive-definite metric whose raw normalised contributions are
+  (5, 5, −9). The positive shares must be nonnegative and sum to 1, and J must lie in [0, 1].
+- **Planted dissolution.** The own-block share falls below 0.5 at an identified level with no switch. It must give
+  DISSOLVES.
+
+**Added mutants, which must be caught:**
+- raw D_XX/D used as the fingerprint;
+- a Cholesky factor in place of the symmetric square root, which must change π on a non-diagonal G while the test
+  expects invariance under reordering the coordinates;
+- the refinement depth cut to one level;
+- an unresolved step read as DISSOLVES;
+- continuity used as the failure criterion.
+
+**Withdrawn:** amendment 1's mutants "the bisection skipped" and "the bisection threshold loosened to 1.0", which
+belonged to the withdrawn rule.
+
+### A2.4 Predictions, restated
+
+- At the controls, π_H ≥ 0.9 for Helike and π_C ≥ 0.9 for the competitor (replacing σ ≥ 0.9).
+- On the grid, Helike PERSISTS up to the switch, with π_H staying above 0.5. Any transition at the switch is resolved
+  under refinement.

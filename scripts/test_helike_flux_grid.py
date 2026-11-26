@@ -226,20 +226,93 @@ class CrossCheck(unittest.TestCase):
         self.assertIn("dressed_overlap", src)
 
 
+class CutGate(unittest.TestCase):
+    """§5.7: the domain gate is the cut's energy shift e_cut = l + 2 t r <= 3e-4; the ratio l / r is reported only."""
+    H = "0" * 64
+
+    def state(self, l, t, r_up, r_lo, tail_sq=None, nsq=(1, 1)):
+        import helike_leakage_gate as lg
+        from fractions import Fraction as F
+        ru = None if r_up is None else lg.RigorousUpper(r_up, "test", self.H, "r_upper", "INTERVAL_ENCLOSURE")
+        rl = lg.RigorousLower(r_lo, "test", self.H, "r_lower", "INTERVAL_ENCLOSURE")
+        return lg.classify_state_cut(tail_sq_upper=F(t) ** 2 if tail_sq is None else tail_sq, norm_sq_lower=F(nsq[0]),
+                                     norm_sq_upper=F(nsq[1]), leakage_upper=F(l), tail_upper=F(t), r_upper=ru, r_lower=rl)
+
+    def test_arithmetic_and_boundary(self):
+        import helike_leakage_gate as lg
+        from fractions import Fraction as F
+        self.assertEqual(lg.CUT_ENERGY_BUDGET, F(3, 10**4))
+        self.assertEqual(lg.cut_energy(F(1, 10**4), F(1, 10**7), lg.RigorousUpper(F(1, 2), "t", self.H, "r", "INTERVAL_ENCLOSURE")),
+                         F(1, 10**4) + F(1, 10**7))
+        # exactly on the line passes; one ulp-scale step above fails
+        self.assertEqual(self.state(F(3, 10**4) - F(2, 10**7), F(1, 10**7), 1, 1)["cut_gate"], "PASS")
+        self.assertEqual(self.state(F(3, 10**4) - F(2, 10**7) + F(1, 10**30), F(1, 10**7), 1, 1)["cut_gate"], "FAIL")
+
+    def test_tail_term_counts(self):
+        from fractions import Fraction as F
+        # leakage alone is inside the budget; 2 t r pushes it over
+        s = self.state(F(2, 10**4), F(1, 10**6), 60, 1)
+        self.assertEqual(s["cut_gate"], "FAIL")
+        self.assertFalse(s["state_passed"])
+
+    def test_threshold_is_a_tenth_of_the_gap_tolerance(self):
+        from fractions import Fraction as F
+        # e_cut = 1e-3: inside the 0.003 gap tolerance but not inside one tenth of it
+        self.assertEqual(self.state(F(1, 10**3), 0, 1, 1)["cut_gate"], "FAIL")
+
+    def test_relative_ratio_never_decides(self):
+        from fractions import Fraction as F
+        # §5.6's situation: l / r ~ 1.4e-3 > 1e-3, yet e_cut ~ 5.6e-6 -> PASS
+        s = self.state(F(558, 10**8), F(1, 10**8), F(403, 10**5), F(403, 10**5))
+        self.assertGreater(s["relative_ratio_reported"], 1e-3)
+        self.assertEqual(s["cut_gate"], "PASS"); self.assertTrue(s["state_passed"])
+        # the converse: a tiny ratio cannot rescue a large e_cut
+        s = self.state(F(5, 10**4), 0, 10**6, 10**6)
+        self.assertLess(s["relative_ratio_reported"], 1e-3)
+        self.assertEqual(s["cut_gate"], "FAIL")
+        self.assertNotIn("relative_gate", s)
+
+    def test_unresolved_enclosure_is_open_never_pass(self):
+        import helike_leakage_gate as lg
+        from fractions import Fraction as F
+        s = self.state(0, 0, None, 1)
+        self.assertEqual(s["cut_gate"], "OPEN"); self.assertFalse(s["state_passed"])
+        self.assertEqual(lg.overall_cut([s, s, s]), "OPEN")
+        with self.assertRaises(ValueError):
+            lg.RigorousUpper(1.0, "t", self.H, "r", "FLOATING")
+
+    def test_budgets_still_gate(self):
+        from fractions import Fraction as F
+        self.assertFalse(self.state(0, 0, 1, 1, tail_sq=F(2, 10**12))["state_passed"])
+        self.assertFalse(self.state(0, 0, 1, 1, nsq=(1, 1 + F(2, 10**10)))["state_passed"])
+
+    def test_assess_point_converges_only_through_the_new_gate(self):
+        import helike_domain_gate as dg
+        good = {"state_passed": True, "cut_gate": "PASS", "relative_gate": "FAIL"}   # old rule would refuse
+        rows = {n: dict(good) for n in dg.NAMES}
+        with patch.object(dg, "domain_gate_point", lambda *a: {"verdict": dg.verdict(rows)}):
+            v, _ = grid.domain_gate(1.15, 3.0, 0.004, 10)
+        self.assertEqual(v, "PASS")
+        p = {"s": 1.15, "domain_gate": v, "ladder": [rung(m, 1.08, 1.082) for m in (6, 8, 10)]}
+        self.assertTrue(grid.assess_point(p, grid.DESIGN)["converged"])
+
+
 class DomainStage(unittest.TestCase):
     """The domain gate's aggregation, and an end-to-end parity run at a control (Mq 6) against the archived
     Python-construction sector bounds."""
 
     def test_verdict_aggregation(self):
         import helike_domain_gate as dg
-        ok = {"state_passed": True, "relative_gate": "PASS"}
+        ok = {"state_passed": True, "cut_gate": "PASS"}
         rows = {n: dict(ok) for n in dg.NAMES}
         self.assertEqual(dg.verdict(rows), "PASS")
-        rows["ground"] = {"state_passed": False, "relative_gate": "FAIL"}      # the ground state is not gated
+        rows["ground"] = {"state_passed": False, "cut_gate": "FAIL"}      # the ground state is not gated
         self.assertEqual(dg.verdict(rows), "PASS")
-        rows["competitor"] = {"state_passed": False, "relative_gate": "FAIL"}
+        rows["competitor"] = {"state_passed": False, "cut_gate": "FAIL"}
         self.assertEqual(dg.verdict(rows), "FAIL")
-        rows["competitor"] = {"state_passed": False, "relative_gate": "OPEN"}
+        rows["competitor"] = {"state_passed": False, "cut_gate": "PASS"}   # a budget failed with the enclosure resolved
+        self.assertEqual(dg.verdict(rows), "FAIL")
+        rows["competitor"] = {"state_passed": False, "cut_gate": "OPEN"}
         self.assertEqual(dg.verdict(rows), "OPEN")
 
     def test_control_reproduces_the_archived_bounds(self):

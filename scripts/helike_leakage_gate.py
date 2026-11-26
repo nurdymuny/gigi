@@ -102,3 +102,73 @@ def overall(states, expected):
     if any(s['relative_gate'] == 'FAIL' or (not s['state_passed'] and s['relative_gate'] == 'PASS') for s in states):
         return 'FAIL'
     return 'OPEN'
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Flux-grid domain gate, amendment §5.7 (docs/research/helike-flux-method-amendment-2026-11-25.md), registered
+# 26 November before code and before any grid value. The relative rule above tightens as r shrinks with the basis;
+# the grid needs the cut's energy shift against its gap tolerance instead:
+#
+#     e_cut = l + 2 t r <= 3e-4   (one tenth of the 0.003 gap tolerance),
+#
+# l, t, r the rigorous UPPER bounds on leakage, tail and residual. The tail and normalisation budgets are unchanged.
+# The ratio l / r_lower is kept in the receipt as relative_ratio_reported and never decides.
+
+CUT_ENERGY_BUDGET = Fraction(3, 10**4)
+
+
+class RigorousUpper:
+    """A rigorous upper bound with its provenance (the residual upper bound r from an interval enclosure)."""
+    __slots__ = ('value', 'source', 'sha256', 'field', 'status')
+
+    def __init__(self, value, source, sha256, field, status):
+        if status != 'INTERVAL_ENCLOSURE':
+            raise ValueError(f'a rigorous upper bound needs an interval enclosure, not status {status!r}')
+        if not (isinstance(sha256, str) and len(sha256) == 64):
+            raise ValueError('provenance hash required')
+        v = exact(value)
+        if v < 0:
+            raise ValueError('a norm upper bound cannot be negative')
+        self.value, self.source, self.sha256, self.field, self.status = v, source, sha256, field, status
+
+
+def cut_energy(leakage_upper, tail_upper, r_upper):
+    """e_cut = l + 2 t r, exactly; None if r has no rigorous enclosure."""
+    if not isinstance(r_upper, RigorousUpper):
+        return None
+    l, t, r = exact(leakage_upper), exact(tail_upper), r_upper.value
+    e_cut = l + 2 * t * r
+    return e_cut
+
+
+def cut_gate(e_cut):
+    if e_cut is None:
+        return 'OPEN'
+    return 'PASS' if e_cut <= CUT_ENERGY_BUDGET else 'FAIL'
+
+
+def classify_state_cut(tail_sq_upper, norm_sq_lower, norm_sq_upper, leakage_upper, tail_upper, r_upper, r_lower):
+    """One gated state under §5.7. r_lower only feeds the reported ratio."""
+    tail_ok = exact(tail_sq_upper) <= TAIL_SQ_BUDGET
+    norm_ok = exact(norm_sq_upper) - exact(norm_sq_lower) <= NORM_WIDTH_BUDGET
+    e_cut = cut_energy(leakage_upper, tail_upper, r_upper)
+    gate = cut_gate(e_cut)
+    ratio = (exact(leakage_upper) / r_lower.value) if isinstance(r_lower, RigorousLower) and r_lower.value > 0 else None
+    return {
+        'tail_budget_passed': tail_ok,
+        'norm_width_budget_passed': norm_ok,
+        'cut_energy_upper': None if e_cut is None else math.nextafter(float(e_cut), math.inf) if Fraction(float(e_cut)) < e_cut else float(e_cut),
+        'cut_gate': gate,
+        'relative_ratio_reported': None if ratio is None else math.nextafter(float(ratio), math.inf),
+        'relative_ratio_label': 'reported only (§5.7); not a gate',
+        'state_passed': tail_ok and norm_ok and gate == 'PASS',
+    }
+
+
+def overall_cut(rows):
+    """PASS only if every gated state passes; FAIL if any check fails with the enclosures resolved; else OPEN."""
+    if all(r['state_passed'] for r in rows):
+        return 'PASS'
+    if any(r['cut_gate'] != 'OPEN' and not r['state_passed'] for r in rows):
+        return 'FAIL'
+    return 'OPEN'

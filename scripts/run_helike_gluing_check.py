@@ -6,7 +6,7 @@ Seams (tolerances as registered):
   S2 quadrature: resolved order pair vs the next (coarse vs fine in the cone-heat receipt); indices equal, |dw~| <= 1e-5
   S3 truncation: the registered Mq ladder last-step change <= 0.003 (restated)
   S4 switch interpolation: linear (registered) / quadratic (3 nearest the bracket) / natural cubic spline; spread <= 0.005
-  S5 certificate cutoff: domain-gate verdicts at the registered plateau radius and at the next smaller proving radius
+  S5 certificate cutoff: the §5.7 cut-gate verdicts at the registered plateau radius and at the next smaller proving radius
 
 usage:
   python scripts/run_helike_gluing_check.py --controls OUT_DIR                 (first: g2 = 0.002, 0.004; Mq = 8, 10)
@@ -173,10 +173,10 @@ def s5(s, t, g2, mq):
         other = dg.domain_gate_point(s, t, g2, mq)
     finally:
         cb.plateau = orig
-    pick = lambda r: {n: r["states"][n]["relative_gate"] for n in ("helike_plus", "helike_minus", "competitor")}
+    pick = lambda r: {n: r["states"][n]["cut_gate"] for n in ("helike_plus", "helike_minus", "competitor")}   # §5.7
     a, b = pick(registered), pick(other)
     return {"registered_rho": reg_rho, "alternate_rho": alt_rho, "registered": a, "alternate": b,
-            "holds": a == b}
+            "verdicts": (registered["verdict"], other["verdict"]), "holds": a == b}
 
 
 # ------------------------------------------------------------------ verdicts

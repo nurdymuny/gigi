@@ -7,8 +7,9 @@ For one grid point (s, t, g², Mq), with every step either exact or a rigorous e
    added for the interval code's coefficient checks; no floating reference moments).
 3. Arb `helike_cutoff_bounds.bound_state` on the binary64 product C = coeff @ mixing: tail t and leakage l.
 4. Rust `cone-sectors` on the same frozen product: r_lower, r_upper, c, q, R.
-5. The registered relative gate (`helike_leakage_gate`): l_upper <= 1e-3 r_lower, plus the tail and normalisation
-   budgets, for helike_plus, helike_minus and competitor. PASS only if all three pass.
+5. The §5.7 cut-energy gate (`helike_leakage_gate.classify_state_cut`): e_cut = l + 2 t r <= 3e-4 from the upper
+   bounds, plus the unchanged tail and normalisation budgets, for helike_plus, helike_minus and competitor. PASS only
+   if all three pass. The old relative ratio l / r_lower is reported only (relative_ratio_reported).
 """
 from fractions import Fraction
 import hashlib
@@ -118,13 +119,8 @@ def inputs_document(states_path, export_path, x, C, arb, arb_path):
 
 
 def verdict(rows):
-    """PASS only if every gated state passes; FAIL if any fails; otherwise OPEN."""
-    gated = [rows[n] for n in GATED]
-    if all(r["state_passed"] for r in gated):
-        return "PASS"
-    if any(r["relative_gate"] == "FAIL" or (not r["state_passed"] and r["relative_gate"] == "PASS") for r in gated):
-        return "FAIL"
-    return "OPEN"
+    """§5.7: PASS only if every gated state passes; FAIL if any fails with its enclosures resolved; otherwise OPEN."""
+    return lg.overall_cut([rows[n] for n in GATED])
 
 
 def domain_gate_point(s, t, g2, mq, workdir=None):
@@ -152,9 +148,12 @@ def domain_gate_point(s, t, g2, mq, workdir=None):
             a = arb[name]
             rl = lg.RigorousLower(rust[name]["r_lower"], source="cone-sectors", sha256=sha(sec_path), field="r_lower",
                                   status=sec["status"])
-            r = lg.classify_state(tail_sq_upper=lg.dyadic(a["tail_sq"]["upper"]), norm_sq_lower=lg.dyadic(a["norm_sq"]["lower"]),
-                                  norm_sq_upper=lg.dyadic(a["norm_sq"]["upper"]), leakage_upper=lg.dyadic(a["leakage_norm"]["upper"]),
-                                  r_lower=rl)
+            ru = lg.RigorousUpper(rust[name]["r_upper"], source="cone-sectors", sha256=sha(sec_path), field="r_upper",
+                                  status=sec["status"])
+            r = lg.classify_state_cut(tail_sq_upper=lg.dyadic(a["tail_sq"]["upper"]), norm_sq_lower=lg.dyadic(a["norm_sq"]["lower"]),
+                                      norm_sq_upper=lg.dyadic(a["norm_sq"]["upper"]),
+                                      leakage_upper=lg.dyadic(a["leakage_norm"]["upper"]),
+                                      tail_upper=lg.dyadic(a["tail_norm"]["upper"]), r_upper=ru, r_lower=rl)
             sb = rust[name]["sector"].get("Ok")
             r.update(r_lower=rust[name]["r_lower"], r_upper=rust[name]["r_upper"], charge_upper=rust[name]["charge_upper"],
                      leakage_norm_upper=float(lg.dyadic(a["leakage_norm"]["upper"])), q_lower=sb and sb["q_lower"],

@@ -54,6 +54,29 @@ def main():
         from test_helike_flux_grid import DomainStage
         caught, log = run(DomainStage, "test_verdict_aggregation")
     rows.append(dict(name="competitor_not_gated", caught_by_assertion=caught, log=log))
+    # amendment 5.7: the cut-energy gate
+    import helike_leakage_gate as lg
+    from fractions import Fraction
+    from test_helike_flux_grid import CutGate
+    for name, func, old, new, test in [
+        ("relative_gate_decisive", "classify_state_cut", "gate = cut_gate(e_cut)", "gate = relative_gate(leakage_upper, r_lower)",
+         "test_relative_ratio_never_decides"),
+        ("tail_term_dropped", "cut_energy", "e_cut = l + 2 * t * r", "e_cut = l", "test_tail_term_counts"),
+        ("open_read_as_pass_state", "cut_gate", "return 'OPEN'", "return 'PASS'", "test_unresolved_enclosure_is_open_never_pass"),
+        ("open_read_as_pass_point", "overall_cut", "    return 'OPEN'", "    return 'PASS'", "test_unresolved_enclosure_is_open_never_pass"),
+    ]:
+        src = textwrap.dedent(inspect.getsource(getattr(lg, func)))
+        assert src.count(old) == 1, name
+        original = getattr(lg, func)
+        exec(src.replace(old, new), lg.__dict__)
+        try:
+            caught, log = run(CutGate, test)
+        finally:
+            setattr(lg, func, original)
+        rows.append(dict(name=name, caught_by_assertion=caught, log=log))
+    with patch.object(lg, "CUT_ENERGY_BUDGET", Fraction(3, 10**3)):
+        caught, log = run(CutGate, "test_threshold_is_a_tenth_of_the_gap_tolerance")
+    rows.append(dict(name="threshold_full_tolerance", caught_by_assertion=caught, log=log))
     for r in rows:
         print(r["name"], "CAUGHT" if r["caught_by_assertion"] else "NOT CAUGHT")
     rep = dict(all_caught=all(r["caught_by_assertion"] for r in rows), mutants=rows)

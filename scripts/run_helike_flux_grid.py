@@ -109,8 +109,8 @@ def domain_stage_ready():
 
 
 def domain_gate(s, t, g2, mq):
-    """Per-point domain validity (amendment 3.3): the relative leakage gate on the final rung's Helike and competitor
-    states. Returns (verdict, details). Any refusal inside the stage is OPEN, never PASS."""
+    """Per-point domain validity (amendment 3.3, gate re-registered in §5.7: e_cut = l + 2tr <= 3e-4) on the final
+    rung's Helike and competitor states. Returns (verdict, details). Any refusal inside the stage is OPEN, never PASS."""
     import helike_domain_gate as dg
     try:
         r = dg.domain_gate_point(s, t, g2, mq)

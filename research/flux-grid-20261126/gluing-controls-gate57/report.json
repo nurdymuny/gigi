@@ -1,0 +1,403 @@
+{
+ "stage": "controls (registered first stage of \u00a75.5)",
+ "points": [
+  {
+   "g2": 0.002,
+   "Mq": 8,
+   "seams": {
+    "S1": {
+     "selected": {
+      "bare": [
+       1,
+       3
+      ],
+      "w_over_Z": [
+       1,
+       3
+      ],
+      "dressed": [
+       1,
+       3
+      ]
+     },
+     "clusters": {
+      "bare": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ],
+      "w_over_Z": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ],
+      "dressed": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ]
+     },
+     "holds": true
+    },
+    "S2": {
+     "max_w_tilde_change": 8.793362560322038e-08,
+     "indices_equal": true,
+     "holds": true
+    },
+    "S3": {
+     "holds": null,
+     "note": "ladder ends at 10"
+    },
+    "S5": {
+     "registered_rho": 13.75,
+     "alternate_rho": 13.5,
+     "registered": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "alternate": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "verdicts": [
+      "PASS",
+      "PASS"
+     ],
+     "holds": true
+    }
+   },
+   "verdict": "GLUING-INVARIANT",
+   "moved": []
+  },
+  {
+   "g2": 0.002,
+   "Mq": 10,
+   "seams": {
+    "S1": {
+     "selected": {
+      "bare": [
+       1,
+       3
+      ],
+      "w_over_Z": [
+       1,
+       3
+      ],
+      "dressed": [
+       2,
+       3
+      ]
+     },
+     "clusters": {
+      "bare": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ],
+      "w_over_Z": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ],
+      "dressed": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ]
+     },
+     "holds": true
+    },
+    "S2": {
+     "max_w_tilde_change": 1.5850107093484667e-07,
+     "indices_equal": true,
+     "holds": true
+    },
+    "S3": {
+     "last_step_change": 1.7929114264347845e-06,
+     "holds": true
+    },
+    "S5": {
+     "registered_rho": 13.75,
+     "alternate_rho": 13.5,
+     "registered": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "alternate": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "verdicts": [
+      "PASS",
+      "PASS"
+     ],
+     "holds": true
+    }
+   },
+   "verdict": "GLUING-INVARIANT",
+   "moved": []
+  },
+  {
+   "g2": 0.004,
+   "Mq": 8,
+   "seams": {
+    "S1": {
+     "selected": {
+      "bare": [
+       1,
+       3
+      ],
+      "w_over_Z": [
+       1,
+       3
+      ],
+      "dressed": [
+       1,
+       3
+      ]
+     },
+     "clusters": {
+      "bare": [
+       [
+        1
+       ],
+       [
+        3
+       ]
+      ],
+      "w_over_Z": [
+       [
+        1
+       ],
+       [
+        3
+       ]
+      ],
+      "dressed": [
+       [
+        1
+       ],
+       [
+        3
+       ]
+      ]
+     },
+     "holds": true
+    },
+    "S2": {
+     "max_w_tilde_change": 8.166511401563881e-07,
+     "indices_equal": true,
+     "holds": true
+    },
+    "S3": {
+     "holds": null,
+     "note": "ladder ends at 10"
+    },
+    "S5": {
+     "registered_rho": 9.75,
+     "alternate_rho": 9.5,
+     "registered": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "alternate": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "verdicts": [
+      "PASS",
+      "PASS"
+     ],
+     "holds": true
+    }
+   },
+   "verdict": "GLUING-INVARIANT",
+   "moved": []
+  },
+  {
+   "g2": 0.004,
+   "Mq": 10,
+   "seams": {
+    "S1": {
+     "selected": {
+      "bare": [
+       1,
+       3
+      ],
+      "w_over_Z": [
+       1,
+       3
+      ],
+      "dressed": [
+       2,
+       3
+      ]
+     },
+     "clusters": {
+      "bare": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ],
+      "w_over_Z": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ],
+      "dressed": [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ]
+     },
+     "holds": true
+    },
+    "S2": {
+     "max_w_tilde_change": 7.83483354860337e-08,
+     "indices_equal": true,
+     "holds": true
+    },
+    "S3": {
+     "last_step_change": 1.891504970785718e-05,
+     "holds": true
+    },
+    "S5": {
+     "registered_rho": 9.75,
+     "alternate_rho": 9.5,
+     "registered": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "alternate": {
+      "helike_plus": [
+       "PASS",
+       true
+      ],
+      "helike_minus": [
+       "PASS",
+       true
+      ],
+      "competitor": [
+       "PASS",
+       true
+      ]
+     },
+     "verdicts": [
+      "PASS",
+      "PASS"
+     ],
+     "holds": true
+    }
+   },
+   "verdict": "GLUING-INVARIANT",
+   "moved": []
+  }
+ ],
+ "controls_invariant": true
+}

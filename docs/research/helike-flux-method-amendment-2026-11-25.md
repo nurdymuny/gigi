@@ -434,3 +434,25 @@ one can change a convergence decision, because only PASS makes a point converged
 After both fixes, the runner and gluing tests pass and the grid mutants stay 15/15 caught. Then check 2 (the §5.5
 gluing check at the controls under the §5.7 gate) runs, and the registered grid reruns from this commit into
 `research/flux-grid-20261126-gate57/`.
+
+#### 5.8 check 2: the gluing rerun at the controls
+
+This run uses the code at c839dab, with §5.7 and both §5.8 corrections. The scripts are unchanged since that commit.
+Report: `research/flux-grid-20261126/gluing-controls-gate57/report.json`.
+
+**All four controls are GLUING-INVARIANT; no seam moved.**
+- **S1 and S2 hold everywhere.**
+- **S3 holds at Mq = 10.** At Mq = 8 it is not applicable, because the ladder ends at 10.
+- **S5 holds at all four.** The points were checked at two radii:
+  - g² = 0.002 at ρ = 13.75 and 13.5;
+  - g² = 0.004 at ρ = 9.75 and 9.5.
+
+  At both radii, every gated state reads (cut gate PASS, state passed). Both point verdicts are PASS.
+- **The §5.6 finding does not recur.** That S5 failure at g² = 0.004, Mq = 10 came from the old relative rule, and
+  the cut-energy gate removes it.
+
+An earlier pass of this check ran on fa69d91, before the §5.8 S5 correction, and gave the same verdicts. It was set
+aside unrecorded, because §5.8 put check 2 after the corrections.
+
+Checks 1 to 4 of §5.7 are complete. The registered grid reruns from c839dab or later into
+`research/flux-grid-20261126-gate57/`.

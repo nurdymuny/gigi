@@ -1,0 +1,228 @@
+% Part III: the small room (layers 1, 4, 5 and 7 on the Berger sphere).
+% ASCII source only. \input after page 19 of report.tex.
+\newpage
+\proofpart{3}
+\pagetitle{23 / PART III. THE SMALL ROOM}{One stretched sphere, two vacua, one carrier}
+
+\noindent\textbf{Conventions.} Matrix norms are Frobenius norms; $q_k$ is the $k$-th row of $q\in\mathbb R^{3\times3}$ and
+$\operatorname{cof}q$ its cofactor matrix, so $q_k\cdot(\operatorname{cof}q)_k=\det q$ for each $k$ (Laplace expansion).
+Throughout, the coupling $g$ is positive.
+
+\begin{definition}[Berger spheres and homogeneous connections]\label{p3def:berger}
+On $S^3=SU(2)$ take left-invariant $1$-forms $\sigma^i$ with $\sum_i(\sigma^i)^2$ the round unit metric. The Berger sphere
+$S^3_t$ ($t>0$) has metric $t(\sigma^1)^2+(\sigma^2)^2+(\sigma^3)^2$, orthonormal coframe $\theta^1=\sqrt t\,\sigma^1$,
+$\theta^{2,3}=\sigma^{2,3}$, and volume $2\pi^2\sqrt t$. Its isometries include the left translations and the circle of
+right translations along the long direction, which rotates $(\theta^2,\theta^3)$. A connection on the trivial $SU(2)$
+bundle is \emph{homogeneous} if it is left-invariant: $A=q_{ka}\theta^kT_a$, $q\in\mathbb R^{3\times3}$ constant (rows:
+frame; columns: colour). The field map $M=2gq$ identifies $q$ with the coordinates of \emph{By Enough}, where the
+multiples $A=s\theta$ of the Maurer--Cartan form are $M=\operatorname{diag}(2s/\sqrt t,2s,2s)$.
+\end{definition}
+
+\begin{lemma}[Residual gauge group and measure]\label{p3lem:quotient}
+\status{PROVED HERE} (i) The gauge transformations $h:S^3\to SU(2)$ that map every homogeneous connection to a homogeneous
+one are the constants; they act by $q\mapsto qO^T$, $O=\operatorname{Ad}_{h^{-1}}\in SO(3)$. (ii) For $\Phi(P,O)=PO$, $P$ symmetric
+with eigenvalues $\lambda_i$, $O\in SO(3)$: $\Phi^*(dq)=c\prod_{i<j}|\lambda_i+\lambda_j|\,dP\,dO$ ($dO$ Haar measure, $c>0$ a constant).
+\end{lemma}
+\begin{proof}
+(i) $h\cdot A=h^{-1}Ah+h^{-1}dh$. From $A=0$, $h^{-1}dh$ is left-invariant; subtracting, $\operatorname{Ad}_{h(x)^{-1}}A$ is
+left-invariant for every left-invariant $A$, so $\operatorname{Ad}_{h(x)}$ is constant, and $h$ is constant since
+$\ker\operatorname{Ad}=\{\pm1\}$ and $h$ is continuous. (ii) $dq\,O^T=dP+P\,d\Omega$, $d\Omega=dO\,O^T$ antisymmetric. Conjugate
+so that $P$ is diagonal. Then $dq_{ii}=dP_{ii}$, and for $i<j$,
+$(dq_{ij},dq_{ji})=(dP_{ij}+\lambda_id\Omega_{ij},\,dP_{ij}-\lambda_jd\Omega_{ij})$, with Jacobian $|\lambda_i+\lambda_j|$.
+\end{proof}
+
+So the reduced configuration space is $\mathbb R^9/SO(3)$, the finite version of $\mathcal A/\mathcal G$, and (ii) is its
+orbit-volume weight, also verified numerically (the M8 positive-ground design draft, 26 November). A single non-constant $h$ can
+still carry one homogeneous connection to another: $h(x)=x$ carries $0$ to the Maurer--Cartan form. So $q=0$ and
+$q_{\mathrm{MC}}$ are distinct points of $\mathbb R^9/SO(3)$ but one point of $\mathcal A/\mathcal G$: the usual over-counting
+of the homogeneous reduction, and the source of its $\theta$-vacua.
+
+\begin{lemma}[The Maurer--Cartan form is the homogeneous winding-$1$ vacuum]\label{p3lem:mc}
+\status{PROVED HERE} $\Omega=x^{-1}dx$ (the identity map $x\mapsto x$ of $SU(2)$) is a flat, left-invariant connection,
+gauge equivalent to $A=0$ by a gauge transformation of degree $1$.
+\end{lemma}
+\begin{proof}
+$(yx)^{-1}d(yx)=x^{-1}dx$, so $\Omega$ is left-invariant. It is $h^{-1}0\,h+h^{-1}dh$ with $h=\mathrm{id}$, of degree $1$; so
+it is flat, $d\Omega+\Omega\wedge\Omega=0$ (the Maurer--Cartan equation).
+\end{proof}
+
+\begin{theorem}[Chern--Simons along the Maurer--Cartan line]\label{p3thm:cs}
+\status{PROVED HERE} Let $CS(A)=c\int_{S^3}\operatorname{tr}(A\wedge dA+\tfrac23A^3)$, normalised by $CS(h^{-1}dh)=\deg h$.
+Then $CS(\lambda\Omega)=3\lambda^2-2\lambda^3$ on every $S^3_t$.
+\end{theorem}
+\begin{proof}
+$CS$ is metric-free. By $d\Omega=-\Omega^2$, $\operatorname{tr}(\lambda\Omega\,d\lambda\Omega)+\tfrac23\operatorname{tr}(\lambda\Omega)^3=(-\lambda^2+\tfrac23\lambda^3)\operatorname{tr}\Omega^3$,
+so $CS(\lambda)=(-\lambda^2+\tfrac23\lambda^3)K$; $CS(1)=1$ (Lemma~\ref{p3lem:mc}) gives $K=-3$.
+\end{proof}
+
+\begin{definition}[The sourced reduced model]\label{p3def:model}
+With $\omega=(\sqrt t,t^{-1/2},t^{-1/2})$, $S=\sum_k\omega_k$, $\mathrm{src}=(a,b,b)$, $a=(1-s)(t-2s)$,
+$b=(1-s)((1-s)/t-s)$:
+\[
+ H=-\tfrac12\Delta_q+V,\qquad V(q)=\tfrac12\textstyle\sum_k\|\omega_kq_k-g(\operatorname{cof}q)_k\|^2-\tfrac12\sum_k\mathrm{src}_k\|q_k\|^2,
+\]
+on colour-invariant functions on $\mathbb R^9$, as the closure from $C_c^\infty(\mathbb R^9)$: the \emph{natural}
+realization. $V$ is invariant under colour, $q\mapsto qO^T$, and the Berger circle, $q\mapsto Rq$ with $R$ rotating rows
+$2,3$. Window: $t>1$, $1<s<(t+2)/(t+1)$. Controls: $t=3$, $s=1.15$, $g^2\in\{0.004,0.002\}$. Reduced energies are half
+Yang--Mills energies (checked at $t=3$, $s=1.15$: four times the unsourced reduced Hessian at $q_{\mathrm{bg}}$, compressed off colour rotations, is the
+Yang--Mills $j=0$ slice spectrum $5.33624$, $5.47333\,(\times2)$, $23.47833\,(\times2)$, $28.54376$ to $2\times10^{-8}$).
+\end{definition}
+
+\begin{theorem}[Vacua, the line, and the background]\label{p3thm:vacua}
+\status{PROVED HERE} Let $q_{\mathrm{MC}}=\operatorname{diag}(t^{-1/2},1,1)/g$ and $V_0=V|_{\mathrm{src}=0}$.
+(1) $V_0(q)=0$ iff $q=0$ or $q=q_{\mathrm{MC}}O$, $O\in SO(3)$; $q_{\mathrm{MC}}$ is the Maurer--Cartan form under $M=2gq$.
+(2) $V_0(\lambda q_{\mathrm{MC}})=(1+2/t)(\lambda-\lambda^2)^2/(2g^2)$: the double well of Theorem~\ref{p3thm:cs}, vanishing at
+$CS=0,1$, with the sphaleron at $\lambda=CS=\tfrac12$. (3) $q_{\mathrm{bg}}=\operatorname{diag}(2s/\sqrt t,2s,2s)/(2g)=s\,q_{\mathrm{MC}}$
+is a critical point of $V$ for all $s,t$, on the line at $\lambda=s$, with $CS=3s^2-2s^3$: $0.953$, $0.926$, $0.891$,
+$0.800$ at $s=1.12$, $1.15$, $1.18$, $1.24$.
+\end{theorem}
+\begin{proof}
+Put $D=\operatorname{diag}(\omega)$. (1) $V_0=0$ iff $Dq=g\operatorname{cof}q$. Rank $2$ is impossible (then
+$\operatorname{rank}\operatorname{cof}q=1<\operatorname{rank}Dq$), and rank $1$ gives $\operatorname{cof}q=0$, hence $Dq=0$, also impossible. For invertible $q$,
+$\operatorname{cof}q=\det(q)q^{-T}$ gives $qq^T=g\det(q)D^{-1}$; determinants give $\det q=1/(g^3\sqrt t)>0$, hence
+$qq^T=q_{\mathrm{MC}}q_{\mathrm{MC}}^T$, $q=q_{\mathrm{MC}}O$ with $\det O=1$. The converse is a check of three diagonal entries,
+and $2gq_{\mathrm{MC}}$ is $s=1$ in Definition~\ref{p3def:berger}. (2) For $q=\operatorname{diag}(d)$,
+$\operatorname{cof}q=\operatorname{diag}(d_2d_3,d_1d_3,d_1d_2)$; at $d=\lambda m$ ($m$ the diagonal of $q_{\mathrm{MC}}$) the residuals are
+$(\lambda-\lambda^2)\omega_km_k$, $\omega_km_k=(1,t^{-1/2},t^{-1/2})/g$. (3) At diagonal $q$ the gradient is diagonal, and
+with residuals $r_k=(s-s^2)\omega_km_k$,
+$\sqrt t\,g\,\partial_{d_1}V=s[(1-s)(t-2s)-a]=0$ and
+$g\,\partial_{d_2}V=s[\tfrac{1-s}t-(1-s)s-\tfrac{(1-s)s}t-b]=0$; $\partial_{d_3}V=\partial_{d_2}V$.
+\end{proof}
+
+\begin{theorem}[Helike: the maximal-charge twist]\label{p3thm:helike}
+\status{PROVED, CITED: \emph{By Enough}, doi:10.5281/zenodo.24472820; Floor theorem v3.3, concept doi:10.5281/zenodo.24386613}
+On $S^3_t$ let $M_0=x\tau_0$, $M_1=y\tau_1$, $M_2=y\tau_2$ (all circle-symmetric homogeneous fields, up to gauge). For all $t>0$, $x,y$ and $j\geq0$, the twist $f(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$, $f$ of top
+weight in spin $j/2$, is an exact gauge-orthogonal eigenvector of the Yang--Mills Hessian $\mathcal H$, alone in its charge block, with
+eigenvalue $\lambda(x,y,t,j)=(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$, helicity squared minus the flux along her circle. On
+the Berger field it is $\lambda_t(j)=[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$; on $A=s\theta$ it is $(j+2s+2)^2/t+4s(1-s)$.
+She is the floor (lowest eigenvalue of $\mathcal H+GG^*$, $G$ the infinitesimal gauge map, in every sector, multiplicity two, and lowest gauge-orthogonal one) on
+the Berger field for $t\in[2.75,10]$ and on $\{x\in[-3,-1.5],\,y\in[0.5,3],\,t\in[3,10]\}$; on the Berger field she is
+the gauge-orthogonal floor of sector $0$ for all $t\geq2\sqrt5-2$; for $x>0$ she is not the floor of $\mathcal H+GG^*$ in every sector.
+\end{theorem}
+
+The background $A=s\theta$ has $x=2s/\sqrt t>0$, so the classical floor theorems do \emph{not} cover it. What carries
+over exactly is the eigenvector, in sector $j=0$:
+
+\begin{proposition}[Helike in the reduced model]\label{p3prop:hq}
+\status{PROVED HERE} At $q_{\mathrm{bg}}$ the charge-$\pm2$ doublet $B_c=(E_{22}-E_{33})/\sqrt2$, $B_s=(E_{23}+E_{32})/\sqrt2$
+is an eigenspace of $\nabla^2V$, with
+$\omega_H^2=\tfrac14\lambda(2s/\sqrt t,2s,t,0)-b=2s(1+2/t-s)$.
+\end{proposition}
+\begin{proof}
+$q\mapsto RqR^T$ ($R$ rotating indices $2,3$) fixes $q_{\mathrm{bg}}$ and $V$. Under it $\mathbb R^9$ is charge $0$
+($E_{11}$, $E_{22}+E_{33}$, $E_{23}-E_{32}$), two charge-$\pm1$ doublets, and the one charge-$\pm2$ doublet, which is
+therefore an eigenspace. Along $q_{\mathrm{bg}}+\varepsilon(E_{22}-E_{33})$ the residual changes by
+$\varepsilon\tfrac{1+s}{\sqrt t}(0,1,-1)$ on the diagonal, and at second order only through $\operatorname{cof}_{11}$, by
+$-\varepsilon^2$, against $r_1=(s-s^2)/g$. So $V$ changes by $\varepsilon^2[(1+s)^2/t+s(1-s)-b]$; as
+$\|E_{22}-E_{33}\|^2=2$, this is $\omega_H^2$. It equals $\tfrac14[(2s+2)^2/t+4s(1-s)]-b$ and, inserting $b$, $2s(1+2/t-s)$.
+\end{proof}
+
+\begin{remark}[Check, and the role of the sources]\label{p3rem:order}
+\status{COMPUTED} At the controls $\omega_H=1.090107$, the computed Helike doublet; the charge-$0$ competitor is $1.106657$
+(converged gaps at $g^2=0.002$: $1.08904$, $1.10114$). Without sources the order is reversed: the lowest $j=0$ Yang--Mills
+value $5.33624$ is a charge-$0$ singlet, below Helike's $5.47333=\lambda(2s/\sqrt t,2s,3,0)$. The sources that hold the
+background put Helike lowest, which is why the source bridge (Part~V) is a real condition.
+\end{remark}
+
+\begin{theorem}[Theorem A: discrete spectrum]\label{p3thm:A}
+\status{PROVED HERE} Let $t\geq1$, $0<s<(t+2)/(t+1)$ (this contains the window). Then
+$\kappa=\min_k(\omega_k^2-\mathrm{src}_k)>0$, and for every $g>0$
+\[
+ V(q)\geq\tfrac\kappa2\|q\|^2-\frac{S^4}{32g^2}\geq\tfrac\kappa2\|q\|^2-\frac{S^4}{2g^2}.
+\]
+$H$ is essentially self-adjoint on $C_c^\infty(\mathbb R^9)$ with compact resolvent, and its spectrum is discrete in every
+colour-singlet charge sector.
+\end{theorem}
+\begin{proof}
+$\omega_1^2-a=s(2+t-2s)$ and $\omega_2^2-b=s[(t+2)-s(t+1)]/t$; the second is positive iff $s<(t+2)/(t+1)\leq(t+2)/2$, and then so
+is the first. Expanding the square with $q_k\cdot(\operatorname{cof}q)_k=\det q$,
+\[
+ V(q)=\tfrac12\textstyle\sum_k(\omega_k^2-\mathrm{src}_k)\|q_k\|^2-gS\det q+\tfrac{g^2}2\|\operatorname{cof}q\|^2 .
+\]
+In singular values, $\|\operatorname{cof}q\|^2=\sum_{i<j}\sigma_i^2\sigma_j^2\geq3|\det q|^{4/3}$ (AM--GM), and
+$\max_{u\geq0}(gSu-\tfrac32g^2u^{4/3})=S^4/(32g^2)$, at $u^{1/3}=S/(2g)$. $V$ is a polynomial bounded below, so $H$ is
+essentially self-adjoint on $C_c^\infty$ (Reed and Simon, 1975, Theorem X.28). In forms,
+$H\geq-\tfrac12\Delta+\tfrac\kappa2\|q\|^2-S^4/(32g^2)$, so by min--max the $n$-th min--max value of $H$ tends to infinity:
+$\sigma_{\mathrm{ess}}(H)=\emptyset$. $H$ commutes with the colour and Berger rotations, and on each isotypic subspace the
+min--max values are no smaller.
+\end{proof}
+
+\begin{conjecture}[$S_C$]\label{p3conj:sc}
+\status{CONJECTURE} At each control, the natural realization has at most two charge-$0$ colour-singlet eigenvalues (with
+multiplicity) below $\rho_C=E_0^c+2\omega_H-\omega_{\min}/4$, where $E_0^c$ is the saved ground centre and $\omega_H$,
+$\omega_{\min}$ are Helike's and the smallest normal frequency, frozen in the ordering receipt ($\rho_C-E_0^c=1.9077$,
+$\omega_{\min}/4$ below the third harmonic charge-$0$ rung $2\omega_H$).
+\end{conjecture}
+\begin{sketch}
+If $\lambda_5(H)\geq\rho_C$ then $S_C$ holds, since Helike's pair and the two disjoint charge-$0$ Weinstein windows already
+give four levels below $\rho_C$ (Lemma~R, report page 15). Neumann bracketing on a tube $T$ around the background orbit
+gives $\lambda_5(H)\geq\min(\lambda_5(H_{\mathrm{in}}),\inf H_{\mathrm{out}})$. \emph{Outside} (proved at both controls):
+along each ray $V$ is an explicit quartic, the determinant is caught through $|\det q|\leq(\|\operatorname{cof}q\|^2/3)^{3/4}$,
+and $\inf_{\mathbb R^9\setminus T}V\geq\rho_C$. \emph{Inside:} a Lehmann homotopy $H_s=H_0+sD$ (Lehmann parameter $\rho_b\leq\lambda_{11}$ from the base) from an explicit base to a
+minorant $H_1\leq H_{\mathrm{in}}$, with $D\geq0$ (the ray-aware fold) and the cubic constant $C_3$, both proved by branch
+and bound in 128-bit ball arithmetic, and the base spectrum enclosed to radius $10^{-13}$ (proved); Lehmann gives
+$\ell_k(H_s)\leq\lambda_k(H_1)\leq\lambda_k(H_{\mathrm{in}})$. \emph{Key estimate:} $\ell_5(H_s)\geq\rho_C$ at the last step, which with Lemma~R gives $S_C$. In floating point
+(every input constant rigorous) the last step gives $\ell_5-\rho_C=+0.21$ to $+0.24$ and $\ell_{11}-\rho_b=+0.03$.
+\emph{Where it could fail:} the interval Lehmann matrices (stage R2, running: cut Hermite trial states, a verified pencil) may
+lose more than the margin, most plausibly the thin $+0.03$; and the frozen $\rho_C$ must replace the recomputed one.
+\end{sketch}
+
+\begin{theorem}[The ordering]\label{p3thm:order}
+\status{CONDITIONAL ON $S_C$} At $t=3$, $s=1.15$, for each certificate marked ORDERED, the lowest charge-$\pm2$
+colour-singlet eigenvalue of the natural realization lies strictly below its second charge-$0$ eigenvalue, assuming $S_C$
+at that certificate's $\rho_C$. The certificates $(g^2,M_q)$ give $U_H-E_0^c$, $L_C-E_0^c$ and the margin
+$L_C-U_H$: $(0.004,8)$: $1.087982$, $1.095162$, $+0.007179$; $(0.002,6)$: $1.089193$, $1.099236$, $+0.010042$;
+$(0.002,8)$: $1.089044$, $1.101105$, $+0.012061$, all ORDERED; $(0.004,6)$: $1.088602$, $1.087547$, $-0.001055$,
+UNRESOLVED (a residual of $0.08$ cannot separate levels $0.008$ apart). Three of four resolve; they cover both couplings.
+\end{theorem}
+\begin{proof}[Proof, given $S_C$]
+The trial states are Ritz states times smooth cutoffs vanishing before rank loss, so they lie in $C_c^\infty(\mathbb R^9)$.
+All inputs are outward-rounded enclosures (report pages 13--14). \emph{Helike:} min--max on the enclosed Rayleigh quotient
+gives $\lambda^{(2)}_1\leq U_H$. \emph{Competitor:} for normalised $\phi$, $\eta=\langle\phi,H\phi\rangle<\rho$,
+$\varepsilon=\|(H-\eta)\phi\|$, and $\lambda$ the largest spectral point below $\rho$, positivity of $(H-\lambda)(H-\rho)$
+on the spectrum gives $\varepsilon^2\geq(\eta-\lambda)(\rho-\eta)$, so $\lambda\geq\eta-\varepsilon^2/(\rho-\eta)$
+(Kato--Temple). The two disjoint charge-$0$ Weinstein windows lie below $\rho_C$; by $S_C$ these are the only two
+eigenvalues there, so $\lambda=\lambda^{(0)}_2\geq L_C$, and $L_C>U_H$ where the margin is positive.
+\end{proof}
+Every verdict matched a prediction recorded before computation. Nothing here concerns the grid couplings or the switch.
+
+\begin{lemma}[The fold is classically forbidden]\label{p3lem:fold}
+\status{PROVED HERE} On the window: (i) $V(q)\geq\tfrac\kappa2\|q\|^2$ wherever $\det q\leq0$, in particular on the fold
+$\{\operatorname{rank}q<3\}$; (ii) $V(q)=v(gq)/g^2$ with $v$ independent of $g$, so $g^2H=-\tfrac{\hbar^2}2\Delta_p+v(p)$,
+$p=gq$, $\hbar=g^2$; (iii) if $H_D$ is the Dirichlet realization on $\{\det q>0\}$ (the log-Cholesky
+basis vanishes at the fold faster than any power, so its trial functions lie in the form domain of $H_D$), then
+$\lambda_k(H)\leq\lambda_k(H_D)$ for all $k$, in every sector.
+\end{lemma}
+\begin{proof}
+(i) In the expansion above, $-gS\det q\geq0$. (ii) $\omega_kq_k-g(\operatorname{cof}q)_k=(\omega_kp_k-(\operatorname{cof}p)_k)/g$,
+$\|q_k\|^2=\|p_k\|^2/g^2$, and the sources do not involve $g$. (iii) Extension by zero embeds the form domain of $H_D$ in that
+of $H$, preserving the form; apply min--max.
+\end{proof}
+
+\begin{conjecture}[The fold]\label{p3conj:fold}
+\status{CONJECTURE} For each $k$ there is $d_0>0$ and, for each $\epsilon>0$, $C_{k,\epsilon}$ with
+$0\leq\lambda_k(H_D)-\lambda_k(H)\leq C_{k,\epsilon}e^{-2(d_0-\epsilon)/g^2}$ as $g\to0$, in every sector: the natural
+and Dirichlet realizations differ only by tunnelling to the fold.
+\end{conjecture}
+\begin{sketch}
+\emph{Step 1.} By Lemma~\ref{p3lem:fold}(ii) this is semiclassical with $\hbar=g^2$. I take the well to be the background orbit (on the Maurer--Cartan line the sourced minimum is at $\lambda=s$; that it is the global minimum on $\mathbb R^9$ is an assumption here),
+where $v_{\mathrm{bg}}<0$ ($V(q_{\mathrm{bg}})=-47.5273$ at $g^2=0.004$), so $g^2\lambda_k(H)\to v_{\mathrm{bg}}$ for fixed $k$.
+\emph{Step 2 (key estimate).} By Lemma~\ref{p3lem:fold}(i), $v\geq0>v_{\mathrm{bg}}$ on the fold and the whole negative
+sheet: the fold is classically forbidden for every low level. Let $d_0$ be the Agmon distance from the orbit to the fold
+in the metric $2(v-v_{\mathrm{bg}})_+|dp|^2$; Agmon's estimate (Agmon, 1982) gives
+$\|e^{(1-\epsilon)d_A/\hbar}\psi_k\|\leq C_{k,\epsilon}$, $d_A$ the distance to the orbit. \emph{Step 3.} Cut the first $k$
+eigenfunctions of $H$ off near the fold; the IMS formula bounds the energy change by $O(e^{-2(d_0-\epsilon)/g^2})$ and the
+Gram matrix stays near the identity, so min--max on the positive sheet gives the upper bound, and (iii) the lower. This
+is the multiple-well setting of Helffer and Sj\"ostrand (1984), with an orbit as the well. \emph{Where it could fail:}
+if another well of $v$ lies at or below $v_{\mathrm{bg}}$ the counting changes; it is asymptotic, with no constant, so alone it says nothing at $g^2=0.03$--$0.07$; and the origin, a local minimum on
+the fold with $V=0$, carries states of order $1/g^2$ higher, which the counting must keep apart.
+\end{sketch}
+
+\begin{remark}[The unfolded chart]\label{p3rem:chart}
+\status{COMPUTED} In the chart $P=\sqrt G$, $G=qq^T$, weighted by the orbit volume of Lemma~\ref{p3lem:quotient}(ii), the
+prototype at $g^2=0.004$, $M_q=6$ reproduces the log chart's converged gaps to $2.5\times10^{-6}$. At the smoke point
+$s=1.18$, $t=3$, $g^2=0.03$, the competitor's step from $M_q=6$ to $8$ is $0.0004$ ($3{,}003$ trial functions), against
+$0.0053$ ($M_q$ $8\to10$) in the dressed chart, where its identity is $\tilde w=0.957$ ($0.914$ bare). $P$ covers both sheets, so it
+approximates the natural realization (the prototype evaluated $V$ on the positive sheet; the registered code uses the signed $V$). These values were seen before \S5.11 was registered; the registered checks are
+being rerun, and no grid verdict is reported.
+\end{remark}

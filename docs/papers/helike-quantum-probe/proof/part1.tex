@@ -1,0 +1,189 @@
+% Part I: the bundle and the lattice (layers 2-4 classical, and the lattice measure)
+\newpage
+\proofpart{1}
+\pagetitle{21 / PART I. THE BUNDLE AND THE LATTICE}{Connections, loops and the lattice measure}
+
+\begin{definition}[The bundle and its connection]
+Let $M$ be a Riemannian manifold (the base) and $G$ a compact Lie group; below $G=SU(2)$.
+\begin{enumerate}[nosep,leftmargin=1.4em]
+\item A \emph{principal $G$-bundle} $P\to M$ carries over each $x\in M$ a fibre $P_x\cong G$ on which $G$ acts freely
+and transitively from the right.
+\item A \emph{connection} $A$ assigns to each path $\gamma$ from $x$ to $y$ a parallel transport $U_\gamma$, which in
+a local trivialisation is an element of $G$, with $U_{\gamma_1\gamma_2}=U_{\gamma_1}U_{\gamma_2}$ for $\gamma_1$
+from $x$ to $y$ followed by $\gamma_2$ from $y$ to $z$, and $U_{\gamma^{-1}}=U_\gamma^{-1}$.
+\item The \emph{holonomy} of a closed loop $C$ based at $x$ is $\mathrm{Hol}_C(A)=U_C\in G$.
+\item Locally $A\in\Omega^1(M,\mathfrak{g})$, and the \emph{curvature} is $F=dA+A\wedge A$. It is the holonomy of
+infinitesimal loops: for the square of side $\varepsilon$ in the $(\mu,\nu)$-plane at $x$,
+$\mathrm{Hol}=1-\varepsilon^2F_{\mu\nu}(x)+O(\varepsilon^3)$, the sign fixed by the orientation convention.
+\item A \emph{gauge transformation} is a map $g:M\to G$ (a relabelling of each fibre). It acts on transports by
+$U_\gamma\mapsto g(x)\,U_\gamma\,g(y)^{-1}$ for $\gamma$ from $x$ to $y$. This rule respects composition, since the
+inner factors $g(y)^{-1}g(y)$ cancel. The group of all of them is $\mathcal{G}$; the connections form the affine space
+$\mathcal{A}$, and the physical configuration space is $\mathcal{A}/\mathcal{G}$.
+\end{enumerate}
+\end{definition}
+
+\begin{lemma}[Holonomy is gauge-covariant]\label{p1lem:holcov}
+\status{PROVED HERE} For a loop $C$ based at $x$, $\mathrm{Hol}_C\mapsto g(x)\,\mathrm{Hol}_C\,g(x)^{-1}$.
+\end{lemma}
+\begin{proof}
+Put $y=x$ in the transformation rule for $U_\gamma$.
+\end{proof}
+
+\begin{theorem}[Wilson loops are gauge invariant]\label{p1thm:wilson}
+\status{PROVED HERE} For every finite-dimensional representation $\rho$ of $G$, $W_C^\rho(A)=\mathrm{tr}\,\rho(\mathrm{Hol}_C(A))$
+is invariant under every gauge transformation and independent of the base point on $C$.
+\end{theorem}
+\begin{proof}
+By Lemma~\ref{p1lem:holcov} the holonomy is conjugated, and $\mathrm{tr}\,\rho(gHg^{-1})=\mathrm{tr}\,\rho(g)\rho(H)\rho(g)^{-1}=\mathrm{tr}\,\rho(H)$.
+If $x'$ lies on $C$, split $C=\gamma_1\gamma_2$ with $\gamma_1$ from $x$ to $x'$. Then
+$\mathrm{Hol}_{x'}=U_{\gamma_2}U_{\gamma_1}=U_{\gamma_1}^{-1}(U_{\gamma_1}U_{\gamma_2})U_{\gamma_1}$, again a conjugate.
+\end{proof}
+
+\begin{theorem}[Giles]\label{p1thm:giles}
+\status{PROVED, CITED: R. Giles, Phys.\ Rev.\ D 24 (1981) 2160} The Wilson loops of all closed loops determine the
+connection up to gauge equivalence.
+\end{theorem}
+\noindent So the gauge-invariant content of a connection is exactly its loop data: the value of $A$ at a point is a
+label, the holonomy around a loop up to conjugation is physical.
+
+\begin{definition}[Wilson's lattice gauge field]
+Replace $M$ by a hypercubic lattice $\Lambda$ of spacing $a$ (finite and periodic, or $\mathbb{Z}^d$). A lattice
+connection stores $U_\ell\in G$ on each oriented edge $\ell=(x\to y)$, with $U_{y\to x}=U_\ell^{-1}$; a lattice gauge
+transformation is $(g_x)_{x\in\Lambda}$, acting by $U_{x\to y}\mapsto g_xU_{x\to y}g_y^{-1}$. The Wilson loop of a
+closed path $x_0\to x_1\to\cdots\to x_n=x_0$ is $W=\mathrm{tr}\,\rho(U_{x_0x_1}U_{x_1x_2}\cdots U_{x_{n-1}x_0})$, and
+$U_p$ denotes the product around one elementary square (plaquette) $p$ (K.~G.~Wilson, Phys.\ Rev.\ D 10 (1974) 2445).
+\end{definition}
+
+\begin{theorem}[Lattice gauge invariance]\label{p1thm:latgauge}
+\status{PROVED HERE} Every lattice Wilson loop, in particular every $\mathrm{tr}\,U_p$, is invariant under every lattice
+gauge transformation.
+\end{theorem}
+\begin{proof}
+The product telescopes:
+$g_{x_0}U_{01}g_{x_1}^{-1}\,g_{x_1}U_{12}g_{x_2}^{-1}\cdots g_{x_{n-1}}U_{n-1,0}\,g_{x_0}^{-1}
+=g_{x_0}\,(U_{01}U_{12}\cdots U_{n-1,0})\,g_{x_0}^{-1}$. Take $\mathrm{tr}\,\rho$ and use cyclicity.
+\end{proof}
+
+\begin{remark}[Wilson action and its naive continuum limit]
+\status{PROVED, CITED: Wilson 1974} The Wilson action is $S(U)=\beta\sum_p\bigl(1-\tfrac12\mathrm{tr}\,U_p\bigr)$.
+Writing $U_\ell=\exp(iagA_\mu(x))$ with Hermitian $A_\mu$ (the physicists' convention, used only in this remark), one has $U_p=\exp(ia^2gF_{\mu\nu}+O(a^3))$, and for $SU(2)$
+with $\beta=4/g^2$ the action tends to $\tfrac12\int\mathrm{tr}\,F_{\mu\nu}F^{\mu\nu}\,d^4x$ as $a\to0$ for smooth
+fields. This is a classical (tree-level) statement only; it says nothing about the quantum limit.
+\end{remark}
+
+\begin{proposition}[The lattice measure lives on the quotient]\label{p1prop:measure}
+\status{PROVED HERE} On a finite lattice, $d\mu_\beta(U)=Z^{-1}e^{-S(U)}\prod_\ell dU_\ell$, with $dU$ the normalised
+Haar measure, is a probability measure invariant under the gauge group $G^\Lambda$. Hence it descends to
+a probability measure on the compact quotient $G^{E}/G^{\Lambda}$ (the finite $\mathcal{A}/\mathcal{G}$), and the
+expectation of every gauge-invariant function is an integral over that quotient, with no gauge fixing.
+\end{proposition}
+\begin{proof}
+$S$ is continuous on the compact group $G^E$ ($E$ the edges), and $S\ge0$ because $|\mathrm{tr}\,U|\le2$ on $SU(2)$; so $0<e^{-S}\le1$ and $0<Z\le1$. Under a gauge
+transformation each $U_\ell$ is multiplied on the left by $g_x$ and on the right by $g_y^{-1}$; Haar measure on a
+compact group is left and right invariant, so $\prod_\ell dU_\ell$ is invariant, and $S$ is invariant by
+Theorem~\ref{p1thm:latgauge}. The pushforward of $\mu_\beta$ under the quotient map is the descended measure, and for
+gauge-invariant $f$, $\int f\,d\mu_\beta$ equals the integral of the induced function on the quotient.
+\end{proof}
+
+\begin{remark}[Why I work on the quotient]
+\status{PROVED, CITED: V.~N.~Gribov, Nucl.\ Phys.\ B139 (1978) 1; I.~M.~Singer, Commun.\ Math.\ Phys.\ 60 (1978) 7}
+Gribov found that a gauge condition can meet an orbit more than once. Singer showed this is topological: in the
+continuum on the base $S^4$ the bundle of irreducible connections over its
+orbit space (under the based gauge group) is non-trivial, so no continuous global gauge slice exists. Proposition~\ref{p1prop:measure} is the reason
+this does not obstruct the lattice theory: the measure and every observable I use are defined on the quotient
+directly. My reduced model on $\mathbb{R}^9/SO(3)$ is the finite-dimensional version of the same choice.
+\end{remark}
+
+
+\begin{proposition}[The structure group: double cover, centre, representations]\label{p1prop:su2}
+\status{PROVED HERE}
+\begin{enumerate}[nosep,leftmargin=1.4em]
+\item $\mathrm{Ad}:SU(2)\to SO(3)$ is a surjective homomorphism with kernel the centre $Z=\{\pm1\}\cong\mathbb{Z}_2$.
+\item The irreducible representations are $V_j$, $j\in\{0,\tfrac12,1,\dots\}$, of dimension $2j+1$; the quadratic
+Casimir $C_2=T_1^2+T_2^2+T_3^2$ (Hermitian generators, $[T_1,T_2]=iT_3$ and cyclic) acts on $V_j$ as $j(j+1)$.
+\item The centre acts on $V_j$ as $(-1)^{2j}$. Hence $V_j$ descends to $SO(3)$ if and only if $j$ is an integer: the
+half-integer representations exist because of the double cover.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+(1) $SU(2)$ acts on $\mathfrak{su}(2)\cong\mathbb{R}^3$ by $\mathrm{Ad}$, preserving the invariant inner product, so
+$\mathrm{Ad}$ maps into $O(3)$, and into $SO(3)$ because $SU(2)\cong S^3$ is connected. Its kernel is the set of $g$
+commuting with all of $\mathfrak{su}(2)$, hence with all of $SU(2)$, which is $\{\pm1\}$. The differential is an
+isomorphism of Lie algebras, so the image is open and closed, hence all of the connected group $SO(3)$.
+(2) The classification of the irreducibles is standard and I cite it; the proof here is of the Casimir value. For the Casimir, write $C_2=T_3^2+T_3+T_-T_+$ with $T_\pm=T_1\pm iT_2$. On the highest
+weight vector $v$ ($T_+v=0$, $T_3v=jv$) this gives $j(j+1)v$; $C_2$ commutes with the action, so by Schur's lemma it
+is the scalar $j(j+1)$ on $V_j$.
+(3) In the fundamental representation $-1=\exp(2\pi i\,T_3)$ with $T_3=\tfrac12\sigma_3$. On $V_j$ the eigenvalues of
+$T_3$ are $m\in\{-j,\dots,j\}$, all congruent to $j$ modulo $1$, so $\rho_j(-1)=e^{2\pi i T_3}$ acts as $e^{2\pi ij}=(-1)^{2j}$.
+A representation of $SU(2)$ factors through $SU(2)/Z=SO(3)$ exactly when $Z$ acts trivially.
+\end{proof}
+
+\noindent The smallest nonzero Casimir is $C_2(\tfrac12)=\tfrac34$, carried by a representation that exists only on the
+double cover; the next is $C_2(1)=2$, a ratio $8/3$. The half turn $U=-1$ of \emph{Three Ways} (halfway round a great circle of $SU(2)=S^3$, a full $2\pi$ rotation in $SO(3)$) is the centre element.
+
+\begin{theorem}[Reflection positivity and the transfer matrix]\label{p1thm:os-rp}
+\status{PROVED, CITED: K.~Osterwalder and E.~Seiler, Ann.\ Phys.\ 110 (1978) 440}
+For the Wilson action with compact $G$ on a hypercubic lattice, the measure $\mu_\beta$ is reflection positive with
+respect to reflections in lattice hyperplanes orthogonal to a coordinate axis: $\langle\overline{\theta F}\,F\rangle\ge0$
+for every $F$ depending only on links in one half-space. Consequently there is a Hilbert space of (gauge-invariant)
+states and a bounded, self-adjoint, positive transfer matrix $T$, so that Euclidean correlations in the time
+direction are matrix elements of powers of $T$, and, with $T$ normalised so that $\|T\|=1$, $H=-\ln T/a\ge0$ defines a lattice Hamiltonian.
+\end{theorem}
+\noindent This is the lattice form of the Osterwalder--Schrader reconstruction: it is what licenses reading Euclidean
+decay rates as energies. For a full account see E.~Seiler, Lecture Notes in Physics 159 (Springer, 1982).
+
+\begin{theorem}[Mass gap at strong coupling]\label{p1thm:os-gap}
+\status{PROVED, CITED: Osterwalder and Seiler 1978}
+There is $\beta_0>0$ such that for $0\le\beta<\beta_0$ the strong-coupling (cluster) expansion converges, the
+infinite-volume limit of the expectations of local gauge-invariant observables exists, and truncated correlations
+cluster exponentially: there are $m(\beta)>0$ and $C_{A,B}<\infty$ with
+$\bigl|\langle A\,\tau_xB\rangle-\langle A\rangle\langle B\rangle\bigr|\le C_{A,B}\,e^{-m(\beta)|x|}$.
+Through Theorem~\ref{p1thm:os-rp} this gives that the lattice Hamiltonian has a spectral gap above the vacuum.
+\end{theorem}
+\noindent What this does \emph{not} give: $\beta_0$ is small, while the continuum limit requires $\beta=4/g^2\to\infty$
+with $a\to0$. Nothing proved connects the strong-coupling gap to the continuum; that is the open problem.
+
+\begin{proposition}[The electric strong-coupling gap]\label{p1prop:electric}
+\status{PROVED HERE} Let $H_E=\frac{g^2}{2a}\sum_\ell C_2(\ell)$ be the electric (strong-coupling) part of the
+Kogut--Susskind Hamiltonian (J.~Kogut and L.~Susskind, Phys.\ Rev.\ D 11 (1975) 395) for $SU(2)$ on a cubic lattice,
+infinite (states with finitely many excited links) or periodic with side $L\ge4$, acting on gauge-invariant states with no external charges. Its ground state is
+unique, with energy $0$, and its first excited level is exactly $4\cdot\frac{g^2}{2a}\cdot\frac34=\frac{3g^2}{2a}$,
+attained by a single plaquette loop in $j=\tfrac12$.
+\end{proposition}
+\begin{proof}
+$L^2(G^E)=\bigoplus_{(j_\ell)}\bigotimes_\ell\mathrm{End}(V_{j_\ell})$ by Peter--Weyl, and $C_2(\ell)$ acts on the
+summand as $j_\ell(j_\ell+1)$. Gauge transformations preserve each summand, so the gauge-invariant subspace splits the
+same way, and in the summand with labels $(j_\ell)$ it is isomorphic to $\bigotimes_x\mathrm{Inv}\bigl(\bigotimes_{\ell\ni x}V_{j_\ell}\bigr)$.
+If some vertex $x$ has exactly one incident link with $j_\ell\ne0$, the factor at $x$ is $\mathrm{Inv}(V_{j_\ell})=0$.
+So in every non-empty summand the links with $j_\ell\ne0$ form a subgraph with no vertex of degree one; if it is
+non-empty it contains a cycle. On $\mathbb{Z}^3$, and on the torus with $L\ge4$, every cycle has at least $4$ edges
+(contractible cycles have even length and there are no double edges; non-contractible ones have length $\ge L$). Each
+such link contributes at least $C_2(\tfrac12)=\tfrac34$. Hence every gauge-invariant state orthogonal to the all-$j=0$
+state has $H_E\ge4\cdot\frac{g^2}{2a}\cdot\frac34$. The plaquette loop $\mathrm{tr}\,U_p$ (each of its four links in
+$j=\tfrac12$, the others trivial) is gauge invariant, orthogonal to the constant, and attains the bound. The all-$j=0$
+summand is one-dimensional (the constant), which gives uniqueness of the ground state.
+\end{proof}
+
+\begin{remark}[My reading: where the note of one turn starts]
+\status{CONJECTURE}
+Proposition~\ref{p1prop:electric} is exact only for $H_E$; the magnetic term, of order $1/(ag^2)$, mixes the plaquette
+loop with other configurations at the next orders, so for the full Hamiltonian $3g^2/(2a)$ is the leading
+strong-coupling term of the gap, not the gap. Euclidean-side, the leading strong-coupling estimate
+$m\approx-4\ln u$, with $u=I_2(\beta)/I_1(\beta)=\beta/4+O(\beta^3)$ per plaquette, comes from the tube of $4t$
+plaquettes joining two plaquettes $t$ steps apart. Theorem~\ref{p1thm:os-gap} proves that $m(\beta)>0$; it does not
+identify $m$ with either formula. My reading is that both formulas say the same thing: the gap at strong coupling is
+read off the geometry of one turn, the Casimir $\tfrac34$ of the double-covered $j=\tfrac12$ and the four links of the
+smallest loop.
+\end{remark}
+\begin{sketch}
+(i) The convergent expansion of Theorem~\ref{p1thm:os-gap} represents the plaquette--plaquette correlator as a sum over
+connected surfaces with boundary on the two plaquettes; each surface carries a product of character coefficients
+$u_j=I_{2j+1}(\beta)/I_1(\beta)$, and $u_j=O(\beta^{2j})$, so the minimal surface in $j=\tfrac12$ dominates. The key
+estimate is that the sum of all other surfaces is $O(u)$ relative to the tube, which is what convergence of the
+expansion provides for small $\beta$. (ii) Taking the time spacing to zero turns the transfer matrix of
+Theorem~\ref{p1thm:os-rp} into a Hamiltonian whose strong-coupling part is $H_E$, where
+Proposition~\ref{p1prop:electric} applies and the Casimir appears explicitly. (iii) Where it fails: this is a statement
+at small $\beta$ only. As $\beta$ grows the electric and magnetic terms trade places, a small turn costs almost
+nothing classically (the chord price $1-\tfrac12\mathrm{tr}\,U$ goes like $\theta^2$), and nothing here shows that the lowest level keeps its carrier
+or its size. That descent is the conjecture of the later parts.
+\end{sketch}

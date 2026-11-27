@@ -736,11 +736,12 @@ def main():
         logs.mkdir(parents=True, exist_ok=True)
         for pass_number in (1, 2):
             run = subprocess.run(["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "report.tex"],
-                                 cwd=OUT, capture_output=True, text=True)
+                                 cwd=OUT, capture_output=True, text=True, errors="replace")
             (logs/f"latex-pass-{pass_number}.txt").write_text(run.stdout+run.stderr, encoding="utf-8")
             if run.returncode:
                 raise RuntimeError(f"LaTeX pass {pass_number} failed; see {logs}")
     paths = list((OUT/"figures").glob("*")) + list((OUT/"generated").glob("*.tex"))
+    paths += sorted((OUT/"proof").glob("*.tex"))   # the theorem chain (pages 20-26), \input by report.tex
     paths += [OUT/"plot-data.json", OUT/"case-summary.csv", OUT/"level-weights.csv",
               OUT/"sector-plot-data.json", OUT/"sector-summary.csv", OUT/"flux-plot-data.json", OUT/"sc-plot-data.json"]
     if args.pdf:

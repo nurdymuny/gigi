@@ -374,3 +374,66 @@ s = 1.15, t = 3, g² = 0.004.
 - **The background.** The sourced potential's minimum on the line is at **λ = 1.15 = s** exactly, with CS = 0.92575.
   Its value there, −47.5273, equals the Rust solver's energy shift for this background: an independent cross-check
   that the line, the sources and the solver describe the same object.
+
+## 14. M3 computed: the fast fibre's zero-point energy (27 November)
+
+Scripts: `scripts/helike_m3_zero_point.py`, `scripts/helike_m3_zeta.py`, `scripts/helike_m3_background.py`,
+`scripts/helike_m3_deep_analysis.py`; Rust `helike zero-point` (helike-cli). Data: `research/m3-zero-point-20261127/`.
+
+**The construction.** At a homogeneous field F (helike-core units, F = 2g·q), the spatial Yang–Mills Hessian splits by
+Peter–Weyl into sectors j with multiplicity j + 1. Sector j = 0 is the reduced model (the slow base); j ≥ 1 is the fast
+fibre. The fast frequencies are ω = √μ over the gauge-slice spectrum, and E₀_fast(F) = ½ Σ_{j≥1} (j+1) Σ ω.
+
+**Unit map, checked exactly (K7).** The reduced slow Hessian, compressed off colour rotations and multiplied by 4,
+equals the YM j = 0 slice spectrum (5.33624, 5.47333 ×2, 23.47833 ×2, 28.54376 at t = 3, s = 1.15) to 2·10⁻⁸. So
+reduced energies are YM energies / 2, and the reduced model is exactly the homogeneous sector.
+
+**Exact checks (all pass).**
+- Empty sphere (λ = 0, t = 1): the slice spectrum is (k+1)² with multiplicity 6k(k+2) (three colours × coexact
+  1-forms on the unit S³). Read back from GIGI.
+- Gauge equivalence: λ = 1 (Maurer–Cartan) has the identical total spectrum, with sectors shifted j → j + 2; regulated
+  sums agree to 10⁻¹⁵ at t = 1 and t = 3. At t = 1 the reflection λ ↔ 1 − λ holds to 10⁻¹⁵.
+- **Consequence: a sharp cutoff in j is not gauge invariant.** Sector-index ζ regularization was tested and
+  rejected: at the flat point it gives −8.67 where gauge invariance requires −2.
+
+**The regulator.** Heat trace over the whole spectrum, K(τ) = Σ e^{−τμ}; differences ΔK fitted at small τ; ζ finite
+part at μR = 1 by a Mellin split, with the finite slow set removed exactly by the continued lower gamma. Exact tests:
+rescaling the round sphere by 4 gives 0.2750005 against 3(ζ(−3) − ζ(−1)) = 11/40; τ₀-independence to 10⁻¹³.
+
+**Theorem-level result (computed): the divergence is the running coupling.** The log-divergent coefficient of the
+dressing equals (b₀/8π²)·Vol(S³_t)·(classical energy density), with b₀ = 22/3, to 10⁻⁴ at every λ ∈ {1/8, …, 7/8} on
+the line, on-shell (the sphaleron) and off-shell, and to 0.5% in curvature at the background. The ½ Σ ω over the
+transverse fast modes reproduces SU(2) asymptotic freedom with nothing tuned. (In sector language, the 1/j coefficient
+is exactly −2·dC.)
+
+**Finite dressing along the line (t = 1, ζ, μR = 1, relative to λ = 0):** E₀_fast = 0.4946, 1.2343, 1.3760, 0.8538,
+0.1867, −1.1652, −3.1621, −2.0000 at λ = 1/8, …, 1. At λ = 1 the value is exactly minus the slow-set shift (the total is
+gauge invariant; the slow/fast split moves).
+
+**At the background (t = 3, s = 1.15), the question M3 asks.** First-order Born–Oppenheimer shift of a slow normal mode
+u (unit in q, frequency ω): δω = g²·(u·Hess_F E₀_fast·u)/ω, with scheme freedom E₀ → E₀ + κ·dC (κ = log of a change of
+renormalization scale).
+- jmax 200; truncation converged to four digits against jmax 180; spread over four heat-trace windows, two power
+  bases and two finite-difference steps.
+- Curvature along Helike's mode (doublet, ω = 1.090107): **8.89** (8.65–9.08). Along the competitor's (singlet,
+  ω = 1.106657): **10.42** (10.20–10.67).
+- At g² = 0.002: Helike +0.0163, competitor +0.0188. The harmonic separation 0.0165 becomes **0.0191** (0.0183–0.0200).
+  At g² = 0.004: **0.0216** (0.0201–0.0234).
+- Closing the gap would need κ ≈ 15.8 (g² = 0.002) or 9.0 (g² = 0.004): the renormalization scale moved by e¹⁶ or e⁹.
+
+**What it places.** The fast fibre dresses both carriers upward and widens their order at the controls. That is the
+first quantitative piece of M3's "dress without exchanging".
+
+**Not established.** Uniformity in the cutoff (the M3 conjecture proper); the Berry connection and the Born–Huang term;
+second order; any grid coupling.
+
+**Failures on the way (kept).**
+- The first regulator analysis (fit of ½ Σ ω e^{−εω} on ε ∈ [0.4, 1.2]) was poor because the asymptotic series is bad
+  at ε ≈ 1. Replaced by the heat trace.
+- jmax 130 at the strong background field was not converged: curvatures moved up to 4× between jmax and jmax − 20.
+- A default-argument bug froze the fit window during the first window scan. Fixed; the scan was repeated.
+
+**GIGI (Part IV demo).** Script `scripts/gigi_m3_demo.py`; output `research/gigi-m3-20261127/result.json`. Three bundles:
+- `m3_sector_spectra`: the round-sphere law and flat-point equality from point queries;
+- `m3_line`: b₀ to 8·10⁻⁴; flat point −2 to 3·10⁻⁸;
+- `m3_background`: the separation widened, with the κ needed to close it.

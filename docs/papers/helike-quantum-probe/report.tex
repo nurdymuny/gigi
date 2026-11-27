@@ -10,6 +10,24 @@
 \usepackage{graphicx,xcolor,booktabs,array,caption,fancyhdr,enumitem}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
+\let\openbox\relax
+\usepackage{amsthm}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thetheorem}{\thesection.\arabic{theorem}}
+\newtheorem*{mainconj}{Main Conjecture}
+\newcommand{\MthreeBackground}{At the background ($t=3$, $s=1.15$; $j_{\max}=200$, truncation converged to four digits against $j_{\max}=180$; spread over four heat-trace windows, two power bases and two finite-difference steps), the curvature of $E_0^{\mathrm{fast}}$ is $8.89$ ($8.65$--$9.08$) along Helike's mode and $10.42$ ($10.20$--$10.67$) along the competitor's, and the curvature of the log coefficient equals its $b_0$ prediction to $0.5\%$. At $g^2=0.002$ this moves Helike by $+0.0163$ and the competitor by $+0.0188$: the harmonic separation $0.0165$ becomes $0.0191$ ($0.0183$--$0.0200$); at $g^2=0.004$ it becomes $0.0216$ ($0.0201$--$0.0234$). The fast fibre dresses both carriers upward and widens their order. Per unit of scheme freedom $\kappa$ (the logarithm of a change of renormalization scale) the separation moves by $-0.0012$ at $g^2=0.002$, so closing it would need the scale moved by a factor of about $e^{16}$.}
+\newcommand{\proofpart}[1]{\setcounter{section}{#1}\setcounter{theorem}{0}}
+\newcommand{\status}[1]{{\sffamily\scriptsize\color{teal}[#1]}}
+\newenvironment{sketch}{\begin{proof}[Proof sketch \textmd{(my best guess; not a proof)}]}{\end{proof}}
 \definecolor{ink}{HTML}{25343D}
 \definecolor{teal}{HTML}{176F78}
 \definecolor{gold}{HTML}{A16623}
@@ -1046,10 +1064,20 @@ in the log chart). At the weak-coupling controls it reproduces the converged
 gaps to $2.5\times10^{-6}$. These grid-coupling values are registered methods
 with checks still running; no grid verdict is reported.
 
-\textbf{What this page does not show.} Two-dimensional Yang--Mills has no
-propagating gluons, so its gap is trivial; the area law is exact there.
-Nothing here constructs the four-dimensional continuum theory. Sources:
+{\sloppy\textbf{What this page does not show.} Two-dimensional Yang--Mills has no
+propagating gluons, so its gap is trivial; the area law is exact there. The
+fibre-bundle framing specifies the four-dimensional construction in full
+(pages 20--26); nothing here proves that its continuum limit exists. Sources:
 \texttt{docs/research/helike-bundle-framing-math-2026-11-27.md},
 \texttt{helike-vacuum-shape-diagnostic-2026-11-26.md}, flux-method amendment
-\S5.10--5.11, and \texttt{research/gigi-lattice-gauge-20261127/}.
+\S5.10--5.11, and \texttt{research/gigi-lattice-gauge-20261127/}.\par}
+
+\newpage
+\input{proof/part0}
+\input{proof/part1}
+\input{proof/part2}
+\input{proof/part3}
+\input{proof/part4}
+\input{proof/part5}
+\input{proof/part6}
 \end{document}

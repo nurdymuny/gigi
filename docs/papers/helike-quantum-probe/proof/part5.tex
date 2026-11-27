@@ -1,0 +1,285 @@
+% Part V: carriers, the room growing, and the assembly.
+% ASCII only. Layers 6, 7, 5 and 1 of the grid, then the assembly of the chain.
+\newpage
+\proofpart{5}
+\pagetitle{25 / PART V. CARRIERS, THE ROOM GROWING, AND THE ASSEMBLY}{From the small room to the continuum}
+
+This part covers the carrier and the switch (layers 6, 7), topology (layer 5) and the room's size (layer 1), then
+assembles the chain. Most of it is conjecture, each stated so that it can fail.
+
+\textbf{Notation.} $H_{\rm src}(s)$ is the sourced reduced Hamiltonian of page 11 on $\mathbb R^{3\times3}$, at fixed
+$t$ and $g$, with sources $\mathrm{src}=(a,b,b)$, $a=(1-s)(t-2s)$, $b=(1-s)((1-s)/t-s)$, on the window
+$1<s<(t+2)/(t+1)$; the \emph{charge} is the Berger $U(1)$, rotating frame indices 2 and 3. $\Delta_H(s)$ is the
+excitation energy of the lowest charge-$\pm2$ level (Helike's channel) and $\Delta_C(s)$ that of the second charge-0
+level (the competitor's), both above the ground energy, in the colour-singlet sector. A \emph{carrier} is followed
+across $s$ by its physical overlap, degenerate partners together; its \emph{own-block share} $\sigma$ is the fraction
+of its vacuum-weighted Dirichlet energy spent in its own normal-mode coordinates (M8). Theorems 8 and 9 are those of
+my bundle-framing note (Chern--Simons number on the line; vacua and background of the reduced model).
+
+\medskip\eyebrow{LAYERS 6 AND 7: THE CARRIER AND THE SWITCH}
+
+\begin{proposition}[the switch is an exact crossing]\label{prop:V-crossing}
+\status{PROVED HERE}
+Fix $t>1$, $g>0$. (i) $H_{\rm src}(s)$ commutes with the charge rotation and with colour $SO(3)$ for every $s$.
+(ii) On the window, $\{H_{\rm src}(s)\}$ is a self-adjoint holomorphic family of type (B) in $s$; in each charge
+sector the eigenvalues, counted with multiplicity, are continuous in $s$ and are given locally by real-analytic
+branches. (iii) The charge-$\pm2$ and charge-0 sectors are invariant, so $H_{\rm src}(s)$ has no matrix element
+between Helike's channel and the competitor's: where $\Delta_C-\Delta_H$ changes sign, the levels cross exactly; there
+is no avoided crossing. If $\Delta_C-\Delta_H$ has opposite signs at $s_1<s_2$, it vanishes somewhere in between.
+\end{proposition}
+\begin{proof}
+(i) The Laplacian is invariant under orthogonal changes of rows and of columns. For $R,O\in SO(3)$, $\operatorname{cof}(Rq)=R\operatorname{cof}(q)$ and $\operatorname{cof}(qO)=\operatorname{cof}(q)O$.
+Let $R$ be a rotation in the frame plane (2,3). Because $\omega_2=\omega_3$ and $\mathrm{src}_2=\mathrm{src}_3$,
+$\omega\circ(Rq)=R(\omega\circ q)$ and $\sum_k\mathrm{src}_k\|(Rq)_k\|^2=\sum_k\mathrm{src}_k\|q_k\|^2$. So
+$V(Rq)=V(q)$, and likewise $V(qO)=V(q)$. (ii) Only the sources depend on $s$, polynomially. Fix $s_0$. Theorem A gives $V_{s_0}\geq\frac{\kappa}{2}\|q\|^2-S^4/(2g^2)$ with $\kappa=\kappa(s_0)>0$, so, as quadratic forms,
+$\|q\|^2\leq(2/\kappa)\bigl(H_{\rm src}(s_0)+S^4/(2g^2)\bigr)$. The perturbation
+$H_{\rm src}(s)-H_{\rm src}(s_0)=-\frac12\sum_k(\mathrm{src}_k(s)-\mathrm{src}_k(s_0))\|q_k\|^2$ is therefore
+form-bounded with relative bound at most $\max_k|\mathrm{src}_k(s)-\mathrm{src}_k(s_0)|/\kappa$, which tends to zero as
+$s\to s_0$, also for complex $s$. So the family is holomorphic of type (B) (Kato, \emph{Perturbation Theory for Linear
+Operators}, Ch.~VII), self-adjoint for real $s$; each sector has compact resolvent (Theorem A), so Rellich's theorem
+gives analytic branches, and min--max gives continuity. (iii) follows from (i); the last claim is the intermediate
+value theorem.
+\end{proof}
+
+So an ``identifiable crossing'' is two branches in different sectors meeting. Within a sector, tracking by overlap is
+still needed: the competitor's branch can meet another charge-0 branch.
+
+\begin{conjecture}[the switch and carrier persistence, M8]\label{conj:V-switch}
+\status{CONJECTURE}
+At $t=3$ and $g^2\in\{0.03,0.05,0.07\}$ there is exactly one $s^*$ in the registered $s$-range with
+$\Delta_C(s^*)=\Delta_H(s^*)$, with $\Delta_C>\Delta_H$ for $s>s^*$ (Helike carries the lowest note) and
+$\Delta_C<\Delta_H$ for $s<s^*$ (the competitor carries it), and $|s^*-s^*_{\rm pred}|\leq0.015$ with the registered
+predictions $s^*_{\rm pred}=1.1674$, $1.1809$, $1.1931$. On each side of $s^*$ each carrier keeps own-block share
+$\sigma\geq\frac12$ while it is its channel's lowest level, so that the M8 verdict is PERSISTS or HANDS OVER, never
+DISSOLVES.
+\end{conjecture}
+\begin{sketch}
+\emph{Step 1, the mechanism.} At weak coupling each gap is $\omega_X+c_Xg^2+O(g^4)$. At $t=3$, $s=1.15$ the harmonic
+frequencies are $\omega_H=1.090107$ (doublet) and $\omega_C=1.106657$, and the exact $O(g^2)$ coefficients are
+$c_H=-0.530$ and $c_C=-2.738$. At $g^2=0.002$, $0.01655-2.208\,g^2=0.0121$ matches the converged gaps $1.10114-1.08904$; at
+$g^2=0.03$ it is negative at $s=1.15$, so the crossing moves to larger $s$. Solving
+$\omega_C(s)-\omega_H(s)+(c_C(s)-c_H(s))g^2=0$ gives the registered $s^*_{\rm pred}$, and the tolerance $0.015$
+absorbs $O(g^4)$, which largely cancels between the two levels.
+\emph{Step 2, the anchor.} At the controls the ordering $\Delta_H<\Delta_C$ is proved at three of four points,
+conditional on $S_C$ (Part III). That fixes the sign on the right of the crossing at weak coupling.
+\emph{Step 3, measuring the crossing.} The registered grid (gate57) is UNRESOLVED: the competitor had neither
+converged at $M_q=10$ nor a clean bare identity. The dressed chart (\S5.10) repairs the identity
+($\tilde w=0.957$ against $0.914$ bare at the smoke point $s=1.18$, $g^2=0.03$) but not the rate. The unfolded chart
+$P=\sqrt G$ (\S5.11) is registered to repair the rate; an exploratory prototype gave a competitor step of $0.0004$ from
+$M_q$ 6 to 8 at the smoke point, seen before registration, so it decides nothing, and the grid is held. With converged
+gaps at the grid points,
+Proposition~\ref{prop:V-crossing} turns a sign change between adjacent points into an exact crossing.
+\emph{Step 4, identity.} At the controls both carriers are ALIGNED, with smallest share $0.9956$. The share is
+continuous in $s$ while the carrier's branch is isolated in its sector, so it can fall below $\frac12$ only through a
+within-sector near-crossing, which M8 detects by refinement.
+\emph{Step 5, the fast fibre.} The full theory dresses each slow mode: to first order
+$\delta\omega_k=g^2(u_k\cdot\operatorname{Hess}_FE_0^{\rm fast}\cdot u_k)/\omega_k$, up to the scheme freedom
+$E_0\to E_0+\kappa\,dC$. At the background the ordering survives if the difference of the two shifts is below the margin
+there ($0.01655$ harmonic, $0.0121$ converged at $g^2=0.002$); elsewhere the shift moves $s^*$ to first order (Part IV). At the background this curvature is \MthreeBackground. The conjecture is stated for the reduced model and
+does not depend on that value; its extension to the full theory does.
+\emph{Where it could fail.} The competitor's $O(g^2)$ coefficient is five times Helike's, so its higher orders may not
+cancel as they did at small $g$; its level was not converged on the grid, and no grid value is released. A converged
+crossing outside tolerance, or a share below $\frac12$ without a verified crossing, refutes it.
+\end{sketch}
+
+\begin{conjecture}[the glueball link]\label{conj:V-glueball}
+\status{CONJECTURE}
+$s^*(g^2)$ is increasing in $g^2$, and stays increasing along the M2 sweep $g^2=g^2(R)$. The region $s<s^*$ where the
+charge-0 carrier is lowest therefore grows with the room. In infinite volume it becomes the ordering
+$m(0^{++})<m(2^{++})$ of the lattice glueball spectrum (Morningstar and Peardon, Phys.\ Rev.\ D 60 (1999) 034509).
+\end{conjecture}
+\begin{sketch}
+At first order $s^*$ solves $\delta\omega(s)=-(c_C-c_H)g^2$, $\delta\omega=\omega_C-\omega_H$, so
+$ds^*/dg^2=-(c_C-c_H)/\delta\omega'(s^*)>0$ when $c_C<c_H$ (as at the controls) and $\delta\omega'>0$. A larger $g^2$ is a
+larger room: $R\Lambda=\exp(-8\pi^2/(b_0g^2))$ increases with $g^2$. Charge 0 contains the scalar; the charge-$\pm2$ doublet is the
+$m=\pm2$ part of the spin-2 part of $G=qq^T$, a quintet on the round sphere. \emph{Where it could fail.} First order
+is not a proof at $g^2=0.07$, and no converged grid value yet tests the rise. The step from $g^2$ to $R$ needs the source bridge
+(Conjecture~\ref{conj:V-bridge}). The labels must be continued to $J^{PC}$ past the volume where the reduction
+fails, and the van den Heuvel crossing may be a truncation artefact (note \S7). I quote no mass ratios.
+\end{sketch}
+
+\medskip\eyebrow{LAYER 5: TOPOLOGY ON THE MAURER--CARTAN LINE}
+
+\begin{proposition}[the barrier and the tunnelling length on the line]\label{prop:V-agmon}
+\status{PROVED HERE}
+With the sources off, on the line $q=\lambda q_{\rm MC}$, $q_{\rm MC}=\operatorname{diag}(1/\sqrt t,1,1)/g$:
+(i) the barrier is the sphaleron value $V(\tfrac12q_{\rm MC})=(1+2/t)/(32g^2)$; (ii) the Agmon length of the segment
+$0\leq\lambda\leq1$, for $-\frac12\Delta_q+V$, is
+\[
+ L(t)=\int_0^1\sqrt{2V(\lambda q_{\rm MC})}\,\|q_{\rm MC}\|\,d\lambda=\frac{\sqrt{(t+2)(2t+1)}}{6\,t\,g^2},
+\]
+an upper bound for the Agmon distance between the two vacua; (iii) at $t=1$ the Agmon distance in $\mathbb R^9$ from
+$0$ to the orbit $SO(3)/g$ equals $1/(2g^2)=L(1)$ exactly.
+\end{proposition}
+\begin{proof}
+(i) and (ii): Theorem 9 gives $V(\lambda q_{\rm MC})=(1+2/t)(\lambda-\lambda^2)^2/(2g^2)$, maximal at
+$\lambda=\frac12$. Also $\|q_{\rm MC}\|^2=(1/t+2)/g^2$. Then
+$\sqrt{2V}\,\|q_{\rm MC}\|=\sqrt{(t+2)(2t+1)}\,(\lambda-\lambda^2)/(tg^2)$ and $\int_0^1(\lambda-\lambda^2)d\lambda=1/6$.
+Any path bounds the infimum. (iii) At $t=1$, $V=\frac12\|\nabla W\|^2$ with $W=\frac12T_q-g\det q$ (page 10). For any
+path $\gamma$ from $0$ to $O/g$, $\int\sqrt{2V}\,|d\gamma|=\int\|\nabla W\|\,|d\gamma|\geq\int\nabla W\cdot d\gamma
+=W(O/g)-W(0)=3/(2g^2)-1/g^2=1/(2g^2)$, and $L(1)=\sqrt9/(6g^2)$ attains it.
+\end{proof}
+
+\begin{proposition}[$\theta$ is a Bloch phase]\label{prop:V-theta}
+\status{CONDITIONAL ON a self-adjoint Hamiltonian on gauge-orbit space that commutes with large gauge transformations}
+Let $\mathcal T$ implement a degree-1 gauge transformation on states invariant under degree-0 ones. Then $H$
+decomposes over the spectrum $e^{i\theta}$ of $\mathcal T$, and $\theta$ labels superselection sectors (Jackiw and Rebbi, Phys.\ Rev.\ Lett.\ 37
+(1976) 172; Callan, Dashen and Gross, Phys.\ Lett.\ B 63 (1976)).
+\end{proposition}
+\begin{proof}
+$\mathcal T$ is unitary and commutes with $H$; apply the spectral theorem to the commuting pair.
+\end{proof}
+
+\begin{remark}[what the line is, and a correction]
+\status{PROVED HERE}
+$\mathcal T$ shifts $CS$ by $1$ and carries the winding-0 vacuum to the winding-1 vacuum, the two ends of the segment
+$0\leq\lambda\leq1$ (Theorem 8). The periodic chain of vacua is the orbit of this segment under $\mathcal T^n$, not the
+continuation of $\lambda$ past $1$: by Theorems 8 and 9, $CS(2)=-4\neq CS(1)+1$ and
+$V(2q_{\rm MC})=2(1+2/t)/g^2\neq0$. ``$\theta$ is the Bloch
+phase of $\lambda\mapsto\lambda+1$'' is shorthand for this. The equivalence of the two ends needs the fast fibre: in the
+reduced model $0$ is a point and the other vacuum an $SO(3)$ orbit, but the full slice spectrum at $\lambda=1$ equals
+the one at $\lambda=0$ with multiplicities, its Peter--Weyl sectors reassembled (Part IV,
+Proposition~\ref{p4prop:flat}); the regulated sums agree to $10^{-15}$ ($t=1,3$; computed).
+\end{remark}
+
+\begin{conjecture}[the $\theta$-dependence of the gap is exponentially small]\label{conj:V-theta}
+\status{CONJECTURE}
+On the Berger sphere at weak coupling, $|\Delta(\theta)-\Delta(0)|\leq C\,e^{-S_{\rm inst}}$, with
+$S_{\rm inst}=8\pi^2/g^2$ in the normalization $\frac1{4g^2}\int F^a_{\mu\nu}F^{a\mu\nu}$ and $C$ at most polynomial
+in $1/g^2$.
+\end{conjecture}
+\begin{sketch}
+In tight binding each level of a vacuum spreads into a band $E(\theta)=E_0-2\tau\cos\theta$,
+$\tau\sim e^{-d}$ with $d$ the Agmon distance through the sphaleron; the gap, a difference of band energies, moves by
+$O(\tau)$. Proposition~\ref{prop:V-agmon}
+gives $d$ exactly at $t=1$ in model units, $1/(2g^2)$, and an upper bound for $t>1$. Not checked: that the map from the model's $g$ to
+the Yang--Mills coupling (field map $F=2gq$, volume) carries $1/(2g^2)$ to $8\pi^2/g^2$, and that the minimizing path
+for $t>1$ is the line. \emph{Where it could fail:} the fast-fibre determinant in the prefactor; excited bands wider
+than the ground band. Nothing in the chain uses this at $\theta=0$.
+\end{sketch}
+
+\medskip\eyebrow{LAYER 1: THE ROOM GROWS}
+
+\begin{conjecture}[M2, the infrared half]\label{conj:V-M2}
+\status{CONJECTURE}
+Let $\Delta(R)$ be the gap of $SU(2)$ Yang--Mills on $\mathbb R\times S^3_R$ (fixed squashing $t$), and let $g^2(R)$
+be given by $R\Lambda=\exp(-8\pi^2/(b_0g^2))$, $b_0=22/3$ (Part 0's convention; the note writes
+$\exp(-1/(2b_0g^2))$ with its $b_0=11N/(48\pi^2)$). Then $\inf_{R>0}\Delta(R)/\Lambda>0$, and the
+connected correlations of local gauge-invariant observables decay in Euclidean time at least like
+$e^{-\Delta_{\min}|\tau|}$ with $\Delta_{\min}>0$ uniform in $R$.
+\end{conjecture}
+\begin{sketch}
+\emph{Small room.} As $R\to0$, $g\to0$ and, granted M3 (Part IV), $\Delta(R)R$ tends to the lowest frequency of the
+quadratic theory on the unit sphere, a positive constant, so
+$\Delta/\Lambda=(\Delta R)/(R\Lambda)\to\infty$. The scale is consistent: the log-divergent coefficient of the fast
+zero-point sum equals $(b_0/8\pi^2)\operatorname{Vol}(S^3_t)$ times the classical energy density, to $10^{-4}$ at $\lambda\in\{\frac18,\dots,\frac78\}$ (computed, Part IV). \emph{Middle.} If the theory exists at each $R$ with a positive gap
+depending continuously on $R$, then $\Delta/\Lambda$ is positive on every compact interval of $R$. So everything
+reduces to $\liminf_{R\to\infty}\Delta(R)/\Lambda>0$. \emph{Large room.} At strong bare coupling the lattice theory
+has a gap and clustering by a convergent expansion (Osterwalder and Seiler, Ann.\ Phys.\ 110 (1978) 440; Part I). The
+continuity argument along scale is the inherited note (note \S4.9): follow the lowest level from the strong-coupling
+Casimir end to the weak-coupling small-room end with a traceable carrier, and show it never reaches zero in units of
+$\Lambda$. \emph{The key estimate} would be a lower bound on the gap of the block-spin effective theory at the scale
+where its coupling becomes of order one, uniform in the volume: that is, confinement. \emph{Where it fails.} Nothing
+I have controls the strongly coupled scales, and a gap that is positive at every finite $R$ need not survive in units
+of $\Lambda$ (the analogue for cutoffs: three-dimensional compact $U(1)$ is gapped at every cutoff, yet $m/\sqrt\sigma\to0$;
+note \S4.9). This is the wall.
+\end{sketch}
+
+\begin{conjecture}[the source bridge: an open condition]\label{conj:V-bridge}
+\status{CONJECTURE}
+The spectrum of $H_{\rm src}(s)$ determines, by a controlled limit or a matching, the low spectrum of the unsourced
+reduction, and through M3 that of the full theory on $S^3_R$.
+\end{conjecture}
+\begin{sketch}
+The sources vanish exactly at the window's edge: $a=b=0$ at $s=1$, where the background is the winding-1 vacuum
+$q_{\rm MC}$ (Theorem 9). The route: follow every reading as $s\to1^+$ and control the limit. \emph{Where it could
+fail:} the unsourced vacuum spreads over both wells, so the single-well picture may not survive, and a switch at
+$s^*>1$ may have no counterpart at $s=1$. A running coupling assigned to a radius does not supply this. Until it is
+crossed, M2 is a statement about the sourced reduction.
+\end{sketch}
+
+\medskip\eyebrow{THE ULTRAVIOLET: EXISTENCE}
+
+\begin{theorem}[partial ultraviolet results]\label{thm:V-uv}
+\status{PROVED, CITED: Osterwalder and Seiler 1978; Ba{\l}aban, 1980s; Magnen, Rivasseau and S\'en\'eor 1993}
+(i) The Wilson lattice measure is reflection positive (Osterwalder and Seiler, Ann.\ Phys.\ 110 (1978) 440). (ii)
+Ba{\l}aban's renormalization-group analysis bounds the effective actions of four-dimensional lattice Yang--Mills in a
+finite volume uniformly in the lattice spacing (Ba{\l}aban, Commun.\ Math.\ Phys., series of papers in the 1980s).
+(iii) The Schwinger functions of pure Yang--Mills in four dimensions exist with the ultraviolet cutoff removed and a
+fixed infrared cutoff (Magnen, Rivasseau and S\'en\'eor, Commun.\ Math.\ Phys.\ 1993).
+\end{theorem}
+
+\begin{proposition}[reflection positivity survives limits]\label{prop:V-rp}
+\status{PROVED HERE}
+Let $\mu_n$ be Wilson lattice measures and $\Theta$ a reflection in a hyperplane that is a lattice hyperplane for
+every $n$. If $\langle F\rangle_{\mu_n}\to\langle F\rangle$ for every bounded local observable $F$, then
+$\langle\Theta(F)\,F\rangle\geq0$ for every bounded local $F$ supported on the positive side.
+\end{proposition}
+\begin{proof}
+$\Theta(F)F$ is bounded and local, so $\langle\Theta(F)F\rangle=\lim_n\langle\Theta(F)F\rangle_{\mu_n}$, and each term is
+$\geq0$ by Theorem~\ref{thm:V-uv}(i). A limit of non-negative numbers is non-negative.
+\end{proof}
+
+\begin{conjecture}[ultraviolet existence with the Osterwalder--Schrader axioms]\label{conj:V-uv}
+\status{CONJECTURE}
+For $SU(2)$ in a finite volume, the lattice Schwinger functions of gauge-invariant observables converge as $a\to0$
+with $g^2(a)$ running as asymptotic freedom dictates, and the limit satisfies the Osterwalder--Schrader axioms with
+the regularity bounds.
+\end{conjecture}
+\begin{sketch}
+(1) \emph{Reflection positivity} passes to the limit by Proposition~\ref{prop:V-rp} (for reflections that stay
+lattice hyperplanes; the others need (3)). (2) \emph{Limits}: uniform
+bounds of Ba{\l}aban type give tightness, hence convergent subsequences; uniqueness needs more. (3) \emph{Euclidean
+invariance}: gauge-invariant hypercubic operators that break $O(4)$ first appear at dimension 6, so they are irrelevant
+and vanish like $a^2$ up to logarithms (Symanzik's argument); rigour needs the multiscale control of (2).
+\emph{Where it could fail}: in gauge-invariant multiscale control itself (no global gauge choice, Singer).
+\end{sketch}
+
+\medskip\eyebrow{THE ASSEMBLY}
+
+\begin{proof}[Proof sketch of the Main Conjecture from Parts I--V \textmd{(my best guess; not a proof)}]
+Each step names what it uses and that result's status.
+\begin{enumerate}[leftmargin=18pt,itemsep=2pt,topsep=2pt]
+\item \emph{The lattice object.} A gauge-invariant, reflection-positive measure on lattice connections modulo
+gauge, read by Wilson loops (Part I). \textbf{Proved; proved, cited.}
+\item \emph{The note at strong coupling.} Gap and clustering at strong bare coupling (Osterwalder--Seiler); the
+leading note is the Casimir $C_2(\frac12)=\frac34$ on the smallest loop; in two dimensions the area law with that
+Casimir is exact (Part II). \textbf{Proved, cited; proved for the electric Hamiltonian (Part I) and in 2-D (Part II);
+conjecture as the leading term of the full lattice gap.}
+\item \emph{The small room, reduced.} Discrete spectrum of the sourced reduction (Theorem A); Helike is the classical
+floor on Berger spheres (\emph{By Enough}); her quantum level lies below the competitor's at three of four controls
+(Part III). \textbf{Proved; proved, cited; conditional on $S_C$.}
+\item \emph{The small room, full.} The fast fibre only dresses the slow modes, uniformly in the cutoff (M3, Part IV).
+Its divergence is the one-loop running; the two vacua are spectrally equivalent. \textbf{Conjecture; the divergence
+computed, the equivalence proved (Part IV).}
+\item \emph{Carrier and switch.} Proposition~\ref{prop:V-crossing} \textbf{(proved here)};
+Conjectures~\ref{conj:V-switch}, \ref{conj:V-glueball} \textbf{(conjecture)}. \emph{Topology.}
+Propositions~\ref{prop:V-agmon} \textbf{(proved here)}, \ref{prop:V-theta} \textbf{(conditional)};
+Conjecture~\ref{conj:V-theta} \textbf{(conjecture; not used at $\theta=0$)}.
+\item \emph{The source bridge.} Conjecture~\ref{conj:V-bridge}. \textbf{Open.}
+\item \emph{The room grows.} Conjecture~\ref{conj:V-M2} (M2). \textbf{Conjecture: the wall.}
+\item \emph{Existence.} Theorem~\ref{thm:V-uv} \textbf{(proved, cited; partial)} and Conjecture~\ref{conj:V-uv}
+\textbf{(conjecture)}, in each finite volume.
+\item \emph{The limit.} Grant 4 and 8 at each $R$, 6 to connect them to the reduction, and the uniform clustering of 7.
+A bound $|\langle A\,B(\tau)\rangle_{\rm c}|\leq C_{A,B}\,e^{-\Delta_{\min}|\tau|}$ that is uniform in $R$ passes to
+any limit $R\to\infty$, and reflection positivity passes with it (Proposition~\ref{prop:V-rp}). Osterwalder--Schrader reconstruction then gives a
+Hilbert space and $H\geq0$ with no spectrum in $(0,\Delta_{\min})$ on the subspace generated by local observables:
+the gap, $\Delta=c\Lambda$. \emph{Euclidean invariance, uniqueness of the infinite-volume limit and
+non-triviality are further conditions, not supplied by any step above.}
+\item \emph{Inheritance.} If, in addition, step 5's carrier conjectures hold along the M2 sweep and the carrier is traced from step 2 to step 3
+(M9, on the lattice), the gap is the inherited note with an identified carrier. \textbf{Conjecture.}
+\end{enumerate}
+\emph{Which single failures break it.} This route to the gap (step 9) breaks if any of 4, 6, 7 or 8 fails. It does not break if
+$S_C$ fails, if the switch is misplaced, or if the carrier dissolves: those break only the identified carrier and the
+inheritance (step 10). Topology breaks nothing at $\theta=0$. Step 7 is the one I expect to be hardest, since it is the
+infrared half of the Clay problem itself.
+
+\emph{What the GIGI construction can and cannot test.} It can store each reading as a section and recompute it from
+point queries; check planted exact answers (the 2-D area law, gauge invariance to $10^{-15}$, the centre vortex, the
+closed forms on the Maurer--Cartan line, the Hessian slice spectrum); hold a carrier's identity across $s$, cutoffs
+and charts, and refuse a match that is only a similar number. It cannot prove a bound, take $a\to0$ or $R\to\infty$,
+or say anything in four dimensions beyond the finite computations it stores. An agreement it records is evidence, not
+a proof.
+\end{proof}
+
+This is a complete construction, unvalidated, and overall unproven.

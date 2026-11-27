@@ -95,6 +95,20 @@ enum Cmd {
         #[arg(long, default_value_t = 12)]
         jmax: usize,
     },
+    /// M3 (bundle-framing §14): gauge-slice fluctuation spectra per sector j at diagonal fields on the Maurer-Cartan
+    /// line (x, y) = lam (2/sqrt t, 2); j = 0 is the homogeneous (slow) sector, j >= 1 the fast fibre; multiplicity j+1.
+    ZeroPoint {
+        #[arg(long)]
+        t: f64,
+        /// comma-separated lam values
+        #[arg(long, default_value = "")]
+        lams: String,
+        /// JSON file: a list of 3x3 fields m[k][c] (frame row k, colour c), in addition to the line
+        #[arg(long)]
+        fields: Option<PathBuf>,
+        #[arg(long, default_value_t = 40)]
+        jmax: usize,
+    },
     /// Where the Berger path crosses the edges (t_A for H + GG^*, t* for the gauge slice).
     Berger {
         #[arg(long, default_value_t = 12)]
@@ -330,6 +344,27 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                 .map(|&t| xs.iter().map(|&x| helike::phi(&Member::new(x, *y, t), which, *jmax)).collect())
                 .collect();
             (json!({"y": y, "t": ts, "x": xs, "spectrum": format!("{which:?}"), "jmax": jmax}), json!({"phi": grid}))
+        }
+        Cmd::ZeroPoint { t, lams, fields, jmax } => {
+            let lams: Vec<f64> = lams.split(',').filter(|v| !v.trim().is_empty())
+                .map(|v| v.trim().parse::<f64>().map_err(|e| e.to_string())).collect::<Result<_, _>>()?;
+            let mut ms: Vec<(Option<f64>, Vec<Vec<f64>>)> = lams.iter()
+                .map(|&l| (Some(l), vec![vec![l * 2.0 / t.sqrt(), 0.0, 0.0], vec![0.0, 2.0 * l, 0.0], vec![0.0, 0.0, 2.0 * l]])).collect();
+            if let Some(f) = fields {
+                let v: Vec<Vec<Vec<f64>>> = serde_json::from_str(&std::fs::read_to_string(f).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+                ms.extend(v.into_iter().map(|m| (None, m)));
+            }
+            let geo = Member::new(0.0, 0.0, *t).geometry();
+            let pts: Vec<Value> = ms.iter().map(|(lam, m)| {
+                let field = helike_core::sector::Field::new(helike_core::lie::LieAlgebra::so3_cross(), m.clone());
+                let sectors: Vec<Value> = (0..=*jmax).into_par_iter().map(|j| {
+                    let rep = Member::sector_rep(j);
+                    let hg = helike_core::sector::Sector::new(&geo, &field, &rep).hessian_and_gauge();
+                    json!({"j": j, "mult": j + 1, "slice": hg.slice_spectrum(), "full_dim": hg.dim()})
+                }).collect();
+                json!({"lam": lam, "field": m, "energy_density": field.energy(&geo), "sectors": sectors})
+            }).collect();
+            (json!({"t": t, "lams": lams, "fields": fields, "jmax": jmax}), json!({"points": pts}))
         }
         Cmd::Ladder { x, y, t, jmax } => {
             let m = Member::new(*x, *y, *t);

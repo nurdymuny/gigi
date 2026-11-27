@@ -1,0 +1,184 @@
+% Part II: two dimensions, exactly (area law, every representation, Casimir scaling, centre vortices, GIGI checks)
+\newpage
+\proofpart{2}
+\pagetitle{22 / PART II. TWO DIMENSIONS, EXACTLY}{The area law and its Casimir}
+
+\noindent\textbf{Setting.} $G=SU(2)$, the Wilson action $S=\beta\sum_p(1-\tfrac12\mathrm{tr}\,U_p)$ and the measure
+$\mu_\beta$ of Proposition~\ref{p1prop:measure}, on the planar lattice with vertices $(x,y)$, $0\le x,y\le L$, and open
+boundary. Write $H_{x,y}$ for the horizontal edge $(x,y)\to(x+1,y)$, $V_{x,y}$ for the vertical edge $(x,y)\to(x,y+1)$,
+and $p(x,y)$ for the plaquette with lower-left corner $(x,y)$, so $U_{p(x,y)}=H_{x,y}V_{x+1,y}H_{x,y+1}^{-1}V_{x,y}^{-1}$.
+Put $\varphi(U)=e^{(\beta/2)\mathrm{tr}\,U}$, a class function. For $U=a_0+i\,\vec a\cdot\vec\sigma$, $\mathrm{tr}\,U=2a_0$.
+$\chi_j$, $d_j=2j+1$ and $C_2(j)=j(j+1)$ are as in Proposition~\ref{p1prop:su2}; $I_n$ is the modified Bessel function.
+
+\begin{lemma}[Central averaging]\label{p2lem:central}
+\status{PROVED HERE} If the law of a random $U\in G$ is invariant under conjugation and $\rho$ is irreducible of
+dimension $d$, then $\mathbb{E}\,\rho(U)=\frac{\mathbb{E}\,\chi_\rho(U)}{d}\,\mathrm{Id}$. Hence if $U$ is independent of
+$X,Y$, then $\mathbb{E}\,\chi_\rho(XUY)=\frac{\mathbb{E}\chi_\rho(U)}{d}\,\mathbb{E}\,\chi_\rho(XY)$.
+\end{lemma}
+\begin{proof}
+$M=\mathbb{E}\rho(U)$ satisfies $\rho(h)M\rho(h)^{-1}=\mathbb{E}\rho(hUh^{-1})=M$ for all $h$, so $M=c\,\mathrm{Id}$ by
+Schur's lemma, and taking the trace gives $c$. For the second claim integrate $U$ first (Fubini):
+$\mathrm{tr}\,\rho(X)M\rho(Y)=c\,\chi_\rho(XY)$. With $X=1$ this is the factorisation
+$\mathbb{E}\chi(UV)=\mathbb{E}\chi(U)\,\mathbb{E}\chi(V)/d$.
+\end{proof}
+
+\begin{theorem}[The area law in two dimensions, every representation]\label{p2thm:area}
+\status{PROVED HERE} Let $C$ be the boundary of a lattice rectangle enclosing $|A|$ plaquettes. For every spin $j$,
+\[
+\frac{\langle\chi_j(\mathrm{Hol}_C)\rangle}{d_j}=\Bigl(\frac{I_{2j+1}(\beta)}{I_1(\beta)}\Bigr)^{|A|},
+\qquad\text{in particular}\qquad
+\bigl\langle\tfrac12\mathrm{tr}\,\mathrm{Hol}_C\bigr\rangle=\Bigl(\frac{I_2(\beta)}{I_1(\beta)}\Bigr)^{|A|}.
+\]
+\end{theorem}
+\begin{proof}
+\emph{1. Gauge-fix on a maximal tree.} $T$ = all vertical edges and the bottom row $H_{x,0}$ is a spanning tree
+($L^2+2L$ edges, $(L+1)^2$ vertices). The gauge transformation $g_v$ = transport along $T$ from $(0,0)$ to $v$ sets every
+tree edge to $1$. For fixed tree edges it acts on the other edges by left and right translations, which preserve Haar
+measure, and it leaves $S$ and every Wilson loop unchanged (Theorem~\ref{p1thm:latgauge}). So expectations of loops may be
+computed with tree edges $=1$ and the remaining $H_{x,y}$ ($y\ge1$) distributed as $Z^{-1}\prod_p\varphi(U_p)\prod dH$.
+
+\emph{2. Plaquettes become coordinates.} Now $U_{p(x,y)}=H_{x,y}H_{x,y+1}^{-1}$, so
+$H_{x,y}=P_{x,y}^{-1}$ with $P_{x,y}=U_{p(x,0)}U_{p(x,1)}\cdots U_{p(x,y-1)}$. The map
+$(H_{x,y})_{y\ge1}\mapsto(U_{p(x,y)})_{y\ge0}$ is a bijection, column by column.
+
+\emph{3. Independence.} Fixing $H_{x,1},\dots,H_{x,y}$, the map $H_{x,y+1}\mapsto H_{x,y}H_{x,y+1}^{-1}$ preserves Haar
+measure (inversion and translation do), so by induction the Haar product pushes forward to the Haar product in the $U_p$.
+The weight is $\prod_p\varphi(U_p)$. So the $U_p$ are independent, each with law $Z_1^{-1}\varphi(U)\,dU=Z_1^{-1}e^{\beta a_0}dU$.
+
+\emph{4. The loop as a word (lattice non-abelian Stokes).} Let the rectangle have corners $(x_1,y_1)$, $(x_2,y_2)$ and
+traverse it anticlockwise from $(x_1,y_1)$. Put $B_x=P_{x,y_1}$ (plaquettes below the rectangle) and
+$Q_x=U_{p(x,y_1)}\cdots U_{p(x,y_2-1)}$ (the enclosed plaquettes of column $x$), so $P_{x,y_2}=B_xQ_x$. Vertical edges are
+$1$, hence
+\[
+\mathrm{Hol}_C=B_{x_1}^{-1}B_{x_1+1}^{-1}\cdots B_{x_2-1}^{-1}\;\cdot\;B_{x_2-1}Q_{x_2-1}\,B_{x_2-2}Q_{x_2-2}\cdots B_{x_1}Q_{x_1}.
+\]
+Each enclosed $U_p$ occurs exactly once; the $B_x$ involve only plaquettes below the rectangle; no other plaquette occurs.
+
+\emph{5. Class-function laws.} $\varphi$ and Haar measure are conjugation invariant, so each $U_p$ has a
+conjugation-invariant law.
+
+\emph{6. Factorisation.} Apply Lemma~\ref{p2lem:central} to the enclosed $U_p$ one at a time, conditioning on all other
+variables (independent by step 3). Each application extracts $u_j=\mathbb{E}\chi_j(U_p)/d_j$ and replaces $U_p$ by $1$.
+After $|A|$ steps every $Q_x=1$ and the word telescopes:
+$B_{x_1}^{-1}\cdots B_{x_2-1}^{-1}B_{x_2-1}\cdots B_{x_1}=1$. So $\langle\chi_j(\mathrm{Hol}_C)\rangle=u_j^{|A|}\,d_j$.
+
+\emph{7. One plaquette.} By Weyl's integration formula, for a class function $f$,
+$\int f\,dU=\frac2\pi\int_0^\pi f(\theta)\sin^2\theta\,d\theta$, where $U\sim\mathrm{diag}(e^{i\theta},e^{-i\theta})$,
+$a_0=\cos\theta$ and $\chi_j(\theta)=\sin((2j+1)\theta)/\sin\theta$. With $I_n(\beta)=\frac1\pi\int_0^\pi
+e^{\beta\cos\theta}\cos n\theta\,d\theta$ and the recurrence $I_{n-1}-I_{n+1}=\frac{2n}\beta I_n$,
+\[
+\int_0^\pi e^{\beta\cos\theta}\sin((2j+1)\theta)\sin\theta\,d\theta
+=\tfrac12\!\int_0^\pi e^{\beta\cos\theta}\bigl[\cos 2j\theta-\cos(2j+2)\theta\bigr]d\theta
+=\tfrac\pi2\bigl(I_{2j}-I_{2j+2}\bigr)=\frac{\pi(2j+1)}{\beta}I_{2j+1}(\beta).
+\]
+Dividing by the case $j=0$ ($\pi I_1/\beta$) and by $d_j$ gives $u_j=I_{2j+1}(\beta)/I_1(\beta)$. For $j=\frac12$ this is
+$\mathbb{E}a_0=\int a_0e^{\beta a_0}\sqrt{1-a_0^2}\,da_0\big/\int e^{\beta a_0}\sqrt{1-a_0^2}\,da_0=I_2/I_1$.
+
+\emph{8. Multiply} over the $|A|$ plaquettes, by step 6.
+\end{proof}
+
+\begin{remark}[Other simple loops]\label{p2rem:simple}
+\status{PROVED, CITED: Migdal 1975; Gross and Witten, Phys.\ Rev.\ D 21 (1980) 446} The same formula holds for every
+simple closed lattice loop, with $|A|$ the enclosed area. My proof above covers rectangles only: for a general simple
+loop the word of step 4 still exists, but I have not written out the bookkeeping showing that each enclosed plaquette
+occurs once and the rest telescopes. Every GIGI check below uses rectangles.
+\end{remark}
+
+\begin{corollary}[The string tension is the Casimir]\label{p2cor:casimir}
+\status{PROVED HERE} With $\sigma_j=-\ln\bigl(I_{2j+1}(\beta)/I_1(\beta)\bigr)$, $\langle\chi_j\rangle/d_j=e^{-\sigma_j|A|}$
+and, as $\beta\to\infty$,
+\[
+\sigma_j=\frac{2\,C_2(j)}{\beta}+O(\beta^{-2}),\qquad\frac{\sigma_j}{\sigma_{1/2}}\to\frac{C_2(j)}{C_2(\frac12)},\qquad
+\frac{\sigma_1}{\sigma_{1/2}}\to\frac{2}{3/4}=\frac83 .
+\]
+With $\beta=4/g_{\rm lat}^2$: $\sigma_{1/2}=\tfrac38g_{\rm lat}^2+O(g_{\rm lat}^4)=\tfrac{g_{\rm lat}^2}{2}C_2(\tfrac12)+O(g_{\rm lat}^4)$.
+If $g_{\rm lat}^2=g^2a^2$ ($g$ of mass dimension one in two dimensions) and rectangles of fixed physical area
+$\mathcal{A}=|A|a^2$ are kept as $a\to0$, then $\langle\chi_j\rangle/d_j\to\exp\bigl(-\tfrac{g^2}{2}C_2(j)\,\mathcal{A}\bigr)$.
+\end{corollary}
+\begin{proof}
+For fixed $n$, $I_n(\beta)=\frac{e^\beta}{\sqrt{2\pi\beta}}\bigl(1-\frac{4n^2-1}{8\beta}+O(\beta^{-2})\bigr)$ (DLMF
+\S10.40). So $I_n/I_1=1-\frac{n^2-1}{2\beta}+O(\beta^{-2})$, and with $n=2j+1$, $n^2-1=4j(j+1)=4C_2(j)$, giving
+$I_{2j+1}/I_1=1-2C_2(j)/\beta+O(\beta^{-2})$; take $-\ln$. The ratio follows, and $C_2(1)=2$, $C_2(\frac12)=\frac34$.
+For the limit, $\ln\langle\chi_j\rangle/d_j=-\frac{\mathcal{A}}{a^2}\bigl(\frac{2C_2(j)g^2a^2}{4}+O(a^4)\bigr)\to-\frac{g^2}2C_2(j)\mathcal{A}$.
+\end{proof}
+
+\noindent The limiting form, a Casimir times the area in the exponent, is the form of the exact continuum
+two-dimensional theory (Driver 1989; Gross, King and Sengupta 1989; L\'evy 2003), where $C_2(j)$ is the eigenvalue of the
+Laplacian on $SU(2)$ in the heat kernel; I do not match normalisation conventions with those works here. The Casimir
+$\frac34$ in the fundamental is the same number as the note of one turn (Proposition~\ref{p1prop:electric}).
+
+\begin{theorem}[Centre vortices flip exactly the half-integer loops]\label{p2thm:vortex}
+\status{PROVED HERE} Fix a plaquette $p_*$ and a self-avoiding dual path $\gamma_*$ (it visits each plaquette at most once
+and crosses edges transversally at interior points) from the interior of $p_*$ to the outside of the lattice, crossing
+the set $E_*$ of edges. Let $U'_e=-U_e$ for $e\in E_*$ and $U'_e=U_e$ otherwise. Then
+$U'_{p_*}=-U_{p_*}$ and $U'_p=U_p$ for every other $p$; and for every closed lattice loop $C$ and every spin $j$,
+\[
+\chi_j(\mathrm{Hol}'_C)=(-1)^{2jN}\chi_j(\mathrm{Hol}_C),\qquad N\equiv\mathrm{wind}(C,p_*)\pmod 2,
+\]
+where $N$ counts the traversals of edges of $E_*$ by $C$. So half-integer loops winding an odd number of times around
+$p_*$ change sign exactly, and integer-spin loops never change.
+\end{theorem}
+\begin{proof}
+$-1$ is central, so moving every sign to the front gives $U'_p=(-1)^{|\partial p\cap E_*|}U_p$ and
+$\mathrm{Hol}'_C=(-1)^N\mathrm{Hol}_C$ (and $(-1)^{-1}=-1$, so direction does not matter). Since $\gamma_*$ is
+self-avoiding, it crosses each edge at most once, exactly one edge of $p_*$ (where it leaves), exactly two edges of every
+other plaquette it passes through (in and out), and none of the rest. $N$ is the number of crossings of $C$ with
+$\gamma_*$. Extend $\gamma_*$ outside the lattice to a ray avoiding $C$; the signed crossing number of $C$ with this ray
+is the winding number of $C$ about a point of $p_*$, and the unsigned count $N$ has the same parity. Finally $-1=\exp(2\pi i\,\sigma_3/2)$ acts in spin $j$ as $e^{2\pi i m}=(-1)^{2j}$ on
+every weight $m\in\{-j,\dots,j\}$, so $\chi_j(-U)=(-1)^{2j}\chi_j(U)$.
+\end{proof}
+
+\begin{proposition}[GIGI verification]\label{p2prop:gigi}
+\status{COMPUTED: \texttt{scripts/gigi\_lattice\_gauge\_demo.py}, \texttt{scripts/gigi\_grid\_demos.py}; local
+\texttt{gigi-stream} 0.4.1} A GIGI bundle \texttt{lattice\_su2} (base: edges; fibre: unit quaternion) holds $24$
+configurations at $L=10$, $\beta=4$. Each loop is read only by point queries along its edges ($43{,}010$ and $16{,}088$
+queries). Rectangles of one size sit on disjoint tiles, so they are independent samples.
+\begin{center}\small
+\begin{tabular}{@{}lccc@{\qquad}lccc@{}}
+\toprule
+\multicolumn{4}{@{}l}{Fundamental, exact $(I_2/I_1)^{|A|}$, $I_2(4)/I_1(4)=0.658047$} &
+\multicolumn{4}{l@{}}{Adjoint $\langle\chi_1\rangle/3$, exact $(I_3/I_1)^{|A|}$, $I_3(4)/I_1(4)=0.3420$}\\
+\midrule
+loop & measured & exact & $z$ & loop & measured & exact & $z$\\
+$1\times1$ & $0.6607\pm0.0064$ & $0.6580$ & $+0.42$ & $1\times1$ & $0.3544\pm0.0084$ & $0.3420$ & $+1.48$\\
+$1\times2$ & $0.4275\pm0.0137$ & $0.4330$ & $-0.40$ & $1\times2$ & $0.1275\pm0.0126$ & $0.1169$ & $+0.84$\\
+$2\times2$ & $0.1803\pm0.0236$ & $0.1875$ & $-0.30$ & $2\times2$ & $-0.0058\pm0.0166$ & $0.0137$ & $-1.17$\\
+$2\times3$ & $0.0782\pm0.0292$ & $0.0812$ & $-0.10$ & & & & \\
+$3\times3$ & $-0.0409\pm0.0331$ & $0.0231$ & $-1.94$ & & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{enumerate}[nosep,leftmargin=1.4em]
+\item \emph{Area law} (Theorem~\ref{p2thm:area}): all eight loops agree within $2\sigma$; $\sigma_{1/2}=0.4185$ per plaquette.
+\item \emph{Gauge invariance} (Theorem~\ref{p1thm:latgauge}): every stored section rewritten in place by a fresh random
+gauge transformation; the largest change of any Wilson loop was $1.2\cdot10^{-15}$, while a single edge changed by $1.27$.
+\item \emph{Casimir scaling} (Corollary~\ref{p2cor:casimir}): the exact ratio $\sigma_1/\sigma_{1/2}$ is $2.404$, $2.564$, $2.662$,
+$2.6664$ and $2.66665$ at $\beta=2,4,16,64,256$, tending to $8/3$.
+\item \emph{Centre vortex} (Theorem~\ref{p2thm:vortex}): the edges crossed by a Dirac string from one plaquette up through
+the top boundary were rewritten as $-U$. A loop enclosing it: fundamental $1.1941\to-1.1941$, adjoint
+$0.4258\to0.4258$. A loop crossing the string twice, and a far loop: both unchanged. (A first attempt flipped a column
+of vertical edges; that flips whole plaquette columns rather than making one vortex, and the probes did not see it.)
+\end{enumerate}
+\end{proposition}
+
+\noindent What each check tests. The sampler draws configurations by the construction of the proof (tree gauge,
+independent plaquettes with density $e^{\beta a_0}$) and then scrambles each by a random gauge transformation. So item 1
+tests the storage, the point-query read path and the ordered loop products against the theorem, not the theorem
+independently of its own construction. Items 2 and 4 write new sections into the bundle and test the engine directly.
+
+\begin{remark}[What two dimensions does not show]\label{p2rem:limit}
+\status{PROVED HERE} Items 1 and 2 are proved; item 3 is context, not a result.
+\begin{enumerate}[nosep,leftmargin=1.4em]
+\item \emph{No propagating gluons.} For two rectangles with disjoint column ranges, step 4 writes each holonomy in the
+plaquettes of its own columns, which are independent by step 3. Their connected correlation is therefore exactly $0$,
+not exponentially small.
+\item \emph{No screening.} By Theorem~\ref{p2thm:area} the adjoint loop has an area law too, $\sigma_1>0$ (since
+$0<I_3(\beta)<I_1(\beta)$ for $\beta>0$), because there
+are no gluons to break the adjoint string.
+\item \emph{The gap is trivial.} Two-dimensional Yang--Mills has no local propagating degrees of freedom, so its
+confinement is exact but its gap carries none of the content of the four-dimensional problem. In $d\ge3$ the plaquette
+variables are not free: around each elementary cube the six plaquettes satisfy the lattice Bianchi constraint, so the
+tree gauge of step 1 does not make them independent, step 3 fails, and both the area law and the gap become the open
+problem.
+\end{enumerate}
+\end{remark}

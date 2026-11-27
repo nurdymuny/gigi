@@ -3,8 +3,8 @@
   "source_status": "UNRESOLVED",
   "source_receipt_sha256": "48d0e7994b0babf799a37507f6d9eb86140ff32f221e696d41a9813b1edebc68",
   "source_verification_sha256": "ff3d0b00f00e068bcf38a614a2114ac81aa91a7a947a056700173c4515130385",
-  "builder_sha256": "83bd486c0e60057a610c138ebb4cb68ba2903d267ba2e7a81245702abd62534c",
-  "latex_sha256": "2141569bac4e2b1f7d41c5da7a5691c1fe9988211dd841c2e51db844388f6c40",
+  "builder_sha256": "6d3907db3ba8e2d1531017c0dc9778ebea2d85f9a3f5cf3926957eeb1b91ee95",
+  "latex_sha256": "f8bb8ea4323d18882971685e8aa74348247a070dd2daf4d708c565d53bb1968d",
   "sector_source_revision": "abd81f978faf4b3c29fbc44d5ac6d7df02a75aae",
   "sector_receipt_sha256": "b621f7c5587bb285eea991173dfbfb4146a7764fdd61864b02e881108aab6ae0",
   "sector_verification_sha256": "a2ce96fbaa5af027cb276dd63c11c5c0cc94fb2e4b3839f713917cf6e6de20a9",
@@ -68,6 +68,13 @@
     "generated/sector-residuals.tex": "197c4c3dcf52dc72b8f96f79faf95e7ac28b143de5889b17714ad062f0740c1a",
     "generated/sector-levels.tex": "82bc6a26b7879205d53cca51cebc248eacd4f7349445f564f28a8f25a2c3d12a",
     "generated/final-levels.tex": "74e11e236e09bbec448975d3c62c8dbf2a4a029268586d22a01628bf9b0c107f",
+    "proof/part0.tex": "ebb4f8723add447750f6a6ecf7d7809d1ea84681640a36c697753929b20b5e50",
+    "proof/part1.tex": "875229bdbc9617121b5fc27e77cfc29d24d653d1f8083dd7d6499c42988071c0",
+    "proof/part2.tex": "7d7f23db9a47dda4c6dc539d1a49bdf96b6468ec6f0d2a821196c9550cba47c7",
+    "proof/part3.tex": "11a35a27876f47d67d7b502b3eeac8c3a9acb15f4c3502456cbc07028de37f38",
+    "proof/part4.tex": "2c4203877b41801ea31e229b1a0bf501df58c183a402eae7f75ff4374dccee0d",
+    "proof/part5.tex": "b885ab3449d41179aa411f388534f7fe4d0164efeb0f463b31bda7bbad0c9f6a",
+    "proof/part6.tex": "2bc36f356f8abb4ce5bdc258e8f44fa965d03f73ffe5229000f4fe854f068767",
     "plot-data.json": "d931737395b8634fa2e0dd56886328a5d6947e05b019b07b85556040ca2b8f65",
     "case-summary.csv": "55934b6e860777ca7b427ce0c2f9d614c33d1ad5679d4d589e3d3d351b5f3b14",
     "level-weights.csv": "9a7ad25a78856badd74cdb918ffd7e7dabc28cf5028d99ebe731f45458243f37",
@@ -75,6 +82,6 @@
     "sector-summary.csv": "fc1352257253db2733c6547401e36d23297ab2ca165706725c20b548e101a3ab",
     "flux-plot-data.json": "8c901e38175059438ebbf8bdc47319b914a5980f1bd1c56ad6a98fd2f7c727ae",
     "sc-plot-data.json": "cef1a54e49231d4977d1da50ed2f3c3a8962848974f1fb5fb08d901d895f60ae",
-    "report.pdf": "c8dd835fa38a914a7c0daa0a8503493e73344ad5cc3407fe66e8a5aaf1f7dbc7"
+    "report.pdf": "b0b341da451cbe0980c85fb627025ccf78c0fec24b60b580cf496e7bea629561"
   }
 }

@@ -1,0 +1,190 @@
+% Part 0: the complete statement, the roadmap and the logical skeleton.
+% ASCII source only. \input after page 19 of report.tex.
+\proofpart{0}
+\pagetitle{20 / THE COMPLETE STATEMENT}{One conjecture, held up by eight layers}
+{\small\color{teal}\textbf{Added 27 November 2026.} The front of the theorem chain. Parts I--V follow.}\par\smallskip
+
+\textbf{What follows, and what it is not.} Everything in Parts I--V is one
+construction. It is organised by the structures that every principal bundle
+carries, taken as layers: the \emph{base} (space, its size, and the scale
+along which it is refined), the \emph{structure group} $SU(2)$ with its centre,
+the \emph{connection} and its holonomies, the \emph{gauge quotient}
+$\mathcal A/\mathcal G$, its \emph{topology}, the \emph{measure} on the quotient,
+the \emph{spectrum} of the Hamiltonian, and the \emph{scale fibration} that
+splits slow modes from fast ones. Each result lives in one layer, and each
+implication between layers is marked with what holds it up. The chain is
+complete in the sense that every step the Main Conjecture needs is named, so
+the whole can be checked and can be wrong. It is
+not validated, and the Main Conjecture is not proved. The proved pieces are standard mathematics, or
+theorems about a lattice, two dimensions, or a finite-dimensional reduction;
+none is a statement about four-dimensional continuum Yang--Mills.
+
+\textbf{Two words of jargon.} \emph{Ultraviolet} means the fine-grain
+direction: zooming in, where the field has wiggles at ever shorter distances,
+infinitely many of them, and the lattice spacing goes to zero. \emph{Infrared}
+means the opposite direction: zooming out, as the room grows without end. (The
+names are borrowed from light only by analogy: short wavelengths are violet,
+long ones red.) In this programme the ultraviolet is the \emph{fast modes} of
+the scale fibration (Part IV, M3) and the infrared is \emph{the room growing}
+(Part V, M2).
+
+\textbf{Conventions.} $G=SU(2)$. The coupling runs at one loop as
+$1/g^2(\mu)=(b_0/8\pi^2)\ln(\mu/\Lambda)$ with $b_0=22/3$, for the action
+$\frac{1}{4g^2}\int F^a_{\mu\nu}F^{a\,\mu\nu}$. The scale $\Lambda$ is generated
+by the running and does not appear in the classical theory. Its value depends on
+the scheme; the ratio between two schemes is a fixed number, so ``$\Delta=c\Lambda$''
+means that $c$ is a pure number once the scheme is fixed.
+
+\begin{mainconj}
+\status{CONJECTURE}
+\begin{enumerate}[label=(\roman*),leftmargin=18pt,itemsep=2pt,topsep=2pt]
+\item \emph{(Existence and the gap.)} There is a probability measure on
+(generalised) $SU(2)$ connections on $\mathbb R^4$ modulo gauge, obtained as a
+limit of Wilson lattice measures as the spacing $a\to0$ along the running
+coupling and the volume $L^4\to\infty$, whose Schwinger functions of
+gauge-invariant observables (smeared $\operatorname{tr}F^2$ and smeared Wilson
+loops) satisfy the Osterwalder--Schrader axioms: Euclidean invariance,
+reflection positivity, regularity, and clustering. By the
+Osterwalder--Schrader reconstruction theorem this gives a Wightman theory with
+Hilbert space $\mathcal H$, vacuum $\Omega$ and Hamiltonian $H\geq0$. The theory
+is non-trivial, which I take to mean that its truncated four-point function
+does not vanish identically, so it is not a generalised free field. It has a mass gap:
+$\operatorname{spec}(H)\subset\{0\}\cup[\Delta,\infty)$ with $0$ a simple
+eigenvalue, and $\Delta=c\,\Lambda$ with $c>0$. In particular the truncated
+correlations of separated gauge-invariant probes decay like
+$e^{-\Delta\cdot\mathrm{distance}}$.
+\item \emph{(The sharper form: the note is inherited.)} The lowest note has a
+traceable carrier along the whole direction of scale.
+\begin{itemize}[leftmargin=14pt,itemsep=1pt,topsep=1pt]
+\item At the lattice end (Hamiltonian lattice theory, strong coupling) the
+lowest gauge-invariant excitation is, at leading order, one plaquette of
+$j=\tfrac12$ flux, with energy $4\cdot\frac{g^2}{2a}\cdot C_2(\tfrac12)=\frac{3g^2}{2a}$,
+where $C_2(\tfrac12)=\tfrac34$ is the Casimir of one turn.
+\item In the small room (homogeneous connections on the Berger sphere, window
+$t>1$, $1<s<(t+2)/(t+1)$) the lowest note is carried by Helike, the
+charge-$2$ maximal-charge twist, for $s>s^*(g^2)$, and by the charge-$0$
+competitor for $s<s^*(g^2)$, with a single identifiable switch at $s^*$.
+\item Between and beyond these, each carrier keeps a measurable property (in the
+reduction, an own-block share $\geq\tfrac12$; on the lattice, representation
+content, loop extent and Wilson-loop overlap), which changes hands only at
+identifiable level crossings, uniformly as the cutoffs are removed; and the gap
+in the field's own scale, $\Delta/\Lambda$, stays bounded away from zero.
+\end{itemize}
+\end{enumerate}
+\end{mainconj}
+
+Part (i) is the Jaffe--Witten statement of the problem (Clay Mathematics
+Institute, 2000), restricted to $SU(2)$; the axioms are those of Osterwalder
+and Schrader (Commun.\ Math.\ Phys.\ 31 (1973) 83; 42 (1975) 281). Part (ii) is
+mine. It is stronger than (i), and it can fail while (i) holds: a gap made at
+weak coupling with no inherited carrier would refute (ii) and leave (i)
+standing.
+
+\begin{sketch}
+The argument is the logical skeleton below, read top to bottom. The key
+estimate is a bound, uniform in the ultraviolet cutoff and in the size of the
+room, on how far the fast modes and the larger rooms can move the lowest
+levels of the reduction relative to the gap between the carriers (Parts IV and
+V). It can fail in three places, each named in advance: the stated hypothesis
+$S_C$ (Part III), a carrier that dissolves without a switch (the M8 and M9
+tests), and $\Delta R$ flattening as the room grows (M2). Even if all three
+hold, the passage from bounds on rooms to Osterwalder--Schrader limits is the
+constructive problem itself, and nothing here does it.
+\end{sketch}
+
+\textbf{The five tags.} Every result in Parts I--V carries exactly one.
+\begin{center}\small
+\begin{tabular}{@{}p{1.55in}p{4.75in}@{}}\toprule
+\textbf{Tag} & \textbf{Meaning}\\\midrule
+\status{PROVED HERE} & A complete proof is written in this report.\\[2pt]
+\status{PROVED, CITED} & Proved in the cited work; not reproved here.\\[2pt]
+\status{COMPUTED} & A numerical result, stated with its number and with what it checks. It is evidence, not a proof.\\[2pt]
+\status{CONDITIONAL ON ...} & Proved, assuming the named hypothesis, which is itself open.\\[2pt]
+\status{CONJECTURE} & Not proved. Followed by my best-guess argument and where it could fail.\\\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Roadmap.} Counts refer to the principal results named in this table
+(PH proved here, PC proved and cited, C computed, Cd conditional, X
+conjecture), counted from the parts as written. Each part's own tags are
+authoritative.
+\begin{center}\small
+\begin{tabular}{@{}p{0.55in}p{1.25in}p{3.45in}p{0.95in}@{}}\toprule
+\textbf{Part} & \textbf{Layers} & \textbf{Main results} & \textbf{Status}\\\midrule
+I. The bundle and the lattice & base (lattice), structure group, connection, measure & holonomy is gauge covariant and Wilson loops are gauge invariant, in the continuum and on the lattice; loops determine the connection (Giles); the Wilson action (Wilson); the lattice measure lives on the quotient; why the quotient (Gribov, Singer); $SU(2)$ as the double cover, its centre and Casimirs; reflection positivity and the transfer matrix, and the strong-coupling gap (Osterwalder--Seiler); the electric gap is exactly $3g^2/(2a)$; my reading of it as the leading term of the full gap & 6 PH, 5 PC, 1 X\\[4pt]
+II. Two dimensions, exactly & connection, structure group & central averaging; the area law $\langle\chi_j\rangle/d_j=(I_{2j+1}/I_1)^{|A|}$ for every representation; the string tension is the Casimir, with Casimir scaling to $8/3$; centre vortices flip exactly the half-integer loops; the continuum two-dimensional theory (Migdal; Gross and Witten); the GIGI verifications & 5 PH, 1 PC, 1 C\\[4pt]
+III. The small room & base (Berger spheres), gauge quotient, topology, spectrum & $\mathbb R^9/SO(3)$ with the orbit-volume measure; the Maurer--Cartan line, $CS(\lambda)=3\lambda^2-2\lambda^3$, the vacua, the background exactly $s\,q_{\mathrm{MC}}$; Helike (\emph{By Enough}; Floor v3.3) and her doublet in the reduced model; Theorem A; $S_C$; the ordering; the fold & 7 PH, 1 PC, 2 C, 1 Cd, 2 X\\[4pt]
+IV. The scale fibration (M3) & scale fibration, base (running coupling) & the Berry connection is flat; the empty-sphere fibre; gauge equivalence of the flat points, so the regulator must be spectral; the divergence of the dressing is the one-loop running of $1/g^2$; the finite dressing, and at the background it widens Helike's lead; first-order shifts; the uniform-dressing conjecture & 6 PH, 2 C, 1 X\\[4pt]
+V. Carriers, the room growing, the assembly & spectrum, topology, measure, base (scale) & the switch is an exact crossing; carrier persistence (M8) and the glueball link; $\theta$ as a Bloch phase and the barrier on the line; M2; the source bridge; partial ultraviolet results; reflection positivity survives limits; ultraviolet existence; the assembly & 4 PH, 1 PC, 1 Cd, 6 X\\[4pt]
+VI. Where this stands & --- & each part against the established line it continues; where a referee will push & ---\\\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{The logical skeleton.} Each arrow carries its status. The proofs are in
+the parts named; they are not restated here.
+\begin{enumerate}[leftmargin=18pt,itemsep=3pt,topsep=2pt]
+\item \textbf{Part I $\Rightarrow$ a lattice theory.} On every finite lattice the
+Wilson measure is a gauge-invariant probability measure that descends to the
+finite quotient $\mathcal A/\mathcal G$, with no gauge fixing
+\status{PROVED HERE}. It is reflection positive, so it has a transfer matrix and
+a positive Hamiltonian, and for small $\beta$ it has a mass gap
+(Osterwalder and Seiler, Ann.\ Phys.\ 110 (1978) 440) \status{PROVED, CITED}.
+\item \textbf{Part I $\Rightarrow$ the note at the lattice end.} The electric
+(strong-coupling) Kogut--Susskind Hamiltonian has a unique ground state and
+first excited level exactly $4\cdot\frac{g^2}{2a}\cdot\frac34=\frac{3g^2}{2a}$,
+carried by one plaquette in $j=\tfrac12$ \status{PROVED HERE}. That this is the
+leading strong-coupling term of the gap of the full Hamiltonian
+\status{CONJECTURE}.
+\item \textbf{Part II $\Rightarrow$ the note, exactly, in two dimensions.} The
+area law holds exactly for every representation, with the Casimir as the string
+tension, and the centre vortices flip exactly the double-covered loops
+\status{PROVED HERE}; GIGI reproduces them from point queries
+\status{COMPUTED}.
+\item \textbf{Part III $\Rightarrow$ a finite quotient with its topology.}
+Homogeneous connections on the Berger sphere form $\mathbb R^9/SO(3)$; the
+background sits on the Maurer--Cartan line at $\lambda=s$, just past the
+winding-$1$ vacuum ($1<s<(t+2)/(t+1)$), with $CS=3s^2-2s^3$
+\status{PROVED HERE}.
+\item \textbf{Part III $\Rightarrow$ the carrier in the small room.} Helike is
+an exact eigenvector of the Hessian on Berger spheres, with a closed-form
+eigenvalue, and is its floor on the domain stated there (\emph{By Enough},
+doi:10.5281/zenodo.24472820; Floor v3.3) \status{PROVED, CITED}; the
+reduced Hamiltonian has discrete spectrum (Theorem A) \status{PROVED HERE};
+Helike's level lies below the competitor's at three of four weak-coupling
+controls \status{CONDITIONAL ON $S_C$}. $S_C$ itself: $C_3$, the fold, the
+outside bound and the enclosed base are proved, the homotopy margin
+$\ell_5-\rho_C=+0.21$ to $+0.24$ is floating point only \status{CONJECTURE}.
+\item \textbf{Part V $\Rightarrow$ the switch.} The lowest note passes from
+Helike to the competitor at one identifiable $s^*(g^2)$, with registered
+predictions $1.1674$, $1.1809$, $1.1931$ at $g^2=0.03$, $0.05$, $0.07$; its
+rise with $g^2$ is the small-volume precursor of $0^{++}<2^{++}$
+\status{CONJECTURE}.
+\item \textbf{Part IV $\Rightarrow$ the fast modes only dress.} The
+$q$-dependent ultraviolet divergence of the fast zero-point energy is
+$(b_0/8\pi^2)\operatorname{Vol}(S^3_t)$ times the classical energy density,
+ratio $1.0000\pm10^{-4}$ at every $\lambda\in\{\tfrac18,\dots,\tfrac78\}$; at
+the background the finite first-order dressing widens Helike's lead over the
+competitor ($0.0165\to0.0191$ at $g^2=0.002$) \status{COMPUTED}. That the finite remainder is bounded uniformly in the cutoff
+and does not exchange the carriers except at the switch (M3)
+\status{CONJECTURE}.
+\item \textbf{Part V $\Rightarrow$ the room grows.} The sources are removed or
+matched to the unsourced theory, and $\Delta R/(R\Lambda)$ stays bounded away
+from zero as $R\to\infty$ (M2); on the lattice the strong-coupling carrier
+descends to weak coupling with only identifiable switches (M9)
+\status{CONJECTURE}.
+\item \textbf{Assembly (Part V).} Reflection positivity, a closed condition,
+passes to any limit of the lattice expectations of bounded local observables,
+for reflections in hyperplanes that are lattice hyperplanes along the sequence
+\status{PROVED HERE}. Given steps
+1--8, the limit $a\to0$, $L\to\infty$ exists, restores Euclidean invariance,
+is non-trivial and has $\Delta=c\Lambda>0$, with the carriers of step 2 and
+steps 4--5 as the inherited note: this is the Main Conjecture
+\status{CONJECTURE}.
+\end{enumerate}
+
+\textbf{Where the weight rests.} Steps 1--4 are proved, cited or computed,
+except my reading of $3g^2/(2a)$ as the leading term of the full lattice gap.
+Step 5 rests on one hypothesis, $S_C$, whose remaining piece is an interval
+Lehmann computation (R2) that is still running; until it closes, the ordering
+is conditional. Steps 6--9 are conjecture apart from the computed parts of step 7, and step 9 is the whole constructive
+problem: even granted steps 1--8, I cannot prove that the limit exists.

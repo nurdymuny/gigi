@@ -1,0 +1,168 @@
+% Part IV: the scale fibration (layer 8, milestone M3): Born-Oppenheimer on the Berger sphere
+\newpage
+\proofpart{4}
+\pagetitle{24 / PART IV. THE SCALE FIBRATION (M3)}{The fast fibre dresses the slow model}
+
+$S^3_t$ is $SU(2)$ with the left-invariant Berger metric $(t,1,1)$, energies are in units of $1/R$, and a \emph{sector}
+$j\geq0$ is a Peter--Weyl component: the slice (gauge-orthogonal) Hessian at a left-invariant field commutes with left
+translations, so its eigenvalues in sector $j$ come as spin-$j/2$ representations of $SU(2)_L$, multiplicity $j+1$. The
+reduced model's $q\in\mathbb{R}^{3\times3}$ enters as $F=2gq$, and reduced energies are Yang--Mills energies divided by $2$
+(checked: at $t=3$, $s=1.15$ the reduced slow Hessian off colour rotations, times $4$, is the Yang--Mills $j=0$ slice spectrum $5.33624$, $5.47333\,(\times2)$, $23.47833\,(\times2)$, $28.54376$, to $2\times10^{-8}$).
+
+\begin{definition}[The scale fibration]\label{p4def:bo}
+The \emph{slow base} is $\mathbb{R}^{9}/SO(3)$, homogeneous $q$ (sector $0$) modulo constant colour rotations. The
+\emph{fast fibre} over $q$ is the slice spectrum $\mu_n(F)$ in sectors $j\geq1$, with multiplicity $j+1$. Quantizing it
+harmonically at fixed $q$ gives $H_{\rm fast}(q)$, frequencies $\omega_n=\sqrt{\mu_n}$, and a ground state $|0(q)\rangle$
+which, where non-degenerate, spans a line bundle over the base. Projecting onto it gives, in reduced units,
+\[
+ H_{\rm eff}=\tfrac12\,\delta^{ik}(p_i-\mathcal{A}_i)(p_k-\mathcal{A}_k)+V(q)+\tfrac12E_0(2gq)+\Phi(q),
+\]
+with Berry connection $\mathcal{A}_i=i\langle0|\partial_i0\rangle$, zero-point energy $E_0=\tfrac12\sum_n\omega_n$
+(regularized below), Born--Huang term $\Phi=\tfrac12\sum_i\|(1-|0\rangle\langle0|)\partial_i0\|^2$, and $V$ the sourced
+reduced potential (whose kinetic term $\tfrac12|p_q|^2$ is flat).
+\end{definition}
+
+\begin{lemma}[The Berry connection is flat]\label{p4lem:berry}
+\status{PROVED HERE} On a simply connected region where $|0(q)\rangle$ is non-degenerate, $\mathcal{A}\equiv0$ in a suitable
+gauge; globally only a sign holonomy around a degeneracy is possible.
+\end{lemma}
+\begin{proof}
+At vacuum angle zero $H_{\rm fast}(q)$ is a real operator (oscillators with a real symmetric frequency matrix), so its ground state has a smooth real unit
+choice there, and then $\langle0|\partial_i0\rangle=\tfrac12\partial_i\langle0|0\rangle=0$. Real unit choices differ by a sign.
+\end{proof}
+
+\begin{proposition}[The empty-sphere fibre]\label{p4prop:empty}
+\status{PROVED HERE} At $F=0$, $t=1$, the slice spectrum is $(k+1)^2$, $k\geq1$, with multiplicity $6k(k+2)$. Sector $j$
+holds $(j+2)^2$ with multiplicity $3(j+3)$ per copy and, for $j\geq2$, $j^2$ with $3(j-1)$; sector $0$ is the nine slow modes at $4$.
+\end{proposition}
+\begin{proof}
+At $A=0$ the Hessian is $\|da\|^2$ on three colour copies; the gauge directions are exact and $H^1(S^3)=0$, so the slice is
+the coexact forms, where the operator is $d^*d=(*d)^2$. In the left-invariant orthonormal frame, $[X_i,X_k]=2\epsilon_{ikl}X_l$,
+so $*d\sigma^l=-2\sigma^l$, and for $a=a_l\sigma^l$ one finds $*da=-2(J\cdot S+1)a$, with $J_i=\tfrac i2X_i$ (spin operators
+on the coefficients) and $(S_i)_{lm}=-i\epsilon_{ilm}$ (spin $1$). On sector $j$, $J\cdot S=\tfrac12[L(L+1)-J^2-2]$ equals
+$\tfrac j2,\,-1,\,-(\tfrac j2+1)$ for $L=\tfrac j2+1,\tfrac j2,\tfrac j2-1$; so $*d$ has eigenvalues $-(j+2)$, $0$, $j$ on blocks of
+dimension $j+3$, $j+1$ ($j\geq1$), $j-1$ ($j\geq2$). The kernel block is closed, hence exact; the others lie in the range of
+$*d$, hence are coexact. Square and multiply by three colours. The value $n^2=(k+1)^2$ occurs in sectors $n-2$ and $n$, each
+with total multiplicity $3(n-1)(n+1)$, in all $6k(k+2)$. (Classical; compare Ikeda and Taniguchi, 1978.)
+\end{proof}
+\noindent\textbf{Computed.} \texttt{helike zero-point} at $\lambda=0$, $t=1$ returns exactly this spectrum, read back from
+GIGI. In zeta regularization its zero-point energy is $\tfrac12\sum6(n^2-1)n=3(\zeta(-3)-\zeta(-1))=11/40$.
+
+\begin{proposition}[Gauge equivalence of the flat points; the regulator must be spectral]\label{p4prop:flat}
+\status{PROVED HERE} Let $A_\lambda=\lambda\,g^{-1}dg$, $g$ the identity map of $SU(2)$ (the Maurer--Cartan line).
+(i) For every $t$, $A_1$ is gauge equivalent to $A_0=0$, and the slice spectra coincide with multiplicities.
+(ii) The sector-$j$ eigenspaces at $\lambda=1$ are assembled from the colour-stripped eigenspaces of sectors $j-2,j,j+2$ at
+$\lambda=0$, so a cutoff $j\leq J$ keeps different modes at gauge-equivalent points and is not gauge invariant.
+(iii) At $t=1$ the spectra at $\lambda$ and $1-\lambda$ coincide.
+\end{proposition}
+\begin{proof}
+(i) $u=g^{-1}$ sends $A\mapsto u^{-1}Au+u^{-1}du$, so $A_1\mapsto dg\,g^{-1}-dg\,g^{-1}=0$; it conjugates the Hessian by the
+isometry $a\mapsto gag^{-1}$ and maps slice to slice. No metric enters. (ii) With $(\mathrm{Ad}\,a)(x)=x\,a(x)\,x^{-1}$,
+$L_h^*(\mathrm{Ad}\,a)=h\,\mathrm{Ad}(L_h^*a)\,h^{-1}$: left translation at $\lambda=1$ corresponds to left translation
+composed with the colour rotation $h$ at $\lambda=0$, where the Hessian is colour diagonal; and
+$V_{j/2}\otimes V_1=V_{j/2+1}\oplus V_{j/2}\oplus V_{j/2-1}$. (iii) $u=g^{-1}$ sends $A_\lambda\mapsto-(1-\lambda)\,dg\,g^{-1}$,
+and inversion $\iota(x)=x^{-1}$, an isometry only of the round metric, has $\iota^*(dg\,g^{-1})=-g^{-1}dg$.
+\end{proof}
+
+\begin{corollary}[The flat-point fast shift]\label{p4cor:minus2}
+\status{PROVED HERE} For any regularization that is a function of the whole slice spectrum and changes by the plain finite sum when finitely many modes are removed (zeta and heat-trace regularization do),
+$E_0^{\rm fast}(A_1)-E_0^{\rm fast}(A_0)=-[E^{\rm slow}(A_1)-E^{\rm slow}(A_0)]$, a finite sum; at $t=1$ it is $-2$.
+\end{corollary}
+\begin{proof}
+The totals agree by (i). At $t=1$ the slow spectrum is $4\,(\times9)$ at $\lambda=0$ and, by (ii) from sector $2$,
+$4\,(\times1)$, $16\,(\times5)$ at $\lambda=1$: the slow difference is $\tfrac12(2+5\cdot4)-\tfrac12(9\cdot2)=2$.
+\end{proof}
+\noindent\textbf{Computed.} The regulated totals at $\lambda=0,1$ agree to $10^{-15}$ ($t=1$ and $3$); (iii) holds to
+$10^{-15}$; the zeta fast shift is $-1.99999997$. A zeta regularization
+by sector index was tested and rejected: it gives $-8.67$ where gauge invariance requires $-2$.
+
+\begin{theorem}[The ultraviolet divergence of the dressing is the running coupling]\label{p4thm:uv}
+\status{COMPUTED} With $\mathcal{E}(\epsilon)=\tfrac12\sum\omega\,e^{-\epsilon\omega}=A\epsilon^{-4}+B\epsilon^{-2}+C\log\epsilon+D+o(1)$
+over the whole fast spectrum, along the Maurer--Cartan line $A,B$ are field independent and
+\[
+ C(F)-C(0)=\frac{b_0}{8\pi^2}\,\mathrm{Vol}(S^3_t)\,\varepsilon(F),\qquad b_0=\tfrac{22}{3},\quad\mathrm{Vol}(S^3_t)=2\pi^2\sqrt t,
+\]
+$\varepsilon(F)=\tfrac12\sum_{i<k}|F_{ik}|^2$ the classical energy density. The ratio is $1.0000\pm10^{-4}$ at every
+$\lambda\in\{\tfrac18,\dots,\tfrac78\}$, at the on-shell sphaleron and off shell.
+\end{theorem}
+\noindent\textbf{Standard versus computed.} $b_0=11N/3$, i.e.\ $d(1/g^2)/d\ln\mu=b_0/8\pi^2$, is the one-loop $\beta$ function
+(Gross and Wilczek, Phys.\ Rev.\ Lett.\ 30 (1973) 1343; Politzer, ibid.\ 1346). If $\sum e^{-\tau\mu}\supset c_{1/2}\tau^{1/2}$,
+subordination gives $C=c_{1/2}/2\sqrt\pi$, and $c_{1/2}=(4\pi)^{-3/2}a_4$, the local heat coefficient quadratic in curvature ($a_4$ in the labelling of
+Vassilevich, Phys.\ Rep.\ 388 (2003) 279). I compute the identity on the Berger slice spectrum; I do not prove it. Since it
+has the form of the classical energy, it is removed by a cutoff-dependent shift of the coefficient of $\mathrm{Vol}\,\varepsilon(F)$:
+the $q$-dependent divergence of the dressing is the one-loop running of $1/g^2$. \emph{Checks:} the zeta machinery run on the empty round spectrum with every eigenvalue multiplied by $4$ (no log term)
+returns $0.2750005$ against the exact $11/40$; split-point independence $10^{-13}$.
+
+\begin{remark}[The finite dressing along the Maurer--Cartan line]\label{p4rem:table}
+\status{COMPUTED} Zeta, $\mu R=1$, $t=1$, relative to $\lambda=0$; stable to about $10^{-4}$ relative across fit windows.
+\begin{center}\small
+\begin{tabular}{@{}lcccccccc@{}}\toprule
+$\lambda$ & $\tfrac18$ & $\tfrac14$ & $\tfrac38$ & $\tfrac12$ & $\tfrac58$ & $\tfrac34$ & $\tfrac78$ & $1$\\\midrule
+$E_0^{\rm fast}(\lambda)-E_0^{\rm fast}(0)$ & $0.4946$ & $1.2343$ & $1.3760$ & $0.8538$ & $0.1867$ & $-1.1652$ & $-3.1621$ & $-2.0000$\\\bottomrule
+\end{tabular}
+\end{center}
+The last entry is Corollary~\ref{p4cor:minus2}. The total is symmetric under $\lambda\mapsto1-\lambda$; the fast part is not.
+\end{remark}
+
+\begin{proposition}[First-order shift of a slow mode]\label{p4prop:shift}
+\status{PROVED HERE} Let $q_{\rm bg}$ be a non-degenerate stationary point, held fixed, with unit normal mode $u_k$ of
+frequency $w_k$ whose eigenspace is irreducible under the symmetries fixing $q_{\rm bg}$ and $E_0$. Adding
+$\tfrac12E_0(2gq)$ moves $w_k$ to first order by
+\[
+ \delta w_k=g^2\,u_k\cdot\mathrm{Hess}_FE_0\cdot u_k\,/\,w_k,
+\]
+up to the scheme freedom $E_0\to E_0+\kappa\,C(F)$, a finite shift of $1/g^2$ at the scale $1/R$ (Theorem~\ref{p4thm:uv}).
+\end{proposition}
+\begin{proof}
+$\mathrm{Hess}_q\tfrac12E_0(2gq)=2g^2\,\mathrm{Hess}_FE_0$, which acts as a scalar on the irreducible eigenspace, so
+$\delta(w_k^2)=2g^2\,u_k\cdot\mathrm{Hess}_FE_0\cdot u_k$ and $\delta w_k=\delta(w_k^2)/2w_k$.
+\end{proof}
+\noindent\textbf{Caveat at the same order.} If instead the sources are fixed and the background relaxes, it moves by
+$\delta q=-g(\mathrm{Hess}\,V)^{-1}\nabla_FE_0=O(g)$; since $\nabla^3V=O(g)$ at $q_{\rm bg}=O(1/g)$, the extra term
+$u_k\cdot\nabla^3V[\delta q]\cdot u_k/2w_k$ is also $O(g^2)$.
+
+\textbf{At the Helike background} ($t=3$, $s=1.15$) the harmonic frequencies are $1.090107$ (Helike doublet) and $1.106657$
+(competitor singlet); the converged gaps at $g^2=0.002$ are $1.08904$ and $1.10114$. M3 must decide the sign and size of
+$\delta w_{\rm H}-\delta w_{\rm C}$ against this margin. \MthreeBackground
+
+\begin{lemma}[Fast quanta do not mix singly into the slow levels]\label{p4lem:sel}
+\status{PROVED HERE} The full Hamiltonian commutes with $SU(2)_L$ (left translations are isometries of $S^3_t$). The fast
+ground state at a homogeneous field is invariant, a harmonic fast quantum in sector $j\geq1$ has spin $j/2\geq\tfrac12$, so the
+invariant slow levels meet fast excitations only through two or more quanta coupled to spin $0$.
+\end{lemma}
+\begin{proof}
+A unique ground state of an invariant operator spans a one-dimensional representation, and $SU(2)$ has only the trivial one.
+\end{proof}
+
+\begin{conjecture}[M3: uniform dressing]\label{p4conj:m3}
+\status{CONJECTURE} Let $H_\Lambda$ be the Yang--Mills Hamiltonian on $S^3_t$ with a gauge-invariant spectral cutoff
+$\Lambda$, the reduced model's homogeneous sources, and bare coupling run so that the renormalized $g$ (zeta, $\mu R=1$) is
+fixed. Suppose the fast slice spectrum at $q_{\rm bg}$ is positive, with lowest frequency $\omega_f$ (reduced units), and fix a
+window $E_*<2\omega_f$ above the vacuum. Then for $0<g<g_*$, in the $SU(2)_L$-invariant, gauge-invariant sector of each
+charge: (i) the levels of $H_\Lambda$ in the window converge as $\Lambda\to\infty$; (ii) they differ from the reduced model's
+by at most $cg^2$, uniformly in $\Lambda$, and from those of $H_{\rm eff}$ by $o(g^2)$; (iii) Helike and the competitor keep the
+reduced model's order except within $cg^2$ of its switch, which moves to first order by Proposition~\ref{p4prop:shift}.
+\end{conjecture}
+\begin{sketch}
+\emph{1. The adiabatic parameter is $g$.} Slow and fast frequencies are both $O(1/R)$ (at $F=0$ both reach $2$), so the
+separation is not a frequency ratio. It comes from the field map: $H_{\rm fast}$ depends on $q$ only through $F=2gq$, so every non-adiabatic coupling
+$\langle n|\partial_q0\rangle=2g\langle n|\partial_FH_{\rm fast}|0\rangle/(E_0-E_n)$ is $O(g)$ while $E_n-E_0$ stays bounded
+below. With $\mathcal{A}=0$, $\Phi=O(g^2)$ and the $q$-curvature of $\tfrac12E_0(2gq)$ is $O(g^2)$; adiabatic perturbation theory
+(Teufel, Lecture Notes in Math.\ 1821, 2003) gives (ii) formally.
+\emph{2. The key estimate: a fast gap.} Needed: $\mu_*,c'>0$ with slice spectrum in sector $j\geq1$ at least $\max(\mu_*,c'j^2)$
+for $|F-F_{\rm bg}|\leq\delta$. For large $j$ the field enters at lower order than the Laplacian, whose sector floor is $j^2$
+(Proposition~\ref{p4prop:empty}); small $j$ is a finite interval computation of the kind the Floor theorem performs at the
+Berger field (certificates for $j<100$, closed-form Gershgorin for $j\geq100$). Lemma~\ref{p4lem:sel} is why the window is $2\omega_f$.
+\emph{3. Renormalization.} By Theorem~\ref{p4thm:uv} the divergent $q$-dependence of $E_0$ is absorbed in $1/g^2$.
+\emph{4. Uniformity in $\Lambda$.} Integrate dyadic shells $2^m\leq j<2^{m+1}$ with the coupling run shell by shell, bounding
+each shell's non-Gaussian remainder by $g_m^2$ times a summable factor: Ba{\l}aban's multiscale control (Commun.\ Math.\ Phys.,
+1987--89) in Hamiltonian form on a curved base, which does not yet exist. Template (perturbative): L\"uscher (Nucl.\ Phys.\
+B219 (1983) 233) on the torus; Koller and van Baal (Nucl.\ Phys.\ B302 (1988) 1), van den Heuvel (1996) on $S^3$.
+\emph{Where it could fail.} (a) Soft fast modes: the Floor law $\lambda_t(j)=[j(j+2)-2(t-3)j-2(t-2)(t+4)]/t$ is negative for
+$j\leq2$ at $t=3$, so at the Berger field the fast fibre is unstable. The construction must stay local around $q_{\rm bg}$, the
+slow wavefunction (width $O(g)$ in $F$) being $e^{-c/g^2}$-small where the gap closes, near the fold or the sphaleron; and if
+$2\omega_f$ lies below the competitor the window is empty. (b) Gribov copies: $\lambda=1$ is a gauge copy of $\lambda=0$, so
+$\mathbb{R}^9/SO(3)$ is not a fundamental domain; the identification is tunnelling, exponentially small but to be bounded.
+(c) Fast vacua at different $q$ need not share one Fock space uniformly in $\Lambda$ (Shale, 1962), so $\Phi$ and the slow
+kinetic term may need their own renormalization (unchecked).
+\end{sketch}

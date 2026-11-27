@@ -11,7 +11,7 @@ from unittest.mock import patch
 import fitz
 import build_ym_helike_report as report
 
-PAGES = 25
+PAGES = 51
 import test_ym_helike_report as tests
 
 

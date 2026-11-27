@@ -246,5 +246,33 @@ check. The checker deliberately rejects an old PDF that lacks the opening spread
 - The mathematical argument depends on a published global bound, not on the D=3 partition integral
   converging. This is an application to my reduced-model requirement, not a novelty claim for that inequality.
 
+## The documented Wick-triangle conjecture
+
+- Baseline before this change: `36eb3b4f9e240f2fa3d226dc11f2111dcf3a8c6d`.
+  Contract and proof: `docs/research/h6-wick-triangle-contract-2026-11-27.md` and
+  `docs/research/h6-wick-triangle-proof-2026-11-27.md`.
+- H6 Step 6's explicit prediction T_O != 0 is refuted in its free Euclidean R4 setting.
+  The field-strength covariance exchanges the two Hodge halves; any three-covariance product has trace zero.
+  This holds for every separated triple. Contact terms and interacting corrections are not covered.
+- The four-point alternative already named in H6 is nonzero. With the same canonical O = sum :F_mu,nu^a F_mu,nu^a:,
+  its connected coefficient at 0, L e0, 2L e0, 3L e0 is 676 dim(g)/(27 pi^8 L^16), L > 0.
+  This is an exact Wick calculation, not a numerical spectral result. Its transfer to Theta remains conditional on H6.
+- Statement 44 uses that coefficient while remaining CONDITIONAL. Statement 42 (H6) remains CONJECTURE.
+  The paper still has 48 statements and the register still has seven open top-level hypotheses.
+  The full theory is not declared non-free just because a composite field has a nonzero connected function.
+- The exact gate has ten checks plus four rejected engine mutations. Five Lean matrix declarations compile
+  with only the pinned Mathlib foundational axioms; three hypothesis/sign mutants fail. The propagator and Wick
+  dictionary have written proofs and exact symbolic checks, not an end-to-end formal QFT construction.
+- Evidence: `research/h6-wick-triangle-20261127/release-02/receipt.json`. The initial red run and the intermediate
+  document-marker failure are retained. `publication-red` confirms that the old preservation gates reject this
+  substantive correction; the updated gates permit one exact frozen replacement and reject changed coefficients
+  or stronger statuses. Unrelated statement bodies remain fixed.
+- Reproduction: `python scripts/check_h6_wick_triangle.py <fresh-output-directory>`, plus the existing format,
+  review and doublet commands above. The Lean project remains `formal/h7-cubic-quartic` with its existing pins.
+  No GPU job, large eigensolve, simulation or full GIGI suite is involved.
+- The PDF remains 27 pages after condensing the availability prose to avoid a nearly empty overflow page.
+  The mathematical correction is on pages 20-21; its provenance is on page 23. The appendix and references
+  retain their statuses and numbering. Final build and visual-review evidence travel with the receipts.
+
 ## Cut for length, for the blog post
 GIGI query counts; the fourth control's details; R2 margins; the shell-estimate formula; the anharmonic slope check.

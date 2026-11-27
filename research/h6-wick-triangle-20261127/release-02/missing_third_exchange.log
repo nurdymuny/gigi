@@ -1,0 +1,2 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h6-wick-triangle-20261127\release-02\missing_third_exchange.lean:23:37: error: Invalid rewrite argument: Expected an equality or iff proof or definition name, but `hC` is a proof of
+  True

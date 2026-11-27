@@ -1,0 +1,30 @@
+{
+  "passed": false,
+  "mode": "release",
+  "scope": "Exact free separated-point contractions and conditional finite-matrix Lean theorem",
+  "source_revision": "36eb3b4f9e240f2fa3d226dc11f2111dcf3a8c6d",
+  "runs": [],
+  "failures": [
+    "Exact or written-scope gate failed"
+  ],
+  "exact": {
+    "tests": 10,
+    "failures": 1,
+    "errors": 0
+  },
+  "sympy": "1.14.0",
+  "sha256_lf": {
+    "scripts/check_h6_wick_triangle.py": "8ba68329c5cac2b063cc114bda20b66b21f5d782fa4b3b24f36ac2857ec93313",
+    "scripts/helike_wick_triangle.py": "3ea0eac4ba03cace45e008ccc5ef1c24ccf0b29ce4498c92594e223de831e920",
+    "scripts/check_h7_lean.py": "a9d6f4dd3af65d890ecedd23bcdae0053c24b6ab75e9a64ef4a05d9515950123",
+    "docs/research/h6-wick-triangle-proof-2026-11-27.md": "d52d0e2416ca8174ac02dfac0161b611dbe057f0982d895c444b01303c0b87f9",
+    "docs/research/h6-wick-triangle-contract-2026-11-27.md": "ffdb7dee7a607d536c60379e84db9aa45a9a23ad33026feff1d93ac1efa87935",
+    "formal/h7-cubic-quartic/H6Wick-README.md": "ee7a3311dbce0ff84eb93f86b2a403e44f07c20f48c11e908a0ef77e1b8519a0",
+    "formal/h7-cubic-quartic/H6WickDeclarations.lean": "da1f2a6e0b469859e63291520cb930c6a42004ad7cfff1524d52438ef2209758",
+    "formal/h7-cubic-quartic/H6WickTriangle.lean": "551902b2e98d33b46259c6e1036492689386fe56c57d3852736eec9b232ffc4c",
+    "formal/h7-cubic-quartic/H6WickVerification.lean": "71b3771ae8cfd5f0358a6ed16482edfaa5aa5861a241618f892a0c7dd7cb163a",
+    "formal/h7-cubic-quartic/lakefile.toml": "5b467dc12ef015daf136d6bc09ae1a0cdeb030cf2699448d6a9cbbb493824411",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a"
+  }
+}

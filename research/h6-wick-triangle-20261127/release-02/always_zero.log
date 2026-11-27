@@ -1,0 +1,40 @@
+test_bad_evidence_and_mechanisms_rejected (__main__.Exact.test_bad_evidence_and_mechanisms_rejected) ... ok
+test_covariance_all_entries_and_normalization (__main__.Exact.test_covariance_all_entries_and_normalization) ... ok
+test_hodge_involution_and_symbolic_exchange (__main__.Exact.test_hodge_involution_and_symbolic_exchange) ... ok
+test_input_refusals (__main__.Exact.test_input_refusals) ... ok
+test_nonzero_two_and_four_point_controls (__main__.Exact.test_nonzero_two_and_four_point_controls) ... ERROR
+test_pairing_counts (__main__.Exact.test_pairing_counts) ... ok
+test_scalar_triangle_is_nonzero (__main__.Exact.test_scalar_triangle_is_nonzero) ... FAIL
+test_trace_factor_on_noncancelling_synthetic_covariances (__main__.Exact.test_trace_factor_on_noncancelling_synthetic_covariances) ... FAIL
+test_triangle_direct_wick_and_trace_agree (__main__.Exact.test_triangle_direct_wick_and_trace_agree) ... ok
+
+======================================================================
+ERROR: test_nonzero_two_and_four_point_controls (__main__.Exact.test_nonzero_two_and_four_point_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 101, in test_nonzero_two_and_four_point_controls
+    assert_nonzero_controls(engine.connected_quadratic)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 55, in assert_nonzero_controls
+    raise ValueError('Nonzero Maxwell control failed')
+ValueError: Nonzero Maxwell control failed
+
+======================================================================
+FAIL: test_scalar_triangle_is_nonzero (__main__.Exact.test_scalar_triangle_is_nonzero)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 108, in test_scalar_triangle_is_nonzero
+    self.assertEqual(engine.connected_quadratic(cov, scale=1), 1/(288*s.pi**6))
+AssertionError: 0 != 1/(288*pi**6)
+
+======================================================================
+FAIL: test_trace_factor_on_noncancelling_synthetic_covariances (__main__.Exact.test_trace_factor_on_noncancelling_synthetic_covariances)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 97, in test_trace_factor_on_noncancelling_synthetic_covariances
+    self.assertEqual(engine.connected_quadratic(cov, colours=2), 128*s.trace(A*B*C))
+AssertionError: 0 != 8064
+
+----------------------------------------------------------------------
+Ran 9 tests in 20.328s
+
+FAILED (failures=2, errors=1)

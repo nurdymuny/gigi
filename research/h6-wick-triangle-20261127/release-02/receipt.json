@@ -1,0 +1,159 @@
+{
+  "passed": true,
+  "mode": "release",
+  "scope": "Exact free separated-point contractions and conditional finite-matrix Lean theorem",
+  "source_revision": "36eb3b4f9e240f2fa3d226dc11f2111dcf3a8c6d",
+  "runs": [
+    {
+      "command": [
+        "lake",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H6WickDeclarations.lean"
+      ],
+      "exit_code": 0,
+      "log": "declarations.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H6WickVerification.lean"
+      ],
+      "exit_code": 0,
+      "log": "verification.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h6-wick-triangle-20261127\\release-02\\missing_third_exchange.lean"
+      ],
+      "exit_code": 1,
+      "log": "missing_third_exchange.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h6-wick-triangle-20261127\\release-02\\missing_involution.lean"
+      ],
+      "exit_code": 1,
+      "log": "missing_involution.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h6-wick-triangle-20261127\\release-02\\wrong_conjugation_sign.lean"
+      ],
+      "exit_code": 1,
+      "log": "wrong_conjugation_sign.log"
+    }
+  ],
+  "failures": [],
+  "exact": {
+    "tests": 10,
+    "failures": 0,
+    "errors": 0
+  },
+  "sympy": "1.14.0",
+  "engine_mutations": {
+    "drop_derivative_term": {
+      "assertion_failures": 3,
+      "errors": 1
+    },
+    "always_zero": {
+      "assertion_failures": 2,
+      "errors": 1
+    },
+    "wrong_observable_scale": {
+      "assertion_failures": 1,
+      "errors": 1
+    },
+    "missing_pairing": {
+      "assertion_failures": 3,
+      "errors": 1
+    }
+  },
+  "dependency_revisions": {
+    "mathlib": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "plausible": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "LeanSearchClient": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "importGraph": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "proofwidgets": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "aesop": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "Qq": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "batteries": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "Cli": "50810f72af7618bee62fe9800dc26e806c188703"
+  },
+  "toolchain": "leanprover/lean4:v4.36.0",
+  "axioms": {
+    "H6Wick.odd_product": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H6Wick.odd_conjugation": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H6Wick.trace_conjugation": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H6Wick.odd_trace_zero": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H6Wick.triangle_zero": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ]
+  },
+  "audit_rejections": [
+    "sorryAx",
+    "UnprovedHodge"
+  ],
+  "mutations_rejected": [
+    "missing_third_exchange",
+    "missing_involution",
+    "wrong_conjugation_sign"
+  ],
+  "values": {
+    "T_O": "0 for every pairwise-distinct triple in free R4",
+    "O_two_point_unit_separation": "48 n / pi^4",
+    "O_four_point_collinear_0_1_2_3": "676 n / (27 pi^8)",
+    "scalar_triangle_0_1_3": "1 / (288 pi^6)"
+  },
+  "sha256_lf": {
+    "scripts/check_h6_wick_triangle.py": "ae0ec3b1a41454b19e744209d8e85bedacb6e9267cdfac4865213d00157d04c4",
+    "scripts/helike_wick_triangle.py": "3ea0eac4ba03cace45e008ccc5ef1c24ccf0b29ce4498c92594e223de831e920",
+    "scripts/check_h7_lean.py": "a9d6f4dd3af65d890ecedd23bcdae0053c24b6ab75e9a64ef4a05d9515950123",
+    "docs/research/h6-wick-triangle-proof-2026-11-27.md": "d52d0e2416ca8174ac02dfac0161b611dbe057f0982d895c444b01303c0b87f9",
+    "docs/research/h6-wick-triangle-contract-2026-11-27.md": "ffdb7dee7a607d536c60379e84db9aa45a9a23ad33026feff1d93ac1efa87935",
+    "formal/h7-cubic-quartic/H6Wick-README.md": "ee7a3311dbce0ff84eb93f86b2a403e44f07c20f48c11e908a0ef77e1b8519a0",
+    "formal/h7-cubic-quartic/H6WickDeclarations.lean": "da1f2a6e0b469859e63291520cb930c6a42004ad7cfff1524d52438ef2209758",
+    "formal/h7-cubic-quartic/H6WickTriangle.lean": "551902b2e98d33b46259c6e1036492689386fe56c57d3852736eec9b232ffc4c",
+    "formal/h7-cubic-quartic/H6WickVerification.lean": "71b3771ae8cfd5f0358a6ed16482edfaa5aa5861a241618f892a0c7dd7cb163a",
+    "formal/h7-cubic-quartic/lakefile.toml": "5b467dc12ef015daf136d6bc09ae1a0cdeb030cf2699448d6a9cbbb493824411",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a"
+  }
+}

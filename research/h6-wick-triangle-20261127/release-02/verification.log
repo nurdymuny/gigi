@@ -1,0 +1,5 @@
+'H6Wick.odd_product' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H6Wick.odd_conjugation' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H6Wick.trace_conjugation' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H6Wick.odd_trace_zero' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H6Wick.triangle_zero' depends on axioms: [propext, Classical.choice, Quot.sound]

@@ -1,0 +1,5 @@
+H6WickDeclarations.lean:3:7: error(lean.unknownIdentifier): Unknown identifier `H6Wick.odd_product`
+H6WickDeclarations.lean:4:7: error(lean.unknownIdentifier): Unknown identifier `H6Wick.odd_conjugation`
+H6WickDeclarations.lean:5:7: error(lean.unknownIdentifier): Unknown identifier `H6Wick.trace_conjugation`
+H6WickDeclarations.lean:6:7: error(lean.unknownIdentifier): Unknown identifier `H6Wick.odd_trace_zero`
+H6WickDeclarations.lean:7:7: error(lean.unknownIdentifier): Unknown identifier `H6Wick.triangle_zero`

@@ -1,0 +1,14 @@
+test_bad_evidence_and_mechanisms_rejected (check_h6_wick_triangle.Exact.test_bad_evidence_and_mechanisms_rejected) ... ok
+test_covariance_all_entries_and_normalization (check_h6_wick_triangle.Exact.test_covariance_all_entries_and_normalization) ... ok
+test_hodge_involution_and_symbolic_exchange (check_h6_wick_triangle.Exact.test_hodge_involution_and_symbolic_exchange) ... ok
+test_input_refusals (check_h6_wick_triangle.Exact.test_input_refusals) ... ok
+test_nonzero_two_and_four_point_controls (check_h6_wick_triangle.Exact.test_nonzero_two_and_four_point_controls) ... ok
+test_pairing_counts (check_h6_wick_triangle.Exact.test_pairing_counts) ... ok
+test_scalar_triangle_is_nonzero (check_h6_wick_triangle.Exact.test_scalar_triangle_is_nonzero) ... ok
+test_trace_factor_on_noncancelling_synthetic_covariances (check_h6_wick_triangle.Exact.test_trace_factor_on_noncancelling_synthetic_covariances) ... ok
+test_triangle_direct_wick_and_trace_agree (check_h6_wick_triangle.Exact.test_triangle_direct_wick_and_trace_agree) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 22.461s
+
+OK

@@ -9,12 +9,14 @@ import re
 import subprocess
 import unittest
 
+from lowest_note_wick_amendment import amend_wick_statements, amend_wick_text
+
 ROOT = Path(__file__).resolve().parents[1]
 REL = 'docs/papers/ym-theory-statement'
 PAPER = ROOT / REL
 BASELINE = 'df949c7a69aae59b873230aabf9ccab7e5821910'
 # Statements added after the format revision, each named with its status and its numbered equations.
-# Every baseline statement must still match exactly; anything new must be listed here.
+# Baseline statements match exactly except the two explicitly frozen evidence corrections.
 ADDITIONS = {
     'b:threshold': ('COMPUTED', 2),   # 27 Nov: the kinetic-term threshold, from eq. (dressing) of the baseline
     'b:cubicquartic': ('PROVED', 0),  # 27 Nov: cited global bound plus homogeneity; H7 stays conjectural
@@ -80,7 +82,7 @@ class Format(unittest.TestCase):
         cls.preamble = (PAPER/'statement.tex').read_text(encoding='utf-8')
 
     def test_every_baseline_math_fragment_survives(self):
-        self.assertFalse(mathematics(self.before)-mathematics(self.after))
+        self.assertFalse(mathematics(amend_wick_text(self.before))-mathematics(self.after))
 
     def test_statement_bodies_and_statuses_are_preserved(self):
         baseline = statements(self.before)
@@ -91,7 +93,31 @@ class Format(unittest.TestCase):
             actual_status, body = after.pop(label)
             self.assertEqual(actual_status, status)
             self.assertEqual(body.count(r'\begin{equation}'), numbered_equations)
-        self.assertEqual(after, amended_h7_baseline(baseline))
+        self.assertEqual(after, amend_wick_statements(amended_h7_baseline(baseline)))
+
+    def test_wick_correction_changes_only_the_named_conditional_statement(self):
+        before = amended_h7_baseline(statements(self.before))
+        after = amend_wick_statements(before)
+        self.assertEqual([key for key in before if before[key] != after[key]], ['b:nontrivial'])
+        self.assertEqual(after['b:nontrivial'][0], 'CONDITIONAL')
+        self.assertEqual(after['b:h6'], before['b:h6'])
+
+    def test_wick_correction_rejects_unexpected_baseline_or_status(self):
+        before = statements(self.before)
+        for broken in (('PROVED', before['b:nontrivial'][1]),
+                       ('CONDITIONAL', before['b:nontrivial'][1]+'changed')):
+            with self.assertRaises(ValueError):
+                amend_wick_statements(dict(before, **{'b:nontrivial': broken}))
+        with self.assertRaises(ValueError):
+            amend_wick_text(self.before.replace('T_O\\not\\equiv0', 'T_O=1'))
+
+    def test_wick_correction_rejects_wrong_coefficient_and_promoted_h6(self):
+        expected = amend_wick_text(self.before)
+        wrong = expected.replace(r'676n', r'677n')
+        self.assertTrue(mathematics(expected)-mathematics(wrong))
+        current = statements(self.after)
+        current['b:h6'] = ('PROVED', current['b:h6'][1])
+        self.assertNotEqual(current['b:h6'], statements(expected)['b:h6'])
 
     def test_preservation_checks_reject_changed_math_and_status(self):
         changed_math = self.before.replace('b_0=22/3', 'b_0=23/3')
@@ -165,7 +191,9 @@ def main():
     log = stream.getvalue()
     print(log, end='')
     (args.out/'checks.log').write_text(log, encoding='utf-8')
-    files = [Path(__file__), *sorted(PAPER.rglob('*.tex'))]
+    files = [Path(__file__), ROOT/'scripts/lowest_note_wick_amendment.py',
+             *sorted((ROOT/'research/h6-wick-triangle-20261127').glob('paper-*.tex')),
+             *sorted(PAPER.rglob('*.tex'))]
     evidence = dict(baseline=BASELINE, source_revision=git('rev-parse','HEAD').strip(),
                     scope='Document preservation and format only; not a physics acceptance gate',
                     tests=result.testsRun, failures=len(result.failures), errors=len(result.errors),

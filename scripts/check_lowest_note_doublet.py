@@ -13,6 +13,7 @@ import sympy as sp
 
 from build_lowest_note_doublet import doublet, figure_data, rotation
 from check_lowest_note_format import amended_h7_baseline, mathematics, statements
+from lowest_note_wick_amendment import amend_wick_statements, amend_wick_text
 
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT/'docs/papers/ym-theory-statement'
@@ -111,9 +112,9 @@ class Document(unittest.TestCase):
         after = '\n'.join(p.read_text(encoding='utf-8') for p in sorted((PAPER/'sections').glob('*.tex')))
         current = statements(after)
         self.assertEqual(current.pop('b:cubicquartic')[0], 'PROVED')
-        self.assertEqual(amended_h7_baseline(statements(before)),current)
+        self.assertEqual(amend_wick_statements(amended_h7_baseline(statements(before))),current)
         self.assertEqual(len(statements(after)),48)
-        self.assertFalse(mathematics(before)-mathematics(after))
+        self.assertFalse(mathematics(amend_wick_text(before))-mathematics(after))
 
 
 def main():

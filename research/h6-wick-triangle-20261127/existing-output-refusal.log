@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 289, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 172, in main
+    out.mkdir(parents=True, exist_ok=False)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\pathlib.py", line 1311, in mkdir
+    os.mkdir(self, mode)
+FileExistsError: [WinError 183] Cannot create a file when that file already exists: 'C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h6-wick-triangle-20261127\\release-02'

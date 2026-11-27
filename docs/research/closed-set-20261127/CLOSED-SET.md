@@ -92,11 +92,14 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
     eq. (2.2); line 9 records the consequence. This does not close H7 or identify a lowest carrier.
 25. [X = H6] Local fields for the gauge-invariant polynomials in F (tr F² first), agreeing with perturbation theory and
     asymptotic freedom at short distance.
-26. [Cd diagnostics on 25 and a nonzero leading three-point function of the trace anomaly]
+26. [Cd diagnostics on 25; the finite free four-point coefficient is now computed]
     The 1/log² trace-anomaly fingerprint distinguishes the stated finite canonical Wick-polynomial comparison;
-    a nonzero connected three-point function excludes the anomaly field itself being generalized free.
+    the nonzero leading connected four-point function excludes the anomaly field itself being generalized free.
+    The original free Wick-triangle prediction is refuted: T_O = 0 at every separated triple in Euclidean R4.
+    For O = sum over a,mu,nu of :F^a_mu,nu F^a_mu,nu:, the connected four-point coefficient at
+    0, L e0, 2L e0, 3L e0 is 676 dim(g)/(27 pi^8 L^16), L > 0. See the dated proof note.
     These tests do not classify every possible Gaussian composite or the full observable algebra. Non-triviality
-    of the reconstructed theory remains an H6 identification, not a deduction from that three-point test alone.
+    of the reconstructed theory remains an H6 identification, not a deduction from the higher-point test alone.
 27. [D from 28] A unique vacuum: the spectral measure has no atom at 0. In the reduction this holds by
     Perron–Frobenius [PC].
 28. [P lemma + D on 20, 23] The gap survives the limit.
@@ -136,6 +139,17 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 | it is Yang–Mills (the Wilson theory with the correct running) | 1, 14, 21 |
 
 ## Change log
+
+- **27 Nov, the documented Wick-triangle conjecture resolved by refutation.** H6 Step 6 expected
+  a nonzero free leading three-point coefficient. Hodge exchange proves it is zero at all separated triples
+  in Euclidean R4. The already documented four-point alternative is nonzero, with coefficient 676 dim(g)/(27 pi^8)
+  at 0, e0, 2e0, 3e0 in the unchanged canonical normalization. Exact connected Wick enumeration and nonzero
+  controls verify the coefficients; Lean checks the finite-matrix trace argument, not a construction of QFT.
+  The three-point remainder is additive, not a multiple of a zero leading coefficient. Line 26 now uses the
+  conditional four-point diagnostic. H6 and the seven top-level hypotheses remain open. This is one original
+  sub-conjecture settled against its prediction, not a new supporting lemma counted as an original closure.
+  Proof: `docs/research/h6-wick-triangle-proof-2026-11-27.md`. The earlier expectations in `COHERENCE.md`
+  and in the dated entries below are historical and are superseded by this correction.
 
 - **27 Nov, strict vacuum-floor closure (bounded deduction).** For the
   unsourced reduced operator at every fixed t > 0, g > 0 and compact

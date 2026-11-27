@@ -1,0 +1,30 @@
+test_abstract_is_self_contained_and_short (__main__.Format.test_abstract_is_self_contained_and_short) ... ok
+test_bibliography_retains_baseline_and_one_exact_addition (__main__.Format.test_bibliography_retains_baseline_and_one_exact_addition) ... ok
+test_central_conjecture_and_maps_have_separate_homes (__main__.Format.test_central_conjecture_and_maps_have_separate_homes) ... ok
+test_every_baseline_math_fragment_survives (__main__.Format.test_every_baseline_math_fragment_survives) ... FAIL
+test_preservation_checks_reject_changed_math_and_status (__main__.Format.test_preservation_checks_reject_changed_math_and_status) ... ok
+test_readable_type_and_unboxed_statements (__main__.Format.test_readable_type_and_unboxed_statements) ... ok
+test_related_work_and_evidence_are_collected (__main__.Format.test_related_work_and_evidence_are_collected) ... ok
+test_statement_bodies_and_statuses_are_preserved (__main__.Format.test_statement_bodies_and_statuses_are_preserved) ... FAIL
+
+======================================================================
+FAIL: test_every_baseline_math_fragment_survives (__main__.Format.test_every_baseline_math_fragment_survives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_lowest_note_format.py", line 83, in test_every_baseline_math_fragment_survives
+    self.assertFalse(mathematics(self.before)-mathematics(self.after))
+AssertionError: Counter({'O': 1, '(b_0\\barg^2/32\\pi^2)^3': 1, 'T_O': 1, 'T_O\\not\\equiv0': 1}) is not false
+
+======================================================================
+FAIL: test_statement_bodies_and_statuses_are_preserved (__main__.Format.test_statement_bodies_and_statuses_are_preserved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_lowest_note_format.py", line 94, in test_statement_bodies_and_statuses_are_preserved
+    self.assertEqual(after, amended_h7_baseline(baseline))
+AssertionError: {'b:c[666 chars], 'b:wilson': ('PROVED', '$d\\mu_{a,L}=Z^{-1}\[24619 chars]4}")} != {'b:c[666 chars], 'b:theory': ('CONJECTURE', "Themassgapofquan[24493 chars]4}")}
+Diff is 26738 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.820s
+
+FAILED (failures=2)

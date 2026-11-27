@@ -1,0 +1,10 @@
+H6Wick.odd_product.{u_1} {n : Type u_1} [Fintype n] [DecidableEq n] (S A B C : Matrix n n ℝ) (hA : S * A = -(A * S))
+  (hB : S * B = -(B * S)) (hC : S * C = -(C * S)) : S * (A * B * C) = -(A * B * C * S)
+H6Wick.odd_conjugation.{u_1} {n : Type u_1} [Fintype n] [DecidableEq n] (S A : Matrix n n ℝ) (hSS : S * S = 1)
+  (hA : S * A = -(A * S)) : S * A * S = -A
+H6Wick.trace_conjugation.{u_1} {n : Type u_1} [Fintype n] [DecidableEq n] (S A : Matrix n n ℝ) (hSS : S * S = 1) :
+  (S * A * S).trace = A.trace
+H6Wick.odd_trace_zero.{u_1} {n : Type u_1} [Fintype n] [DecidableEq n] (S A : Matrix n n ℝ) (hSS : S * S = 1)
+  (hA : S * A = -(A * S)) : A.trace = 0
+H6Wick.triangle_zero.{u_1} {n : Type u_1} [Fintype n] [DecidableEq n] (S A B C : Matrix n n ℝ) (hSS : S * S = 1)
+  (hA : S * A = -(A * S)) (hB : S * B = -(B * S)) (hC : S * C = -(C * S)) : (A * B * C).trace = 0

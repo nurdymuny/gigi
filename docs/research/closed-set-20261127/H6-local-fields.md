@@ -1,6 +1,6 @@
 # H6 (line 25): local fields, the trace anomaly, and agreement with perturbation theory
 
-*Status: hypothesis [X]. Nothing in this section is proved by me unless it is marked so. Line 26 is deduced from H6 here. That deduction is the only theorem in this section, and it is conditional.*
+*Status: hypothesis [X]. H6 remains open. The free-field triangle prediction in Step 6 is now refuted by an exact geometric proof; the documented four-point alternative is nonzero. Line 26 retains conditional diagnostics, not a proof of the full theory's non-triviality.*
 
 Conventions. $G=SU(N)$ (for line 24, H7, replace $N^2-1$ by $\dim G$ and $N$ by the dual Coxeter number $h^\vee$). I use canonical normalization $A\to g A$, $F^a_{\mu\nu}$ real, Euclidean action $\tfrac14\int F^a_{\mu\nu}F^a_{\mu\nu}$, and
 $$O(x):=F^a_{\mu\nu}F^a_{\mu\nu}(x)\qquad(\text{"}\operatorname{tr}F^2\text{" on the page, up to a fixed positive constant}).$$
@@ -33,14 +33,14 @@ $$\Theta_a(x)=-\frac{d\beta_0}{d\ln a}\;a^{-4}\sum_{p\ni x}\big(s_p-\langle s_p\
 $$\Big|\,\lambda^{\sum d_i}\,\mathcal Z(\lambda)^{-1}S_n^{P_1\cdots P_n}(\lambda x)-\sum_{k=k_0}^{K}\bar g(\lambda)^{2k}F^{(k)}(x)\Big|\le C_K(x)\,\bar g(\lambda)^{2K+2}\qquad(0<\lambda\le\lambda_K(x)).$$
 Here $\mathcal Z(\lambda)=\prod_i\exp\!\big(-\int_{\bar g(1)}^{\bar g(\lambda)}\gamma_{P_i}(g')/\beta(g')\,dg'\big)$ carries the anomalous dimensions (diagonalized within each mixing block). For RG-invariant fields such as $\Theta$, $\mathcal Z\equiv1$. The constants $C_K$ are not claimed summable: the expansion is asymptotic, not convergent.
 
-*Reading I chose.* "Agree to all orders" means (c): an asymptotic expansion in the running coupling at short distance with fixed geometry $x$, uniform on compact sets of distinct configurations. I do not take it to mean convergence, or agreement at fixed $g$. Line 26 needs only $n=2,3$ and $K=k_0$ for $\Theta$.
+*Reading I chose.* "Agree to all orders" means (c): an asymptotic expansion in the running coupling at short distance with fixed geometry $x$, uniform on compact sets of distinct configurations. I do not take it to mean convergence, or agreement at fixed $g$. The revised line 26 diagnostics use $n=2,4$ at leading order for $\Theta$.
 
 ---
 
 ## 2. Interface
 
 **What other lines take from H6.**
-- **Line 26** (closed from 25) uses (b3) and (c) for $\langle\Theta\Theta\rangle$ at leading order, and also needs $\langle\Theta\Theta\Theta\rangle_T$ at leading order. That second need is stronger than line 26's wording; see §4, step 6.
+- **Line 26** uses (b3) and (c) for the leading two-point and connected four-point functions of $\Theta$. The latter excludes this field itself being Gaussian; it does not by itself classify the full theory. The original leading three-point prediction vanishes; see §4, Step 6.
 - **Line 28** needs a dense set of vectors $A\Omega$. The polynomial algebra of smeared $\phi_P(f)$ and Wilson loops applied to $\Omega$ is dense in $\mathcal H$ by construction of the OS Hilbert space. H6(a) supplies the local part of that set.
 - **Line 24** (H7): the same statement with $b_0=\tfrac{11}{3}h^\vee$.
 
@@ -108,11 +108,21 @@ Because $(|x|\Lambda)^p=\exp(-8\pi^2p/(b_0\bar g^2))$ at one loop, the second pa
 $$|x|^8G_\Theta(x)=C_O(N^2-1)\Big(\frac{b_0\,\bar g^2(|x|)}{32\pi^2}\Big)^2\big[1+O(\bar g^2)\big]=\frac{C_O(N^2-1)}{16\,\ln^2\!\big(1/(|x|\Lambda)\big)}\big(1+o(1)\big),\qquad |x|\to0,$$
 using $\bar g^2=8\pi^2/(b_0\ln(1/|x|\Lambda))$ at leading order. Note that $b_0$ cancels at leading order.
 
-*Lemma (free theories have no such term).* Consider any theory of finitely many free fields, massive or massless, whose local fields are Wick polynomials. Every free propagator has the form $|x|^{-2s}\big[A(m^2x^2)+m^2x^2\ln(m^2x^2)B(m^2x^2)\big]$ with $A$ and $B$ entire. So the two-point function of any local field is a finite sum $\sum c_{k,j}|x|^{-2k}(m|x|)^{2l}\ln^j(m|x|)$, in which every logarithm carries a positive power of $m|x|$. Hence $|x|^{2k_{\max}}G\to c\ne0$. It can never tend to $0$ like $1/\ln^2$.
+*Restricted free-field comparison (as in the narrative).* A nonzero dimension-four Wick polynomial in finitely many canonical free fields, with a nonvanishing leading scaling term, has a nonzero leading coefficient after multiplication by $|x|^8$. Finite Wick contractions of their short-distance propagator expansions do not replace that term by an inverse-square logarithm. This is the stated comparison class, not a classification of all possible Gaussian field algebras or their composites.
 
-*Gap in line 26 as worded.* A **generalized free field** can have any positive two-point function, $1/\ln^2$ included. Excluding it needs a nonzero truncated higher function. H6(c) gives
-$$\langle\Theta\Theta\Theta\rangle_T=\Big(\frac{b_0\bar g^2}{32\pi^2}\Big)^3\,T_O(x)\,[1+O(\bar g^2)],$$
-where $T_O$ is the free-field Wick "triangle" of three $O$'s. I expect $T_O\ne0$, but I have not computed it here: [guess, a finite free-field computation]. Together the two facts give the corrected criterion in a form that excludes both kinds of free theory. **Theorem (conditional on H6 and $T_O\not\equiv0$):** the limit theory is neither a Wick-polynomial free theory nor a generalized free field in its $\Theta$ sector. So it is non-trivial.
+*The triangle prediction is resolved against me.* A generalized free field is Gaussian; its two-point function alone cannot establish a non-Gaussian field. I expected the free-field Wick triangle $T_O$ of three $O$'s to supply the next test. In fact,
+$$T_O(x_1,x_2,x_3)=0\qquad\text{at every pairwise distinct triple in free Euclidean }\mathbb R^4.$$
+The covariance on two-forms anticommutes with Hodge star. Three such exchanges give an off-diagonal product between the two Hodge halves, with trace zero. This proves the cancellation for arbitrary distinct points, not just sampled triangles. The [proof and exact gates](../h6-wick-triangle-proof-2026-11-27.md) use the canonical normalization above, with $O=2\sum_{a,\mu<\nu}:(F^a_{\mu\nu})^2:$.
+
+My previous multiplicative remainder was inappropriate when its leading coefficient vanishes. In the narrative's Euclidean trace convention, put $a(\bar g)=b_0\bar g^2/(32\pi^2)$. At a fixed separated shape, with dimensionful position factors understood, H6 gives the additive statement
+$$\langle\Theta\Theta\Theta\rangle_c=a(\bar g)^3[T_O+O(\bar g^2)]=O(\bar g^8).$$
+This neither computes the next coefficient nor says the interacting three-point function vanishes. Contact terms are outside the calculation.
+
+*The four-point alternative already listed below is nonzero.* For $n=\dim\mathfrak g$ independent free colours and $L>0$, the 48 connected Wick pairings give
+$$T_O^{(4)}(0,Le_0,2Le_0,3Le_0)=\frac{676n}{27\pi^8L^{16}}>0.$$
+The same code independently gives the nonzero two-point coefficient $C_O=48/\pi^4$ and a nonzero ordinary scalar triangle, so an implementation that always returns zero cannot pass. Under H6,
+$$\langle\Theta^4\rangle_c=a(\bar g)^4[T_O^{(4)}+O(\bar g^2)]$$
+is nonzero at the stated shape for sufficiently weak running coupling. **Conditional diagnostic:** this excludes $\Theta$ itself being a generalized free field. Together with the restricted logarithmic comparison it supplies line 26's two tests. A non-Gaussian composite of Gaussian fields can also have a nonzero connected four-point function; these tests do not alone classify the full observable algebra. Non-triviality of the reconstructed theory remains an H6 identification. H6 is not closed by this finite free-field result.
 
 ---
 
@@ -122,7 +132,7 @@ where $T_O$ is the free-field Wick "triangle" of three $O$'s. I expect $T_O\ne0$
 2. **The OPE remainder in Step 2 is not uniformly small.** Large-field regions at small scales could spoil it, for example a small-instanton density not suppressed like $\rho^{b_0-5}$, or Gribov-type obstructions to the multiscale gauge fixing. *Observed:* corrections to $c_O(t)^{-1}E_t$ that are not $O(t)$.
 3. **Wrong line of constant physics.** If H3/H4 converge to a trivial or different fixed point, (b3) fails at the root. *Observed:* $|x|^8G_\Theta$ tends to a constant or behaves like a power, instead of $1/\ln^2$.
 4. **Temperedness.** If some coincident-point singularities grew faster than polynomially, the extension from $\mathcal S_{\neq}$ would fail, and so would OS0′. This is not expected anywhere in perturbation theory.
-5. **Line 26's GFF loophole** stays open if $T_O\equiv0$. In that case the first nonvanishing truncated function needed would be the 4-point one.
+5. **Line 26's matching and scope.** The free triangle does vanish, and the free connected four-point alternative is now nonzero. Transferring that coefficient to the limit field still requires H6. The result excludes a Gaussian $\Theta$, not all possible Gaussian underlying theories; the broader identification is not supplied by Wick counting.
 
 ---
 

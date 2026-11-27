@@ -1,0 +1,23 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h6-wick-triangle-20261127\release-02\missing_involution.lean:13:0: warning: automatically included section variable(s) unused in theorem `H6Wick.odd_product`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h6-wick-triangle-20261127\release-02\missing_involution.lean:26:61: error: unsolved goals
+n : Type u_1
+inst✝¹ : Fintype n
+inst✝ : DecidableEq n
+S A : Matrix n n ℝ
+hSS : True
+hA : S * A = -(A * S)
+⊢ A * (S * S) = A
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h6-wick-triangle-20261127\release-02\missing_involution.lean:28:26: warning: This simp argument is unused:
+  hSS
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Matrix.mul_assoc]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h6-wick-triangle-20261127\release-02\missing_involution.lean:32:30: error: Invalid rewrite argument: Expected an equality or iff proof or definition name, but `hSS` is a proof of
+  True

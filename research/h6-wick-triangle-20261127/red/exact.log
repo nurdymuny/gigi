@@ -1,0 +1,129 @@
+test_original_conjecture_is_resolved_with_scope (__main__.Document.test_original_conjecture_is_resolved_with_scope) ... FAIL
+test_bad_evidence_and_mechanisms_rejected (__main__.Exact.test_bad_evidence_and_mechanisms_rejected) ... ERROR
+test_covariance_all_entries_and_normalization (__main__.Exact.test_covariance_all_entries_and_normalization) ... ERROR
+test_hodge_involution_and_symbolic_exchange (__main__.Exact.test_hodge_involution_and_symbolic_exchange) ... ERROR
+test_input_refusals (__main__.Exact.test_input_refusals) ... ERROR
+test_nonzero_two_and_four_point_controls (__main__.Exact.test_nonzero_two_and_four_point_controls) ... ERROR
+test_pairing_counts (__main__.Exact.test_pairing_counts) ... ERROR
+test_scalar_triangle_is_nonzero (__main__.Exact.test_scalar_triangle_is_nonzero) ... ERROR
+test_trace_factor_on_noncancelling_synthetic_covariances (__main__.Exact.test_trace_factor_on_noncancelling_synthetic_covariances) ... ERROR
+test_triangle_direct_wick_and_trace_agree (__main__.Exact.test_triangle_direct_wick_and_trace_agree) ... ERROR
+
+======================================================================
+ERROR: test_bad_evidence_and_mechanisms_rejected (__main__.Exact.test_bad_evidence_and_mechanisms_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 110, in test_bad_evidence_and_mechanisms_rejected
+    J, C = engine.hodge_star(), engine.field_covariance(X)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 9, in hodge_star
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_covariance_all_entries_and_normalization (__main__.Exact.test_covariance_all_entries_and_normalization)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 59, in test_covariance_all_entries_and_normalization
+    actual = engine.field_covariance(X)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 5, in field_covariance
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_hodge_involution_and_symbolic_exchange (__main__.Exact.test_hodge_involution_and_symbolic_exchange)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 66, in test_hodge_involution_and_symbolic_exchange
+    J, C = engine.hodge_star(), engine.field_covariance(X)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 9, in hodge_star
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_input_refusals (__main__.Exact.test_input_refusals)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 129, in test_input_refusals
+    engine.field_covariance((0, 0, 0, 0))
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 5, in field_covariance
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_nonzero_two_and_four_point_controls (__main__.Exact.test_nonzero_two_and_four_point_controls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 100, in test_nonzero_two_and_four_point_controls
+    assert_nonzero_controls(engine.connected_quadratic)
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 51, in assert_nonzero_controls
+    two = calculate(blocks(collinear(2)))
+                    ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 42, in blocks
+    return {(i, j): covariance(s.Matrix(points[i])-s.Matrix(points[j]))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 5, in field_covariance
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_pairing_counts (__main__.Exact.test_pairing_counts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 75, in test_pairing_counts
+    pairings = engine.connected_pairings(n)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 13, in connected_pairings
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_scalar_triangle_is_nonzero (__main__.Exact.test_scalar_triangle_is_nonzero)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 107, in test_scalar_triangle_is_nonzero
+    self.assertEqual(engine.connected_quadratic(cov, scale=1), 1/(288*s.pi**6))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 17, in connected_quadratic
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_trace_factor_on_noncancelling_synthetic_covariances (__main__.Exact.test_trace_factor_on_noncancelling_synthetic_covariances)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 96, in test_trace_factor_on_noncancelling_synthetic_covariances
+    self.assertEqual(engine.connected_quadratic(cov, colours=2), 128*s.trace(A*B*C))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 17, in connected_quadratic
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+ERROR: test_triangle_direct_wick_and_trace_agree (__main__.Exact.test_triangle_direct_wick_and_trace_agree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 86, in test_triangle_direct_wick_and_trace_agree
+    cov = blocks(points)
+          ^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 42, in blocks
+    return {(i, j): covariance(s.Matrix(points[i])-s.Matrix(points[j]))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_wick_triangle.py", line 5, in field_covariance
+    raise NotImplementedError('Wick triangle engine not implemented')
+NotImplementedError: Wick triangle engine not implemented
+
+======================================================================
+FAIL: test_original_conjecture_is_resolved_with_scope (__main__.Document.test_original_conjecture_is_resolved_with_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h6_wick_triangle.py", line 142, in test_original_conjecture_is_resolved_with_scope
+    self.assertTrue(NOTE.exists(), 'Missing Wick-triangle proof')
+AssertionError: False is not true : Missing Wick-triangle proof
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.005s
+
+FAILED (failures=1, errors=9)

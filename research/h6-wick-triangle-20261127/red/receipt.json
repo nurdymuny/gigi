@@ -1,0 +1,57 @@
+{
+  "passed": false,
+  "mode": "red",
+  "scope": "Exact free separated-point contractions and conditional finite-matrix Lean theorem",
+  "source_revision": "36eb3b4f9e240f2fa3d226dc11f2111dcf3a8c6d",
+  "runs": [
+    {
+      "command": [
+        "lake",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H6WickDeclarations.lean"
+      ],
+      "exit_code": 1,
+      "log": "declarations.log"
+    }
+  ],
+  "failures": [],
+  "exact": {
+    "tests": 10,
+    "failures": 1,
+    "errors": 9
+  },
+  "sympy": "1.14.0",
+  "dependency_revisions": {
+    "mathlib": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "plausible": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "LeanSearchClient": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "importGraph": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "proofwidgets": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "aesop": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "Qq": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "batteries": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "Cli": "50810f72af7618bee62fe9800dc26e806c188703"
+  },
+  "toolchain": "leanprover/lean4:v4.36.0",
+  "expected_red_observed": true,
+  "sha256_lf": {
+    "scripts/check_h6_wick_triangle.py": "5be0d8b439da716cffe54a886fd7208397b18037357c566f3b48ca2b455c5981",
+    "scripts/helike_wick_triangle.py": "7eceb24557cfa00cde31348e49f6ef4bb5e932092160d582a368dcfb95fac98f",
+    "scripts/check_h7_lean.py": "a9d6f4dd3af65d890ecedd23bcdae0053c24b6ab75e9a64ef4a05d9515950123",
+    "docs/research/h6-wick-triangle-contract-2026-11-27.md": "ffdb7dee7a607d536c60379e84db9aa45a9a23ad33026feff1d93ac1efa87935",
+    "formal/h7-cubic-quartic/H6WickDeclarations.lean": "da1f2a6e0b469859e63291520cb930c6a42004ad7cfff1524d52438ef2209758",
+    "formal/h7-cubic-quartic/H6WickTriangle.lean": "cbfd169e7834bd1b0986cac97334dcad3a235c3e3be0d6c660392f0ac88a4a62",
+    "formal/h7-cubic-quartic/lakefile.toml": "5b467dc12ef015daf136d6bc09ae1a0cdeb030cf2699448d6a9cbbb493824411",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a"
+  }
+}

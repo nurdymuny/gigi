@@ -177,3 +177,29 @@ algebra, on the same source window. The embedded Helike doublet remains
 what it was; this result does not make it the lowest extra-colour mode.
 H7 remains open, but this particular obstruction is removed by an exact
 argument rather than a larger computation.
+
+## 7. A second check in Lean
+
+I have now separated the central real-algebraic argument into a small
+[Lean project](../../formal/h7-cubic-quartic/README.md). Lean checks the
+3/4 deduction for every configuration satisfying the stated global bound
+and homogeneity, including Q = 0. It also checks the exact 27/32
+factorization, the scaled coercivity estimate, the potential lower bound,
+and the same kappa identities and positive source window.
+
+The global Austing--Wheater bound is an explicit argument to the theorem,
+not an added axiom. This is the formal verification of the deduction from
+that bound. I have not formalized its Lie-algebra theorem, my trace
+dictionary, or the compact-resolvent argument in Lean here. Those remain
+the cited and written parts of this proof. H7 remains open.
+
+All eight target declarations compiled with only Lean's standard
+foundational dependencies: `propext`, `Classical.choice`, and `Quot.sound`.
+There are no admitted proof steps. Changing the exponent, removing a
+needed hypothesis, or halving the scalar remainder makes the deliberately
+broken source fail to compile. Exact examples check equality at the scalar
+minimum and zero kappa at a source-window boundary. The
+[contract](h7-lean-contract-2026-11-27.md) and
+[compiler receipts](../../research/h7-lean-20261127/) keep the scope and
+the checks together. This adds verification without changing the model,
+the source window, or the claim about which sub-conjecture is closed.

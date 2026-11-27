@@ -1,0 +1,11 @@
+name = "h7_cubic_quartic"
+version = "0.1.0"
+defaultTargets = ["H7CubicQuartic"]
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4.git"
+rev = "fc4f59e577feb1a4956671bc04ac18aaaf8cd842"
+
+[[lean_lib]]
+name = "H7CubicQuartic"

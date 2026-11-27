@@ -1,0 +1,15 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h7-lean-20261127\release-01\missing_cubic_homogeneity.lean:64:8: error: Function expected at
+  hCscale
+but this term has type
+  True
+
+Note: Expected a function because this term is being applied to the argument
+  r
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h7-lean-20261127\release-01\missing_cubic_homogeneity.lean:98:62: error: Application type mismatch: The argument
+  hCscale
+has type
+  ∀ (r : ℝ), 0 < r → ∀ (q : E), C (r • q) = r ^ 3 * C q
+but is expected to have type
+  True
+in the application
+  cubic_quartic_bound C Q A B hQ hCscale

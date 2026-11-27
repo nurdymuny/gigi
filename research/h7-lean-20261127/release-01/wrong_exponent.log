@@ -1,0 +1,24 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h7-lean-20261127\release-01\wrong_exponent.lean:88:4: error: Type mismatch: After simplification, term
+  hm
+ has type
+  |C q| ≤ (A + B) * Q q ^ (3 / 4)
+but is expected to have type
+  |C q| ≤ (A + B) * Q q ^ (2 / 3)
+
+Note: The following definitions were not unfolded because their definition is not exposed:
+  Complex.exp ↦ 4
+  Complex.mulAux ↦ 6
+  Real.instLE ↦ 4
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h7-lean-20261127\release-01\wrong_exponent.lean:98:31: error: Application type mismatch: The argument
+  cubic_quartic_bound C Q A B hQ hCscale hQscale hglobal
+has type
+  ∀ (q : E), |C q| ≤ (A + B) * Q q ^ (2 / 3)
+but is expected to have type
+  ∀ (q : E), |C q| ≤ (A + B) * Q q ^ (3 / 4)
+in the application
+  ⟨add_pos hA hB, cubic_quartic_bound C Q A B hQ hCscale hQscale hglobal⟩
+
+Note: The following definitions were not unfolded because their definition is not exposed:
+  Complex.exp ↦ 4
+  Complex.mulAux ↦ 6
+  Real.instLE ↦ 2

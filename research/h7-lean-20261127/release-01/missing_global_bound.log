@@ -1,0 +1,15 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h7-lean-20261127\release-01\missing_global_bound.lean:63:15: error: Function expected at
+  hglobal
+but this term has type
+  True
+
+Note: Expected a function because this term is being applied to the argument
+  (r • q)
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h7-lean-20261127\release-01\missing_global_bound.lean:98:78: error: Application type mismatch: The argument
+  hglobal
+has type
+  ∀ (q : E), |C q| ≤ A * Q q + B
+but is expected to have type
+  True
+in the application
+  cubic_quartic_bound C Q A B hQ hCscale hQscale hglobal

@@ -1,0 +1,17 @@
+test_bad_evidence_is_rejected (__main__.Algebra.test_bad_evidence_is_rejected) ... ok
+test_coercivity_coupling_and_constant (__main__.Algebra.test_coercivity_coupling_and_constant) ... ok
+test_coercivity_identity_and_negative_control (__main__.Algebra.test_coercivity_identity_and_negative_control) ... ok
+test_cyclic_pairings_and_epsilon_half (__main__.Algebra.test_cyclic_pairings_and_epsilon_half) ... ok
+test_fixed_invariant_norm_rescaling (__main__.Algebra.test_fixed_invariant_norm_rescaling) ... ok
+test_homogeneity_and_rescaling (__main__.Algebra.test_homogeneity_and_rescaling) ... ok
+test_nonregular_commuting_limit_exact_identity (__main__.Algebra.test_nonregular_commuting_limit_exact_identity) ... ok
+test_same_positive_kappa_window (__main__.Algebra.test_same_positive_kappa_window) ... ok
+test_trace_conventions_on_exact_su3_embedding (__main__.Algebra.test_trace_conventions_on_exact_su3_embedding) ... ok
+test_zero_quartic_commuting_case (__main__.Algebra.test_zero_quartic_commuting_case) ... ok
+test_only_subconjecture_is_closed (__main__.Document.test_only_subconjecture_is_closed) ... ok
+test_proof_dependency_and_scope_are_explicit (__main__.Document.test_proof_dependency_and_scope_are_explicit) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.406s
+
+OK

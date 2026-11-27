@@ -23,6 +23,7 @@ papers cite some of these paths, so files are never renamed or moved.
 | --- | --- |
 | 27 Nov | [Cubic-quartic proof contract](h7-cubic-quartic-contract-2026-11-27.md): conventions, exact checks and the boundary of the claim |
 | 27 Nov | [The cubic interaction cannot escape its bracket geometry](h7-cubic-quartic-proof-2026-11-27.md): A_g closed by deduction from Austing--Wheater; fixed-group reduced compact resolvent, not closure of H7 |
+| 27 Nov | [Lean verification contract](h7-lean-contract-2026-11-27.md) and [checked source](../../formal/h7-cubic-quartic/README.md): the real-algebraic deduction is kernel-checked with the published global bound explicit as a hypothesis; not end-to-end formal verification of H7 |
 
 **Bounded flux-grid diagnostic:** [One-point Mq 10 -> 12 smoke registration](helike-flux-basis-smoke-registration-2026-11-26.md).
 Results: [basis refinement improves the estimates but does not repair the gate](helike-flux-basis-smoke-results-2026-11-26.md).

@@ -1,0 +1,50 @@
+{
+  "passed": false,
+  "mode": "red",
+  "scope": "Kernel-checked real-algebraic implications; global Lie-algebra bound is a hypothesis",
+  "source_revision": "1d3b91e0faee29bf04bfdbef1582e45b2003b8ad",
+  "runs": [
+    {
+      "command": [
+        "lake",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "Declarations.lean"
+      ],
+      "exit_code": 1,
+      "log": "verification.log"
+    }
+  ],
+  "failures": [],
+  "dependency_revisions": {
+    "mathlib": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "plausible": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "LeanSearchClient": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "importGraph": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "proofwidgets": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "aesop": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "Qq": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "batteries": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "Cli": "50810f72af7618bee62fe9800dc26e806c188703"
+  },
+  "toolchain": "leanprover/lean4:v4.36.0",
+  "expected_red_observed": true,
+  "sha256_lf": {
+    "scripts/check_h7_lean.py": "33df243061972fac513015fd12ff6002bc290dab6a1fd6372a103ff9b05c358c",
+    "formal/h7-cubic-quartic/Declarations.lean": "b02a40c9c6d3439651d90064e7b7ffd38a9c2fde57753f65cd50a61577d9fc10",
+    "formal/h7-cubic-quartic/H7CubicQuartic.lean": "9d69b901f0fd1996a6f38f9c77aa49fc0ce2648ea8aa690467d0fcfa6f2caa57",
+    "formal/h7-cubic-quartic/Verification.lean": "6eba0231b02cfc4a97fbc474eab51fb2af7730ad7953a7f17fbe89b546ccd567",
+    "formal/h7-cubic-quartic/lakefile.toml": "11191352a1b06003004cadb0c61a32d78bd4114e08e56c7ad7386242edec5366",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a",
+    "docs/research/h7-lean-contract-2026-11-27.md": "2aa71829aec0d962e90f73bfd0c084699bb4ecaba84f761aa891157f8c06210f"
+  }
+}

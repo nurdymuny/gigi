@@ -1,0 +1,8 @@
+Declarations.lean:3:7: error(lean.unknownIdentifier): Unknown identifier `H7.zero_of_scaled_bound`
+Declarations.lean:4:7: error(lean.unknownIdentifier): Unknown identifier `H7.cubic_quartic_bound`
+Declarations.lean:5:7: error(lean.unknownIdentifier): Unknown identifier `H7.positive_constant_bound`
+Declarations.lean:6:7: error(lean.unknownIdentifier): Unknown identifier `H7.coercivity_factorization`
+Declarations.lean:7:7: error(lean.unknownIdentifier): Unknown identifier `H7.scaled_coercivity`
+Declarations.lean:8:7: error(lean.unknownIdentifier): Unknown identifier `H7.potential_lower_bound`
+Declarations.lean:9:7: error(lean.unknownIdentifier): Unknown identifier `H7.kappa_pos`
+Declarations.lean:10:7: error(lean.unknownIdentifier): Unknown identifier `H7.quadratic_coefficients`

@@ -729,7 +729,18 @@ does not put an exponential wall on the outer side removes it.
 
 **Grid run (step 4):** still held, both for Bee's decision on the Helike check and because convergence is not met.
 
-### 5.11 The unfolded chart (DRAFT, 27 November; for Bee to approve, edit or reject; not registered)
+### 5.11 The unfolded chart (REGISTERED 27 November, approved by Bee)
+
+**Registered after exploratory values were seen, and disclosed.** The prototype's numbers below (control parity, and
+the smoke-point step of 0.0004) were seen before registration. They motivate the section, and they decide nothing.
+Every check listed under "Checks before any grid value" is rerun by the registered code, the Rust port.
+
+**One physics detail, fixed now, before the port runs.**
+- **The potential is the physical one.** It is evaluated as V(q) at q = P. That is the signed potential on both sheets
+  of the fold.
+- **How the prototype differed.** The prototype evaluated V through a Cholesky factor of G = P², which is always on the
+  det q > 0 sheet. The two agree wherever det P > 0, which is everywhere the vacuum carries weight.
+- **The parity test against the prototype** uses only nodes with det P > 0. Elsewhere it reports the difference.
 
 **Why.**
 - §5.10 fixed the ruler. In the vacuum's own frame the competitor's identity is clean at grid coupling: w̃ = 0.957

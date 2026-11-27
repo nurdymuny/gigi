@@ -421,6 +421,8 @@ renormalization scale).
   At g² = 0.004: **0.0216** (0.0201–0.0234).
 - Closing the gap would need κ ≈ 15.8 (g² = 0.002) or 9.0 (g² = 0.004): the renormalization scale moved by e¹⁶ or e⁹.
 
+**Caveat (referee, 27 November).** This is the potential part of the O(g²) shift only. A kinetic correction of the same order (the non-adiabatic mass plus the Coulomb term of the fast Gauss law) is not computed, so the sign at O(g²) is open. The b₀ result is unaffected. Also: the divergent term reads −(b₀/8π²) log(Λ_cut R)·S_cl (a sign error elsewhere on 27 November).
+
 **What it places.** The fast fibre dresses both carriers upward and widens their order at the controls. That is the
 first quantitative piece of M3's "dress without exchanging".
 

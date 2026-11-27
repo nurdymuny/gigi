@@ -39,19 +39,24 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 **C. The fast modes (M3)**
 13. [P] By Peter–Weyl, H_YM = slow sector (j = 0, exactly H_red; μ_YM = 4ω²_red, F = 2gq) plus fast sectors (j ≥ 1,
     multiplicity j + 1).
-14. [C] E₀ = (b₀/8π²) log(Λ_cut R)·S_cl + E₀^fin, with b₀ = 22/3, to 10⁻⁴.
-15. [C] δω_k = g² u·∇²E₀^fin·u/ω_k. The separation goes from 0.0165 to 0.0191 at g² = 0.002.
-16. [X = H2] M3: ‖P_low (H_Λcut − H_eff) P_low‖ ≤ C·g²(R), uniformly in Λ_cut.
+14. [C] E₀ = −(b₀/8π²) log(Λ_cut R)·S_cl + E₀^fin, with b₀ = 22/3, to 10⁻⁴. (Sign corrected 27 Nov.)
+15. [C, potential part only] δω_k = g² u·∇²E₀^fin·u/ω_k. The separation goes from 0.0165 to 0.0191 at g² = 0.002.
+    A kinetic correction of the same order (the non-adiabatic mass plus the Coulomb term of the fast Gauss law) is
+    not computed, so the sign of the O(g²) shift is open.
+16. [X = H2] M3, in spectral form (H2 file): at s = 1, on a chart around q = 0, t ≠ 1, small g(R), the levels of the
+    full Hamiltonian in a low window lie within C·g²(R)/R of the reduced model's, uniformly in Λ_cut.
 
 **D. The carriers**
 17. [P] Different charges, so the crossing is exact.
-18. [X; existence of a switch D given H8] For s > s* Helike carries the note; for s < s* the competitor does.
+18. [X; existence of a switch D only for g² ≲ 0.0075 and given H8; at the registered couplings it needs a control at
+    s₁ ∈ (s*, 1.25) where Helike is lowest] For s > s* Helike carries the note; for s < s* the competitor does.
     s* = 1.1674, 1.1809, 1.1931 at g² = 0.03, 0.05, 0.07. At s = 1 the carrier is the charge-0 competitor.
 
 **E. The bridge, the room, the limit**
 19. [D] The source bridge is s → 1⁺. The sources vanish at s = 1, and s = 1 is inside Theorem A's window. Kato:
     eigenvalues and projections are continuous on [1, s_controls].
-20. [X = H3] M2: Δ(R)/Λ ≥ c > 0 for every R, starting from the unsourced room with the scalar carrier. *Proof route:*
+20. [X = H3] M2: Δ(R)/Λ ≥ c > 0 for every R, with Δ(R) the gap over the whole physical Hilbert space (so the vacuum
+    of each continuum room is simple; this clause now lives here), starting from the unsourced room with the scalar carrier. *Proof route:*
     the three-part bundle skeleton (H3 §3.5): continuity along R, no zero in any room, control at both ends (small
     rooms by H2; large rooms by a finite-size criterion).
 21. [PC, partial] The ultraviolet limit holds in a finite box with an infrared cutoff (Bałaban; Magnen–Rivasseau–
@@ -59,7 +64,8 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 22. [P] Reflection positivity survives limits (it is a closed condition).
 23. [X = H4′] **Merged with line 29 (27 November): on my geometry.** The family of continuum theories on S³_R × ℝ:
     - for every R, the ultraviolet limit exists on the sphere, with the cutoff of line 16 removed and OS regularity
-      bounds;
+      bounds. On S³ × ℝ time and space renormalize separately, so the limit tunes **two** bare parameters, the coupling
+      g₀ and a speed of light c₀;
     - as R → ∞, the correlation functions converge on compact regions to an ℝ⁴ theory with full Euclidean symmetry.
 
     With line 22, the OS axioms hold, and reconstruction gives a relativistic theory. The ℝ⁴ theory is *defined* as
@@ -69,7 +75,8 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 24. [X = H7] Every compact simple G. Lines 1–3 already hold for every compact G [PC].
 25. [X = H6] Local fields for the gauge-invariant polynomials in F (tr F² first), agreeing with perturbation theory and
     asymptotic freedom at short distance.
-26. [D from 25] Non-triviality. Criterion: the short-distance correlations of tr F² carry the 1/log corrections of
+26. [Cd: D from 25 plus one finite perturbative fact, the leading three-point function of the trace anomaly ≠ 0]
+    Non-triviality. Criterion: the short-distance correlations of tr F² carry the 1/log corrections of
     asymptotic freedom, which no free theory has.
 27. [D from 28] A unique vacuum: the spectral measure has no atom at 0. In the reduction this holds by
     Perron–Frobenius [PC].
@@ -84,7 +91,7 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 | # | Hypothesis | Line | Needed for |
 |---|---|---|---|
 | H1 | S_C | 11 | the carrier form (a finite computation, R2) |
-| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form (a finite computation) |
+| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form. True for the undressed reduced operator (derivation confirmed); in the physical theory decided only at O(g²) (needs the kinetic term, H2b) |
 | H2 | M3, uniform dressing at small R | 16 | the small-room end of H3 |
 | H3 | M2, Δ(R)/Λ ≥ c for every R | 20 | the gap |
 | H4′ | the sphere family: the continuum limit in every room, and an ℝ⁴ end with full Euclidean symmetry | 23 | existence |
@@ -124,3 +131,19 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
   symmetry mixing time with space). Every clause still maps; the set goes from 8 hypotheses to 7. The cited box results
   (line 21) become templates. The detailed write-ups `H4-continuum-limit.md` and `H5-one-geometry.md` are kept as the
   two halves of H4′.
+- **27 Nov, referee pass** (`COHERENCE.md`). Statuses and proofs only; no requirement changed.
+  - Line 14: sign corrected to −(b₀/8π²) log(Λ_cut R).
+  - Line 15: the widening is the potential part of the O(g²) shift. The kinetic term of the same order is uncomputed,
+    so the sign is open. The report pages and §14 carry this caveat.
+  - Line 16 / H2: adopted the spectral form, with its domain (s = 1, near q = 0, t ≠ 1).
+  - Line 18: the switch brackets only at weak coupling (g² ≲ 0.0075). At the registered couplings it needs a control at
+    s₁ ∈ (s*, 1.25).
+  - Line 26: now conditional on one finite perturbative fact (a generalized free field can mimic the 1/log² two-point
+    function).
+  - Line 20 / H3: owns the simplicity of each room's vacuum (previously claimed by H4/H5 with no route).
+  - H8: true for the undressed reduced operator. Physically q_MC is a gauge copy of 0, and near q = 0 the charge-0 and
+    charge-2 states tie at harmonic order. Open at O(g²).
+  - H4′: two bare parameters (g₀, c₀) on S³ × ℝ. This is the time–space residue named at the merge. The merge breaks the
+    referee's cycle H4(b) ⇄ H5.
+  - Proof-route fixes: H6 is stated on the sphere family (this breaks the cycle H5(b) ⇄ H6); flowed Wilson loops replace
+    bare ones; H7's Young weight is (2α−1)/2; H6's plaquette count; H3 fixes t ≠ 1.

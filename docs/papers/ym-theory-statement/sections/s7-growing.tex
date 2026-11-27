@@ -1,29 +1,33 @@
 % s7: the room grows (point 5, first half). ASCII only.
 \section*{7. The room grows}
 
-\spine{5} The infinite world is the last room. The radius $R$ belongs to the base of the bundle. Over each $R$ sits the
+\spine{5} The infinite world is the last room. The radius $R$ belongs to the parameter space of the family. Over each $R$ sits the
 whole quantum theory in that room, with its carriers and its gap $\Delta(R)$, the lowest energy above the vacuum over the
-entire physical Hilbert space (every charge, every parity). Moving along $R$ is the renormalization group: the coupling
-$g^2(R)$ grows with the room, as asymptotic freedom says.
+entire vacuum-orthogonal physical Hilbert space (every charge, every parity). Changing the renormalization scale
+to $1/R$ follows the running coupling, but changing $R$ also changes the physical geometry. These are related, not
+identical operations. Asymptotic freedom controls small $R$, not a globally monotone strong-coupling law.
 
 \textbf{Dimensional transmutation.} Pure Yang--Mills has no mass in its Lagrangian. The running manufactures one: holding
 the theory fixed while the cutoff is removed defines a scale $\Lambda$ (from the coefficients $b_0=22/3$, $b_1=136/3$).
-After that only $R$ and $\Lambda$ remain, so any mass is a pure number times $\Lambda$.
+At fixed squashing $t$, group and $\theta=0$, a finite-room mass has the form $\Lambda f(R\Lambda;t)$.
+A constant mass ratio belongs to the infinite-volume limit, if it exists; its value uses a fixed scheme for $\Lambda$.
 
 \begin{claim}{PROVED}{The scaling reduction}\label{b:scaling}
 Given that each continuum room exists, $H_R\cong R^{-1}\mathcal K(x)$ for a one-parameter family $\mathcal K(x)$ on the
 unit sphere, $x=R\Lambda$. With $\delta(x)=R\,\Delta(R)$ the gap of $\mathcal K(x)$, $\Delta(R)/\Lambda=\delta(x)/x$, and
-the mass gap problem becomes one statement: $\inf_{x>0}\delta(x)/x>0$.
+my uniform-gap route asks for $\inf_{x>0}\delta(x)/x>0$. This is stronger than the infinite-volume step alone needs:
+a positive liminf along a converging family as $x\to\infty$. Dimensional analysis does not construct the rooms.
 \evidence{Exact dimensional analysis; the existence of each room is H4$'$ (\S8)~\cite{ClosedSet}.}
 \lines{20, 23}
 \end{claim}
 
 So the gap is a \emph{section} over the half-line $x\in(0,\infty)$, a choice of one number over each room, and the
-infrared problem is that it never touches zero. A section stays off zero when three things hold.
+infrared problem is that it cannot approach zero at the infinite end. Pointwise positivity is not enough.
+My uniform bound has three parts.
 \emph{(1) Continuity along the base.} A change of carrier between different charges is an exact crossing
-(Box~\ref{b:cross}), and the minimum of continuous level curves is continuous, so a switch never breaks the section; it
+(Box~\ref{b:cross}), and the minimum of finitely many isolated continuous low-level curves is continuous, so such a switch never breaks the section; it
 only changes who carries it. \emph{(2) No zero in any room:} a discrete spectrum and a single vacuum give $\delta(x)>0$.
-With (1), compactness gives a positive minimum on every bounded stretch.
+With (1), compactness gives a positive minimum on every closed stretch away from the endpoints.
 
 \begin{claim}{CONJECTURE}{Continuity and positivity on every compact stretch}\label{b:compact}
 For every $0<x_0<X$, $\min_{[x_0,X]}\delta(x)/x>0$. Sub-conjectures: (i) compact resolvent and a unique ground state
@@ -33,12 +37,12 @@ and for the slow sector by Theorem A; the divergence to remove is the one matche
 \lines{20, 17, 19}
 \end{claim}
 
-\emph{(3) Control at both ends.} As $x\to0$, $g^2(R)=8\pi^2/(b_0\log(1/x))\to0$, the low spectrum is the reduced model
+\emph{(3) Control at both ends.} As $x\to0$, $g^2(R)\sim8\pi^2/(b_0\log(1/x))\to0$, and, under H2, the low spectrum is the reduced model
 dressed, and $\delta(x)=\delta_0+O(g^2)$ with $\delta_0>0$: tiny rooms are enormously gapped in units of $\Lambda$.
 
 \begin{claim}{CONDITIONAL}{The small-room end}\label{b:smallend}
-$\delta(x)/x\to\infty$ as $x\to0$. The sector realizing $\delta$ there is the charge-0 scalar carrier (H8), but only
-$\delta_0>0$ is used, so this end does not wait on the kinetic term.
+$\delta(x)/x\to\infty$ as $x\to0$, given a positive limiting reduced gap and H2's exclusion of additional low states.
+H8 conjectures the charge-0 carrier, but only $\delta_0>0$ is used here; its ordering need not be settled first.
 \evidence{Conditional on H2 (Box~\ref{b:m3}) in a strengthened form (bounds on the high block and the off-diagonal block);
 the small-volume picture of~\cite{Luscher83,KollerVanBaal88,vanBaal00} moved to the sphere.}
 \lines{16, 18, 20}
@@ -59,14 +63,15 @@ strong coupling~\cite{ShenZhuZhu23}; no version for gauge fields uniform in the 
 \end{claim}
 
 \begin{claim}{CONJECTURE}{H3 (M2): the gap in the field's own scale}\label{b:h3}
-There is $c>0$, depending only on the group and on $t\ne1$, with $\Delta(R)/\Lambda\ge c$ for every $R$. The gap is over
-the whole physical Hilbert space, so each room's vacuum is simple. Route: Boxes~\ref{b:scaling}--\ref{b:ms}.
+There is $c>0$, depending only on the group and on $t\ne1$, with $\Delta(R)/\Lambda\ge c$ for every $R$. The gap is on
+the orthogonal complement of the chosen vacuum, so this hypothesis also excludes other zero-energy states.
+Route: Boxes~\ref{b:scaling}--\ref{b:ms}.
 \evidence{Lattice spectroscopy shows a gap that is a fixed multiple of $\Lambda$~\cite{MorningstarPeardon99}; step
 scaling tracks the running across volumes~\cite{LWW91}. This is the infrared half of the problem~\cite{JaffeWitten}.}
 \lines{20}
 \end{claim}
 
-Every room can be gapped and the theory still massless: if $\delta(x)\sim x^p$ with $p<1$, then $R\Delta(R)\to\infty$
+Every room can be gapped and the theory still massless: if $\delta(x)\sim x^p$ with $0<p<1$, then $R\Delta(R)\to\infty$
 while $\Delta/\Lambda\to0$, which only the ratio to $\Lambda$ sees. In GIGI I can follow the section room by
 room, a switch showing as an exact crossing: evidence, in the spirit of step scaling~\cite{LWW91}, not proof. The rooms, as they grow, must finally become all of
 space.

@@ -3,41 +3,52 @@
 
 The Hamiltonian commutes with the room's circle of symmetry, so it never mixes charges. Helike has charge $\pm2$ (the
 $m=\pm2$ part of a spin-2, tensor-like object); her competitor has charge 0 (scalar-like).
+Charge 0 alone does not imply spin 0: a spin-2 multiplet also has a charge-0 component. The identification with
+infinite-volume $J^{PC}$ needs the symmetry and parity information, not just the circle charge.
 
 \begin{claim}{PROVED}{Different charges cross exactly}\label{b:cross}
-Helike and the competitor lie in different invariant sectors of the Berger circle, so their levels cross exactly and the
-carrier is well defined on each side of a crossing.
+Helike and the competitor lie in different invariant sectors of the Berger circle. \emph{If} their eigenvalues meet,
+symmetry forbids an avoided crossing between them. Symmetry alone proves neither that they meet nor that only these
+two channels compete. Isolated pairwise crossings can be counted on a compact interval of analytic branches;
+identically degenerate branches and accumulation at a limit require separate treatment.
 \evidence{The circle commutes with the Hamiltonian at every $s$ and $g$; analytic perturbation theory per
 sector~\cite{Kato}.}
 \lines{17}
 \end{claim}
 
-\spine{2} Topology decides who is lightest. With the sources off, the potential of the room is the squared slope of
+\spine{2} My proposed reason for the ordering is topological. With the sources off, the potential of the room is the squared slope of
 one function, the Chern--Simons number: Witten's form of a Schr\"odinger operator~\cite{Witten82}, whose low levels sit
 at the critical points of that function, sorted by their number of downhill directions.
 
 \begin{claim}{PROVED}{The landscape is the slope of Chern--Simons; the competitor is the topological direction}\label{b:susy}
 Let $\omega=(\sqrt t,t^{-1/2},t^{-1/2})$, $S=\sum_k\omega_k$ and $W(q)=\tfrac12\sum_k\omega_k\|q_k\|^2-g\det q$. Then
 $V_0=\tfrac12|\nabla W|^2$, $W=CS/(2\sqrt t\,g^2)$ on homogeneous fields, and $H=\tfrac12\sum_ia_i^*a_i+\tfrac32S$
-exactly, $a_i=\partial_i+\partial_iW$; so the vacuum energy is $\tfrac32S$ up to exponentially small terms. Zero field is
+exactly, $a_i=\partial_i+\partial_iW$; hence the vacuum energy is at least $\tfrac32S$. A localized $e^{-W}$ trial
+state gives an exponentially accurate upper bound in the weak-coupling limit; $e^{-W}$ itself is not globally normalizable. Zero field is
 the minimum of $W$; $q_{\rm MC}$ is a saddle of $W$ with one downhill direction, and that direction is the competitor,
-pointing back along the path toward the other winding vacuum. Its frequency
+pointing initially downhill toward the other winding vacuum. Its frequency
 $\omega_C=\tfrac12(\sqrt{t+8}-\sqrt t)$ ($0.7923$ at $t=3$) lies below Helike's $\omega_H=2/\sqrt t$ ($1.1547$) and every
-other mode, for every $t>0$.
-\evidence{$\partial\det q/\partial q_{kc}=\mathrm{cof}(q)_{kc}$ and exact block diagonalization of the Hessian, confirmed
-by the referee pass~\cite{ClosedSet,Witten82}. Proved for the undressed reduced operator at $s=1$.}
+other physical normal mode at that well, for every $t>0$.
+\evidence{$\partial\det q/\partial q_{kc}=\mathrm{cof}(q)_{kc}$ and exact Hessian blocks~\cite{ClosedSet,Witten82}.
+These are identities and harmonic statements at $s=1$, not a finite-$g$ spectral-ordering theorem.}
 \lines{8, 18}
 \end{claim}
 
-If I could put only one claim first it would be this: the cheapest way to excite the unsourced room is to lean toward
-changing its topology. If it survives into the full theory, it is why the scalar glueball is lightest, which simulations
-see~\cite{MorningstarPeardon99} and nobody has explained.
+If I could put one geometric observation first it would be this: the softest local direction at $q_{\rm MC}$ is the
+downhill direction of Chern--Simons. For $t\ne1$ it is not the tangent to the straight Maurer--Cartan line, but a
+candidate departure direction for a curved transition path. This suggests a mechanism for the ordering seen in
+glueball simulations~\cite{MorningstarPeardon99}; it does not yet identify their scalar with this local mode.
+
+There is a second distinction. In the \emph{whole} undressed two-well model at $s=1$, the leading charge-0 excitation
+for $t>1$ is the other well's ground state, not one competitor quantum above that well. Its harmonic offset happens
+to equal $\omega_C$ because $\operatorname{tr}\nabla^2W=3S$. Those are equal numbers but different states.
+Finite-$g$ H8 still needs controlled remainders; the supporting H8 note explicitly leaves the registered couplings open.
 
 \spine{3} Tensor and scalar trade places at a calculable point. Turn the sources on ($s>1$): Helike's frequency
 $\omega_H(s)^2=2s(1+2/t-s)$ falls toward the competitor's, and the order reverses.
 
 \begin{claim}{PROVED}{The harmonic switch}\label{b:switch0}
-At harmonic order the tensor (charge $\pm2$) and scalar (charge 0) carriers trade places at
+At harmonic order the tensor-like (charge $\pm2$) and scalar-like (charge 0) frequencies trade places at
 $s_0^*(t)=(t+2)(\sqrt{t+8}-\sqrt t)/(4\sqrt t)$, which is $(5\sqrt{33}-15)/12=1.1436$ at $t=3$ and lies inside Theorem
 A's window exactly when $t>1$.
 \evidence{Closed-form root of the charge-0 secular equation~\cite{ClosedSet}.}
@@ -54,18 +65,22 @@ dressing of \S6~\cite{ClosedSet}.}
 \end{claim}
 
 \begin{claim}{CONDITIONAL}{A switch exists}\label{b:ivt}
-At weak coupling ($g^2\lesssim0.0075$, $t=3$), given H8 at $s=1$ and Helike lowest at the controls (Box~\ref{b:order},
-on H1), exact crossing and continuity give a switch. At the registered couplings the controls at $s=1.15$ already have the
-competitor lowest, so existence there needs one more control at some $s_1\in(s^*,1.25)$ where Helike is lowest.
+At any fixed coupling where H8 gives one ordering at $s=1$ and Box~\ref{b:order} gives the opposite ordering at
+$s=1.15$ (on H1), continuity gives at least one exact crossing of this pair. The estimate
+$g^2\approx0.0075$ is a first-order crossover estimate, not a proved interval of couplings.
+At the registered larger couplings, a valid bracket needs the opposite ordering at some $s_1\in(s^*,1.25)$.
+No uniqueness of the switch or exclusion of other carriers follows from this argument.
 \evidence{Deduction from lines 12, 17, 19 and H8; the bracketing gap was found by the referee pass~\cite{ClosedSet}.}
 \lines{18, 12}
 \end{claim}
 
-The sources are scaffolding; the physical room has none, and the bridge back is short.
+The sources are scaffolding; the physical room has none. Their removal is continuous within the reduced operator,
+but does not by itself restore the full gauge identifications or justify the fast-mode approximation.
 
 \begin{claim}{PROVED}{The source bridge $s\to1^+$ (by deduction, reduced model)}\label{b:bridge}
-Ordered eigenvalues and spectral projections of the reduced operator are continuous on $[1,s_1]$ for any $s_1$ in the
-window.
+Ordered eigenvalues of the reduced operator are continuous on $[1,s_1]$ for any $s_1$ in the window.
+Spectral projections are continuous for isolated clusters separated from the rest of the spectrum, not necessarily for
+an individually energy-ordered level at a crossing.
 \evidence{A type-(A) analytic family~\cite{Kato}. Only ordered eigenvalues are continuous through a charge-0 avoided
 crossing near $s=1+0.95\,g^2$; this is not a bridge in the full theory~\cite{ClosedSet}.}
 \lines{19}
@@ -73,13 +88,15 @@ crossing near $s=1+0.95\,g^2$; this is not a bridge in the full theory~\cite{Clo
 
 \textbf{The honest catch.} All of this is about the undressed reduced operator. In full Yang--Mills $q_{\rm MC}$ is a
 gauge copy of $q=0$, so the two wells are one point; near $q=0$ the charge-0 and charge-$\pm2$ two-quantum states tie at
-$2/\sqrt t$, and the tie is broken at order $g^2$ by a kinetic term of the fast modes (\S6).
+$2/\sqrt t$. Their splitting starts at order $g^2$, where the kinetic contribution of the fast modes also enters (\S6).
 
 \begin{claim}{OPEN}{H8 in the physical theory}\label{b:h8}
-At $s=1$ the lowest excitation has charge 0. True for the undressed reduced operator (margin $0.3624$ at $t=3$); in the
-physical theory decided only at $O(g^2)$, by the kinetic correction of Box~\ref{b:kinetic}.
-\evidence{The register's correction to H8~\cite{ClosedSet}; the next step is a pair of one-sided bounds with constants
-summing below $5.18$ at $g^2\le0.07$.}
+At $s=1$ the lowest physical excitation has charge 0. In the undressed two-well reduction, $0.3624$ at $t=3$ is the
+\emph{harmonic} margin, not a certified finite-coupling margin. In the physical vacuum chart the competing channels tie
+at harmonic order; their ordering requires the complete $O(g^2)$ effective Hamiltonian, including Box~\ref{b:kinetic},
+and a smaller remainder. A missing kinetic contribution is not a theorem that it alone decides the sign.
+\evidence{H8 and H2b in~\cite{ClosedSet}. The reduced margin divided by $0.07$ gives $5.18$, a candidate remainder budget
+for that two-well model only; it is not a budget for the physically degenerate pair.}
 \lines{18, 16}
 \end{claim}
 
@@ -89,8 +106,10 @@ distance~\cite{Agmon82,Simon83}.
 
 \begin{claim}{PROVED}{The tunnelling length is pinned by topology}\label{b:agmon}
 In variables $q=p/g$ the Agmon distance from zero field to the winding-one orbit satisfies
-$1/(2\sqrt t)\le d\le\sqrt{(t+2)(2t+1)}/(6t)$ ($0.2887\le d\le0.3287$ at $t=3$), so tunnelling moves levels by
-$O(e^{-2d/g^2})$. The lower bound is Bogomolny's: $\int|\nabla W|\,|dp|\ge\Delta W$.
+$1/(2\sqrt t)\le d\le\sqrt{(t+2)(2t+1)}/(6t)$ ($0.2887\le d\le0.3287$ at $t=3$).
+The lower bound is Bogomolny's: $\int|\nabla W_1|\,|dp|\ge\Delta W_1$, where $W_1$ is the scaled superpotential.
+These bounds alone are not a level-shift theorem. Semiclassically, an amplitude has scale $e^{-d/g^2}$;
+off-resonant shifts may be second order in it, while a resonant avoided-crossing splitting is first order.
 \evidence{The analogue of the instanton bound $8\pi^2|\Delta CS|/g^2$~\cite{BPST75,tHooft76}; the upper bound is the
 straight path~\cite{ClosedSet}.}
 \lines{18, 19}
@@ -109,5 +128,5 @@ $J^{PC}$ needs an argument I do not have. I quote no mass ratios.}
 \lines{18, 20}
 \end{claim}
 
-The carriers are named, topology orders them, and they trade places at a point I can write down, all read from nine
-slow numbers. What of the infinitely many fast modes left out?
+The candidate carriers are named, the Chern--Simons landscape orders their local frequencies, and their harmonic
+switch is a point I can write down, all read from nine slow numbers. What of the infinitely many fast modes left out?

@@ -10,12 +10,14 @@ $\sigma^1,\sigma^2,\sigma^3$. The Berger sphere $S^3_t$ has metric $t(\sigma^1)^
 $t=1$, stretched along the circles of $\sigma^1$ otherwise; my controls use $t=3$. Stretching leaves one circle of
 rotations, and its integer charge $m$ labels states as spin does on the round sphere. The slowest fields are the
 homogeneous ones, $A=q_{ka}\theta^kT_a$, with $\theta^k$ the orthonormal coframe and $q$ a constant $3\times3$ matrix
-(rows: space; columns: colour). The only gauge transformations that keep a field homogeneous are constant colour rotations.
+(rows: space; columns: colour). Only constant colour rotations preserve the \emph{entire} homogeneous ansatz.
+Nonconstant gauge maps can still identify particular homogeneous fields, including the two flat fields below.
 
 \begin{claim}{PROVED}{The slow space}\label{b:slow}
-Homogeneous fields modulo gauge form $\mathbb R^9/SO(3)$, $q\mapsto qO^T$. With $q=PO$, $P$ symmetric with eigenvalues
-$\lambda_i$, the flat measure is $\prod_{i<j}|\lambda_i+\lambda_j|\,dP\,dO$: the finite version of the weight of
-$\mathcal A/\mathcal G$.
+Homogeneous fields modulo \emph{constant} colour gauge transformations form $\mathbb R^9/SO(3)$, $q\mapsto qO^T$.
+This is not the restriction of the full gauge quotient: it retains some large-gauge copies. On a nonsingular local
+signed-polar chart $q=PO$, the measure is proportional to $\prod_{i<j}|\lambda_i+\lambda_j|\,dP\,dO$.
+Unrestricted symmetric $P$ has multiple representatives; chart multiplicities matter in a global integral.
 \evidence{Residual gauge group and polar Jacobian~\cite{HelikeReport}; the quotient picture of~\cite{Singer78,Gribov78}.}
 \lines{7}
 \end{claim}
@@ -31,7 +33,9 @@ Callan--Dashen--Gross~\cite{JackiwRebbi76,CallanDashenGross76}.
 
 \begin{claim}{PROVED}{Topology on the Maurer--Cartan line}\label{b:mc}
 Along the line $CS(\lambda)=3\lambda^2-2\lambda^3$ and $V=(1+2/t)(\lambda-\lambda^2)^2/(2g^2)$: a double well with zeros
-at the two windings and the sphaleron at $\lambda=CS=\tfrac12$. My controls hold the background $q_{\rm bg}=s\,q_{\rm MC}$
+at the two vacuum representatives and a \emph{path maximum} at $\lambda=CS=\tfrac12$. This is a sphaleron of the
+full reduced potential on the round sphere, but not generally on a stretched sphere: at $t=3,g=1$ the full diagonal
+gradient there is $(\sqrt3/6,-1/12,-1/12)\ne0$. My controls hold the background $q_{\rm bg}=s\,q_{\rm MC}$
 just past the winding-one vacuum, with sources that vanish at $s=1$.
 \evidence{$d\Omega=-\Omega^2$ and a diagonal computation, confirmed to $10^{-13}$~\cite{HelikeReport,ClosedSet}; the
 sphaleron is the finite analogue of Klinkhamer--Manton's~\cite{KlinkhamerManton84}.}
@@ -48,16 +52,18 @@ reduced Hamiltonian is essentially self-adjoint with compact resolvent: its spec
 \lines{9}
 \end{claim}
 
-\textbf{Helike and her competitor.}\ \spine{1} The lowest note in the room has a name. Helike is the charge-2 field
-$(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$: frame and colour turn together, at the largest charge the circle
-allows. Her competitor is the charge-0 \emph{breathing} mode in the plane $\mathrm{diag}(x,y,y)$, which \S5 shows is the
-direction of topology.
+\textbf{Helike and her competitor.}\ \spine{1} My candidate carriers have names. In this section's axis convention,
+Helike's homogeneous real doublet is $(E_{22}-E_{33},E_{23}+E_{32})$: frame and colour turn together, at the
+largest charge of this homogeneous tensor block, not the largest charge in the whole Hilbert space.
+Her competitor is a charge-0 \emph{breathing} mode in the plane $\mathrm{diag}(x,y,y)$, linked in \S5 to the Chern--Simons landscape.
 
 \begin{claim}{PROVED (CITED)}{Helike is an exact eigenvector and the floor}\label{b:helike}
 For every $t$, every circle-symmetric homogeneous background $(x,y)$ and every harmonic $j$, Helike is an exact
-gauge-orthogonal eigenvector of the Yang--Mills Hessian, alone in her charge block, with eigenvalue
-$(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$ (helicity squared minus the flux along her circle), and she is the floor of the
-spectrum for $t\in[2.75,10]$ on the stated domain. In the reduced model $\omega_H^2=2s(1+2/t-s)$.
+gauge-orthogonal eigenvector of the Yang--Mills Hessian, alone in her maximal-charge block, with eigenvalue
+$(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$, with $j$ twice the orbital spin. The cited floor theorem covers the Berger
+field for $t\in[2.75,10]$ and the stated field domain in those papers, \emph{not} every $(x,y)$.
+The sourced controls have $x>0$ and are outside that floor claim. What transfers exactly is the doublet;
+its sourced reduced frequency is $\omega_H^2=2s(1+2/t-s)$.
 \evidence{My papers \emph{By Enough, But Not Too Much} and the Floor Theorem v3.3~\cite{ByEnough,Floor}, not yet
 refereed; the reduced formula in~\cite{HelikeReport}.}
 \lines{10}
@@ -74,7 +80,7 @@ $\rho_C=E_0^c+2\omega_H-\omega_{\min}/4$.
 \lines{11}
 \end{claim}
 
-\begin{claim}{CONDITIONAL}{Helike lowest at the controls (on H1)}\label{b:order}
+\begin{claim}{CONDITIONAL}{Helike below the charge-0 competitor at the controls (on H1)}\label{b:order}
 At $t=3$, $s=1.15$, Helike's level lies strictly below the second charge-0 level for three of four certificates
 $(g^2,M_q)$, covering $g^2=0.002$ and $0.004$, with margins $+0.0072$, $+0.0100$, $+0.0121$; the fourth, $(0.004,6)$, is
 unresolved. A reduced-model statement.
@@ -87,9 +93,10 @@ registered in advance~\cite{HelikeReport}.}
 For each level $k$, $0\le\lambda_k(H_D)-\lambda_k(H)\le C_{k,\epsilon}e^{-2(d_0-\epsilon)/g^2}$, $d_0$ the Agmon distance
 to the fold.
 \evidence{Proved: the fold is classically forbidden and natural levels lie below Dirichlet ones. The rest is the
-semiclassics of~\cite{Agmon82,Simon83}. Since $\det q$ is the Chern--Simons cubic, fold and winding are one odd term.}
+semiclassics of~\cite{Agmon82,Simon83}. The determinant is the odd cubic in Chern--Simons, but the fold
+$\det q=0$ is not itself a winding-number boundary.}
 \lines{9, 11}
 \end{claim}
 
-So with the sources on, Helike is lowest; \S5 shows that with them off the competitor is, and asks why, and where they
-trade places.
+The sourced controls conditionally order this pair. Section~5 compares that result with the unsourced harmonic
+geometry, then asks whether finite-coupling levels trade places and what survives in the physical theory.

@@ -5,19 +5,25 @@ Jaffe and Witten ask for local fields for the gauge-invariant polynomials in the
 theory at short distance, a theory that is not free, and all of it for every compact simple group~\cite{JaffeWitten}.
 
 \textbf{Local fields.} Traces of products of $F$ and its covariant derivatives are gauge invariant; graded by dimension
-($F$ counts 2, each derivative 1), the first is $\mathrm{tr}\,F^2$, the energy density. A \emph{renormalized local field} is the limit of a lattice transcription (for
+($F$ counts 2, each derivative 1), one of the first is $\mathrm{tr}\,F^2$, the action-density scalar, not the energy density $T_{00}$.
+A \emph{renormalized local field} is the limit of a lattice transcription (for
 $\mathrm{tr}\,F^2$, the six plaquettes at a point) after a finite mixing with fields of equal or lower dimension; its correlations must be tempered distributions
-(singular only polynomially where points meet) obeying the growth condition OS0$'$ that reconstruction
-needs~\cite{OS75}. Perturbatively this is a theorem~\cite{Reisz88,Reisz89}, and the gradient flow gives fields
-finite with no renormalization, the stress tensor included~\cite{Luscher10,LuscherWeisz11,Suzuki13}. The nearest
+(continuous on Schwartz test functions) obeying the additional growth condition OS0$'$ that reconstruction
+needs~\cite{OS75}. Perturbative renormalization is established~\cite{Reisz88,Reisz89}. At positive flow time, flowed
+gauge-field observables need no \emph{additional} renormalization after the underlying theory is renormalized.
+The local stress tensor requires matching and a small-flow-time limit~\cite{Luscher10,LuscherWeisz11,Suzuki13}. The nearest
 complete non-perturbative analogue is the two-dimensional Gross--Neveu model~\cite{GawedzkiKupiainen85,FMRS86}; nothing
 comparable is proved in four dimensions.
 
 \begin{claim}{CONJECTURE}{H6: local fields, and agreement with perturbation theory}\label{b:h6}
 On the sphere family and its $\mathbb R^4$ end, every gauge-invariant polynomial in $F$ and its covariant derivatives,
-$\mathrm{tr}\,F^2$ first, is a renormalized local field (tempered, OS0$'$, unique up to contact terms) that reconstructs
+$\mathrm{tr}\,F^2$ first, is a renormalized local field (tempered, OS0$'$), with finite mixing and normalization fixed
+by a declared prescription and Ward identities, that reconstructs
 to a local covariant operator-valued distribution. A conserved stress tensor generates translations, with trace
-$\Theta=\frac{\beta(g)}{2g}[\mathrm{tr}\,F^2]$, $\beta(g)=-\frac{b_0}{16\pi^2}g^3+O(g^5)$. At short distance every
+$\Theta=-\frac{\beta(g)}{2g}[O]$, $\beta(g)=-\frac{b_0}{16\pi^2}g^3+O(g^5)$. Here the Euclidean trace convention
+matches the positive running-plaquette coefficient below, and $O=\sum_{a,\mu,\nu}\mathcal F^a_{\mu\nu}\mathcal F^a_{\mu\nu}$
+uses canonically normalized fields with Lagrangian $O/4$. This fixes the sign and normalization instead of silently
+identifying $O$ with a differently normalized matrix trace. Vacuum subtraction is understood. At short distance every
 correlation function agrees with renormalized perturbation theory in the running coupling, asymptotically to all orders.
 \evidence{The perturbative ingredients are established~\cite{GrossWilczek73,Politzer73,ACD77,CDJ77,Luscher10,LuscherWeisz11,Suzuki13};
 my sphere coefficient $b_0/8\pi^2$ (Box~\ref{b:b0}) is the logarithm whose cutoff derivative is the one-loop trace
@@ -25,50 +31,64 @@ anomaly~\cite{ClosedSet}.}
 \lines{25, 14}
 \end{claim}
 
-On the lattice the trace anomaly is not a conjecture but an identity: varying the inverse coupling in the Wilson measure
+On the lattice there is an exact starting point for the trace anomaly: varying the inverse coupling in the Wilson measure
 differentiates every expectation by minus its correlation with the action, and along the line of constant physics that
 derivative is the response to a change of scale.
 
-\begin{claim}{PROVED}{The trace anomaly is the running plaquette (lattice identity)}\label{b:anomaly}
-On every finite lattice $\partial_{(4/g_0^2)}\langle X\rangle=-\langle X;S_W\rangle$, $S_W=\sum_p(1-\tfrac12\mathrm{tr}\,U_p)$.
+\begin{claim}{PROVED}{The running-plaquette insertion (lattice identity)}\label{b:anomaly}
+On every finite lattice, for parameter-independent $X$, $\partial_{(4/g_0^2)}\langle X\rangle=-\langle X;S_W\rangle$,
+$S_W=\sum_p(1-\tfrac12\mathrm{tr}\,U_p)$.
 Along the line of constant physics this makes the anomaly density $\Theta_a(x)=-\frac{d(4/g_0^2)}{d\ln a}a^{-4}
-\sum_{p\text{ at }x}(s_p-\langle s_p\rangle)$, with $-\frac{d(4/g_0^2)}{d\ln a}=\frac{b_0}{2\pi^2}+O(g_0^2)$ and no further
-renormalization; at one loop this is $-\frac{\beta(g)}{2g}\mathrm{tr}\,F^2$. Convergence of $\Theta_a$ to $\Theta$ belongs
-to H6.
+\sum_{p\text{ based at }x}(s_p-\langle s_p\rangle)$, with six positively oriented plaquettes per site and
+$-\frac{d(4/g_0^2)}{d\ln a}=\frac{b_0}{2\pi^2}+O(g_0^2)$ at one loop. Since
+$\sum_{p\text{ based at }x}s_p=a^4g_0^2O/16+\cdots$, the coefficient agrees with $-\beta(g)O/(2g)$.
+The exact identity fixes an integrated insertion, not all local contact terms or matching. Its continuum
+identification as the stress-tensor trace belongs to H6.
 \evidence{Differentiation under the integral; factor and plaquette count verified by the referee pass~\cite{ClosedSet}.}
 \lines{1, 25}
 \end{claim}
 
 \textbf{Non-triviality.} A free massive theory also has a gap. My first criterion (a nonzero connected four-point function of
-$\mathrm{tr}\,F^2$) holds in free theories too, and I withdrew it~\cite{ClosedSet}. The corrected one is a fingerprint
-only an asymptotically free theory leaves: by H6, $|x|^8\langle\Theta(x)\Theta(0)\rangle\to C_O(N^2-1)/\bigl(16\ln^2(1/|x|\Lambda)\bigr)$ as
-$|x|\to0$, an inverse square logarithm, while in any Wick-polynomial free theory the same quantity tends to a nonzero
-constant. A \emph{generalized free field} (a Gaussian field with an arbitrary two-point function) could still mimic it; a
+$\mathrm{tr}\,F^2$) holds in free theories too, and I withdrew it~\cite{ClosedSet}. The fingerprint I now seek is logarithmic
+running: by H6, $|x|^8\langle\Theta(x)\Theta(0)\rangle\sim C_O(N^2-1)/\bigl(16\ln^2(1/|x|\Lambda)\bigr)$ as
+$|x|\to0$, an inverse square logarithm, unlike a nonzero dimension-four Wick polynomial in finitely many canonical
+free fields with a nonvanishing leading scaling term. A \emph{generalized free field} (Gaussian with an arbitrary two-point function) could still mimic it; a
 nonzero connected three-point function excludes that, and the leading one is $(b_0\bar g^2/32\pi^2)^3$ times the free
-Wick triangle $T_O$ of three $\mathrm{tr}\,F^2$, a finite computation I have not done.
+Wick triangle $T_O$ of three canonically normalized $O$ insertions, a finite computation I have not done.
 
-\begin{claim}{CONDITIONAL}{The theory is not free}\label{b:nontrivial}
-If H6 holds and $T_O\not\equiv0$, the limit is neither a Wick-polynomial free theory nor a generalized free field in its
-$\Theta$ sector: it is non-trivial.
-\evidence{Deduction from H6 and the free-field lemma; the constant $1/16$ checked by the referee~\cite{ClosedSet}.}
+\begin{claim}{CONDITIONAL}{Two tests of non-triviality}\label{b:nontrivial}
+If H6 holds and $T_O\not\equiv0$, these correlations exclude the stated finite canonical Wick-polynomial comparison
+and exclude $\Theta$ itself being a generalized free field. They do not alone classify the full observable algebra:
+a non-Gaussian composite of Gaussian fields can have a nonzero connected three-point function.
+Non-triviality of the reconstructed theory remains to be established with H6, not by that three-point test alone.
+\evidence{The $1/16$ coefficient follows from one-loop running. The scope of the free-field comparison matters;
+the leading triangle is still uncomputed~\cite{ClosedSet}.}
 \lines{26, 25}
 \end{claim}
 
-\textbf{Every compact simple group.} Nothing so far needed $SU(2)$ as structure group except for definiteness; space is
-still $S^3$, and a dictionary carries the rest: $b_0\to11h^\vee/3$ ($h^\vee$ the dual Coxeter number); the note $\tfrac34\to
+\textbf{Every compact simple group.} The lattice construction generalizes, but the determinant reduction and two-carrier
+ordering are specific to $SU(2)$. Space remains $S^3$, and a dictionary starts the extension: $b_0\to11h^\vee/3$
+($h^\vee$ the dual Coxeter number); the note $\tfrac34\to
 C_{\min}(G)$, the smallest nontrivial Casimir; $\mathbb R^9/SO(3)\to\mathfrak g^3/\mathrm{Ad}(G)$; and the
 Maurer--Cartan line runs through a long-root $\mathfrak{su}(2)$, where the minimal instanton lives~\cite{BPST75,BCGW77}.
 I take $G$ simply connected; its other global forms share the local sector, which is all the gap and the local fields
 see~\cite{AharonySeibergTachikawa13}.
 
-\begin{claim}{PROVED}{The lattice layer and the strong-coupling note for every $G$}\label{b:everyGlat}
-For every compact $G$, lines 1--3 hold~\cite{OsterwalderSeiler78}. On the Hamiltonian lattice (periodic side $\ge4$) the
-first electric level is exactly $2C_{\min}(G)g^2/a$, the leading strong-coupling gap; in two dimensions
+\begin{claim}{PROVED (CITED)}{The lattice construction for compact groups}\label{b:everyGlat}
+For the admissible compact-group lattice actions, reflection positivity, transfer-matrix construction and the
+strong-coupling result hold with their stated hypotheses~\cite{OsterwalderSeiler78}.
+\lines{1--3, 24}
+\end{claim}
+
+\begin{claim}{PROVED}{The electric note and the embedded doublet}\label{b:everyGmode}
+For a compact connected simple Lie group on the Hamiltonian lattice (periodic side $\ge4$), the first electric level
+is $2C_{\min}(G)g^2/a$, with the finite-volume qualification of Box~\ref{b:kato}. In the two-dimensional continuum limit,
 $\sigma_{\rm adj}/\sigma_{r_{\min}}\to h^\vee/C_{\min}$; and Helike's charge-2 doublet is an exact Hessian eigenvector
-for every $G$, with the $SU(2)$ frequency.
-\evidence{Lines 1--3 cited~\cite{OsterwalderSeiler78}; Peter--Weyl plus Gauss's law~\cite{KogutSusskind75}; the $j=1$
+in the embedded long-root $\mathfrak{su}(2)$ block, with the $SU(2)$ frequency and normalization. This does not make
+it the floor of the additional colour blocks.
+\evidence{Peter--Weyl plus Gauss's law~\cite{KogutSusskind75}; the $j=1$
 part of the adjoint under a long-root $\mathfrak{su}(2)$ is that $\mathfrak{su}(2)$~\cite{ClosedSet,ByEnough}.}
-\lines{1--6, 10, 24}
+\lines{4--6, 10, 24}
 \end{claim}
 
 \begin{claim}{CONJECTURE}{H7: the whole theory for every compact simple $G$}\label{b:h7}

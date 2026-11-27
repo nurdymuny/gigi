@@ -2,9 +2,9 @@
 \section*{3. The note of one turn}
 
 Everything physical about a gauge field is carried by its turns: carry a frame around a loop and see how far it comes
-back rotated. At strong coupling (coarse lattice, large $g$) the gap is exactly the price of the
-smallest possible turn. Wilson's plaquette term $1-\tfrac12\mathrm{tr}\,U_p$ prices a turn by its chord, the
-straight-line distance inside the group between $U_p$ and the identity; in \emph{Three Ways Across a Turn}~\cite{ThreeWays}
+back rotated. In the purely electric strong-coupling limit the first excitation is the
+smallest closed flux loop. Wilson's plaquette term $1-\tfrac12\mathrm{tr}\,U_p=1-\cos\alpha$
+is half the \emph{squared} chord distance between the unit quaternions $U_p$ and $1$; in \emph{Three Ways Across a Turn}~\cite{ThreeWays}
 I compare it with the arc and the tangent. The cleanest view is the Hamiltonian lattice of Kogut and
 Susskind~\cite{KogutSusskind75}: continuous time, a cubic spatial lattice, and at strong coupling an energy that is
 \emph{electric}, $g^2/(2a)$ times the quadratic Casimir $C_2$ on each link. The Casimir is the Laplacian of the group,
@@ -23,7 +23,8 @@ one plaquette loop in spin $\tfrac12$.
 
 The magnetic term, of order $1/(ag^2)$, mixes in other configurations, so $3g^2/(2a)$ is the leading term of the gap. Two
 lattices must be kept apart here (I once mixed them; the register records the correction~\cite{ClosedSet}). On the
-\emph{Euclidean} lattice, with discrete time, the gap is a theorem; on the \emph{Hamiltonian} lattice its value follows.
+\emph{Euclidean} lattice, with discrete time, a strong-coupling gap is a theorem; on a fixed finite
+\emph{Hamiltonian} lattice the leading value follows by perturbation.
 
 \begin{claim}{PROVED (CITED)}{A gap at strong coupling}\label{b:strong}
 For small $\beta$ the cluster expansion converges and truncated correlations of local gauge-invariant observables decay as
@@ -34,8 +35,9 @@ $e^{-m(\beta)\cdot\text{distance}}$, $m(\beta)>0$; by reflection positivity this
 
 \begin{claim}{PROVED}{The leading Hamiltonian gap (by deduction)}\label{b:kato}
 On a finite Hamiltonian lattice the magnetic term is a bounded perturbation of $H_E$, so the full Kogut--Susskind gap is
-$3g^2/(2a)$ plus corrections smaller by powers of $1/g^2$; uniformity in the volume is the cluster expansion.
-\evidence{Kato's analytic perturbation theory~\cite{Kato}; volume uniformity from~\cite{OsterwalderSeiler78}.}
+$3g^2/(2a)+O_L(1/(ag^2))$ as $g\to\infty$. The constant here may depend on lattice size $L$.
+\evidence{Kato's analytic perturbation theory~\cite{Kato}. A volume-uniform Hamiltonian statement needs a separate
+uniform argument; the Euclidean result in Box~\ref{b:strong} is not by itself that argument.}
 \lines{5}
 \end{claim}
 
@@ -44,7 +46,7 @@ loop factorises~\cite{Migdal75,GrossWitten80}.
 
 \begin{claim}{PROVED}{Two dimensions: each loop's area law is its Casimir}\label{b:2d}
 For $SU(2)$ on a planar lattice, a simple loop around $|A|$ plaquettes has $\langle\chi_j\rangle/d_j=(I_{2j+1}(\beta)/
-I_1(\beta))^{|A|}$, so $\sigma_j=2C_2(j)/\beta+O(\beta^{-2})$ and $\sigma_1/\sigma_{1/2}\to8/3$. A centre vortex (links
+I_1(\beta))^{|A|}$, so $\sigma_j=2C_2(j)/\beta+O(\beta^{-2})$ in lattice area units and $\sigma_1/\sigma_{1/2}\to8/3$. A centre vortex (links
 crossed by a sheet multiplied by $-1$) multiplies a spin-$j$ loop by $(-1)^{2jn}$, $n$ its winding around the vortex:
 half-integer loops feel it, integer loops do not.
 \evidence{Character factorisation~\cite{Migdal75,GrossWitten80}; $\chi_j(-U)=(-1)^{2j}\chi_j(U)$, the centre-vortex
@@ -52,12 +54,13 @@ picture~\cite{tHooft78,Greensite03}. Casimir scaling is seen in four dimensions~
 \lines{6}
 \end{claim}
 
-I checked all of this in GIGI, my database engine, with the lattice connection stored as a bundle and every loop read
+I checked the two-dimensional loop identities in GIGI, my database engine, with the lattice connection stored as a bundle and every loop read
 only by point queries: the loops match the character formula within $2\sigma$, a random gauge rewrite changes no loop by
-more than $10^{-15}$, and a planted vortex flips the fundamental loop exactly and leaves the adjoint
+more than $1.23\times10^{-15}$, and a planted vortex flips the fundamental loop exactly and leaves the adjoint
 alone~\cite{HelikeReport}.
 
 Strong coupling gives the note but not the continuum, and it is never an end of the family of rooms, since every
 room's continuum limit sends the bare coupling to zero (\S7). Two dimensions has an exact area law but no propagating
-gluons. And at weak coupling a small turn costs almost nothing, since the chord grows like the square of the angle. So in
+gluons. Near the identity the Wilson plaquette cost is quadratic in angle, with a coupling-dependent coefficient;
+that local cost alone does not determine a quantum gap. So in
 four dimensions the note has to be found again, carried by a shape, in a room small enough that the coupling is weak.

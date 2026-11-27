@@ -1,0 +1,33 @@
+{
+  "scope": "Finite algebra, saved receipt replay and document consistency; not a proof certificate",
+  "tests": 14,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "source_revision": "1904d31573e1dd64609eb92e144226492307b7ce",
+  "dirty": true,
+  "numpy": "2.4.0",
+  "sympy": "1.14.0",
+  "sha256_lf": {
+    "scripts/check_lowest_note_review.py": "0bf8bdf41208130b63e2b8d50357b1bf51b96cf1fc30f4ddbcef8b56188b6925",
+    "docs/papers/ym-theory-statement/refs.tex": "5e1865d6b68d7bc7d0de9c38c4ab329d8835b13726319994a74f5028815cece6",
+    "docs/papers/ym-theory-statement/sections/s0-abstract.tex": "05432e5e587f49499a16ce5622112641ef676feac0a148501e33d38d86faa81a",
+    "docs/papers/ym-theory-statement/sections/s1-problem.tex": "eefa6da37d743341d26533ad1fa0d3a729390de242a9a9ce61c7450c2b61ab15",
+    "docs/papers/ym-theory-statement/sections/s10-what-it-is.tex": "91c7480893dd1d5186e38f3a365e79676a5ec320c451cbeb6d4574cf14d36a0a",
+    "docs/papers/ym-theory-statement/sections/s2-framing.tex": "2af1cf066777104eeb955135cede68349c536aecdf4409aa84f7745da621d520",
+    "docs/papers/ym-theory-statement/sections/s3-note.tex": "d63b86c83fb08f36c4a1fd84f84a62915d99ccd5f1c15bd531e5c74b790fb421",
+    "docs/papers/ym-theory-statement/sections/s4-room.tex": "42f55fb9e3e291b5e6cf6a6589813fa882f99b87828078b4f426b6bb3c4ff60d",
+    "docs/papers/ym-theory-statement/sections/s5-carriers.tex": "e3c61e619971f3966d57335badfa02f1ca745286603d4fa3c5bf6a2259d881c9",
+    "docs/papers/ym-theory-statement/sections/s6-fast.tex": "b105392f19cb46d01a25df88c126c4a3be767fe50b822504a56aee3737ff529f",
+    "docs/papers/ym-theory-statement/sections/s7-growing.tex": "d540c891ddebae689151bf91667eba3a76491d42e6c7cfe1408a2069f7c5f076",
+    "docs/papers/ym-theory-statement/sections/s8-limit.tex": "abe92ce9ea69f96c097ead7bbe4b4bfcb669518b2c546dd0b9368279a8de4ced",
+    "docs/papers/ym-theory-statement/sections/s9-content.tex": "6ae55f51dfc4e96e73eb140af367da744cd57b4954b7fcef64201bed78014c46",
+    "docs/papers/ym-theory-statement/statement.tex": "bb66b9cac86afb0835ef106838ca98594c1d0d76e59ed651867a3425fa1d968f",
+    "docs/papers/ym-theory-statement/HANDOFF.md": "12ba318fcb6742885a3a9681d75a8adfc61d5d2874f9511a2c73b24d4053682f",
+    "docs/papers/ym-theory-statement/REVIEW-2026-11-27.md": "03279737da6e7aa3af1d1811cd4ad0354dfc5e152a6f11b3e5c6a9618ef60cc9",
+    "docs/research/closed-set-20261127/CLOSED-SET.md": "8d30ad884fa78394236ca7656fbc30cf2ed2ead9359799fe855bc89b171d520e",
+    "research/gigi-m3-20261127/result.json": "5e1208a7af64f5dc8d8e8487b0f31d1b1e6a51d45683b8238116aeaf30f95b6d",
+    "research/gigi-lattice-gauge-20261127/result.json": "ca42f8547149aa572eab63d8da078900280ded4caf50847c72af149207ecb52d"
+  },
+  "pdf_sha256": "04593566e11690dc9292eb8101ba390812451f244bcd32f00c62cf5815e7e1e5"
+}

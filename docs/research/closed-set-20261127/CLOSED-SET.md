@@ -22,13 +22,16 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 3. [PC] For small β there is a gap m(β) > 0, with correlations decaying as e^{−m·distance}.
 4. [P] The electric part H_E = (g²/2a) Σ_ℓ C₂(ℓ) has first excited level 3g²/(2a): one plaquette, spin ½, Casimir ¾.
 5. [D] Line 4 is the leading strong-coupling term of the **Hamiltonian** lattice gap. The proof is Kato perturbation
-   theory, since the magnetic term is bounded on a finite lattice. Uniformity in the volume is the strong-coupling
-   cluster expansion [PC].
+   theory, since the magnetic term is bounded on a finite lattice. This deduction is finite-volume:
+   the Euclidean cluster expansion in line 3 does not by itself establish a volume-uniform Hamiltonian remainder.
 6. [P] In 2-D: ⟨χ_j⟩/d_j = (I_{2j+1}/I₁)^{|A|}, σ_j = 2C₂(j)/β + O(β⁻²), and σ₁/σ_½ → 8/3.
 
 **B. The small room** (Berger sphere S³_t, radius R, homogeneous fields A = q_{ka} θᵏ T_a)
-7. [P] The slow space is ℝ⁹/SO(3), with measure ∏_{i<j} |λ_i + λ_j|.
+7. [P] Homogeneous fields modulo constant colour gauge transformations form ℝ⁹/SO(3), with local signed-polar
+   Jacobian ∏_{i<j} |λ_i + λ_j|. This reduction retains large-gauge copies; a global polar integral must account for
+   chart multiplicities.
 8. [P] V(λ q_MC) = (1 + 2/t)(λ − λ²)²/(2g²), CS = 3λ² − 2λ³, and q_bg = s·q_MC.
+   The midpoint is a maximum along this path, not generally a critical point of the full Berger potential.
 9. [P] Theorem A: V ≥ (κ/2)‖q‖² − S⁴/(2g²), with κ > 0 for 0 < s < (t+2)/(t+1). So the spectrum is discrete.
 10. [PC] Helike is an exact eigenvector of the Hessian, with a closed-form eigenvalue, and the floor on the stated
     domain (*By Enough*; Floor v3.3).
@@ -37,9 +40,12 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 12. [Cd on 11] E_Helike < E_competitor at 3 of 4 controls.
 
 **C. The fast modes (M3)**
-13. [P] By Peter–Weyl, H_YM = slow sector (j = 0, exactly H_red; μ_YM = 4ω²_red, F = 2gq) plus fast sectors (j ≥ 1,
-    multiplicity j + 1).
-14. [C] E₀ = −(b₀/8π²) log(Λ_cut R)·S_cl + E₀^fin, with b₀ = 22/3, to 10⁻⁴. (Sign corrected 27 Nov.)
+13. [P] Peter–Weyl decomposes the fields and homogeneous-background Hessian into j = 0 and j ≥ 1 blocks
+    (multiplicity j + 1). The homogeneous classical restriction gives H_red, with μ_YM = 4ω²_red and background
+    coordinates M = 2gq. This is not a direct sum of independent sectors of the interacting quantum Hamiltonian.
+14. [C] E₀ = −(b₀/8π²) log(Λ_cut R)·S_cl + E₀^fin, with b₀ = 22/3. The saved seven-point comparison has maximum
+    relative discrepancy 7.95×10⁻⁴; the central five are within 6.66×10⁻⁵. These bound observed discrepancies,
+    not all numerical errors. (Sign corrected 27 Nov.)
 15. [C, potential part only] δω_k = g² u·∇²E₀^fin·u/ω_k. The separation goes from 0.0165 to 0.0191 at g² = 0.002.
     A kinetic correction of the same order (the non-adiabatic mass plus the Coulomb term of the fast Gauss law) is
     not computed, so the sign of the O(g²) shift is open.
@@ -47,14 +53,16 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
     full Hamiltonian in a low window lie within C·g²(R)/R of the reduced model's, uniformly in Λ_cut.
 
 **D. The carriers**
-17. [P] Different charges, so the crossing is exact.
-18. [X; existence of a switch D only for g² ≲ 0.0075 and given H8; at the registered couplings it needs a control at
-    s₁ ∈ (s*, 1.25) where Helike is lowest] For s > s* Helike carries the note; for s < s* the competitor does.
+17. [P] Different charges cannot mix: if their levels meet, their crossing is exact. Symmetry does not force a meeting.
+18. [X; existence of a switch D conditional on opposite finite-g orderings at two source values, including H1/H8
+    where used. The value g² ≈ 0.0075 is a first-order crossover estimate, not a proved bracket. At the registered
+    couplings the proposed bracket uses s₁ ∈ (s*, 1.25) where Helike is lowest.] For s > s* Helike carries the note; for s < s* the competitor does.
     s* = 1.1674, 1.1809, 1.1931 at g² = 0.03, 0.05, 0.07. At s = 1 the carrier is the charge-0 competitor.
 
 **E. The bridge, the room, the limit**
 19. [D] The source bridge is s → 1⁺. The sources vanish at s = 1, and s = 1 is inside Theorem A's window. Kato:
-    eigenvalues and projections are continuous on [1, s_controls].
+    ordered eigenvalues are continuous on [1, s_controls]. Projections are continuous for isolated clusters,
+    not necessarily for individually energy-ordered levels at a crossing.
 20. [X = H3] M2: Δ(R)/Λ ≥ c > 0 for every R, with Δ(R) the gap over the whole physical Hilbert space (so the vacuum
     of each continuum room is simple; this clause now lives here), starting from the unsourced room with the scalar carrier. *Proof route:*
     the three-part bundle skeleton (H3 §3.5): continuity along R, no zero in any room, control at both ends (small
@@ -66,24 +74,30 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
     - for every R, the ultraviolet limit exists on the sphere, with the cutoff of line 16 removed and OS regularity
       bounds. On S³ × ℝ time and space renormalize separately, so the limit tunes **two** bare parameters, the coupling
       g₀ and a speed of light c₀;
-    - as R → ∞, the correlation functions converge on compact regions to an ℝ⁴ theory with full Euclidean symmetry.
+    - as R → ∞, the correlation functions converge on compact regions to an ℝ⁴ theory with full Euclidean symmetry;
+    - the observable identification includes a local or reflection-compatible algebra, dense reconstructed states
+      and uniform bounds. Positive four-dimensional flow smears time; its classical sup norm alone does not supply
+      a physical operator norm or reflection positivity.
 
-    With line 22, the OS axioms hold, and reconstruction gives a relativistic theory. The ℝ⁴ theory is *defined* as
+    With line 22 and the remaining OS properties (clustering with line 20), reconstruction gives a relativistic theory. The ℝ⁴ theory is *defined* as
     the R → ∞ end of this section, so no box construction has to be matched.
 
 **F. What the problem requires**
 24. [X = H7] Every compact simple G. Lines 1–3 already hold for every compact G [PC].
 25. [X = H6] Local fields for the gauge-invariant polynomials in F (tr F² first), agreeing with perturbation theory and
     asymptotic freedom at short distance.
-26. [Cd: D from 25 plus one finite perturbative fact, the leading three-point function of the trace anomaly ≠ 0]
-    Non-triviality. Criterion: the short-distance correlations of tr F² carry the 1/log corrections of
-    asymptotic freedom, which no free theory has.
+26. [Cd diagnostics on 25 and a nonzero leading three-point function of the trace anomaly]
+    The 1/log² trace-anomaly fingerprint distinguishes the stated finite canonical Wick-polynomial comparison;
+    a nonzero connected three-point function excludes the anomaly field itself being generalized free.
+    These tests do not classify every possible Gaussian composite or the full observable algebra. Non-triviality
+    of the reconstructed theory remains an H6 identification, not a deduction from that three-point test alone.
 27. [D from 28] A unique vacuum: the spectral measure has no atom at 0. In the reduction this holds by
     Perron–Frobenius [PC].
 28. [P lemma + D on 20, 23] The gap survives the limit.
-    - The lemma: if truncated ⟨A ; e^{−τH} A⟩ ≤ C_A e^{−mτ} on a dense set, then spec H ∩ (0, m) is empty.
-    - The deduction: at each R the bound holds with rate Δ(R) ≥ cΛ (line 20) and constants bounded through the
-      convergence of the line 23 family. It passes to the limit.
+    - The lemma: for v_A = (A − ⟨Ω,AΩ⟩)Ω dense in Ω-perp, if 0 ≤ ⟨v_A,e^{−τH}v_A⟩ ≤ C_A e^{−mτ}
+      with finite C_A, then the positive spectral measures vanish on [0,m), and spec H ∩ (0,m) is empty.
+    - The deduction: line 20 supplies the rate Δ(R) ≥ cΛ; physical operators with uniformly bounded operator
+      norms supply constants. Line 23 must identify their correlations and dense limiting states.
 29. **Merged into line 23 (27 November).**
 
 ## The hypotheses (the closed working set)
@@ -91,7 +105,7 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 | # | Hypothesis | Line | Needed for |
 |---|---|---|---|
 | H1 | S_C | 11 | the carrier form (a finite computation, R2) |
-| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form. True for the undressed reduced operator (derivation confirmed); in the physical theory decided only at O(g²) (needs the kinetic term, H2b) |
+| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form. Harmonic ordering is derived; the H8 note's finite-g reduced claim remains conjectural. Physical channels tie at harmonic order and need the complete O(g²) splitting, including H2b. |
 | H2 | M3, uniform dressing at small R | 16 | the small-room end of H3 |
 | H3 | M2, Δ(R)/Λ ≥ c for every R | 20 | the gap |
 | H4′ | the sphere family: the continuum limit in every room, and an ℝ⁴ end with full Euclidean symmetry | 23 | existence |
@@ -112,10 +126,29 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 | short-distance agreement with asymptotic freedom and perturbation theory | 14, 25 |
 | "non-trivial" | 26 |
 | unique vacuum | 27 |
-| "mass gap Δ > 0" | 20, 28 |
+| "mass gap Δ > 0" and finite first excitation mass | 20, 25, 28 |
 | it is Yang–Mills (the Wilson theory with the correct running) | 1, 14, 21 |
 
 ## Change log
+
+- **27 Nov, narrative accuracy review of The Lowest Note.** This review preserves the theory as a description,
+  not a proof submission. It corrects the scope of existing lines; it does not add a research programme or close
+  a hypothesis. Details and finite algebra checks: `docs/papers/ym-theory-statement/REVIEW-2026-11-27.md`.
+  - Lines 5, 7, 8, 13: finite-volume Hamiltonian remainder; constant-gauge quotient and local polar measure;
+    path maximum versus full saddle; classical/quadratic decomposition versus interacting Hamiltonian.
+  - Line 14: seven-point and central-five discrepancies now match the saved receipt.
+  - Lines 17–19 and H8: no avoided crossing does not force a meeting; 0.0075 is an estimate; projections need an
+    isolated cluster. The local MC mode, the other well's ground state and a physical excitation are distinguished.
+    This narrows the earlier referee entry saying H8 was proved: its finite-g statement is still conjectural.
+  - Lines 23, 27, 28: spell out the observable identification already used in the limit argument, including positivity,
+    density and uniform bounds. A four-dimensionally flowed classical observable is not automatically a time-slice operator.
+  - Lines 25–26: the paper declares its Euclidean anomaly normalization; a nonzero composite three-point function
+    alone does not establish non-triviality of the whole theory.
+  - Clause-map clarification, not a new requirement: the official Clay description, printed p. 6, requires
+    “the mass m, and we require m < ∞”. The gap row now records that finite nonempty threshold explicitly.
+    Source: https://www.claymath.org/wp-content/uploads/2022/06/yangmills.pdf
+  - Earlier entries below record their contemporary conclusions; where they differ, this entry and the current
+    lines above give the revised reading. No old numerical evidence or failed attempt has been erased.
 
 - **27 Nov, the list fixed.** 29 lines, mapped to the clause table above.
 - **27 Nov, deductions.** Lines 5, 12, 18 (the existence of a switch), 19, 26, 27 and 28 closed or reduced by deduction.

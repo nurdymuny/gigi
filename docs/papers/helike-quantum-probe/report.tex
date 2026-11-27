@@ -960,4 +960,96 @@ hashes, source snapshots and replay instructions are linked in the README.
 Figures are regenerated from receipts without a new physical run. Verification
 is \texttt{PASS}; scientific acceptance remains \texttt{UNRESOLVED}.
 Typesetting this paper deploys nothing to GIGI.
+\newpage
+\pagetitle{18 / THE WHOLE CONSTRUCTION}{One statement, complete enough to be wrong}
+{\small\color{teal}\textbf{Added 27 November 2026.} A living page: it will be refined as the work moves.}\par\smallskip
+\textbf{The statement.} The Yang--Mills mass gap is the lowest note of a folded
+drum: the space of connections modulo gauge, weighted by where the vacuum
+lives. At strong coupling the note is the Casimir of one turn of parallel
+transport. In a small room at weak coupling it is carried by an identified
+field, Helike, until an identifiable switch hands it to her competitor. The
+conjecture is that the note is inherited along the whole direction of scale,
+with a traceable carrier, all the way to the continuum. \emph{Not proven.}
+Every link below is stated so that it can fail.
+
+\begin{center}\small
+\begin{tabular}{@{}p{1.15in}p{2.55in}p{1.05in}p{1.45in}@{}}\toprule
+\textbf{Link} & \textbf{Statement} & \textbf{Status} & \textbf{What would break it}\\\midrule
+1. The bundle & Yang--Mills is connections on a principal bundle; the physical configuration space is $\mathcal A/\mathcal G$. The reduction keeps homogeneous connections on the Berger sphere: $\mathbb R^9/SO(3)$, the finite $\mathcal A/\mathcal G$, with the colour-orbit-volume measure. & standard; measure verified & --- \\[4pt]
+2. The note at strong coupling & The gap is the Casimir $C_2(\tfrac12)=3/4$ of one turn, on the smallest loop. In two dimensions the string tension is exactly $(g^2/2)\,C_2(\tfrac12)$. & proved (2-D exact; leading order at strong coupling) & --- \\[4pt]
+3. The carrier in the small room & Helike, the maximal-charge twist, is the floor of the Hessian on Berger spheres. Her quantum excitation sits below the competitor's at weak coupling and is 99.6\% her own shape in the vacuum's frame. & proved classically; quantum ordering at the controls, conditional on $S_C$ & $S_C$ fails (interval Lehmann, R2) \\[4pt]
+4. The switch & Helike hands the lowest note to the competitor at $s^*$. In the vacuum's frame the competitor's identity is clean (dressed $\tilde w=0.957$). In the unfolded chart $P=\sqrt G$ its gap converges (step $0.0004$). & registered (amendments 5.10, 5.11); checks running & the competitor's identity dissolves; or no converged crossing near $s^*$ \\[4pt]
+5. The continuum & The note, with a traceable carrier, persists along scale. Ultraviolet: fast modes only dress the slow ones (M3). Infrared: the gap, read in the field's own scale, stays away from zero as the room grows (M2). The lattice descent from the Casimir is M9. & conjecture & $\Delta R$ flattens; the carrier dissolves without a switch; no descent \\\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{The one quantity that runs through it.} The turn of parallel transport
+around a loop, priced by its chord (\emph{Three Ways Across a Turn}). It prices
+Helike's twist classically. Its expectation gives the area law, with the
+Casimir as coefficient. The decay of its correlations between distant loops is
+the gap.
+
+\textbf{What a proof must build} (the continuum, in plain terms). Remove the
+scaffolding (lattice spacing $\to0$, box $\to\infty$). The correlation
+functions of gauge-invariant probes (Wilson loops, $\operatorname{tr}F^2$) must
+converge to a theory obeying the Osterwalder--Schrader axioms, and clustering
+like $e^{-\Delta\cdot\text{distance}}$ with $\Delta>0$. Precedents: $\phi^4$ in
+two and three dimensions (constructed, with a gap); Yang--Mills in two
+dimensions; four-dimensional Yang--Mills with the ultraviolet controlled in a
+finite volume (Ba{\l}aban; Magnen, Rivasseau and S\'en\'eor). The base key is
+scale: links 2 to 5 are one section along it.
+
+\newpage
+\pagetitle{19 / BUILT IN GIGI}{The bundle, stored as sections and read by holonomy}
+\textbf{The construction.} A GIGI bundle whose base is the oriented edges of a
+$10\times10$ lattice and whose fibre is $SU(2)$, stored as a unit quaternion.
+Each gauge-field configuration is one section. Configurations of
+two-dimensional $SU(2)$ lattice Yang--Mills at $\beta=4$ are drawn exactly, by
+the proof's own construction: tree gauge, then independent plaquettes with
+density $e^{\beta a_0}$. Each is scrambled by a random gauge transformation. Every Wilson loop is computed
+\emph{only} from GIGI point queries along the loop, multiplied in order:
+43{,}010 queries in all.
+
+\begin{center}\small
+\begin{tabular}{@{}lccc@{}}\toprule
+Loop & Measured $\langle\tfrac12\operatorname{tr}W\rangle$ & Exact $(I_2/I_1)^{\text{area}}$ & $z$\\\midrule
+$1\times1$ & $0.6607\pm0.0064$ & $0.6580$ & $+0.42$\\
+$1\times2$ & $0.4275\pm0.0137$ & $0.4330$ & $-0.40$\\
+$2\times2$ & $0.1803\pm0.0236$ & $0.1875$ & $-0.30$\\
+$2\times3$ & $0.0782\pm0.0292$ & $0.0812$ & $-0.10$\\
+$3\times3$ & $-0.0409\pm0.0331$ & $0.0231$ & $-1.94$\\\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Gauge invariance, tested by rewriting the bundle.} Every stored section
+was rewritten in place by a fresh random gauge transformation. No Wilson loop
+moved by more than $1.2\times10^{-15}$, while a single edge, a point value of
+the connection, moved by $1.27$. Point values are gauge artefacts; loop values
+are physical. The lattice string tension is
+$\sigma=-\ln(I_2/I_1)=0.4185$ per plaquette, and it tends to
+$(g^2/2)\,C_2(\tfrac12)$.
+
+\textbf{The competitor, measured in the right frame} (flux grid, smoke point
+$s=1.18$, $t=3$, $g^2=0.03$).
+\begin{center}\small
+\begin{tabular}{@{}lccc@{}}\toprule
+Trial space & Competitor $\tilde w$ & Competitor step & Basis size\\\midrule
+bare log-Cholesky chart & $0.914$ & $0.0091$ ($M_q$ 8$\to$10) & 8{,}008\\
+dressed chart (\S5.10) & $0.957$ & $0.0053$ ($M_q$ 8$\to$10) & 8{,}008\\
+unfolded chart $P=\sqrt G$ (\S5.11, prototype) & --- & $0.0004$ ($M_q$ 6$\to$8) & 3{,}003\\\bottomrule
+\end{tabular}
+\end{center}
+The dressed chart fixes the ruler: the competitor's apparent mixing was the
+bare frame. The unfolded chart fixes the rate: the vacuum is nearly Gaussian
+across the tube around the colour ring (Mardia skewness $0.06$, against $0.59$
+in the log chart). At the weak-coupling controls it reproduces the converged
+gaps to $2.5\times10^{-6}$. These grid-coupling values are registered methods
+with checks still running; no grid verdict is reported.
+
+\textbf{What this page does not show.} Two-dimensional Yang--Mills has no
+propagating gluons, so its gap is trivial; the area law is exact there.
+Nothing here constructs the four-dimensional continuum theory. Sources:
+\texttt{docs/research/helike-bundle-framing-math-2026-11-27.md},
+\texttt{helike-vacuum-shape-diagnostic-2026-11-26.md}, flux-method amendment
+\S5.10--5.11, and \texttt{research/gigi-lattice-gauge-20261127/}.
 \end{document}

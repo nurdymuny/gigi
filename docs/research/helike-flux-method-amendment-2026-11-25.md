@@ -698,3 +698,33 @@ self-consistent at each point, and the bare solve is alongside.
 - Step 3, the smoke point, runs as registered, as a diagnostic. Its predictions concern the competitor.
 - **Step 4, the fresh grid run, is held** until Bee decides how to treat the failed Helike check. The options include
   keeping it as a blocker, or registering that check as a report-only diagnostic, with this miss on record.
+
+#### 5.10 smoke-point results (step 3; 26 November)
+
+Report: `research/dressed-chart-20261126/smoke/report.json`. The point is s = 1.18, t = 3, g² = 0.03, and the dressed
+chart is self-consistent at each rung.
+
+| Mq | iterations | asymmetry | Helike gap, bare → dressed | competitor gap, bare → dressed | Helike w̃ | competitor w̃, bare → dressed |
+|---|---|---|---|---|---|---|
+| 6 | 6 | 1.2·10⁻³ | 1.066537 → 1.064894 | 1.135779 → 1.125594 | 0.9620 → 0.9592 | 0.9157 → 0.9449 |
+| 8 | 5 | 7.1·10⁻⁴ | 1.058627 → 1.057299 | 1.105835 → 1.098023 | 0.9654 → 0.9635 | 0.9190 → 0.9569 |
+| 10 | 4 | 2.8·10⁻⁴ | 1.057131 → 1.056569 | 1.096694 → 1.092682 | 0.9650 → 0.9637 | 0.9136 → **0.9570** |
+
+The identified levels are the same as in the bare frame: Helike is level 1 and the competitor level 3 at every rung.
+
+**Against the predictions.**
+- **The identity was deformation: MET.** The competitor's dressed w̃ at Mq = 10 is **0.9570 ≥ 0.95**; the bare value
+  was 0.9136. In the vacuum's own frame, the competitor's apparent mixing at grid coupling is gone.
+- **The gap converges: MISSED.** The competitor's dressed step from Mq 8 to 10 is 0.00534, against the prediction of
+  ≤ 0.003. The bare step was 0.00914, so the dressed chart improves it by 42%, but not enough. Helike's dressed step
+  is 0.00073.
+- **The leaked residuals even out: NOT RUN.** The enrichment diagnostic was not implemented for this run.
+- **A2 asymmetry ladder: PASS.** 1.2·10⁻³ → 7.1·10⁻⁴ → 2.8·10⁻⁴, strictly decreasing, and ≤ 10⁻³ at Mq = 10.
+
+**Reading.** The dressed chart fixes the ruler, not the rate. It adapts a Gaussian's centre and width to the vacuum.
+What remains is shape that a Gaussian cannot carry. The design memo
+(`helike-M8-positive-ground-design-DRAFT-2026-11-26.md`) gives the mechanism: the cometric A grows with G, so the
+vacuum is skewed, and its log is cubic. The next step therefore asks where that skew lives, and whether a chart that
+does not put an exponential wall on the outer side removes it.
+
+**Grid run (step 4):** still held, both for Bee's decision on the Helike check and because convergence is not met.

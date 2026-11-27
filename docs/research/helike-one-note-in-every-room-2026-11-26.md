@@ -41,6 +41,8 @@ where the translation corrected the vision.
 *Added 27 November:* §1.5, what "the continuum" means and the object a proof must build; §4.10, the fibre-bundle
 framing checked against the mathematics.
 
+*Also 27 November:* §4.11, where Helike sits in the bundle picture.
+
 *Tightened before implementation:*
 - A crossing needs a subdivision-consistent carrier path, not just a confident match between endpoints.
 - String tension is a ruler only where it is nonzero. The four-dimensional U(1) Coulomb control has its own
@@ -688,6 +690,48 @@ My picture survives with three substitutions:
 - **consistency across scale for "reaching everything".**
 
 In that form it is not a metaphor. It is the standard framing, and the right one to work backwards from.
+
+### 4.11 Where Helike sits in the bundle picture
+
+**The bundle she lives on.**
+- **Base:** the stretched (Berger) three-sphere, the small room.
+- **Fibre:** SU(2).
+- **A field configuration** is a connection.
+
+My reduction keeps the homogeneous connections, those that look the same at every point of the sphere. Each one is a
+3×3 matrix q: A = q_{ka} θᵏ T_a, with θᵏ the sphere's left-invariant 1-forms. Global colour rotations act on q from
+the right, so the reduced configuration space is ℝ⁹/SO(3). That is the finite version of Singer's 𝒜/𝒢 (§4.10), and it
+is literal: the colour-orbit-volume measure and the unfolded chart q = P·O (flux-method §5.11) are exactly this quotient.
+
+**What Helike is in it.** The background condensate is one connection, a point on the colour ring. Helike is a
+direction away from it: a tangent vector in the space of connections, the maximal-charge twist.
+- **Classically,** she is the cheapest way to bend the connection, the floor of the Yang–Mills Hessian on Berger
+  spheres (*By Enough*, Floor v3.3).
+- **In the reduction,** she is the charge-2 doublet: the trace-free, spin-2 part of G = qqᵀ, which rotates twice under
+  the Berger U(1). In the unfolded chart she is two coordinates of P, and the rotation acts on them linearly. That is
+  why her pair is exactly degenerate there without any symmetrization.
+- **Quantum mechanically,** her excitation is the first note of the folded drum in her sector. In the vacuum's own
+  frame, her carrier spends 99.6% of its energy in her own shape (M8).
+
+**Helike in loop language.** Her twist changes the holonomies of loops on the sphere. She is the first thing a Wilson
+loop in the small room feels when the vacuum is disturbed. Her excitation gap is the rate at which correlations
+between such loops fade. So in the small room, wherever she is the floor, the gap is her note, until the competitor
+takes over at the switch.
+
+**The chain along scale, the base key of §1.5.**
+
+| scale | what sets the gap | status |
+|---|---|---|
+| strong coupling (lattice) | the Casimir 3/4, the note of one turn (§4.9). The 2-D GIGI construction recovers the same 3/4 as the string tension (`helike-bundle-framing-math-2026-11-27.md`) | proved: exact in 2-D, leading order at strong coupling |
+| small sphere, weak coupling | **Helike**, the identified carrier of the lowest note in her sector | proved classically; quantum ordering at the controls, conditional on S_C |
+| the switch | Helike hands over to the competitor at an identifiable s* | the flux grid, now measurable through the dressed and unfolded charts (flux-method §5.10, §5.11) |
+| growing room, toward the continuum | the inherited note, if it persists with a traceable carrier | conjecture (M2, M3, M9) |
+
+**One quantity runs through all of it:** the turn of parallel transport around a loop, priced by its chord (*Three
+Ways Across a Turn*). Classically it prices Helike's twist. Its expectation gives the area law, with the Casimir as
+coefficient. Its decay between distant loops is the gap. Helike is the named carrier in the middle of the scale
+direction, with the Casimir at the strong-coupling end. The open problem is to show that a note with a traceable
+carrier joins the two all the way to the continuum.
 
 ## 5. What a proof requires, and my answer to each part
 

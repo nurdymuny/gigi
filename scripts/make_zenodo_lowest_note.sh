@@ -27,6 +27,7 @@ cp $P/statement.pdf "$UP/the-lowest-note.pdf"
 # 2. the LaTeX archive
 L=$STAGE/latex/the-lowest-note; mkdir -p $L/sections
 cp $P/statement.tex $P/refs.tex $L/; cp $P/sections/*.tex $L/sections/
+mkdir -p $L/figures; cp $P/figures/*.pdf $L/figures/
 cat > $L/README.txt <<'EOF'
 The Lowest Note: A Geometric Theory of the Yang-Mills Mass Gap. LaTeX source.
 Compile:  pdflatex statement.tex && pdflatex statement.tex   (TeX Live 2025; newpx fonts)
@@ -40,6 +41,8 @@ FILES=(
   scripts/helike_m3_zero_point.py scripts/helike_m3_zeta.py scripts/helike_m3_background.py
   scripts/helike_m3_deep_analysis.py scripts/gigi_m3_demo.py scripts/gigi_lattice_gauge_demo.py
   scripts/gigi_grid_demos.py scripts/lowest_note_threshold.py scripts/check_lowest_note_review.py
+  scripts/build_lowest_note_doublet.py scripts/check_lowest_note_doublet.py
+  docs/papers/ym-theory-statement/figures/helike-doublet.json
   research/dressed-chart-20261126/controls/report.json
   research/lowest-note-threshold-20261127/receipt.json
   docs/research/helike-bundle-framing-math-2026-11-27.md

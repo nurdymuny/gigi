@@ -20,6 +20,7 @@ Paths are relative to the archive root, which mirrors the repository (github.com
 | How large the kinetic term must be to reverse the order; the dressed switch | `python scripts/lowest_note_threshold.py OUT.json` | `research/lowest-note-threshold-20261127/receipt.json` |
 | The bundle in GIGI: area law, gauge invariance, centre vortex, topology on the line | `scripts/gigi_lattice_gauge_demo.py`, `scripts/gigi_grid_demos.py` | `research/gigi-lattice-gauge-20261127/`, `research/gigi-grid-demos-20261127/` |
 | The fast fibre in GIGI: round-sphere law, flat-point equality, b₀, the background | `scripts/gigi_m3_demo.py` | `research/gigi-m3-20261127/result.json` |
+| The Helike doublet figure (introduction) | `scripts/build_lowest_note_doublet.py`; checked by `scripts/check_lowest_note_doublet.py` (run inside the git repository) | `docs/papers/ym-theory-statement/figures/helike-doublet.json` |
 | Review and algebra checks (harmonic switch, Hessians, anomaly normalization, receipts) | `python scripts/check_lowest_note_review.py OUT` (run inside the git repository: it reads the paper and stamps its receipt with the revision) | `research/lowest-note-review-20261127/` |
 
 The register of statements, its hypotheses and the referee's coherence report are in

@@ -1,0 +1,15 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\release-02\missing_small_charge.lean:68:10: error: linarith failed to find a contradiction
+case ha
+σ c E P : ℝ
+hσ : 0 < σ
+hE : σ ≤ E
+hA : c ≤ P * (E - P)
+hB : c ≤ P * (E - σ)
+hsmall : True
+h : σ ≤ P
+hPpos : 0 < P
+h1 : c / P ≤ E - P
+hd : P + c / P - (σ + c / σ) = (P - σ) * (P * σ - c) / (P * σ)
+a✝ : P * σ - c < 0
+⊢ False
+failed

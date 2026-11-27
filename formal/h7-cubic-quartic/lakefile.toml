@@ -1,6 +1,6 @@
 name = "h7_cubic_quartic"
 version = "0.1.0"
-defaultTargets = ["H7CubicQuartic", "H8Interwell", "H8GroupTransport", "H8VacuumFloor", "H6WickTriangle", "H8OriginSplitting"]
+defaultTargets = ["H7CubicQuartic", "H8Interwell", "H8GroupTransport", "H8VacuumFloor", "H6WickTriangle", "H8OriginSplitting", "H8ChargeTail"]
 
 [[require]]
 name = "mathlib"
@@ -24,3 +24,6 @@ name = "H6WickTriangle"
 
 [[lean_lib]]
 name = "H8OriginSplitting"
+
+[[lean_lib]]
+name = "H8ChargeTail"

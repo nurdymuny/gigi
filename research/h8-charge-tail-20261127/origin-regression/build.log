@@ -1,0 +1,8 @@
+⚠ [4481/4492] Replayed H6WickTriangle
+warning: H6WickTriangle.lean:13:0: automatically included section variable(s) unused in theorem `H6Wick.odd_product`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+Build completed successfully (4492 jobs).

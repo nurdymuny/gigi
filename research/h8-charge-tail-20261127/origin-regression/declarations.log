@@ -1,0 +1,14 @@
+H8Origin.e2_closed_form (κ t w1 u : ℝ) (ht : 0 < t) (hw : w1 = √t) (hu : u = 1 / √t) :
+  -(2 * κ / w1) * (1 / u + 1 / w1) = -2 * κ * (1 + 1 / t)
+H8Origin.e2_negative (κ t : ℝ) (hk : 0 < κ) (ht : 0 < t) : -2 * κ * (1 + 1 / t) < 0
+H8Origin.charge_two_annihilated.{u_1} {V : Type u_1} (B : V → V → ℝ) (br : V → V → V)
+  (hinv : ∀ (x y z : V), B (br x y) z = B x (br y z)) (hsym : ∀ (x y : V), B x y = B y x) (X1 X2 X3 : V) :
+  2 * B X2 (br X3 X1) - 2 * B X3 (br X1 X2) = 0
+H8Origin.charge_two_cross_annihilated.{u_1} {V : Type u_1} (B : V → V → ℝ) (br : V → V → V)
+  (hinv : ∀ (x y z : V), B (br x y) z = B x (br y z)) (hsym : ∀ (x y : V), B x y = B y x)
+  (hanti : ∀ (x y z : V), B (br x y) z = -B (br y x) z) (X1 X2 X3 : V) : B (br X3 X1) X3 + B X2 (br X1 X2) = 0
+H8Origin.charge_zero_image.{u_1} {V : Type u_1} (B : V → V → ℝ) (br : V → V → V)
+  (hinv : ∀ (x y z : V), B (br x y) z = B x (br y z)) (hsym : ∀ (x y : V), B x y = B y x) (X1 X2 X3 : V) :
+  -(2 * B X2 (br X3 X1) + 2 * B X3 (br X1 X2)) = -4 * B X1 (br X2 X3)
+H8Origin.ordering_of_quasimodes (c e2 K g E0 E2 : ℝ) (hgpos : 0 < g) (h0 : |E0 - (c + e2 * g ^ 2)| ≤ K * g ^ 3)
+  (h2 : |E2 - c| ≤ K * g ^ 3) (hg : K * g < -e2 / 2) : E0 < E2

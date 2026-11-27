@@ -1,0 +1,11 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\release-01\doubled_ruler.lean:46:2: error: linarith failed to find a contradiction
+s m : ℝ
+hs : 0 < s
+r : ℝ
+hr : 0 < r
+ht : 0 < r ^ 2
+key : 0 ≤ (s ^ 2 / r - |m|) ^ 2 / (2 * s ^ 2)
+expand : (s ^ 2 / r - |m|) ^ 2 / (2 * s ^ 2) = s ^ 2 / (2 * r ^ 2) + |m| ^ 2 / (2 * s ^ 2) - |m| / r
+a✝ : s ^ 2 / (2 * r ^ 2) + |m| ^ 2 / (2 * s ^ 2) < 2 * |m| / r
+⊢ False
+failed

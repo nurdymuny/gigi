@@ -114,7 +114,7 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 | # | Hypothesis | Line | Needed for |
 |---|---|---|---|
 | H1 | S_C | 11 | the carrier form (a finite computation, R2) |
-| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form. Harmonic ordering is derived; the H8 note's finite-g reduced claim remains conjectural. Physical channels tie at harmonic order and need the complete O(g²) splitting, including H2b. The reduced part of that splitting at q = 0 is closed (charge 0 lower by 2κ(1 + 1/t)g², charge ±2 unshifted); H2b is not. |
+| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form. Harmonic ordering is derived; the H8 note's finite-g reduced claim remains conjectural. Physical channels tie at harmonic order and need the complete O(g²) splitting, including H2b. The reduced part of that splitting at q = 0 is closed (charge 0 lower by 2κ(1 + 1/t)g², charge ±2 unshifted); H2b is not. The reduced charge tail is bounded: every charge-m level is at least (225 + m²)/(30√3) at t = 3 (|m| ≤ 15); it removes charges only once E_{2,0} has a certified upper bound. |
 | H2 | M3, uniform dressing at small R | 16 | the small-room end of H3 |
 | H3 | M2, Δ(R)/Λ ≥ c for every R | 20 | the gap |
 | H4′ | the sphere family: the continuum limit in every room, and an ℝ⁴ end with full Euclidean symmetry | 23 | existence |
@@ -139,6 +139,16 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 | it is Yang–Mills (the Wilson theory with the correct running) | 1, 14, 21 |
 
 ## Change log
+
+- **27 Nov, charge tail bounded in the reduced model (bounded deduction).** Route Step 2. The
+  horizontal barrier |∇W|² ≥ |X_hor|²/t holds at every q (every rank stratum, both sheets), every g,
+  every compact simple metric colour algebra: rotating colour about X1 by g√t X1 gives
+  t|∇W|² = |X - Γ|² + t²|X1 - (g/√t)[X2,X3]|². It is sharp, so the pointwise ruler is exactly |m|/√t.
+  Adding the twisted (zero-point) inequality gives inf spec on charge m ≥ σ + m²/(4tσ), σ = nS/2;
+  at t = 3, (225 + m²)/(30√3). With a certified U < 5.2731 for E_{2,0}, all |m| ≥ 7 are excluded.
+  No eigenvalue is enclosed; Step 3 (the upper bound) is still open. H8 remains open; the seven
+  hypotheses are unchanged. Proof, exact SU(2)/SU(3) checks, five mechanism removals and five Lean
+  declarations: `docs/research/h8-charge-tail-proof-2026-11-27.md`.
 
 - **27 Nov, origin splitting closed in the reduced model (bounded deduction).** H7 Step 6's O(g²)
   comparison at q = 0, s = 1, for every compact simple metric colour algebra and t > 1. Written on

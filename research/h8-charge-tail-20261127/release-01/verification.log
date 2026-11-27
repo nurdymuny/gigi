@@ -1,0 +1,5 @@
+'H8ChargeTail.gauge_rows' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8ChargeTail.ruler' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8ChargeTail.zero_point_floor' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8ChargeTail.large_charge_floor' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8ChargeTail.t3_floor_closed_form' depends on axioms: [propext, Classical.choice, Quot.sound]

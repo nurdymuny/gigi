@@ -1,0 +1,7 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\vacuum-regression\too_strong_cone_bound.lean:37:2: error: linarith failed to find a contradiction
+a g c r : ℝ
+h : 2 * a ≤ g * c * r
+hn : 0 ≤ -(g * c * r ^ 3) / 2 - (a * r ^ 2 - g * c * r ^ 3)
+a✝ : -(g * c * r ^ 3) < a * r ^ 2 - g * c * r ^ 3
+⊢ False
+failed

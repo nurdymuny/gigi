@@ -1,0 +1,14 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\release-01\missing_antisymmetry.lean:24:14: error: Function expected at
+  hanti
+but this term has type
+  True
+
+Note: Expected a function because this term is being applied to the argument
+  X1
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\release-01\missing_antisymmetry.lean:29:15: error: Function expected at
+  hanti
+but this term has type
+  True
+
+Note: Expected a function because this term is being applied to the argument
+  X2

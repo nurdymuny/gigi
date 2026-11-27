@@ -1,0 +1,6 @@
+'H8Origin.e2_closed_form' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Origin.e2_negative' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Origin.charge_two_annihilated' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Origin.charge_two_cross_annihilated' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Origin.charge_zero_image' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Origin.ordering_of_quasimodes' depends on axioms: [propext, Classical.choice, Quot.sound]

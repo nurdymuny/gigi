@@ -1,0 +1,4 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\origin-regression\missing_invariance.lean:46:8: error: Invalid rewrite argument: Expected an equality or iff proof or definition name, but `hinv` is a proof of
+  True
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\origin-regression\missing_invariance.lean:49:17: error: Invalid rewrite argument: Expected an equality or iff proof or definition name, but `hinv` is a proof of
+  True

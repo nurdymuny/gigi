@@ -1,0 +1,11 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\release-02\missing_twisted_bound.lean:55:42: error: Application type mismatch: The argument
+  hB
+has type
+  True
+but is expected to have type
+  c ≤ P * (E - σ)
+in the application
+  le_trans hB
+
+Note: The following definitions were not unfolded because their definition is not exposed:
+  Real.instLE ↦ 2

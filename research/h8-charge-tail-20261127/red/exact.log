@@ -1,0 +1,27 @@
+test_barrier_against_direct_projection (__main__.Algebra.test_barrier_against_direct_projection) ... ok
+test_barrier_identity_su2 (__main__.Algebra.test_barrier_identity_su2) ... ok
+test_barrier_identity_su3 (__main__.Algebra.test_barrier_identity_su3) ... ok
+test_gram_horizontal_formula_at_full_rank (__main__.Algebra.test_gram_horizontal_formula_at_full_rank) ... ok
+test_sharpness (__main__.Algebra.test_sharpness) ... ok
+test_step1_frozen_object (__main__.Algebra.test_step1_frozen_object) ... ok
+test_twisted_ingredients (__main__.Algebra.test_twisted_ingredients) ... ok
+test_zero_point_floor_closed_form (__main__.Algebra.test_zero_point_floor_closed_form) ... ok
+test_written_proof_and_scope (__main__.Document.test_written_proof_and_scope) ... FAIL
+test_inflated_constant_fails_at_equality (__main__.Mutations.test_inflated_constant_fails_at_equality) ... ok
+test_non_invariant_cubic_breaks_both (__main__.Mutations.test_non_invariant_cubic_breaks_both) ... ok
+test_unequal_frequencies_break_the_circle (__main__.Mutations.test_unequal_frequencies_break_the_circle) ... ok
+test_unprojected_circle_fails_at_background (__main__.Mutations.test_unprojected_circle_fails_at_background) ... ok
+test_zero_point_removed_leaves_seven_uncut (__main__.Mutations.test_zero_point_removed_leaves_seven_uncut) ... ok
+
+======================================================================
+FAIL: test_written_proof_and_scope (__main__.Document.test_written_proof_and_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\scripts\check_h8_charge_tail.py", line 230, in test_written_proof_and_scope
+    self.assertTrue(NOTE.exists(), 'Missing charge-tail proof')
+AssertionError: False is not true : Missing charge-tail proof
+
+----------------------------------------------------------------------
+Ran 14 tests in 3.151s
+
+FAILED (failures=1)

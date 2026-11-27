@@ -1,0 +1,9 @@
+H8ChargeTail.gauge_rows.{u_1} {V : Type u_1} [AddCommGroup V] [Module ℝ V] (br : V → V → V)
+  (hsmul : ∀ (c : ℝ) (x y : V), br x (c • y) = c • br x y) (hanti : ∀ (x y : V), br x y = -br y x) (c : ℝ)
+  (X1 X2 X3 : V) :
+  br X1 (c • X1) = 0 ∧ -X3 - br X2 (c • X1) = -(X3 - c • br X1 X2) ∧ X2 - br X3 (c • X1) = X2 - c • br X3 X1
+H8ChargeTail.ruler (t s m : ℝ) (ht : 0 < t) (hs : 0 < s) : |m| / √t ≤ s ^ 2 / (2 * t) + m ^ 2 / (2 * s ^ 2)
+H8ChargeTail.zero_point_floor (σ c E P : ℝ) (hσ : 0 < σ) (hE : σ ≤ E) (hA : c ≤ P * (E - P)) (hB : c ≤ P * (E - σ))
+  (hsmall : c ≤ σ ^ 2) : σ + c / σ ≤ E
+H8ChargeTail.large_charge_floor (c E P : ℝ) (hE : 0 ≤ E) (hA : c ≤ P * (E - P)) : 2 * √c ≤ E
+H8ChargeTail.t3_floor_closed_form (m : ℝ) : 5 * √3 / 2 + m ^ 2 / 12 / (5 * √3 / 2) = (225 + m ^ 2) / (30 * √3)

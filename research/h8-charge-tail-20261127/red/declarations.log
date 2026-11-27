@@ -1,0 +1,5 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\red\H8ChargeTailDeclarations.lean:3:7: error(lean.unknownIdentifier): Unknown identifier `H8ChargeTail.gauge_rows`
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\red\H8ChargeTailDeclarations.lean:4:7: error(lean.unknownIdentifier): Unknown identifier `H8ChargeTail.ruler`
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\red\H8ChargeTailDeclarations.lean:5:7: error(lean.unknownIdentifier): Unknown identifier `H8ChargeTail.zero_point_floor`
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\red\H8ChargeTailDeclarations.lean:6:7: error(lean.unknownIdentifier): Unknown identifier `H8ChargeTail.large_charge_floor`
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\red\H8ChargeTailDeclarations.lean:7:7: error(lean.unknownIdentifier): Unknown identifier `H8ChargeTail.t3_floor_closed_form`

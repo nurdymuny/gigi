@@ -1,0 +1,12 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-charge-tail-20261127\origin-regression\wrong_window.lean:72:75: error: linarith failed to find a contradiction
+c e2 K g E0 E2 : ℝ
+hgpos : 0 < g
+h0 : |E0 - (c + e2 * g ^ 2)| ≤ K * g ^ 3
+h2 : |E2 - c| ≤ K * g ^ 3
+hg : K * g < -e2 * 2
+a0 : E0 - (c + e2 * g ^ 2) ≤ K * g ^ 3
+a2 : -(K * g ^ 3) ≤ E2 - c
+hg2 : 0 < g ^ 2
+a✝ : 0 ≤ e2 + 2 * (K * g)
+⊢ False
+failed

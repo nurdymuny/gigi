@@ -8,7 +8,7 @@ test_grid_selection_accepts_what_the_grid_identified (test_helike_dressed_point.
 At s = 1.18, t = 3, g2 = 0.03, Mq = 6 the competitor has w~ = 0.916: the quasimode rule refuses, the grid ... ok
 
 ----------------------------------------------------------------------
-Ran 6 tests in 387.351s
+Ran 6 tests in 224.850s
 
 OK
 exit 0

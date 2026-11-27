@@ -1,3 +1,3 @@
 CAUGHT  the export's 0.95 rule restored in the domain gate
-MISSED  the chart is never passed to the solver
-1/2 mutants caught
+CAUGHT  the chart is never passed to the solver
+2/2 mutants caught

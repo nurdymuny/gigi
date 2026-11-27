@@ -66,6 +66,10 @@ class ChartHonoured(unittest.TestCase):
         self.assertLess(abs(drs["result"]["competitor"]["gap"] - bare["result"]["competitor"]["gap"]), 1e-3)
         self.assertGreater(h[-1]["iterations"] if "iterations" in h[-1] else h[-1]["iteration"], 1)
         self.assertGreater(h[1]["centre_change"], 1e-6)                 # the first dressing step moves the frame
+        # inside the loop, the solve after the first dressing step must be a solve IN that chart: its Ritz levels carry
+        # the dressed chart's energy shift, so they differ from the bare solve's (a loop that drops the chart repeats
+        # the bare solve exactly)
+        self.assertGreater(abs(h[1]["levels"][0] - h[0]["levels"][0]), 1e-6)
 
 
 class Selection(unittest.TestCase):

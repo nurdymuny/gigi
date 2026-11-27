@@ -67,3 +67,49 @@ positive matrix), centred and scaled by the dressed construction of §5.10, whic
 - A parity control: at g² = 0.002 and 0.004 the new chart must reproduce the converged log-Cholesky gaps to 10⁻⁴.
 - If the √G basis does not beat the log chart at equal dimension, the shape argument is wrong, or incomplete, and
   that is the falsifier.
+
+## Evidence added the same night (exploratory; decides nothing)
+
+**1. Compactness.** Script: `research/dressed-chart-20261126/vacuum-shape/compactness.py`; output: `compactness_k6.json`.
+The converged dressed Mq = 10 states at the smoke point were projected onto a Hermite basis in dressed √G coordinates,
+and the weight lying beyond total degree k was measured. The projection used the exact half-density Jacobian, and
+Parseval holds: every tail is nonnegative and decreasing.
+
+| state | beyond degree 4: chart → √G | beyond degree 6: chart → √G |
+|---|---|---|
+| ground | 1.3·10⁻³ → 3.6·10⁻⁵ | 3.4·10⁻⁴ → 1.8·10⁻⁵ |
+| Helike | 6.9·10⁻³ → 1.9·10⁻⁴ | 1.4·10⁻³ → 1.0·10⁻⁴ |
+| competitor | 2.1·10⁻² → 6.4·10⁻⁴ | 4.6·10⁻³ → 4.2·10⁻⁴ |
+
+One Gaussian in √G carries 99.7% of the vacuum; in the chart it carries 94.4%.
+
+**2. A √G Rayleigh–Ritz prototype.** Script: `sqrtg_ritz.py`.
+- **Coordinates.** P is any symmetric matrix, and G = P² ≥ 0 automatically. P with flipped eigenvalue signs is the
+  other sheet of the fold, so the basis covers the fold with no wall.
+- **Basis and frame.** A Hermite basis in a frame of P, made self-consistent from the prototype's own ground state.
+- **Measure.** The orbit volume ∏|λᵢ+λⱼ| enters as a weight, and the problem is solved as a generalized
+  eigenproblem.
+- **Operator.** The cometric is J A(x) Jᵀ with J = dP/dx, and the potential is the same Laurent V. Quadrature is
+  Gauss–Hermite order 10.
+
+| point | basis | size | E₀ | Helike gap | competitor gap |
+|---|---|---|---|---|---|
+| smoke, s = 1.18, g² = 0.03 | log chart, bare, Mq 10 | 8,008 | −2.794782 | 1.057131 | 1.096694 |
+| | log chart, bare, Mq 12 | 18,564 | −2.795147 | 1.056067 | 1.090392 |
+| | log chart, Mq 12 + 4 enrichment directions | 18,568 | −2.795330 | 1.055780 | 1.088060 |
+| | **√G, Mq 4** | **210** | −2.795301 | 1.057388 | 1.090948 |
+| | **√G, Mq 6** | **924** | **−2.7954691** | **1.0556820** | **1.0854191** |
+| control, s = 1.15, g² = 0.004 | log chart, converged, Mq 10 | 8,008 | | 1.0879687 | 1.0955590 |
+| | **√G, Mq 4** | **210** | −42.121004 | 1.0879994 | 1.0956439 |
+
+**Reading.**
+- **Variational order.** Every Ritz energy is an upper bound in its realization. The √G ground energy at 924
+  functions is below every log-chart value up to 18,568 functions, and it lies on the log chart's own convergence
+  trend. So there is no sign of a realization mismatch: the face is far from the vacuum at these couplings.
+- **Parity.** At the g² = 0.004 control, √G at Mq = 4 reproduces the converged log-chart gaps to 3·10⁻⁵ (Helike) and
+  8·10⁻⁵ (competitor).
+- **Symmetry.** Helike's pair is degenerate to 4·10⁻¹¹ with no symmetrization, because the rotation acts linearly on
+  P, P → R P Rᵀ.
+- **Not yet shown.** At the smoke point the self-consistent step from Mq 4 to 6 is 0.0014 for Helike and 0.0041 for
+  the competitor. Whether the step from Mq 6 to 8 is ≤ 0.003 is still running. So are the order-12 quadrature seam and
+  Mq 6 at the control.

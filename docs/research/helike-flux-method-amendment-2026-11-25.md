@@ -728,3 +728,61 @@ vacuum is skewed, and its log is cubic. The next step therefore asks where that 
 does not put an exponential wall on the outer side removes it.
 
 **Grid run (step 4):** still held, both for Bee's decision on the Helike check and because convergence is not met.
+
+### 5.11 The unfolded chart (DRAFT, 27 November; for Bee to approve, edit or reject; not registered)
+
+**Why.**
+- §5.10 fixed the ruler. In the vacuum's own frame the competitor's identity is clean at grid coupling: w̃ = 0.957
+  against 0.914 bare.
+- It did not fix the rate: the dressed step was 0.0053, against a rule of 0.003.
+- The vacuum-shape diagnostic (`helike-vacuum-shape-diagnostic-2026-11-26.md`) locates the cause. The vacuum is
+  nearly Gaussian across the tube around the colour ring, in P = √G. It is skewed in the log-Cholesky chart that the
+  solver's basis is built in: Mardia skewness 0.06 against 0.59.
+- An exploratory √G Rayleigh–Ritz prototype (`research/dressed-chart-20261126/vacuum-shape/sqrtg_ritz.py`) shows:
+  - **Parity at the controls.** At g² = 0.004, Mq = 6 reproduces the log chart's converged gaps to 2.5·10⁻⁶.
+  - **Convergence at the smoke point.** The competitor's step from Mq 6 to 8 is 0.0004.
+  - **Symmetry.** Helike's pair is exactly degenerate without symmetrization.
+  - **Exactness.** The integrands are polynomial on the vacuum's sheet, so quadrature of order about Mq + 5 is exact.
+
+**The proposal.**
+- **Chart.** P is a symmetric 3×3 matrix, and G = P². Every symmetric P gives an admissible G. P with flipped
+  eigenvalue signs is the other sheet of the fold, so the trial space covers the fold, as the physical operator does
+  (report page 12: a fold, not a wall).
+- **Frame.** P = μ + Aζ, made self-consistent from the ground state's mean and covariance of P, by the same
+  procedure as §5.10. The rotation acts linearly on P, so no symmetrization is needed. The asymmetry is still reported.
+- **Basis and operator.** Hermite functions in ζ, of total degree ≤ Mq.
+  - The measure is the colour-orbit volume, ∏|λᵢ+λⱼ|. It enters as a weight, so the problem is a generalized
+    eigenproblem.
+  - The cometric is J A(x) Jᵀ, with J = dP/dx.
+  - The potential is the same V.
+  - The quadrature is Gauss–Hermite of order n_q = Mq + 6, with a seam at n_q + 2 that must agree to 10⁻⁸ on the gaps.
+- **The face.** The quadrature weight on nodes where an eigenvalue of P changes sign is reported, and it must be
+  ≤ 10⁻¹². This is where the polynomial structure and the near-vacuum picture stop holding.
+- **Ladder.** Mq ∈ {4, 6, 8}. Convergence is the Mq 6 → 8 change ≤ 0.003, the unchanged tolerance.
+- **Unchanged:**
+  - identification: dressed w̃ ≥ 0.9 against the √G frame's single quanta;
+  - the selection fix and the domain gate, recomputed for √G states;
+  - the switch rule, the predictions s*, the s-tolerance and the overall rule.
+
+**Checks before any grid value.**
+1. **Tests and mutants.** Closed-form cases: a harmonic vacuum written in P, and a rotated frame. Mutants, each of
+   which must be caught:
+   - the orbit-volume weight dropped;
+   - J taken as dx/dP instead of dP/dx;
+   - the frame left unconverged;
+   - the face weight not checked.
+2. **The four controls.** The √G gaps at Mq = 8 must agree with the log chart's converged Mq = 10 gaps to ≤ 10⁻⁴.
+3. **The smoke point, fresh,** with the predictions below.
+4. **Then the grid,** as a fresh registered run. That needs a Rust port of the operator (`SlabGrid` streaming with an
+   exact-order polynomial kernel), because the Python prototype takes about 80 minutes per Mq = 8 iteration.
+
+**Predictions** (from the prototype, so they should be re-measured by the registered code):
+- the smoke point's competitor step from Mq 6 to 8 is ≤ 0.001;
+- every control's gaps agree with the log chart's converged values to ≤ 10⁻⁵ at Mq = 8;
+- the competitor's dressed w̃ at the smoke point is ≥ 0.95.
+
+**What this would and would not change.**
+- **It would change the coordinates of the trial space.** The tube's cross-section replaces the log-Cholesky chart.
+  The Hamiltonian, the measure and every acceptance rule stay as they are.
+- **It would not, by itself, release the grid.** The domain gate's rigorous cutoff machinery (degree cap 10) is
+  written for the log chart. Porting it is a separate step.

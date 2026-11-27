@@ -142,3 +142,21 @@ observed numerically. A symbolic proof of the cometric's polynomial form is stil
 - **Cost.** The cost scales like N·q⁶ per application, not N²·q⁶.
 - **A cheaper ladder.** The ladder could be Mq ∈ {4, 6, 8}: at the controls, Mq = 6 already matches the log chart's
   converged gaps to 3·10⁻⁶.
+
+**5. Convergence at grid coupling (smoke point, Mq = 8).** The Mq = 8 run (3,003 functions) starts from the converged
+Mq = 6 frame; the frame then moved by 3.7·10⁻⁵.
+
+| √G | size | E₀ | Helike gap | competitor gap | step from the previous rung, Helike / competitor |
+|---|---|---|---|---|---|
+| Mq 4 | 210 | −2.7953006 | 1.0573881 | 1.0909481 | — |
+| Mq 6 | 924 | −2.7954691 | 1.0556820 | 1.0854191 | 0.0017 / 0.0055 |
+| Mq 8 | 3,003 | −2.7954777 | 1.0554540 | 1.0850236 | **0.00023 / 0.00040** |
+
+- **The step passes, by a wide margin.** The competitor's step from Mq 6 to 8 is 0.0004, against the grid's 0.003
+  rule. In the log chart the step was 0.0091 (bare) and 0.0053 (dressed, §5.10) from Mq 8 to 10.
+- **The convergence is geometric:** the step falls by about 10× per rung.
+- **The log chart overstated the competitor's gap.** At Mq = 10 it was too high by about 0.012 (1.0967 bare, against
+  about 1.0850).
+- **The sign at s = 1.18.** Converged, the competitor is 0.030 above Helike there. That is consistent with a switch
+  below s = 1.18; the prediction is s* = 1.1674 at g² = 0.03. These are observations only, and no switch is located
+  from one point.

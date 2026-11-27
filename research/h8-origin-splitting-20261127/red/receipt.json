@@ -1,0 +1,74 @@
+{
+  "passed": false,
+  "mode": "red",
+  "scope": "Exact polynomial algebra and conditional Lean deduction; localization cited, not formalized",
+  "source_revision": "8fd4e0338fd3dbd80f6d67eee68f07a8847365bb",
+  "runs": [
+    {
+      "command": [
+        "lake",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H8OriginDeclarations.lean"
+      ],
+      "exit_code": 1,
+      "log": "declarations.log"
+    }
+  ],
+  "failures": [],
+  "exact": {
+    "tests": 11,
+    "failures": 1,
+    "errors": 0
+  },
+  "sympy": "1.14.0",
+  "dependency_revisions": {
+    "mathlib": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "plausible": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "LeanSearchClient": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "importGraph": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "proofwidgets": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "aesop": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "Qq": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "batteries": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "Cli": "50810f72af7618bee62fe9800dc26e806c188703"
+  },
+  "toolchain": "leanprover/lean4:v4.36.0",
+  "expected_red_observed": true,
+  "sha256_lf": {
+    "scripts/check_h8_origin_splitting.py": "5a44bde0dfadc4c72b4d6ed5fa98b0bb62b3e4a73dce3394945d15948cffc333",
+    "scripts/check_h7_lean.py": "a9d6f4dd3af65d890ecedd23bcdae0053c24b6ab75e9a64ef4a05d9515950123",
+    "docs/research/h8-origin-splitting-contract-2026-11-27.md": "b54a2e0e6d5c82bcd3032f20f617eda3ddfae1d567fb9adcffc4e1e53b571909",
+    "docs/research/h8-vacuum-floor-proof-2026-11-27.md": "8c531fb8ab98d610bf095f32f1641959325f1935a7034c28bbd68f4dae5e47c8",
+    "docs/research/closed-set-20261127/H7-every-group.md": "58ef6f4527ef375b99cc4bdaf22344043329db846137a03d14fbc81413889e9d",
+    "docs/research/closed-set-20261127/H8-s1-carrier.md": "7d8e3a8e672659328fbd98c252068788eebbca0db106f5d23adac07a52e492fe",
+    "docs/research/closed-set-20261127/CLOSED-SET.md": "49c4dd80ec2f79408b98154ad12b7843485836cbf9adcfe063dde5863e9bfc66",
+    "formal/h7-cubic-quartic/Declarations.lean": "b02a40c9c6d3439651d90064e7b7ffd38a9c2fde57753f65cd50a61577d9fc10",
+    "formal/h7-cubic-quartic/H6WickDeclarations.lean": "da1f2a6e0b469859e63291520cb930c6a42004ad7cfff1524d52438ef2209758",
+    "formal/h7-cubic-quartic/H6WickTriangle.lean": "551902b2e98d33b46259c6e1036492689386fe56c57d3852736eec9b232ffc4c",
+    "formal/h7-cubic-quartic/H6WickVerification.lean": "71b3771ae8cfd5f0358a6ed16482edfaa5aa5861a241618f892a0c7dd7cb163a",
+    "formal/h7-cubic-quartic/H7CubicQuartic.lean": "7468a35e140eaa1e4e6b7e9832d89dd177e9bb84bf6cb7d5f23fdddbd2d9fbe4",
+    "formal/h7-cubic-quartic/H8Declarations.lean": "e6cb3817cb134a8e68844429a831db905384f7e9924892b014dbb8899fda4f26",
+    "formal/h7-cubic-quartic/H8GroupDeclarations.lean": "0c92ccdf4c6000e5931f4b2bf416a52958085138d2df9e4964adfe13def45a45",
+    "formal/h7-cubic-quartic/H8GroupTransport.lean": "13a404a5f9b21fb1ff128632936e54793138d21198511186755d5889c27eb434",
+    "formal/h7-cubic-quartic/H8GroupVerification.lean": "fe91a9d02fcb2fe50f3e60a09a6b63a9d71a14e9016a34ebcc34f95ab6f7a18a",
+    "formal/h7-cubic-quartic/H8Interwell.lean": "315e8c8c2de5e9ee76c7c3ca792ff021b08faf540ad543dff319a4e62359edbc",
+    "formal/h7-cubic-quartic/H8OriginDeclarations.lean": "23389f1e7144699d1460cee356732bdb4c0cce90801945e95cff537ebae70b78",
+    "formal/h7-cubic-quartic/H8VacuumDeclarations.lean": "dbe1ba36be4bce4af28c89d1710fda406271226c4cfa1faefb3676e4546391e1",
+    "formal/h7-cubic-quartic/H8VacuumFloor.lean": "f8e0623e9f429c24008b9c237af433917ceb5ba6273bbab239c15e35a127ae21",
+    "formal/h7-cubic-quartic/H8VacuumVerification.lean": "447536399de3ca3fa1b9d19148de95ee2b7e9a0e0899657bc8b8cf59dd8c4327",
+    "formal/h7-cubic-quartic/H8Verification.lean": "832d7518149ed5eef50911167fc53b18678de798e5b2a5264d4a014635f3119c",
+    "formal/h7-cubic-quartic/Verification.lean": "9995c06b079b7b97599efa7aba78dc1afc0eff3a7b2f7d82cdd931d7c249f2fa",
+    "formal/h7-cubic-quartic/lakefile.toml": "5b467dc12ef015daf136d6bc09ae1a0cdeb030cf2699448d6a9cbbb493824411",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a"
+  }
+}

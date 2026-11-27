@@ -114,7 +114,7 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 | # | Hypothesis | Line | Needed for |
 |---|---|---|---|
 | H1 | S_C | 11 | the carrier form (a finite computation, R2) |
-| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form. Harmonic ordering is derived; the H8 note's finite-g reduced claim remains conjectural. Physical channels tie at harmonic order and need the complete O(g²) splitting, including H2b. |
+| H8 | at s = 1, the lowest excitation has charge 0 | 18 | the carrier form. Harmonic ordering is derived; the H8 note's finite-g reduced claim remains conjectural. Physical channels tie at harmonic order and need the complete O(g²) splitting, including H2b. The reduced part of that splitting at q = 0 is closed (charge 0 lower by 2κ(1 + 1/t)g², charge ±2 unshifted); H2b is not. |
 | H2 | M3, uniform dressing at small R | 16 | the small-room end of H3 |
 | H3 | M2, Δ(R)/Λ ≥ c for every R | 20 | the gap |
 | H4′ | the sphere family: the continuum limit in every room, and an ℝ⁴ end with full Euclidean symmetry | 23 | existence |
@@ -139,6 +139,15 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 | it is Yang–Mills (the Wilson theory with the correct running) | 1, 14, 21 |
 
 ## Change log
+
+- **27 Nov, origin splitting closed in the reduced model (bounded deduction).** H7 Step 6's O(g²)
+  comparison at q = 0, s = 1, for every compact simple metric colour algebra and t > 1. Written on
+  e^(-W), H - nS/2 = L0 + g L1 with L1 = -grad C . grad. L1 kills the charge ±2 pair, so its series is
+  2/sqrt(t) exactly; the charge-0 level moves by e2 g² with e2 = -2κ(1 + 1/t), κ the adjoint Casimir.
+  Quasimodes put spectrum within O(g³) and O(exp(-c/g²)) of those values. Counting and assignment to
+  the q = 0 well stay the cited localization; the physical room still needs H2b. H7 and H8 remain
+  open; the seven hypotheses are unchanged. Proof, exact SU(2)/SU(3) checks, four mechanism
+  removals and six Lean declarations: `docs/research/h8-origin-splitting-proof-2026-11-27.md`.
 
 - **27 Nov, the documented Wick-triangle conjecture resolved by refutation.** H6 Step 6 expected
   a nonzero free leading three-point coefficient. Hodge exchange proves it is zero at all separated triples

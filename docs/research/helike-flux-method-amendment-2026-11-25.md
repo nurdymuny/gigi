@@ -578,3 +578,49 @@ the dressed chart is the right geometry, the competitor's leaked residual should
 **What this section is not.** It does not change what counts as converged, identified or switched. It changes the
 coordinates the trial space and the reference are written in, to the ones the vacuum selects. Whether that was the
 missing geometry is what the controls and the smoke point decide.
+
+#### 5.10 A1: dress in the coordinates where the symmetry acts linearly (26 November; during layer-2 coding, before any control value)
+
+**What happened.** A plumbing check of the dressing loop at s = 1.15, t = 3, g² = 0.004 and Mq = 6 was refused by the
+registered doublet check: "a dressed doublet must be degenerate to 10⁻⁸". It is not a control, since the controls are
+at Mq = 8 and 10.
+- **What was seen:** Helike's two dressed widths came out as 1.08624 and 1.08638. The vacuum's variances along her
+  two doublet coordinates were 0.4649 and 0.4596.
+- **The cause** is in the construction as written, not in the physics. §5.10 took the vacuum's moments in the
+  solver's chart coordinates z, which are affine in the log-Cholesky variables. The charge rotation does not act
+  linearly on those, because a Cholesky factor is not rotation-equivariant. So an exactly symmetric vacuum looks
+  lopsided in them. The check caught a geometric error.
+
+**The correction.**
+- **Coordinates.** The dressing step works in the Gram-linear normal coordinates y = M⁻¹(x − x₀), where x is the six
+  Gram entries. These are the coordinates in which the bare normal frame and the reference single quanta are defined,
+  and in which the rotation acts linearly: each doublet rotates and each singlet is fixed. The mean ȳ and the
+  covariance C_y are taken in the ψ₀² measure. The kinetic form is the cometric A(x) written in y at the mean,
+  A_y = M⁻¹ A(x̄) M⁻ᵀ.
+- **Symmetrization.** The physical vacuum is exactly rotation-invariant, and the truncated trial space breaks that only
+  slightly. The moments are averaged over the rotation:
+  - the doublet components of the mean are set to zero;
+  - each doublet's covariance block becomes (trace/2)·I;
+  - doublet–singlet and doublet–doublet covariances are set to zero.
+
+  The size of what is removed is reported as the asymmetry. It must be ≤ 10⁻⁴, or the point is OPEN.
+- **The new frame is fed to the solver exactly as the bare one is.**
+  - The bare chart is (G0 = the classical minimum, M = the normal frame, w = the harmonic frequencies).
+  - The dressed chart is (G0' = the vacuum's mean Gram matrix x̄ = x₀ + Mȳ, M' = M·T, w' = the dressed widths), with
+    T and w' from the kinetic-whitened covariance as in §5.10.
+  - The solver derives the log-Cholesky chart from (G0', M') in the same way.
+  - A mean Gram matrix off the positive cone is refused.
+- **Roles** are assigned by subspace overlap, as before, in y with the current frame's kinetic form.
+- **Unchanged:** the self-consistency rule (10⁻⁶, at most 6 iterations), every grid rule and threshold, the selection
+  fix, and the predictions.
+
+With the correction, the same plumbing point settles in 3 iterations. The centre change goes 2.6·10⁻³ → 2·10⁻⁶ →
+2.5·10⁻⁹, the asymmetry is 1.1·10⁻⁵, and the roles equal the bare roles. These values are recorded as plumbing
+evidence, and they are not control results.
+
+**Tests added for A1:**
+- a planted asymmetric covariance, which symmetrization must restore;
+- a mutant with symmetrization dropped, which must be caught;
+- the bare chart passed through a chart file, which must reproduce the bare solver bit for bit (it does: zero
+  difference in E₀, the gaps and w̃);
+- the loop settling at the plumbing point.

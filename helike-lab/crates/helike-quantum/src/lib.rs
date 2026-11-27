@@ -32,6 +32,7 @@ pub mod residual;
 pub mod ritz;
 pub mod m8;
 pub mod run;
+pub mod sqrtg;
 pub mod support;
 pub mod enrichment;
 pub mod temple;

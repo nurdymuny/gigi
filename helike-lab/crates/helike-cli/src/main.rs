@@ -232,6 +232,28 @@ enum Cmd {
         #[arg(long)]
         order: usize,
     },
+    /// Flux-method §5.11, the unfolded chart: Rayleigh-Ritz in P = sqrt(G) with a self-consistent frame, along a
+    /// ladder of total degrees. Optional --frame-in (JSON {mu, C}); --frame-out saves the last frame.
+    ConeSqrtg {
+        #[arg(long)]
+        s: f64,
+        #[arg(long)]
+        t: f64,
+        #[arg(long)]
+        g2: f64,
+        /// comma-separated ladder of total degrees, e.g. 4,6,8
+        #[arg(long)]
+        ladder: String,
+        /// quadrature order offset: order = Mq + offset (registered 6)
+        #[arg(long, default_value_t = 6)]
+        order_offset: usize,
+        #[arg(long, default_value_t = 6)]
+        max_iter: usize,
+        #[arg(long)]
+        frame_in: Option<PathBuf>,
+        #[arg(long)]
+        frame_out: Option<PathBuf>,
+    },
     ConeTemple {
         #[arg(long, default_value = "oracle/quasimode_states_e21087a1.json")]
         states: PathBuf,
@@ -420,6 +442,44 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                     "b_sha256_lf": helike_stream::text_sha256(b),
                     "registration": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md"}),
              json!({"shape": [la.k, lb.k], "overlap": o, "seconds": t0.elapsed().as_secs_f64()}))
+        }
+        Cmd::ConeSqrtg { s, t, g2, ladder, order_offset, max_iter, frame_in, frame_out } => {
+            use helike_quantum::sqrtg;
+            let model = helike_quantum::model::Model::berger(*s, *t, g2.sqrt());
+            let (mut frame, mut cov) = match frame_in {
+                Some(p) => {
+                    let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(p).map_err(|e| e.to_string())?)
+                        .map_err(|e| e.to_string())?;
+                    let mu: [f64; 6] = std::array::from_fn(|i| v["mu"][i].as_f64().unwrap());
+                    let c: [[f64; 6]; 6] = std::array::from_fn(|i| std::array::from_fn(|j| v["C"][i][j].as_f64().unwrap()));
+                    (sqrtg::Frame::from_covariance(mu, &c), c)
+                }
+                None => {
+                    // start: P = sqrt of the classical background, isotropic covariance 0.05
+                    let bg = helike_quantum::model::Background::maurer_cartan(*s, *t, g2.sqrt())?;
+                    let g0 = bg.g0;
+                    let mu = [g0[0][0].sqrt(), g0[1][1].sqrt(), g0[2][2].sqrt(), 0.0, 0.0, 0.0];
+                    let c: [[f64; 6]; 6] = std::array::from_fn(|i| std::array::from_fn(|j| if i == j { 0.05 } else { 0.0 }));
+                    (sqrtg::Frame::from_covariance(mu, &c), c)
+                }
+            };
+            let mut rungs = vec![];
+            for mq in ladder.split(',').map(|x| x.trim().parse::<usize>().map_err(|e| e.to_string())) {
+                let mq = mq?;
+                let r = sqrtg::self_consistent(&model, frame.clone(), cov, mq, mq + order_offset, *max_iter, 12)?;
+                frame = r.frame.clone();
+                cov = r.covariance;
+                eprintln!("Mq {mq}: {} iterations, settled {}, gaps {:?}", r.iterations.len(), r.settled,
+                          &r.iterations.last().unwrap().gaps[..3]);
+                rungs.push(r);
+            }
+            if let Some(p) = frame_out {
+                std::fs::write(p, serde_json::to_string(&json!({"mu": frame.mu, "C": cov})).unwrap()).map_err(|e| e.to_string())?;
+            }
+            (json!({"s": s, "t": t, "g2": g2, "ladder": ladder, "order_offset": order_offset, "max_iter": max_iter,
+                    "mutant": sqrtg::mutant(),
+                    "registration": "docs/research/helike-flux-method-amendment-2026-11-25.md section 5.11"}),
+             json!({"rungs": rungs}))
         }
         Cmd::ConeTemple { states, inputs, assume, delta, g2, mq } => {
             let sep = match assume.as_deref() {

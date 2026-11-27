@@ -57,7 +57,8 @@ def export(s, t, g2, mq, out, chart=None):
     return X
 
 
-ASYM_TOL = 1e-4             # §5.10 A1: the rotation-asymmetry of the vacuum moments a truncated basis may show
+ASYM_TOL = 1e-2             # §5.10 A2: gross bound at every rung (a geometric error is refused here or by the ladder rule)
+ASYM_FINAL = 1e-3           # §5.10 A2: at the final rung, after a strict decrease along the ladder
 
 
 def dress_step(X, order=None):

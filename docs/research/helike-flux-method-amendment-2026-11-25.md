@@ -624,3 +624,77 @@ evidence, and they are not control results.
 - the bare chart passed through a chart file, which must reproduce the bare solver bit for bit (it does: zero
   difference in E₀, the gaps and w̃);
 - the loop settling at the plumbing point.
+
+#### 5.10 A2: the asymmetry guard tells truncation from geometry along the ladder (26 November; after an outside review, before any control result or smoke-point value is read)
+
+**Disclosure.** An adversarial review, run as a workflow with every finding independently verified, found that A1's
+fixed guard of 10⁻⁴ would refuse Bee's registered smoke point at its first rung. It also measured the asymmetry this
+section is about:
+- at s = 1.18, t = 3, g² = 0.03, the vacuum breaks the rotation by 1.8·10⁻³ at Mq = 6 and by 6.8·10⁻³ at Mq = 4;
+- the result is the same at quadrature orders 12, 14 and 16;
+- the breaking sits on the doublet component h₁.
+
+The log-Cholesky trial space is not rotation-invariant, and its breaking falls by about 3.7× per two rungs. A1's
+10⁻⁴ had been calibrated only at the weak g² = 0.004 plumbing point, where the asymmetry is 1.1·10⁻⁵. These
+asymmetries are intermediate quantities of the construction. No control verdict, w̃ or gap at the smoke point was
+looked at in making this change.
+
+**What the guard is for.** Symmetrization removes the breaking in any case. The guard exists to catch a geometric
+error, such as wrong coordinates or a wrong role map (A1's log-Cholesky error), hiding behind it. The two kinds of
+breaking behave differently along the ladder:
+- a geometric error is fixed by the coordinates and does not shrink as the basis grows;
+- truncation breaking shrinks.
+
+**The rule (replaces A1's fixed 10⁻⁴).**
+- **A gross bound at every rung:** the asymmetry is ≤ 10⁻². Above it the point is OPEN.
+- **Along the ladder:** the asymmetry of the final dressed iterate strictly decreases from rung to rung. For a point,
+  that means Mq 6 → 8 → 10. For the controls, which run Mq 8 and 10, it means Mq 8 → 10. At the final rung it must be
+  ≤ 10⁻³. Otherwise the point is OPEN.
+- **Reporting:** the asymmetry at every rung and iteration is reported.
+
+A1's log-Cholesky error would still be refused: it persists with Mq, and its size in the y-measure is several 10⁻³.
+
+**Also from the review:**
+- **The solver must honour the chart.** The plumbing tests could not tell whether the solver actually uses `--chart`.
+  A test now checks that a dressed chart changes the solve: the competitor's w̃ moves by more than 10⁻³ and the energy
+  shift moves, while the gaps stay within 10⁻³ at weak coupling. A mutant that never passes the chart must be caught.
+- **Only gaps compare across charts.** The stored E₀ and levels are Ritz values without the chart's energy shift V(G0),
+  so they cannot be compared across charts. The shift is now recorded, and only gaps are compared.
+- **A refuted finding.** A claim that the dressed trial space is not centred on the vacuum was refuted by its verifier.
+  It is not acted on.
+
+#### 5.10 control results (step 2; 26 November)
+
+Report: `research/dressed-chart-20261126/controls/report.json`. The point is s = 1.15, t = 3, the dressed chart is
+self-consistent at each point, and the bare solve is alongside.
+
+| g², Mq | iterations | asymmetry | gap change, Helike / competitor | Helike w̃, bare → dressed | competitor w̃, bare → dressed |
+|---|---|---|---|---|---|
+| 0.002, 8 | 2 | 2·10⁻⁷ | 7·10⁻⁸ / 6·10⁻⁷ | 0.997891 → 0.997860 | 0.994195 → 0.997960 |
+| 0.002, 10 | 2 | 7·10⁻⁹ | 1·10⁻⁸ / 1·10⁻⁷ | 0.997891 → 0.997860 | 0.994196 → 0.997962 |
+| 0.004, 8 | 3 | 1.6·10⁻⁶ | 1·10⁻⁶ / 8·10⁻⁶ | 0.995747 → 0.995686 | 0.988205 → 0.995802 |
+| 0.004, 10 | 3 | 1.1·10⁻⁷ | 2·10⁻⁷ / 2·10⁻⁶ | 0.995747 → 0.995687 | 0.988207 → 0.995813 |
+
+**The registered checks.**
+- **Levels agree to ≤ 10⁻⁴ at Mq = 10:** PASS at both couplings. The largest change is 1.8·10⁻⁶.
+- **A2 asymmetry ladder:** PASS. The asymmetry decreases from Mq 8 to 10 and is far below 10⁻³ at the final rung.
+- **Dressed w̃ ≥ bare w̃:**
+  - competitor: PASS at all four points, with gains of +0.0038 at g² = 0.002 and +0.0076 at g² = 0.004;
+  - Helike: **FAIL at all four points**, by −3.1·10⁻⁵ at g² = 0.002 and −6.1·10⁻⁵ at g² = 0.004.
+
+  As registered, the controls do not pass (`controls_pass: false`).
+
+**Reading.**
+- **The trial space moved; the physics did not.** The gaps change by at most 8·10⁻⁶, and by at most 2·10⁻⁶ at
+  Mq = 10.
+- **The competitor's bare deficit was mostly the ruler.** In the vacuum's own frame its w̃ rises to 0.9958, equal to
+  Helike's 0.9957: in the right frame both carriers are equally single-quantum. Its §5.3 dressed overlap does not
+  change with the frame (0.99648 against 0.99647), as it should not.
+- **Helike's small loss is of order g² and converged in Mq** (identical at Mq 8 and 10). The dressed frame is the
+  vacuum's, and her excitation deforms slightly differently from the vacuum. So "dressed ≥ bare" was a prediction
+  about her, not a law, and it missed. She stays far above the 0.9 rule.
+
+**What follows.**
+- Step 3, the smoke point, runs as registered, as a diagnostic. Its predictions concern the competitor.
+- **Step 4, the fresh grid run, is held** until Bee decides how to treat the failed Helike check. The options include
+  keeping it as a blocker, or registering that check as a report-only diagnostic, with this miss on record.

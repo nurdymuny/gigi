@@ -49,6 +49,25 @@ class Plumbing(unittest.TestCase):
         self.assertLess(h[-1]["centre_change"], 1e-6)
 
 
+class ChartHonoured(unittest.TestCase):
+    def test_a_dressed_chart_changes_the_solve(self):
+        """Review finding: the parity test cannot see a solver that ignores --chart. A genuinely dressed chart must
+        change the trial space: the competitor's w~ moves (it is measured against the chart's single quanta) and the
+        energy shift moves (it is V at the chart's centre), while the gaps stay close at weak coupling."""
+        chart, X, h = dp.dressed_point(1.15, 3.0, 0.004, 6, WORK / "loop_honour")
+        bare = json.loads(subprocess.run([str(dp.BIN), "--out", str(WORK / "h_bare.json"), "cone", "--s", "1.15", "--t", "3",
+                          "--g2", "0.004", "--mq", "6"], check=True, capture_output=True, text=True) and
+                          (WORK / "h_bare.json").read_text())["results"]
+        drs = json.loads(subprocess.run([str(dp.BIN), "--out", str(WORK / "h_drs.json"), "cone", "--s", "1.15", "--t", "3",
+                         "--g2", "0.004", "--mq", "6", "--chart", str(chart)], check=True, capture_output=True, text=True)
+                         and (WORK / "h_drs.json").read_text())["results"]
+        self.assertGreater(abs(drs["result"]["competitor"]["dressed_weight"] - bare["result"]["competitor"]["dressed_weight"]), 1e-3)
+        self.assertNotEqual(drs["result"]["energy_shift"], bare["result"]["energy_shift"])
+        self.assertLess(abs(drs["result"]["competitor"]["gap"] - bare["result"]["competitor"]["gap"]), 1e-3)
+        self.assertGreater(h[-1]["iterations"] if "iterations" in h[-1] else h[-1]["iteration"], 1)
+        self.assertGreater(h[1]["centre_change"], 1e-6)                 # the first dressing step moves the frame
+
+
 class Selection(unittest.TestCase):
     def test_grid_selection_accepts_what_the_grid_identified(self):
         """At s = 1.18, t = 3, g2 = 0.03, Mq = 6 the competitor has w~ = 0.916: the quasimode rule refuses, the grid
@@ -91,9 +110,16 @@ def _m1():
     return lambda: setattr(dg, "SELECTION", orig)
 
 
+@mutant("the chart is never passed to the solver")
+def _m2():
+    orig = dp.export
+    dp.export = lambda s, t, g2, mq, out, chart=None: orig(s, t, g2, mq, out)
+    return lambda: setattr(dp, "export", orig)
+
+
 def run():
     suite = unittest.TestSuite()
-    for case in (Plumbing, Selection):
+    for case in (Plumbing, ChartHonoured, Selection):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(case))
     return unittest.TextTestRunner(verbosity=0).run(suite)
 

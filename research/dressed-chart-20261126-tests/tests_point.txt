@@ -1,3 +1,5 @@
+test_a_dressed_chart_changes_the_solve (test_helike_dressed_point.ChartHonoured.test_a_dressed_chart_changes_the_solve)
+Review finding: the parity test cannot see a solver that ignores --chart. A genuinely dressed chart must ... ok
 test_bare_chart_file_reproduces_the_bare_solver_exactly (test_helike_dressed_point.Plumbing.test_bare_chart_file_reproduces_the_bare_solver_exactly) ... ok
 test_dressing_loop_settles_with_bare_roles (test_helike_dressed_point.Plumbing.test_dressing_loop_settles_with_bare_roles) ... ok
 test_both_selections_agree_where_both_apply (test_helike_dressed_point.Selection.test_both_selections_agree_where_both_apply) ... ok
@@ -6,7 +8,7 @@ test_grid_selection_accepts_what_the_grid_identified (test_helike_dressed_point.
 At s = 1.18, t = 3, g2 = 0.03, Mq = 6 the competitor has w~ = 0.916: the quasimode rule refuses, the grid ... ok
 
 ----------------------------------------------------------------------
-Ran 5 tests in 71.982s
+Ran 6 tests in 387.351s
 
 OK
 exit 0

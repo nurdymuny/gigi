@@ -23,7 +23,8 @@ def cone(s, t, g2, mq, out, chart=None):
     if r.returncode:
         raise RuntimeError(f"cone refused (exit {r.returncode}): {r.stderr.strip() or r.stdout.strip()}")
     res = json.loads(Path(out).read_text())["results"]["result"]
-    return {"E0": res["E0"], "levels": res["levels"][:6],
+    # E0 and levels are Ritz values without the chart's energy shift V(G0); only gaps compare across charts
+    return {"E0": res["E0"], "energy_shift": res["energy_shift"], "levels": res["levels"][:6],
             **{n: {k: res[n][k] for k in ("gap", "weight", "dressed_weight", "dressed_overlap", "level_index")}
                for n in ("helike", "competitor")}}
 
@@ -45,6 +46,19 @@ def point(s, t, g2, mq, d):
     return rep
 
 
+def asymmetry(r):
+    """The asymmetry of the final dressed iterate at a rung (A2)."""
+    return r["history"][-1]["asymmetry"] if r.get("status") == "RESOLVED" else None
+
+
+def ladder_rule(rungs):
+    """A2: strictly decreasing along the ladder and <= ASYM_FINAL at the final rung."""
+    a = [asymmetry(r) for r in rungs]
+    if any(x is None for x in a):
+        return False, a
+    return all(a[i + 1] < a[i] for i in range(len(a) - 1)) and a[-1] <= dp.ASYM_FINAL, a
+
+
 def controls(out):
     out = Path(out); out.mkdir(parents=True, exist_ok=True)
     rep = {"stage": "5.10 dressed controls", "points": []}
@@ -59,7 +73,12 @@ def controls(out):
             print(json.dumps({k: r.get(k) for k in ("g2", "Mq", "status", "reason", "iterations", "gap_difference",
                                                     "w_tilde_gain", "checks")}), flush=True)
             (out / "report.json").write_text(json.dumps(rep, indent=1) + "\n")
-    rep["controls_pass"] = all(p["status"] == "RESOLVED" and all(p["checks"].values()) for p in rep["points"])
+    for g2 in (0.002, 0.004):
+        rungs = [p for p in rep["points"] if p["g2"] == g2]
+        ok, a = ladder_rule(rungs)
+        rep.setdefault("asymmetry_ladder", {})[str(g2)] = {"asymmetry": a, "passes_A2": ok}
+    rep["controls_pass"] = (all(p["status"] == "RESOLVED" and all(p["checks"].values()) for p in rep["points"])
+                            and all(v["passes_A2"] for v in rep["asymmetry_ladder"].values()))
     (out / "report.json").write_text(json.dumps(rep, indent=1) + "\n")
     print("dressed_controls_done", rep["controls_pass"], flush=True)
     return rep
@@ -75,6 +94,7 @@ def smoke(out):
         print(json.dumps({k: r.get(k) for k in ("Mq", "status", "reason", "iterations", "gap_difference", "w_tilde_gain")}),
               flush=True)
         (out / "report.json").write_text(json.dumps(rep, indent=1) + "\n")
+    rep["asymmetry_ladder"] = dict(zip(("ok", "asymmetry"), ladder_rule(rep["rungs"])))
     ok = [r for r in rep["rungs"] if r["status"] == "RESOLVED"]
     if len(ok) == 3:
         g = {n: [r["dressed"][n]["gap"] for r in ok] for n in ("helike", "competitor")}

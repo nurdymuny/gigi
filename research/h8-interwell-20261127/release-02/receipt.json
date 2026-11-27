@@ -1,0 +1,246 @@
+{
+  "passed": true,
+  "mode": "release",
+  "scope": "Exact geometry and local Lean lemmas; global ODE/action proof is written, not formalized",
+  "source_revision": "f67812e50746826f2f7d57931c834de50936a308",
+  "runs": [
+    {
+      "command": [
+        "lake",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H8Declarations.lean"
+      ],
+      "exit_code": 0,
+      "log": "declarations.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H8Verification.lean"
+      ],
+      "exit_code": 0,
+      "log": "verification.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "Verification.lean"
+      ],
+      "exit_code": 0,
+      "log": "h7-regression.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-interwell-20261127\\release-02\\wrong_metric.lean"
+      ],
+      "exit_code": 1,
+      "log": "wrong_metric.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-interwell-20261127\\release-02\\reversed_flow.lean"
+      ],
+      "exit_code": 1,
+      "log": "reversed_flow.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-interwell-20261127\\release-02\\wrong_action.lean"
+      ],
+      "exit_code": 1,
+      "log": "wrong_action.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-interwell-20261127\\release-02\\missing_domain.lean"
+      ],
+      "exit_code": 1,
+      "log": "missing_domain.log"
+    }
+  ],
+  "failures": [],
+  "algebra": {
+    "tests": 14,
+    "failures": 0,
+    "errors": 0
+  },
+  "sympy": "1.14.0",
+  "dependency_revisions": {
+    "mathlib": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "plausible": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "LeanSearchClient": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "importGraph": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "proofwidgets": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "aesop": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "Qq": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "batteries": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "Cli": "50810f72af7618bee62fe9800dc26e806c188703"
+  },
+  "toolchain": "leanprover/lean4:v4.36.0",
+  "axioms": {
+    "H8.metric_pairing": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.dissipation": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.path_derivative": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.rectangle_boundaries": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.interior_descent": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.equilibria": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.saddle_height": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.unstable_root": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.unstable_direction": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.rectangle_ceiling": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.decay_direction": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.weighted_cauchy": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.straight_excess": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8.coupling_scaling": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ]
+  },
+  "auditor_rejections": [
+    "sorryAx",
+    "UnverifiedOrbit"
+  ],
+  "h7_axioms": {
+    "H7.zero_of_scaled_bound": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H7.cubic_quartic_bound": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H7.positive_constant_bound": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H7.coercivity_factorization": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H7.scaled_coercivity": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H7.potential_lower_bound": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H7.kappa_pos": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H7.quadratic_coefficients": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ]
+  },
+  "mutations_rejected": [
+    "wrong_metric",
+    "reversed_flow",
+    "wrong_action",
+    "missing_domain"
+  ],
+  "sha256_lf": {
+    "scripts/check_h8_interwell.py": "c8fe785ae6a0e25644231a997bc6dcb4e443f9f797297cb9a452ade8aa92b35a",
+    "scripts/check_h7_lean.py": "a9d6f4dd3af65d890ecedd23bcdae0053c24b6ab75e9a64ef4a05d9515950123",
+    "docs/research/h8-interwell-proof-2026-11-27.md": "d245425366fae150c7b19ce077e858f4d87df928e5033b571dd1ef1cc0db2ed2",
+    "docs/research/h8-interwell-contract-2026-11-27.md": "db239115c661ba57aea987b7e431462ce5a889fb3a1305c99958b17d791ad8d8",
+    "docs/research/closed-set-20261127/H8-s1-carrier.md": "034c3326e774680685d5de051b0c71fa76ca554c14113f0f86fd2089127b6d7e",
+    "docs/research/closed-set-20261127/CLOSED-SET.md": "7d6fa4e4af89953e739064b08bab18fc8cb5327ff40340e46481b7cb35090160",
+    "formal/h7-cubic-quartic/Declarations.lean": "b02a40c9c6d3439651d90064e7b7ffd38a9c2fde57753f65cd50a61577d9fc10",
+    "formal/h7-cubic-quartic/H7CubicQuartic.lean": "7468a35e140eaa1e4e6b7e9832d89dd177e9bb84bf6cb7d5f23fdddbd2d9fbe4",
+    "formal/h7-cubic-quartic/H8Declarations.lean": "e6cb3817cb134a8e68844429a831db905384f7e9924892b014dbb8899fda4f26",
+    "formal/h7-cubic-quartic/H8Interwell.lean": "315e8c8c2de5e9ee76c7c3ca792ff021b08faf540ad543dff319a4e62359edbc",
+    "formal/h7-cubic-quartic/H8Verification.lean": "832d7518149ed5eef50911167fc53b18678de798e5b2a5264d4a014635f3119c",
+    "formal/h7-cubic-quartic/Verification.lean": "9995c06b079b7b97599efa7aba78dc1afc0eff3a7b2f7d82cdd931d7c249f2fa",
+    "formal/h7-cubic-quartic/lakefile.toml": "939468cdea68946ba091572377f6c07b2c108ff06fb73aaed752139124ba9a85",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a"
+  }
+}

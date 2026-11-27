@@ -1,6 +1,6 @@
 name = "h7_cubic_quartic"
 version = "0.1.0"
-defaultTargets = ["H7CubicQuartic"]
+defaultTargets = ["H7CubicQuartic", "H8Interwell"]
 
 [[require]]
 name = "mathlib"
@@ -9,3 +9,6 @@ rev = "fc4f59e577feb1a4956671bc04ac18aaaf8cd842"
 
 [[lean_lib]]
 name = "H7CubicQuartic"
+
+[[lean_lib]]
+name = "H8Interwell"

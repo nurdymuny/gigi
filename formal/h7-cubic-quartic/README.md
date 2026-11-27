@@ -62,6 +62,7 @@ From this directory:
 ```text
 lake update
 lake exe cache get Mathlib.Analysis.SpecialFunctions.Pow.Real Mathlib.Tactic.FieldSimp Mathlib.Tactic.Linarith Mathlib.Tactic.NormNum Mathlib.Tactic.Positivity Mathlib.Tactic.Ring
+lake exe cache get Mathlib.Analysis.Calculus.Deriv.Pow Mathlib.Analysis.Calculus.Deriv.Mul Mathlib.Analysis.Calculus.Deriv.Add
 lake build
 lake env lean Verification.lean
 ```
@@ -104,3 +105,8 @@ The initial absent-theorem failures and final compiler evidence are in
 [`research/h7-lean-20261127/`](../../research/h7-lean-20261127/).
 The source revision in each receipt names the baseline; its individual
 file hashes identify the uncommitted proof source checked in that run.
+
+The companion [H8 inter-well library](H8-README.md) shares these pinned
+dependencies and is now a second default build target. Its local algebra
+and calculus have a separate audit; the original H7 theorem source is
+unchanged.

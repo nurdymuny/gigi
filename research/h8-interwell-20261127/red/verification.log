@@ -1,0 +1,14 @@
+H8Declarations.lean:3:7: error(lean.unknownIdentifier): Unknown identifier `H8.metric_pairing`
+H8Declarations.lean:4:7: error(lean.unknownIdentifier): Unknown identifier `H8.dissipation`
+H8Declarations.lean:5:7: error(lean.unknownIdentifier): Unknown identifier `H8.path_derivative`
+H8Declarations.lean:6:7: error(lean.unknownIdentifier): Unknown identifier `H8.rectangle_boundaries`
+H8Declarations.lean:7:7: error(lean.unknownIdentifier): Unknown identifier `H8.interior_descent`
+H8Declarations.lean:8:7: error(lean.unknownIdentifier): Unknown identifier `H8.equilibria`
+H8Declarations.lean:9:7: error(lean.unknownIdentifier): Unknown identifier `H8.saddle_height`
+H8Declarations.lean:10:7: error(lean.unknownIdentifier): Unknown identifier `H8.unstable_root`
+H8Declarations.lean:11:7: error(lean.unknownIdentifier): Unknown identifier `H8.unstable_direction`
+H8Declarations.lean:12:7: error(lean.unknownIdentifier): Unknown identifier `H8.rectangle_ceiling`
+H8Declarations.lean:13:7: error(lean.unknownIdentifier): Unknown identifier `H8.decay_direction`
+H8Declarations.lean:14:7: error(lean.unknownIdentifier): Unknown identifier `H8.weighted_cauchy`
+H8Declarations.lean:15:7: error(lean.unknownIdentifier): Unknown identifier `H8.straight_excess`
+H8Declarations.lean:16:7: error(lean.unknownIdentifier): Unknown identifier `H8.coupling_scaling`

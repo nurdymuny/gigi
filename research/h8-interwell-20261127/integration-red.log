@@ -1,0 +1,27 @@
+test_only_interwell_subclaim_is_closed (check_h8_interwell.Document.test_only_interwell_subclaim_is_closed) ... FAIL
+test_proof_scope_and_endpoint_argument (check_h8_interwell.Document.test_proof_scope_and_endpoint_argument) ... ok
+test_action_normalization_and_coupling (check_h8_interwell.Geometry.test_action_normalization_and_coupling) ... ok
+test_decay_comparison_identity (check_h8_interwell.Geometry.test_decay_comparison_identity) ... ok
+test_dissipation_and_action_density (check_h8_interwell.Geometry.test_dissipation_and_action_density) ... ok
+test_equilibria_and_saddle (check_h8_interwell.Geometry.test_equilibria_and_saddle) ... ok
+test_full_nine_dimensional_gradient_restricts (check_h8_interwell.Geometry.test_full_nine_dimensional_gradient_restricts) ... ok
+test_global_path_cauchy_identity (check_h8_interwell.Geometry.test_global_path_cauchy_identity) ... ok
+test_inherited_metric_and_flow (check_h8_interwell.Geometry.test_inherited_metric_and_flow) ... ok
+test_metric_and_flow_mechanism_removal (check_h8_interwell.Geometry.test_metric_and_flow_mechanism_removal) ... ok
+test_rectangle_faces (check_h8_interwell.Geometry.test_rectangle_faces) ... ok
+test_round_sphere_exact_orbit (check_h8_interwell.Geometry.test_round_sphere_exact_orbit) ... ok
+test_straight_path_action_and_excess (check_h8_interwell.Geometry.test_straight_path_action_and_excess) ... ok
+test_unstable_direction (check_h8_interwell.Geometry.test_unstable_direction) ... ok
+
+======================================================================
+FAIL: test_only_interwell_subclaim_is_closed (check_h8_interwell.Document.test_only_interwell_subclaim_is_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h8_interwell.py", line 141, in test_only_interwell_subclaim_is_closed
+    self.assertTrue('h8-interwell-proof-2026-11-27.md' in h8, 'H8 has not integrated the inter-well proof')
+AssertionError: False is not true : H8 has not integrated the inter-well proof
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.496s
+
+FAILED (failures=1)

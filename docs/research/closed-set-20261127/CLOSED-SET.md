@@ -137,6 +137,17 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 
 ## Change log
 
+- **27 Nov, inter-well action closure (bounded geometric step).** H8 Step 6's
+  gradient-connection sub-conjecture is proved for the original unsourced
+  reduced potential and every t > 0. The inward branch in diag(x,y,y)
+  reaches 0 with the inherited metric dx^2 + 2 dy^2. Its action is exactly
+  d = 1/(2 sqrt(t)) in p = gq coordinates; the straight-line excess squared
+  is (1/t - 1)^2/18. Full proof: `docs/research/h8-interwell-proof-2026-11-27.md`.
+  Lean checks the local algebra and calculus, not global orbit existence.
+  Line 18 and H8 remain hypotheses; no quantum splitting or continuum
+  conclusion is promoted. The old action interval in `COHERENCE.md` remains
+  historical evidence.
+
 - **27 Nov, cubic-quartic closure (bounded pure-math step).** Former Sub-conjecture A_g in H7 is
   [D], with alpha = 3/4, from Austing--Wheater, hep-th/0310170v2, equation (2.2), trace normalization
   and homogeneity. Line 9 now records the fixed-group reduced compact-resolvent consequence on the

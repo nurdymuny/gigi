@@ -1,0 +1,26 @@
+H7.zero_of_scaled_bound {x B : ℝ} (hx : 0 ≤ x) (h : ∀ (r : ℝ), 0 < r → r ^ 3 * x ≤ B) : x = 0
+H7.cubic_quartic_bound.{u_1} {E : Type u_1} [SMul ℝ E] (C Q : E → ℝ) (A B : ℝ) (hQ : ∀ (q : E), 0 ≤ Q q)
+  (hCscale : ∀ (r : ℝ), 0 < r → ∀ (q : E), C (r • q) = r ^ 3 * C q)
+  (hQscale : ∀ (r : ℝ), 0 < r → ∀ (q : E), Q (r • q) = r ^ 4 * Q q) (hglobal : ∀ (q : E), |C q| ≤ A * Q q + B) (q : E) :
+  |C q| ≤ (A + B) * Q q ^ (3 / 4)
+H7.positive_constant_bound.{u_1} {E : Type u_1} [SMul ℝ E] (C Q : E → ℝ) (A B : ℝ) (hA : 0 < A) (hB : 0 < B)
+  (hQ : ∀ (q : E), 0 ≤ Q q) (hCscale : ∀ (r : ℝ), 0 < r → ∀ (q : E), C (r • q) = r ^ 3 * C q)
+  (hQscale : ∀ (r : ℝ), 0 < r → ∀ (q : E), Q (r • q) = r ^ 4 * Q q) (hglobal : ∀ (q : E), |C q| ≤ A * Q q + B) :
+  ∃ c, 0 < c ∧ ∀ (q : E), |C q| ≤ c * Q q ^ (3 / 4)
+H7.coercivity_factorization (z : ℝ) : z ^ 4 / 2 - z ^ 3 + 27 / 32 = (2 * z - 3) ^ 2 * (4 * z ^ 2 + 4 * z + 3) / 32
+H7.scaled_coercivity (q g a : ℝ) (hq : 0 ≤ q) (hg : 0 < g) (ha : 0 ≤ a) :
+  -(27 * a ^ 4 / (32 * g ^ 2)) ≤ g ^ 2 / 2 * q - g * a * q ^ (3 / 4)
+H7.potential_lower_bound (R T κ g S c C Q : ℝ) (hQ : 0 ≤ Q) (hg : 0 < g) (hS : 0 ≤ S) (hc : 0 ≤ c)
+  (hquadratic : κ / 2 * R ≤ T) (hcubic : |C| ≤ c * Q ^ (3 / 4)) :
+  κ / 2 * R - 27 * S ^ 4 * c ^ 4 / (32 * g ^ 2) ≤ T - g * S * C + g ^ 2 / 2 * Q
+H7.kappa_pos {t s : ℝ} (ht : 1 ≤ t) (hs : 0 < s) (hwindow : s < (t + 2) / (t + 1)) : 0 < H7.kappa t s
+H7.quadratic_coefficients {t s : ℝ} (ht : 1 ≤ t) (hs : 0 < s) (hwindow : s < (t + 2) / (t + 1)) :
+  1 / t - (1 - s) * ((1 - s) / t - s) = H7.kappa t s ∧ H7.kappa t s ≤ t - (1 - s) * (t - 2 * s)
+'H7.zero_of_scaled_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H7.cubic_quartic_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H7.positive_constant_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H7.coercivity_factorization' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H7.scaled_coercivity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H7.potential_lower_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H7.kappa_pos' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H7.quadratic_coefficients' depends on axioms: [propext, Classical.choice, Quot.sound]

@@ -1,0 +1,25 @@
+✖ [4473/4475] Building H8Interwell (12s)
+trace: .> LEAN_PATH=C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\Cli\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\batteries\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\Qq\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\aesop\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\proofwidgets\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\importGraph\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\LeanSearchClient\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\plausible\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\packages\mathlib\.lake\build\lib\lean;C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\build\lib\lean c:\Users\nurdm\.elan\toolchains\leanprover--lean4---v4.36.0\bin\lean.exe C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\H8Interwell.lean -o C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\build\lib\lean\H8Interwell.olean -i C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\build\lib\lean\H8Interwell.ilean -c C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\build\ir\H8Interwell.c --setup C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\formal\h7-cubic-quartic\.lake\build\ir\H8Interwell.setup.json --json
+error: H8Interwell.lean:49:2: Type mismatch: After simplification, term
+  hd
+ has type
+  @HasDerivAt ℝ DenselyNormedField.toNontriviallyNormedField ℝ Real.normedAddCommGroup.toAddCommGroup
+    NormedField.toNormedSpace.toModule PseudoMetricSpace.toUniformSpace.toTopologicalSpace ⋯
+    (((fun x_1 => x x_1 ^ 2 / (2 * u)) + fun y_1 => u * y y_1 ^ 2) - x * fun i => y i ^ 2)
+    (-(fx u (x τ) (y τ) ^ 2 + 2 * fy u (x τ) (y τ) ^ 2)) τ
+but is expected to have type
+  @HasDerivAt ℝ DenselyNormedField.toNontriviallyNormedField ℝ Real.instAddCommGroup Semiring.toModule
+    PseudoMetricSpace.toUniformSpace.toTopologicalSpace ⋯ (fun s => x s ^ 2 / (2 * u) + u * y s ^ 2 - x s * y s ^ 2)
+    (-(fx u (x τ) (y τ) ^ 2 + 2 * fy u (x τ) (y τ) ^ 2)) τ
+
+Note: The following definitions were not unfolded because their definition is not exposed:
+  Real.instAdd ↦ 2
+warning: H8Interwell.lean:52:5: Variable name `hx` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _hx
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Some required targets logged failures:
+- H8Interwell
+error: build failed

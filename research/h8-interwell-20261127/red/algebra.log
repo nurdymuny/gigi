@@ -1,0 +1,26 @@
+test_proof_scope_and_endpoint_argument (__main__.Document.test_proof_scope_and_endpoint_argument) ... FAIL
+test_action_normalization_and_coupling (__main__.Geometry.test_action_normalization_and_coupling) ... ok
+test_decay_comparison_identity (__main__.Geometry.test_decay_comparison_identity) ... ok
+test_dissipation_and_action_density (__main__.Geometry.test_dissipation_and_action_density) ... ok
+test_equilibria_and_saddle (__main__.Geometry.test_equilibria_and_saddle) ... ok
+test_full_nine_dimensional_gradient_restricts (__main__.Geometry.test_full_nine_dimensional_gradient_restricts) ... ok
+test_global_path_cauchy_identity (__main__.Geometry.test_global_path_cauchy_identity) ... ok
+test_inherited_metric_and_flow (__main__.Geometry.test_inherited_metric_and_flow) ... ok
+test_metric_and_flow_mechanism_removal (__main__.Geometry.test_metric_and_flow_mechanism_removal) ... ok
+test_rectangle_faces (__main__.Geometry.test_rectangle_faces) ... ok
+test_round_sphere_exact_orbit (__main__.Geometry.test_round_sphere_exact_orbit) ... ok
+test_straight_path_action_and_excess (__main__.Geometry.test_straight_path_action_and_excess) ... ok
+test_unstable_direction (__main__.Geometry.test_unstable_direction) ... ok
+
+======================================================================
+FAIL: test_proof_scope_and_endpoint_argument (__main__.Document.test_proof_scope_and_endpoint_argument)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h8_interwell.py", line 133, in test_proof_scope_and_endpoint_argument
+    self.assertTrue(NOTE.exists(), 'Missing complete written proof')
+AssertionError: False is not true : Missing complete written proof
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.597s
+
+FAILED (failures=1)

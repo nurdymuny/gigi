@@ -471,3 +471,110 @@ The run launched from c839dab4 (§5.8) was stopped by Bee before it completed. I
 `research/flux-grid-20261126-VOID_partial-93a6de65/`, the same way. Nobody opened the receipt. This is the §5.4 run,
 stopped for the §5.7 re-registration.
 
+
+### 5.10 The dressed chart: measure the competitor in the frame the vacuum occupies (DRAFT, 26 November; not registered until Bee approves)
+
+**Where the grid stands.** The gate57 rerun is UNRESOLVED on all five cases. It was not stopped and no rule was
+changed (`research/flux-grid-20261126-gate57/RESULTS.md`). Two numbers fail for the competitor:
+- **its gap is not converged at Mq = 10;**
+- **its identity is weak:** w/Z = 0.70–0.94, below 0.9 at 26 of 31 points.
+
+Bee's bounded experiments (branch `feat/helike-carrier-geometry-probe`) localise both failures:
+- **Mq = 12 does not repair the gap.** At s = 1.18, g² = 0.03, the competitor moves 0.0063 from Mq 10 to 12, against
+  a tolerance of 0.003, and its w/Z stays at 0.913.
+- **The missing room is coupled.** Only 5% of the competitor's leaked residual lies along its own axis.
+- **Residual-driven enrichment works numerically.** Four directions cut the leaked residual by 69%. But the competitor's
+  w/Z stays at 0.912.
+- **The Ritz ground state crosses zero inside the physical cone,** so the M8 ratio geometry is undefined there.
+- **A planted width-deformed excitation** has bare overlap 8/9 while remaining fully aligned in the ground-weighted
+  geometry.
+
+**The diagnosis this section acts on.** The basis and the identity test share one ruler: the harmonic frame of the
+bare background, meaning the Gaussian vacuum at G0 and the single quanta at the bare frequencies w. As g² grows, the
+vacuum shifts and changes width. The two failures follow from that one mismatch:
+- A polynomial basis centred on the wrong Gaussian converges slowly. Adding shells, or enriching, patches the wrong
+  coordinates.
+- An identity test against the bare shape reads a deformed carrier as a mixed one. The planted control shows this
+  happens.
+
+The geometric repair is to build the trial space, and the identity test, in the frame the vacuum actually occupies.
+
+**The dressed chart (self-consistent harmonic geometry).** At each point and rung:
+1. **Solve in the current chart.** It starts as the bare one.
+2. **Measure the vacuum's shape.** From the ground state, compute the mean z̄ and the covariance C of the chart
+   coordinates in the ψ₀² measure, by the same exact-moment quadrature, and the kinetic form G(z̄) at the mean.
+3. **The new frame.** Whiten by the kinetic form, L = G(z̄)^{1/2}, and diagonalise L⁻¹CL⁻¹ = Q diag(c) Qᵀ. The new
+   chart has:
+   - centre u₀' = u₀ + S z̄;
+   - frame S' = S L Q;
+   - widths w'_k = 1/(2c_k).
+
+   In it the vacuum's covariance is the harmonic one, and the kinetic form at the centre is the identity, as in the
+   bare normal frame. It is passed to the unchanged operator as (G0', M', w') = (G(u₀'), J_u(u₀') S', w').
+4. **Iterate** until the centre and the widths change by less than 10⁻⁶. Stop after 6 iterations, and if it has not
+   settled, the point is OPEN.
+
+The Hamiltonian, the measure, the exact moments and the Lanczos settings are unchanged. Only the trial space moves. At
+weak coupling the dressed chart tends to the bare one.
+
+**Mode roles in the dressed chart.** The charge rotation is a symmetry of the vacuum, so C commutes with it and the
+dressed frame keeps the doublets.
+- Roles (Helike's doublet, the competitor, the stiff doublet, the other singlet) are assigned by the largest overlap of
+  each dressed mode with the bare modes, never by matching a frequency.
+- A dressed doublet must be degenerate to 10⁻⁸, relative. An assignment whose largest overlap is below 0.9, or that is
+  not one-to-one, makes the point OPEN.
+- The identification that uses Helike's bare frequency ω_H is replaced by this role map in the dressed chart.
+
+**What stays registered.**
+- **The ladder:** Mq ∈ {6, 8, 10}.
+- **Convergence:** the last-step change is ≤ 0.003, now in the dressed chart.
+- **Identification:** w̃ = w/Z ≥ 0.9, now measured against the dressed single quanta, in the same w/Z form. The
+  identification quadrature ladder is unchanged.
+- **Unchanged:** the switch definition, the predictions s*, the s-tolerance 0.015 and the overall rule.
+
+**The selection fix, folded in.**
+- **The states.** The domain-gate export now gates exactly the states the grid identified: the identified Helike
+  level, its charge partner found from the charge compression (as in `helike cone-levels`, not by a second weight
+  ranking), and the identified competitor.
+- **One identity rule.** It requires only the grid's own identification, w̃ ≥ 0.9. The quasimode certificate's 0.95
+  selection is not part of the grid's identity rule, and it stays where it belongs, in the certificate path.
+- **Refusals are recorded.** A refusal records its exit code, stdout and stderr in the receipt. Bee's wrapper repair
+  is kept.
+- **The degree cap.** The domain gate still runs at the final rung, Mq = 10, inside the rigorous cutoff code's
+  degree cap of 10, in the dressed chart.
+
+**Enrichment stays a diagnostic.** At the final rung of each point, the leaked residual into shells 11 and 12 is
+reported for the ground state, the Helike pair and the competitor, with Bee's support probe. It decides nothing. If
+the dressed chart is the right geometry, the competitor's leaked residual should fall toward Helike's.
+
+**Order of work.**
+1. **Tests and mutants first.** They cover:
+   - an exactly solvable shifted and width-deformed Gaussian, where the dressed chart must recover the shift and the
+     width;
+   - Bee's planted width-deformed excitation, where the dressed w/Z must be 1 while the bare w/Z is 8/9;
+   - a genuinely mixed control, which must stay mixed;
+   - role assignment under a permuted and rotated frame;
+   - the selection fix.
+
+   Mutants that must be caught:
+   - the dressed centre dropped;
+   - the widths dropped;
+   - the kinetic whitening dropped;
+   - roles assigned by frequency;
+   - the export's 0.95 rule restored.
+2. **The four controls** (g² = 0.002, 0.004; Mq = 8, 10). The dressed and bare levels must agree to ≤ 10⁻⁴ at
+   Mq = 10, where dressing is O(g²). The dressed w/Z must be ≥ the bare w/Z.
+3. **Bee's smoke point**, s = 1.18, t = 3, g² = 0.03, the full ladder in the dressed chart, before any grid run.
+4. **Only then** a fresh registered grid run, from a new commit, into a new directory.
+
+**Predictions, stated now** (at the smoke point; each can fail):
+- **The gap converges.** The competitor's dressed step from Mq 8 to 10 is ≤ 0.003. The bare step was 0.0091.
+- **The identity was deformation.** The competitor's dressed w/Z is ≥ 0.95. The bare value was 0.914.
+  - If it rises above 0.9 but stays below 0.95, most of the deficit was deformation.
+  - If it stays near 0.91, the competitor is genuinely mixed at this coupling. That is a physics finding about the
+    carrier, and M8 would be the instrument for it.
+- **The leaked residuals even out.** The competitor's leaked residual is ≤ 1.5× Helike's. Bare, it was 2.1×.
+
+**What this section is not.** It does not change what counts as converged, identified or switched. It changes the
+coordinates the trial space and the reference are written in, to the ones the vacuum selects. Whether that was the
+missing geometry is what the controls and the smoke point decide.

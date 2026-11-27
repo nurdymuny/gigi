@@ -113,3 +113,32 @@ One Gaussian in √G carries 99.7% of the vacuum; in the chart it carries 94.4%.
 - **Not yet shown.** At the smoke point the self-consistent step from Mq 4 to 6 is 0.0014 for Helike and 0.0041 for
   the competitor. Whether the step from Mq 6 to 8 is ≤ 0.003 is still running. So are the order-12 quadrature seam and
   Mq 6 at the control.
+
+**3. Control parity at Mq = 6 and the quadrature seam.**
+- **Parity.** At s = 1.15, g² = 0.004, √G at Mq = 6 (924 functions) gives Helike 1.0879712 and competitor 1.0955577.
+  The converged log-chart values at Mq = 10 are 1.0879687 and 1.0955590, so the differences are 2.5·10⁻⁶ and
+  1.3·10⁻⁶.
+- **Seam.** At the smoke point, Mq = 4 at quadrature order 12 agrees with order 10 to 10⁻¹⁵, in E₀ and in every gap.
+
+**4. Why the seam is exact: in the unfolded chart the operator is polynomial.** Along random lines in ζ through the
+vacuum, on the sheet where the signs of P's eigenvalues are constant, these are exact polynomials. "Exact" means a
+fitted polynomial matches to 10⁻¹¹ relative.
+
+| piece | degree |
+|---|---|
+| the orbit-volume weight ρ = ∏(λᵢ+λⱼ) | 3 |
+| the potential V (√det G = \|det P\|) | 4 |
+| the weighted cometric ρ·g | 6–8 |
+
+Every matrix element is a Gaussian times a polynomial. So Gauss–Hermite quadrature of order about Mq + 5 is exact
+there, as the log chart's Kronecker moments are exact. The exception is the face, where an eigenvalue sign changes:
+the absolute values break polynomiality there, and that region carries negligible weight at these couplings. This is
+observed numerically. A symbolic proof of the cometric's polynomial form is still owed.
+
+**What this suggests for a solver.**
+- **The construction.** Port the unfolded chart to Rust on the existing slab-streaming machinery (`SlabGrid`):
+  forward transform to the nodes, multiply by ρ, V and ρ·g at the exact order, transform back. The operator is applied
+  matrix-free, as the bare `ConeOperator::new` quadrature path already does.
+- **Cost.** The cost scales like N·q⁶ per application, not N²·q⁶.
+- **A cheaper ladder.** The ladder could be Mq ∈ {4, 6, 8}: at the controls, Mq = 6 already matches the log chart's
+  converged gaps to 3·10⁻⁶.

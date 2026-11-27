@@ -131,6 +131,9 @@ if __name__ == "__main__":
     l, U = np.linalg.eigh(G0); P0 = (U * np.sqrt(l)) @ U.T
     mu = vec(P0[None])[0]
     Cp = np.eye(6) * 0.05
+    import os
+    if os.environ.get("SQRTG_FRAME"):                       # start from a saved converged frame
+        fr = json.load(open(os.environ["SQRTG_FRAME"])); mu, Cp = np.array(fr["mu"]), np.array(fr["C"])
     out = {"point": [s, t, g2], "order": order, "runs": []}
     for mq in mq_list:
         for it in range(4):
@@ -144,6 +147,8 @@ if __name__ == "__main__":
             out["runs"].append(rec)
             print(json.dumps({k: (v if k != "levels" else None) for k, v in rec.items() if k != "levels"}), flush=True)
             mu, Cp = mu_new, C_new
+            if os.environ.get("SQRTG_SAVE"):
+                json.dump({"mu": mu.tolist(), "C": Cp.tolist(), "Mq": mq, "point": [s, t, g2]}, open(os.environ["SQRTG_SAVE"], "w"))
             if change < 1e-5:
                 break
     print(json.dumps(out))

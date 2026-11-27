@@ -33,6 +33,10 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 8. [P] V(λ q_MC) = (1 + 2/t)(λ − λ²)²/(2g²), CS = 3λ² − 2λ³, and q_bg = s·q_MC.
    The midpoint is a maximum along this path, not generally a critical point of the full Berger potential.
 9. [P] Theorem A: V ≥ (κ/2)‖q‖² − S⁴/(2g²), with κ > 0 for 0 < s < (t+2)/(t+1). So the spectrum is discrete.
+   [D, reduced extension to each fixed compact simple algebra] The cubic-quartic closure gives
+   |C| <= c_g Q^(3/4) and V >= (kappa/2)||q||^2 - 27 S^4 c_g^4/(32 g^2), with the same
+   positive-kappa window (t >= 1, g > 0). The natural Friedrichs realization and its reducing symmetry
+   sectors have compact resolvent. Constants may depend on the group and norm. See the dated proof note.
 10. [PC] Helike is an exact eigenvector of the Hessian, with a closed-form eigenvalue, and the floor on the stated
     domain (*By Enough*; Floor v3.3).
 11. [X = H1] S_C: in charge 0, at most two eigenvalues lie below ρ_C. The route is proved except the interval Lehmann
@@ -84,6 +88,8 @@ Tags: [P] proved here, [PC] proved and cited, [C] computed, [Cd] conditional, [D
 
 **F. What the problem requires**
 24. [X = H7] Every compact simple G. Lines 1–3 already hold for every compact G [PC].
+    The reduced cubic-quartic sub-conjecture A_g is closed by deduction from Austing--Wheater (2003),
+    eq. (2.2); line 9 records the consequence. This does not close H7 or identify a lowest carrier.
 25. [X = H6] Local fields for the gauge-invariant polynomials in F (tr F² first), agreeing with perturbation theory and
     asymptotic freedom at short distance.
 26. [Cd diagnostics on 25 and a nonzero leading three-point function of the trace anomaly]
@@ -130,6 +136,15 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 | it is Yang–Mills (the Wilson theory with the correct running) | 1, 14, 21 |
 
 ## Change log
+
+- **27 Nov, cubic-quartic closure (bounded pure-math step).** Former Sub-conjecture A_g in H7 is
+  [D], with alpha = 3/4, from Austing--Wheater, hep-th/0310170v2, equation (2.2), trace normalization
+  and homogeneity. Line 9 now records the fixed-group reduced compact-resolvent consequence on the
+  unchanged source window. The exact coercivity factor is 27/32 times S^4 c_g^4/g^2.
+  The older general-alpha Young weight error is superseded by an exact nonnegative factorization.
+  Line 24 remains [X = H7]; no continuum, gap-size, uniform-in-group or carrier-ordering claim is promoted.
+  Full proof and scope: `docs/research/h7-cubic-quartic-proof-2026-11-27.md`.
+  The historical `COHERENCE.md` describes the pre-closure version; its Young-weight finding is resolved here.
 
 - **27 Nov, line 15 refined (a local estimate, no status change).** From the first-order dressing formula
   δω = v·(δK − ω²δG)v/(2ω v·Gv) added in the narrative, the kinetic correction enters as δG_kin = 2m^ren, so a unit slow

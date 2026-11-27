@@ -1,0 +1,33 @@
+test_bad_evidence_is_rejected (__main__.Algebra.test_bad_evidence_is_rejected) ... ok
+test_coercivity_coupling_and_constant (__main__.Algebra.test_coercivity_coupling_and_constant) ... ok
+test_coercivity_identity_and_negative_control (__main__.Algebra.test_coercivity_identity_and_negative_control) ... ok
+test_cyclic_pairings_and_epsilon_half (__main__.Algebra.test_cyclic_pairings_and_epsilon_half) ... ok
+test_fixed_invariant_norm_rescaling (__main__.Algebra.test_fixed_invariant_norm_rescaling) ... ok
+test_homogeneity_and_rescaling (__main__.Algebra.test_homogeneity_and_rescaling) ... ok
+test_nonregular_commuting_limit_exact_identity (__main__.Algebra.test_nonregular_commuting_limit_exact_identity) ... ok
+test_same_positive_kappa_window (__main__.Algebra.test_same_positive_kappa_window) ... ok
+test_trace_conventions_on_exact_su3_embedding (__main__.Algebra.test_trace_conventions_on_exact_su3_embedding) ... ok
+test_zero_quartic_commuting_case (__main__.Algebra.test_zero_quartic_commuting_case) ... ok
+test_only_subconjecture_is_closed (__main__.Document.test_only_subconjecture_is_closed) ... FAIL
+test_proof_dependency_and_scope_are_explicit (__main__.Document.test_proof_dependency_and_scope_are_explicit) ... FAIL
+
+======================================================================
+FAIL: test_only_subconjecture_is_closed (__main__.Document.test_only_subconjecture_is_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h7_cubic_quartic.py", line 145, in test_only_subconjecture_is_closed
+    self.assertTrue('CLOSED BY DEDUCTION' in note, 'The sub-conjecture is still pending')
+AssertionError: False is not true : The sub-conjecture is still pending
+
+======================================================================
+FAIL: test_proof_dependency_and_scope_are_explicit (__main__.Document.test_proof_dependency_and_scope_are_explicit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_h7_cubic_quartic.py", line 137, in test_proof_dependency_and_scope_are_explicit
+    self.assertTrue(NOTE.exists(), 'Missing written proof')
+AssertionError: False is not true : Missing written proof
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.235s
+
+FAILED (failures=2)

@@ -1,0 +1,201 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex.fmt)
+ restricted \write18 enabled.
+entering extended mode
+(statement.tex
+LaTeX2e <2023-11-01> patch level 1
+L3 programming layer <2024-01-04>
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
+Document Class: article 2023/05/17 v1.4n Standard LaTeX document class
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\size11.clo))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics\keyval.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/iftex\ifvtex.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/iftex\iftex.sty))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.cfg))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\fontenc.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsmath.sty
+For additional information on amsmath, use the `?' option.
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amstext.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsgen.sty))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsbsy.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsmath\amsopn.sty))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\amssymb.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\amsfonts.sty))
+ (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics\graphicx.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics\graphics.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics\trig.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics-cfg\graphics.c
+fg)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics-def\pdftex.def
+))) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\newpxtext.sty
+
+`newpxtext' v1.542, 2025/06/07 Text macros taking advantage of TeXGyre Pagella 
+and its extensions (msharpe)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\fontenc.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/xcolor\xcolor.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics-cfg\color.cfg)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/graphics\mathcolor.ltx)
+) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/xpatch\xpatch.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/l3kernel\expl3.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/l3backend\l3backend-pdf
+tex.def))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/l3packages/xparse\xpars
+e.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/etoolbox\etoolbox.sty))
+ (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/xkeyval\xkeyval.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/xkeyval\xkeyval.tex
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/xkeyval\xkvutils.tex)
+)) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\textcomp.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/xstring\xstring.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/xstring\xstring.tex))
+ (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\ifthen.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/carlisle\scalefnt.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/fontaxes\fontaxes.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/fontaxes\fontaxes-v1.st
+y)) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\t1zpllf.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\t1zpltlf.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\t1zplosf.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\t1zpltosf.fd))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\newpxmath.sty
+`newpxmath' v1.551, 2025/10/30 Math macros based on pxfonts (msharpe)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/binhex\binhex.tex)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/oberdiek\centernot.sty)
+amsthm NOT loaded
+) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/booktabs\booktabs.sty
+) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/tools\array.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/enumitem\enumitem.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/microtype\microtype.sty
+
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/microtype\microtype-pdf
+tex.def)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/microtype\microtype.cfg
+)) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/tools\multicol.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/tools\longtable.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/needspace\needspace.sty
+) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/fancyhdr\fancyhdr.sty
+) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\hyperref.sty
+
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/infwarerr\infwarerr.s
+ty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/kvsetkeys\kvsetkeys.sty
+)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/kvdefinekeys\kvdefine
+keys.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/pdfescape\pdfescape.s
+ty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/ltxcmds\ltxcmds.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/pdftexcmds\pdftexcmds
+.sty))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/hycolor\hycolor.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/letltxmacro\letltxmacro
+.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/auxhook\auxhook.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\nameref.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/refcount\refcount.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/gettitlestring\gettit
+lestring.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/kvoptions\kvoptions.sty
+))) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\pd1enc.def
+) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/intcalc\intcalc.sty
+) (C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\puenc.def)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/url\url.sty)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/bitset\bitset.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/bigintcalc\bigintcalc
+.sty))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\atbegshi-ltx.sty))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/hyperref\hpdftex.def
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/base\atveryend-ltx.sty)
+
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/rerunfilecheck\rerunfil
+echeck.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/generic/uniquecounter\uniquec
+ounter.sty))) (statement.aux)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\omlnpxmi.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\unpxexa.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\lmsnpxsy.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\lmxnpxexx.fd)
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/context/base/mkii\supp-pdf.mk
+ii
+[Loading MPS to PDF converter (version 2006.09.02).]
+)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/epstopdf-pkg\epstopdf-b
+ase.sty
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/00miktex\epstopdf-sys.c
+fg))
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/microtype\mt-ppl.cfg)
+(statement.out) (statement.out)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/tex-gyre\t1qhv.fd)
+(sections/s0-abstract.tex) (sections/s1-problem.tex [1{C:/Users/nurdm/AppData/L
+ocal/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Users/nurdm/AppData/Local/Programs/
+MiKTeX/fonts/enc/dvips/tex-gyre/q-ec.enc}{C:/Users/nurdm/AppData/Local/Programs
+/MiKTeX/fonts/enc/dvips/newtx/ntx-ec-tlf.enc}]
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\ot1minzpl.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/microtype\mt-msa.cfg)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/microtype\mt-msb.cfg)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\unpxmia.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\unpxsym.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\unpxsyc.fd)
+[2{C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/newtx/ntx-ot1-t
+lf.enc}{C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/newpx/px-l
+ms.enc} <./figures/helike-doublet.pdf>] [3]) (sections/s2-framing.tex [4]
+[5]) (sections/s3-note.tex [6]) (sections/s4-room.tex [7] [8])
+(sections/s5-carriers.tex [9] [10] [11]) (sections/s6-fast.tex [12] [13]
+[14]) (sections/s7-growing.tex [15] [16]) (sections/s8-limit.tex [17] [18])
+(sections/s9-content.tex [19] [20]
+
+LaTeX Warning: Citation `AustingWheater03' on page 21 undefined on input line 1
+14.
+
+[21]
+
+LaTeX Warning: Reference `b:cubicquartic' on page 22 undefined on input line 15
+4.
+
+) (sections/s10-what-it-is.tex) (sections/s11-availability.tex [22]
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\t1npxtt.fd)
+(C:\Users\nurdm\AppData\Local\Programs\MiKTeX\tex/latex/newpx\ts1zpltlf.fd)
+
+LaTeX Warning: Reference `b:cubicquartic' on page 23 undefined on input line 26
+.
+
+
+LaTeX Warning: Citation `AustingWheater03' on page 23 undefined on input line 2
+9.
+
+) [23{C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/newpx/zpl_TO
+sF.enc}] (sections/appendix-a-register.tex
+
+LaTeX Warning: Reference `b:cubicquartic' on page 24 undefined on input line 60
+.
+
+
+LaTeX Warning: Reference `b:cubicquartic' on page 24 undefined on input line 76
+.
+
+[24]) [25] (refs.tex [26]) [27] (statement.aux)
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+ )<C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/type1/public/newpx/NewPXM
+I.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/type1/public/newpx/Ne
+wPXMI_gnu.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/type1/public/
+newpx/pxmiaX.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/type1/publ
+ic/newpx/pxsys.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/type1/pu
+blic/tex-gyre/qhvr.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/type
+1/public/txfonts/t1xtt.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/fonts/
+type1/public/newtx/txexs.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/font
+s/type1/public/txfonts/txsyc.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTeX/
+fonts/type1/public/newtx/txsym.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKTe
+X/fonts/type1/public/newpx/zplb.pfb><C:/Users/nurdm/AppData/Local/Programs/MiKT
+eX/fonts/type1/public/newpx/zplr.pfb><C:/Users/nurdm/AppData/Local/Programs/MiK
+TeX/fonts/type1/public/newpx/zplri.pfb>
+Output written on statement.pdf (27 pages, 469606 bytes).
+Transcript written on statement.log.

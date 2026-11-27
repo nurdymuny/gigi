@@ -1,0 +1,14 @@
+test_all_incoming_statements_and_math_survive (__main__.Document.test_all_incoming_statements_and_math_survive) ... ok
+test_introduction_precedes_the_proposal_and_explains_charge (__main__.Document.test_introduction_precedes_the_proposal_and_explains_charge) ... ok
+test_actual_matrices_maps_and_plotted_orbit (__main__.Geometry.test_actual_matrices_maps_and_plotted_orbit) ... ok
+test_bad_sign_missing_entry_and_false_return_are_rejected (__main__.Geometry.test_bad_sign_missing_entry_and_false_return_are_rejected) ... ok
+test_charge_two_with_declared_orientation (__main__.Geometry.test_charge_two_with_declared_orientation) ... ok
+test_gauge_orthogonality_at_circle_symmetric_background (__main__.Geometry.test_gauge_orthogonality_at_circle_symmetric_background) ... ok
+test_hessian_eigenvectors_at_mc_background (__main__.Geometry.test_hessian_eigenvectors_at_mc_background) ... ok
+test_norm_orthogonality_and_omitted_direction (__main__.Geometry.test_norm_orthogonality_and_omitted_direction) ... ok
+test_quarter_turn_is_negative_not_a_return (__main__.Geometry.test_quarter_turn_is_negative_not_a_return) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.200s
+
+OK

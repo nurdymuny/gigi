@@ -17,6 +17,13 @@ papers cite some of these paths, so files are never renamed or moved.
 
 **Live status of today's runs:** [STATUS-live.md](STATUS-live.md)
 
+## The Lowest Note: bounded pure-math closure
+
+| date | note |
+| --- | --- |
+| 27 Nov | [Cubic-quartic proof contract](h7-cubic-quartic-contract-2026-11-27.md): conventions, exact checks and the boundary of the claim |
+| 27 Nov | [The cubic interaction cannot escape its bracket geometry](h7-cubic-quartic-proof-2026-11-27.md): A_g closed by deduction from Austing--Wheater; fixed-group reduced compact resolvent, not closure of H7 |
+
 **Bounded flux-grid diagnostic:** [One-point Mq 10 -> 12 smoke registration](helike-flux-basis-smoke-registration-2026-11-26.md).
 Results: [basis refinement improves the estimates but does not repair the gate](helike-flux-basis-smoke-results-2026-11-26.md).
 Next: [registered occupation and omitted-shell diagnostic](helike-flux-support-registration-2026-11-26.md).

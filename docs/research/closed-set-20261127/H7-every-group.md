@@ -1,6 +1,6 @@
 # H7 (line 24): every compact simple gauge group
 
-*Status of this section: hypothesis [X]. Lines 1–3 hold for every compact $G$ [PC]. The new statements marked [P-here] below are short proofs I give in this section. Everything else is labelled expected, [guess] or a sub-conjecture.*
+*Status of this section: hypothesis [X]. Lines 1–3 hold for every compact $G$ [PC]. The statements marked [P-here] below are short proofs I give in this section. Sub-conjecture A_g is now CLOSED BY DEDUCTION from the cited Austing--Wheater bound (27 November 2026); the full H7 hypothesis remains open. Everything else retains its stated standing.*
 
 ---
 
@@ -40,7 +40,7 @@ The order of quantifiers is $\forall\mathfrak g\ \exists c_{\mathfrak g}$, and t
 
 - **Verbatim for every compact $G$ [PC/P].** Lines 1, 2, 3 (Osterwalder–Seiler 1978 is for compact $G$), 13 (Peter–Weyl on the base does not depend on $G$; colour is a tensor factor), 22 and the lemma half of 28 (abstract), and 27 (Perron–Frobenius for $-\tfrac12\Delta+V$ on $\mathfrak g^3/G$ does not depend on $G$).
 - **Need replacement, done here [P-here].** Lines 4, 6, 7, 8, and the eigenvector half of 10.
-- **Need a new lemma.** Line 9: the cubic–quartic inequality, §4 step 3.
+- **Closed by deduction from a cited bound.** Line 9's reduced-model extension: the cubic-quartic inequality, section 4 step 3.
 - **New per group (finite computations, carrier form).** Lines 11 and 18, i.e. $\mathrm{H1}(G)$ and $\mathrm{H8}(G)$. The sourced controls of line 12 do **not** transfer as a two-carrier story (§4 step 5).
 - **Expected to transfer with $b_0\to b_0(G)$.** Lines 14–16 and 20–23, 25, 29. The numbers in line 15 are specific to $SU(2)$.
 
@@ -117,16 +117,18 @@ exactly as for $SU(2)$, and $\lambda=1$ is the winding-1 vacuum, a generator of 
 $$V(q)=\sum_k\tfrac12\|\omega_kX_k-gY_k\|^2-\tfrac12\sum_k\mathrm{src}_k\|X_k\|^2=\tfrac12\sum_k(\omega_k^2-\mathrm{src}_k)\|X_k\|^2-gS\,\mathcal C(q)+\tfrac{g^2}2\sum_k\|Y_k\|^2 .$$
 The quadratic part, and so $\kappa=\min_k(\omega_k^2-\mathrm{src}_k)$ and the window $0<s<(t+2)/(t+1)$, do not depend on $G$.
 
-$SU(2)$'s proof uses $|\det q|\le(\|\operatorname{cof}q\|^2/3)^{3/4}$ (AM–GM in singular values). For general $G$ I need:
+$SU(2)$'s proof uses $|\det q|\le(\|\operatorname{cof}q\|^2/3)^{3/4}$ (AM-GM in singular values). For general $G$, put $Q=\sum_k\|Y_k\|^2$.
 
-> **Sub-conjecture A$_\mathfrak g$ (cubic–quartic) [guess].** There are $c_{\mathfrak g}<\infty$ and $\alpha\in(\tfrac12,\tfrac34]$ with
-> $$|\mathcal C(q)|\le c_{\mathfrak g}\,\|q\|^{3-4\alpha}\Big(\sum_k\|Y_k\|^2\Big)^{\alpha}\quad\forall q\in\mathfrak g^3 .$$
+> **Former Sub-conjecture A$_\mathfrak g$: CLOSED BY DEDUCTION.** For every fixed compact simple real Lie algebra with a fixed positive Ad-invariant inner product, there is $c_{\mathfrak g}<\infty$ with
+> $$|\mathcal C(q)|\le c_{\mathfrak g}Q(q)^{3/4}\quad\forall q\in\mathfrak g^3.$$
 
-Given A$_\mathfrak g$, Young's inequality with weights $(3-4\alpha)/2$, $\alpha$ and $(4\alpha-1)/2$, the last of these positive, gives
-$$gS|\mathcal C|\le\tfrac{g^2}{2}\sum\|Y_k\|^2+\tfrac{\kappa}{4}\|q\|^2+K_{\mathfrak g}(S,\kappa)\,g^{-2}.$$
-The $g^{-2}$ follows from homogeneity. Hence $V\ge\frac\kappa4\|q\|^2-K_{\mathfrak g}/g^2$, and the conclusions of Theorem A hold: compact resolvent and discrete spectrum in each sector.
+This is the old statement at $\alpha=3/4$. Austing--Wheater, *Adding a Myers Term to the IIB Matrix Model*, JHEP 11 (2003) 009, [hep-th/0310170v2](https://arxiv.org/pdf/hep-th/0310170v2), eq. (2.2), gives the global inhomogeneous cubic-quartic bound. After the trace-convention translation it reads $|\mathcal C|\le A Q+B$, with constants independent of q. For $Q>0$, apply it to $rq$ with $r=Q^{-1/4}$: $r^3|\mathcal C|\le A+B$, hence the result. For $Q=0$ all brackets vanish and so does the cubic. The bound covers non-regular strata, without assuming that Q = 1 is compact. The constants can depend on the group and norm.
 
-*Evidence for A$_\mathfrak g$.* Both sides are $\mathrm{Ad}$-invariant and homogeneous of degree 3. The quartic vanishes exactly on commuting triples, which lie in a common Cartan $\mathfrak t$. Near such a triple $H+\delta$, the first-order part of $\mathcal C$ is zero, because $\langle H,[H',\delta]\rangle=\langle[H,H'],\delta\rangle=0$. The second-order part of $\mathcal C$ vanishes on the kernel of the linearised quartic $L(\delta)_{lm}=[H_l,\delta_m]-[H_m,\delta_l]$. On that kernel, $\delta^\alpha_k\propto\alpha(H_k)$ in each root plane, and each cyclic term carries $a_lb_m-b_la_m=0$. So $\mathcal C=O(\|H\|\,\|L\delta\|\,\|\delta\|/\|H\|)$, which is $\alpha=1$ locally near regular points. What remains is uniformity near non-regular strata. That is a Łojasiewicz-type statement and is the actual gap.
+The existing potential consequently satisfies
+$$V\ge\frac\kappa2\|q\|^2-\frac{27S^4c_{\mathfrak g}^4}{32g^2},$$
+because $z^4/2-z^3+27/32=(2z-3)^2(4z^2+4z+3)/32\ge0$ for $z\ge0$, with $z=gQ^{1/4}/(Sc_{\mathfrak g})$. This retains the same positive-kappa window. The natural full-space Friedrichs realization has compact resolvent, as do its colour-singlet and charge-sector restrictions. The old general-alpha Young weight $(4\alpha-1)/2$ should have been $(2\alpha-1)/2$; this exact factorization supersedes that estimate.
+
+Full conventions, proof, operator domain and adversarial audit: [the cubic-quartic closure](../h7-cubic-quartic-proof-2026-11-27.md). This is a reduced-model result, not a group-uniform mass gap or a new carrier ordering.
 
 **Step 4 (Helike for G, line 10).** At $q_{\rm bg}=s\,q^\iota_{\rm MC}$:
 
@@ -163,7 +165,7 @@ Nothing in my $SU(2)$ sketch uses $\dim\mathfrak g=3$ except line 7's polar slic
 
 ## 5. Where it can fail
 
-1. **A$_\mathfrak g$ fails near non-regular strata.** For a large group, $\mathcal C$ could vanish only like $\|q\|\,Q^{1/2}$ along some degenerate family of near-commuting triples. Theorem A's coercive bound would then be lost, and the sourced room could have essential spectrum or the background could stop being confining. This would show as $V$ bounded along a ray family in $\mathfrak g^3$.
+1. **Former obstruction, now excluded for the stated model: A$_\mathfrak g$ at non-regular strata.** The global bound and scaling proof in step 3 exclude an escape along near-commuting triples on the positive-kappa window. This does not control a continuum limit or a change of model outside that window.
 2. **Centraliser and doublet modes reorder the carriers.** Step 4(c) already shows this in the sourced room. If the $j=\tfrac12$ doublet modes also go soft at $s=1$, the $s=1$ carrier could be a non-scalar or a $C=-$ state, and $\mathrm{H8}(G)$ fails as worded. It would show as the lowest $s=1$ singlet having charge $\ne0$ or $C=-1$.
 3. **Non-exact crossings in the larger symmetry structure.** With more invariants (the $d$-symbol, the Pfaffian-type invariants of $\mathfrak{so}(2n)$, triality), two carriers could share every label and avoid each other. Persistence along $R$ (line 20) would then need a real gap estimate rather than symmetry. This would show as an avoided crossing in the $R$-flow.
 4. **Trivial centre removes a structure the confinement intuition uses.** Not the gap itself: Clay asks only for a gap, and the strong-coupling gap exists for $G_2$, $F_4$ and $E_8$ (line 3). But if any step of H3 or H4 secretly uses centre symmetry, such as centre-vortex area laws or Polyakov-loop order parameters, it fails for $G_2$, $F_4$ and $E_8$. That would show as a step that needs an area law for $r_{\min}$.
@@ -171,11 +173,9 @@ Nothing in my $SU(2)$ sketch uses $\dim\mathfrak g=3$ except line 7's polar slic
 
 ---
 
-## 6. Smallest next step
+## 6. The smallest step is closed
 
-**Prove Sub-conjecture A$_\mathfrak g$ with $\alpha=\tfrac34$ for $\mathfrak{su}(3)$:**
-$$\exists\,c<\infty:\quad |\langle X_1,[X_2,X_3]\rangle|\le c\Big(\sum_{k}\big\|\tfrac12\varepsilon_{klm}[X_l,X_m]\big\|^2\Big)^{3/4}\qquad\forall X_1,X_2,X_3\in\mathfrak{su}(3).$$
-With it, Theorem A (line 9) holds for $SU(3)$ on the same window with the same $\kappa$. That gives the $G$-version of the small room (lines 7–9 and 19) and the first exact $G\ne SU(2)$ input to the route. It is the first place where the transport needs a new inequality rather than a dictionary. $\mathfrak{su}(3)$ is the smallest case with non-regular strata and a centraliser.
+The proposed SU(3) inequality is now proved, and the same deduction works for each fixed compact simple algebra. Line 9's compact-resolvent conclusion transfers on the same window with the same kappa and a group-dependent additive constant. This does not close the full H7 statement, identify the lowest carrier among the extra colour modes, or settle the ultraviolet and large-room limits. No new simulation is required for this step; the exact supporting checks and their limits are in the linked proof note.
 
 ---
 

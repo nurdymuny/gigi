@@ -91,13 +91,68 @@ part of the adjoint under a long-root $\mathfrak{su}(2)$ is that $\mathfrak{su}(
 \lines{4--6, 10, 24}
 \end{claim}
 
+\textbf{The small room survives the change of colour group.} There was a precise gap in my dictionary:
+the determinant estimate that confines the reduced potential was special to $SU(2)$. The brackets supply
+its replacement. The global estimate I need is already in Austing and Wheater; scaling it closes this step.
+
+\begin{claim}{PROVED}{The cubic--quartic bound and the reduced room}\label{b:cubicquartic}
+For each fixed compact simple real Lie algebra with a fixed positive Ad-invariant inner product, put
+\[
+\mathcal C=\langle X_1,[X_2,X_3]\rangle,\qquad
+Q=\sum_{i<j}\|[X_i,X_j]\|^2.
+\]
+There is a finite $c_{\mathfrak g}>0$, independent of the triple, such that
+\[
+|\mathcal C|\le c_{\mathfrak g}Q^{3/4},\qquad
+V(q)\ge\frac\kappa2\|q\|^2-\frac{27S^4c_{\mathfrak g}^4}{32g^2}.
+\]
+Here $q=(X_1,X_2,X_3)$, $S=\sqrt t+2/\sqrt t$, $g>0$, and the original sources give
+$\kappa=s[(t+2)-s(t+1)]/t>0$ for $t\ge1$, $0<s<(t+2)/(t+1)$.
+The natural reduced Hamiltonian has compact resolvent, including on its colour-singlet charge sectors.
+No group-uniform constant or lowest-carrier identification is asserted; this $c_{\mathfrak g}$ is not
+the gap constant in H7 below.
+\evidence{Deduction from the global bound of Austing--Wheater~\cite{AustingWheater03}, eq.~(2.2),
+and the compact-form argument below; full convention audit in the cubic--quartic note accompanying~\cite{ClosedSet}.}
+\lines{9 (extension), 24 (partial)}
+\end{claim}
+
+\emph{Proof.} In a faithful unitary representation $\rho$, let $A_k=i\rho(X_k)$ be Hermitian.
+For some fixed $\eta>0$, the invariant inner product is
+$\langle X,Y\rangle=-\eta\operatorname{Tr}(\rho(X)\rho(Y))$.
+Thus $\mathcal C=-i\eta\operatorname{Tr}(A_1[A_2,A_3])$ and
+$Q=\eta\sum_{i<j}\operatorname{Tr}([A_i,A_j]^\dagger[A_i,A_j])$.
+The cited estimate translates to $|\mathcal C|\le A Q+B$ with fixed finite positive constants.
+When $Q>0$, apply it to $rq$ with $r=Q^{-1/4}$:
+\[
+r^3|\mathcal C|\le A r^4Q+B=A+B,
+\qquad |\mathcal C|\le(A+B)Q^{3/4}.
+\]
+When $Q=0$, all brackets and the cubic vanish. This is not an argument from compactness of $Q=1$;
+that set is not compact. The global cited bound controls the nearly commuting directions.
+
+Expanding the unchanged potential gives
+$V=\tfrac12\sum_k(\omega_k^2-\mathrm{src}_k)\|X_k\|^2-gS\mathcal C+g^2Q/2$.
+Its quadratic coefficients are at least $\kappa$. With $z=gQ^{1/4}/(Sc_{\mathfrak g})\ge0$,
+\[
+\frac{z^4}{2}-z^3+\frac{27}{32}
+=\frac{(2z-3)^2(4z^2+4z+3)}{32}\ge0,
+\]
+which proves the stated lower bound. For the Friedrichs form on
+$L^2(\mathfrak g^3,dq)$, bounded form norm controls the gradient and the quadratic spatial moment.
+The latter controls the tails; Rellich compactness controls each bounded ball. The form embedding,
+and hence the resolvent, is compact. Restricting to a closed reducing symmetry sector preserves compactness.
+No boundary condition is added at a quotient singularity.\hfill$\square$
+
+This removes one obstruction to changing groups. It does not order the new colour modes or remove the
+continuum and large-room hypotheses. Discreteness was one requirement, not the whole extension.
+
 \begin{claim}{CONJECTURE}{H7: the whole theory for every compact simple $G$}\label{b:h7}
 For every compact simple $\mathfrak g$ there is $c_{\mathfrak g}>0$ such that, through the dictionary, the $\mathbb R^4$
 theory exists with the OS axioms, has local fields governed by $b_0(G)$ at short distance, a unique vacuum, and
 $\mathrm{spec}\,H\cap(0,c_{\mathfrak g}\Lambda_G)=\emptyset$.
 \evidence{Clay$(G)$ rests on H2$(G)$, H3$(G)$, H4$'(G)$, H6$(G)$ only; the carriers are not needed, because the minimum
-of continuous levels is continuous. Discreteness of the small room for general $G$ needs a cubic--quartic inequality I
-have not proved. The scalar is lightest for $SU(3)$ too~\cite{MorningstarPeardon99}.}
+of continuous levels is continuous. Discreteness of the small room for general $G$ now follows from
+Statement~\ref{b:cubicquartic}; the full H7 conclusion remains open. The scalar is lightest for $SU(3)$ too~\cite{MorningstarPeardon99}.}
 \lines{24}
 \end{claim}
 

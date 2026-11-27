@@ -17,7 +17,24 @@ BASELINE = 'df949c7a69aae59b873230aabf9ccab7e5821910'
 # Every baseline statement must still match exactly; anything new must be listed here.
 ADDITIONS = {
     'b:threshold': ('COMPUTED', 2),   # 27 Nov: the kinetic-term threshold, from eq. (dressing) of the baseline
+    'b:cubicquartic': ('PROVED', 0),  # 27 Nov: cited global bound plus homogeneity; H7 stays conjectural
 }
+H7_OLD = r'''Discreteness of the small room for general $G$ needs a cubic--quartic inequality I
+have not proved.'''
+H7_NEW = r'''Discreteness of the small room for general $G$ now follows from
+Statement~\ref{b:cubicquartic}; the full H7 conclusion remains open.'''
+ADDED_REFERENCE = r'''\bibitem{AustingWheater03} P.~Austing and J.~F.~Wheater, Adding a Myers term to the IIB matrix model, JHEP 11 (2003) 009, arXiv:hep-th/0310170v2, eq.~(2.2).'''
+
+
+def amended_h7_baseline(baseline):
+    """Allow exactly the authorized evidence update, never a claim/status replacement."""
+    result = dict(baseline)
+    status, body = result['b:h7']
+    old, new = (re.sub(r'\s+', '', x) for x in (H7_OLD, H7_NEW))
+    if status != 'CONJECTURE' or body.count(old) != 1:
+        raise ValueError('Unexpected H7 baseline or promoted status')
+    result['b:h7'] = status, body.replace(old, new)
+    return result
 
 
 def git(*args):
@@ -74,7 +91,7 @@ class Format(unittest.TestCase):
             actual_status, body = after.pop(label)
             self.assertEqual(actual_status, status)
             self.assertEqual(body.count(r'\begin{equation}'), numbered_equations)
-        self.assertEqual(after, baseline)
+        self.assertEqual(after, amended_h7_baseline(baseline))
 
     def test_preservation_checks_reject_changed_math_and_status(self):
         changed_math = self.before.replace('b_0=22/3', 'b_0=23/3')
@@ -83,6 +100,10 @@ class Format(unittest.TestCase):
         self.assertNotEqual(statements(changed_status), statements(self.before))
         with self.assertRaises(ValueError):
             statements(self.before+self.before)
+        promoted = statements(self.before)
+        promoted['b:h7'] = ('PROVED', promoted['b:h7'][1])
+        with self.assertRaises(ValueError):
+            amended_h7_baseline(promoted)
 
     def test_abstract_is_self_contained_and_short(self):
         text = (PAPER/'sections/s0-abstract.tex').read_text(encoding='utf-8')
@@ -127,9 +148,11 @@ class Format(unittest.TestCase):
             self.assertIn(rel, text)
             self.assertTrue((ROOT/rel).exists())
 
-    def test_bibliography_is_unchanged(self):
+    def test_bibliography_retains_baseline_and_one_exact_addition(self):
         before = git('show', BASELINE+':'+REL+'/refs.tex')
-        self.assertEqual(before.replace('\r\n','\n'), (PAPER/'refs.tex').read_text(encoding='utf-8'))
+        after = (PAPER/'refs.tex').read_text(encoding='utf-8')
+        self.assertEqual(after.count(ADDED_REFERENCE), 1)
+        self.assertEqual(before.replace('\r\n','\n'), after.replace(ADDED_REFERENCE+'\n', ''))
 
 
 def main():

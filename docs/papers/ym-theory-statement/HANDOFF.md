@@ -215,5 +215,36 @@ python scripts/check_lowest_note_format.py <new-format-output-dir>
 After regenerating the figure, rebuild `statement.tex` twice (or until references stabilize) before the artifact
 check. The checker deliberately rejects an old PDF that lacks the opening spread. Use `pdftoppm` for visual review.
 
+## Cubic-quartic closure inside H7
+
+- Contract and full proof are `docs/research/h7-cubic-quartic-contract-2026-11-27.md` and
+  `docs/research/h7-cubic-quartic-proof-2026-11-27.md`. The baseline before this change is `1ba75baa`.
+- Former Sub-conjecture A_g is closed at alpha = 3/4 by a deduction from Austing--Wheater,
+  hep-th/0310170v2, equation (2.2). The note spells out the Hermitian/anti-Hermitian dictionary,
+  fixed invariant norm, global constants, rescaling, commuting case and operator realization.
+- The reduced potential has the same positive-kappa window and the bound
+  V >= (kappa/2)||q||^2 - 27 S^4 c_g^4/(32 g^2). A nonnegative polynomial factorization supplies the constant.
+  Compactness follows on the natural full-space Friedrichs form and its reducing symmetry sectors.
+  This c_g is not H7's gap constant. No group-uniform estimate or new carrier ordering is asserted.
+- There are now 48 statements: the new Statement 47 is proved by deduction; the full H7 is Statement 48
+  and remains CONJECTURE. The authoritative register records only this partial closure.
+  The fold and other hypotheses remain at their previous standing. Historical referee files are not rewritten.
+- Preservation checks allow one exact change to H7's evidence sentence, the named new statement, and one exact
+  bibliography addition. Every baseline mathematical fragment survives; unrelated statement bodies/statuses
+  still have to match their baselines. Promoting H7 is explicitly rejected.
+- New checker: `python scripts/check_h7_cubic_quartic.py <new-output-directory>`.
+  Twelve checks cover exact algebra, scope and five rejected bad contracts. These do not replace the cited
+  global theorem or constitute a proof-assistant verification. No simulation, eigensolve or engine suite ran.
+- Receipts: `research/h7-cubic-quartic-20261127/`. `red-v2` has the two expected document failures before
+  the proof; `preservation-red` records rejection of the unregistered statement/bibliography changes.
+  The initial `red` directory has no receipt: a Windows stdout encoding failure interrupted that first
+  harness invocation; it is not a proof failure or a passed gate. Logging now precedes UTF-8 console output.
+  Intermediate `*-edit` receipts do not describe the release. Use the `release-*` receipts for final hashes.
+- The rebuilt PDF has 27 pages, stable references, and no LaTeX, overfull or underfull warnings.
+  The new proof is on pages 21-22; H7 is explicitly still conjectural on page 22. Tables and reference 64
+  identify the partial result. All pages were rendered; changed pages were visually inspected.
+- The mathematical argument depends on a published global bound, not on the D=3 partition integral
+  converging. This is an application to my reduced-model requirement, not a novelty claim for that inequality.
+
 ## Cut for length, for the blog post
 GIGI query counts; the fourth control's details; R2 margins; the shell-estimate formula; the anharmonic slope check.

@@ -125,35 +125,129 @@ pub fn chiral_mixing(chart: &ChartIv, basis: &[crate::basis::State], w: [f64; 6]
 
 /// Solve one point with exact moments and export its four trial states.
 pub fn export_point(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> Result<StateExport, String> {
+    export_point_with(s, t, g2, mq, set, None, Selection::Quasimode)
+}
+
+/// Which states the export selects.
+/// - `Quasimode` (the certificate path, unchanged): the two levels with the largest Helike weight, each w~ >= 0.95,
+///   and the identified competitor with w~ >= 0.95.
+/// - `Grid` (flux-method §5.10, for the grid's domain gate): exactly the states the grid identified, under the grid's
+///   own rule w~ >= 0.9: the identified Helike level, its charge partner from the charge compression, and the
+///   identified competitor. No second, stricter identity rule.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Selection {
+    Quasimode,
+    Grid,
+}
+
+pub const GRID_WEIGHT_MIN: f64 = 0.9;
+pub const QUASIMODE_WEIGHT_MIN: f64 = 0.95;
+
+/// The charge partner of level h among the Ritz levels: the level b maximising |Im<v_h, L v_b>| (polarization, as in
+/// `export_levels`). Returns (b, |Im|).
+fn charge_partner(chart: &ChartIv, basis: &[crate::basis::State], w: [f64; 6], vecs: &[Vec<f64>], h: usize, exclude: &[usize])
+    -> Result<(usize, f64), String> {
+    let n = basis.len();
+    let r = Iv::point(0.5).sqrt();
+    let cands: Vec<usize> = (1..vecs.len()).filter(|&b| b != h && !exclude.contains(&b)).collect();
+    let mut cols_all: Vec<(usize, Option<usize>)> = vec![(h, None)];
+    for &b in &cands {
+        cols_all.push((b, None));
+        cols_all.push((h, Some(b)));
+    }
+    let mut d = Vec::with_capacity(cols_all.len());
+    for chunk in cols_all.chunks(4) {
+        let nc = chunk.len();
+        let mut cols = vec![Cx::new(Iv::point(0.0), Iv::point(0.0)); n * nc];
+        for row in 0..n {
+            for (c, &(a, b)) in chunk.iter().enumerate() {
+                cols[row * nc + c] = match b {
+                    None => Cx::real(Iv::point(vecs[a][row])),
+                    Some(b) => Cx::new(Iv::point(vecs[a][row]) * r, Iv::point(vecs[b][row]) * r),
+                };
+            }
+        }
+        d.extend(charge_expectations(chart, basis, w, &cols, nc)?);
+    }
+    let dh = d[0];
+    let mut best = (usize::MAX, 0.0f64);
+    for (i, &b) in cands.iter().enumerate() {
+        let (db, dhb) = (d[1 + 2 * i], d[2 + 2 * i]);
+        let im = (0.5 * (dh + db) - dhb).abs();
+        if im > best.1 {
+            best = (b, im);
+        }
+    }
+    if best.0 == usize::MAX {
+        return Err("no charge partner candidate".into());
+    }
+    Ok(best)
+}
+
+/// Solve one point (optionally in a dressed chart) and export its four trial states under the given selection.
+pub fn export_point_with(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings,
+                         chart: Option<&crate::model::ChartFile>, selection: Selection) -> Result<StateExport, String> {
     if !(g2 > 0.0) {
         return Err("g^2 must be positive".into());
     }
     let g = g2.sqrt();
-    let bg = Background::maurer_cartan(s, t, g)?;
+    let bg = match chart {
+        None => Background::maurer_cartan(s, t, g)?,
+        Some(c) => Background::dressed(s, t, g, c.g0, c.m, c.w)?,
+    };
     let op = ConeOperator::exact(bg.clone(), mq, OpMutation::None)?;
     let eigs = ritz::spectrum(&op, set);
     let wh = ritz::helike_frequency(s, t);
-    let result = ritz::helike_and_competitor(&op, &eigs, wh)?;
+    let (result, hel) = match chart {
+        None => {
+            let hel: Vec<usize> = (0..6).filter(|&j| (bg.w[j] - wh).abs() < 1e-6).collect();
+            (ritz::helike_and_competitor(&op, &eigs, wh)?, hel)
+        }
+        Some(c) => (ritz::helike_and_competitor_modes(&op, &eigs, &[c.roles[0], c.roles[1]], c.roles[2])?,
+                    vec![c.roles[0], c.roles[1]]),
+    };
     let k = eigs.vectors.len();
     // the pair is chosen with the same resolved quadrature order as the identification (flux-grid runner note)
     let amps = ritz::reference_amplitudes(&op, &eigs.vectors, result.overlap_orders[1])?;
-    let hel: Vec<usize> = (0..6).filter(|&j| (bg.w[j] - wh).abs() < 1e-6).collect();
     if hel.len() != 2 {
         return Err("Helike doublet not identified".into());
     }
-    // dressed weights (amendment 5.2): relative to the ground state's vacuum weight Z; the 0.95 rule applies to these
+    // dressed weights (amendment 5.2): relative to the ground state's vacuum weight Z
     let z = result.vacuum_weight;
     let weight = |c: usize| hel.iter().map(|&m| amps[m * k + c].powi(2)).sum::<f64>() / z;
-    let mut order: Vec<usize> = (1..k).collect();
-    order.sort_by(|&a, &b| weight(b).partial_cmp(&weight(a)).unwrap());
-    let mut pair = [order[0], order[1]];
-    pair.sort();
     let comp = result.competitor.level_index;
-    if pair.iter().any(|&c| weight(c) < 0.95) || !pair.contains(&result.helike.level_index) {
-        return Err("unresolved Helike partner identification".into());
-    }
+    let pair = match selection {
+        Selection::Quasimode => {
+            let mut order: Vec<usize> = (1..k).collect();
+            order.sort_by(|&a, &b| weight(b).partial_cmp(&weight(a)).unwrap());
+            let mut pair = [order[0], order[1]];
+            pair.sort();
+            if pair.iter().any(|&c| weight(c) < QUASIMODE_WEIGHT_MIN) || !pair.contains(&result.helike.level_index) {
+                return Err("unresolved Helike partner identification".into());
+            }
+            if result.competitor.dressed_weight < QUASIMODE_WEIGHT_MIN {
+                return Err("ambiguous state selection".into());
+            }
+            pair
+        }
+        Selection::Grid => {
+            let h = result.helike.level_index;
+            if result.helike.dressed_weight < GRID_WEIGHT_MIN || result.competitor.dressed_weight < GRID_WEIGHT_MIN {
+                return Err(format!("not identified by the grid rule w~ >= {GRID_WEIGHT_MIN}: Helike {:.4}, competitor {:.4}",
+                                   result.helike.dressed_weight, result.competitor.dressed_weight));
+            }
+            let chart_iv = ChartIv::new(op.chart.u0, op.chart.s)?;
+            let (b, q) = charge_partner(&chart_iv, &op.basis, bg.w, &eigs.vectors, h, &[comp])?;
+            if q <= 0.5 {
+                return Err(format!("Helike's charge partner is not resolved (|Im<v_h, L v_b>| = {q:.3})"));
+            }
+            let mut pair = [h, b];
+            pair.sort();
+            pair
+        }
+    };
     let idx = [0, pair[0], pair[1], comp];
-    if result.competitor.dressed_weight < 0.95 || idx.iter().collect::<std::collections::BTreeSet<_>>().len() != 4 {
+    if idx.iter().collect::<std::collections::BTreeSet<_>>().len() != 4 {
         return Err("ambiguous state selection".into());
     }
     let n = op.dim();
@@ -249,16 +343,29 @@ pub struct LevelsExport {
 
 /// Solve one point with exact moments and export every Ritz level (M8).
 pub fn export_levels(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> Result<LevelsExport, String> {
+    export_levels_chart(s, t, g2, mq, set, None)
+}
+
+/// `export_levels` in a supplied (dressed) chart (flux-method §5.10); the roles come from the chart file.
+pub fn export_levels_chart(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings,
+                           chart: Option<&crate::model::ChartFile>) -> Result<LevelsExport, String> {
     if !(g2 > 0.0) {
         return Err("g^2 must be positive".into());
     }
     let g = g2.sqrt();
-    let bg = Background::maurer_cartan(s, t, g)?;
+    let bg = match chart {
+        None => Background::maurer_cartan(s, t, g)?,
+        Some(c) => Background::dressed(s, t, g, c.g0, c.m, c.w)?,
+    };
     let op = ConeOperator::exact(bg.clone(), mq, OpMutation::None)?;
     let eigs = ritz::spectrum(&op, set);
-    let wh = ritz::helike_frequency(s, t);
-    let identification = ritz::helike_and_competitor(&op, &eigs, wh)?;
-    let roles = ritz::mode_roles(&bg.w, wh)?;
+    let (identification, roles) = match chart {
+        None => {
+            let wh = ritz::helike_frequency(s, t);
+            (ritz::helike_and_competitor(&op, &eigs, wh)?, ritz::mode_roles(&bg.w, wh)?)
+        }
+        Some(c) => (ritz::helike_and_competitor_modes(&op, &eigs, &[c.roles[0], c.roles[1]], c.roles[2])?, c.roles),
+    };
     let k = eigs.vectors.len();
     let n = op.dim();
     let mut coeff = vec![0.0; n * k];

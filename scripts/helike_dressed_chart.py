@@ -129,3 +129,23 @@ def reference_weight(W, z, psi0, psi, zbar, T, w, modes):
     Z = float(np.sum(W * f0 * p0)) ** 2
     wt = sum(float(np.sum(W * nrm(frame_functions(z, zbar, T, w, k)) * p)) ** 2 for k in modes)
     return wt / Z
+
+
+def symmetrize(mean, C, doublets, singlets):
+    """§5.10 A1: average over the charge rotation. The physical vacuum is exactly rotation-invariant; the truncated
+    trial space breaks that only slightly. In coordinates where the rotation acts linearly (doublets rotate, singlets
+    are fixed): the doublet components of the mean vanish, each doublet's covariance block becomes (trace/2) I, and
+    covariances between different doublets, or between a doublet and a singlet, vanish. Returns (mean, C, asymmetry),
+    where asymmetry = ||removed part of C|| / ||C|| + ||removed part of mean|| / (1 + ||mean||)."""
+    m = np.array(mean, float); Cs = np.array(C, float)
+    m0, C0 = m.copy(), Cs.copy()
+    for d in doublets:
+        d = list(d)
+        m[d] = 0.0
+        tr = np.trace(Cs[np.ix_(d, d)]) / 2.0
+        Cs[np.ix_(d, d)] = tr * np.eye(2)
+        others = [j for j in range(len(m)) if j not in d]
+        Cs[np.ix_(d, others)] = 0.0
+        Cs[np.ix_(others, d)] = 0.0
+    asym = float(np.linalg.norm(C0 - Cs) / np.linalg.norm(C0) + np.linalg.norm(m0 - m) / (1.0 + np.linalg.norm(m0)))
+    return m, Cs, asym

@@ -88,6 +88,24 @@ class Dressing(unittest.TestCase):
         with self.assertRaises(ValueError):
             dc.assign_roles(T, np.eye(4), bare, np.array([0.8, 1.3, 1.31, 2.0]))
 
+    def test_symmetrization_restores_the_rotation(self):
+        """§5.10 A1: a planted rotation-breaking perturbation of the vacuum moments is removed: doublet means vanish,
+        doublet blocks become (trace/2) I, cross terms with doublets vanish; singlet-singlet terms are kept."""
+        rng = np.random.default_rng(4)
+        C = np.diag([0.5, 0.5, 0.3, 0.2, 0.25, 0.25])
+        C[2, 3] = C[3, 2] = 0.05                               # charge-0 singlets may correlate
+        A = rng.normal(size=(6, 6)) * 1e-3
+        Cp = C + 0.5 * (A + A.T)
+        m = np.array([1e-3, -2e-3, 0.1, 0.02, 5e-4, 0.0])
+        ms, Cs, asym = dc.symmetrize(m, Cp, [(0, 1), (4, 5)], [(2,), (3,)])
+        self.assertEqual((ms[0], ms[1], ms[4], ms[5]), (0.0, 0.0, 0.0, 0.0))
+        self.assertAlmostEqual(ms[2], 0.1); self.assertAlmostEqual(Cs[2, 3], Cp[2, 3])
+        self.assertAlmostEqual(Cs[0, 0], Cs[1, 1]); self.assertEqual(Cs[0, 1], 0.0)
+        self.assertEqual(Cs[0, 4], 0.0); self.assertEqual(Cs[1, 2], 0.0)
+        self.assertGreater(asym, 0.0)
+        w = dc.dress(ms, Cs, np.eye(6))[2]
+        self.assertEqual([len(c) for c in dc.degenerate_clusters(w) if len(c) > 1], [2, 2])
+
     def test_chart_update_and_settling(self):
         u0 = np.arange(6.0); S = np.diag(np.arange(1.0, 7.0)); zb = np.full(6, 0.1); T = 2 * np.eye(6)
         u1, S1 = dc.chart_update(u0, S, zb, T)
@@ -140,6 +158,13 @@ def _m4():
         return out
     dc.assign_roles = f
     return lambda: setattr(dc, "assign_roles", orig)
+
+
+@mutant("the rotation symmetrization dropped (A1)")
+def _m5():
+    orig = dc.symmetrize
+    dc.symmetrize = lambda mean, C, doublets, singlets: (np.array(mean, float), np.array(C, float), 0.0)
+    return lambda: setattr(dc, "symmetrize", orig)
 
 
 def run():

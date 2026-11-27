@@ -47,14 +47,27 @@ pub struct PointResult {
 }
 
 pub fn solve_point(s: f64, t: f64, g2: f64, mq: usize, extra: usize, set: &SolveSettings) -> Result<PointResult, String> {
+    solve_point_chart(s, t, g2, mq, extra, set, None)
+}
+
+/// `solve_point` in a supplied (dressed) chart, flux-method §5.10: the Hamiltonian is unchanged, the trial space and
+/// the reference frame are the chart's, and the roles come from the chart file, not from ω_H.
+pub fn solve_point_chart(s: f64, t: f64, g2: f64, mq: usize, extra: usize, set: &SolveSettings,
+                         chart: Option<&crate::model::ChartFile>) -> Result<PointResult, String> {
     let t0 = Instant::now();
     if !(g2 > 0.0) {
         return Err("g^2 must be positive".into());
     }
-    let bg = Background::maurer_cartan(s, t, g2.sqrt())?;
+    let bg = match chart {
+        None => Background::maurer_cartan(s, t, g2.sqrt())?,
+        Some(c) => Background::dressed(s, t, g2.sqrt(), c.g0, c.m, c.w)?,
+    };
     let op = ConeOperator::exact(bg.clone(), mq, Mutation::None)?;
     let eigs = ritz::spectrum(&op, set);
-    let result = ritz::helike_and_competitor(&op, &eigs, ritz::helike_frequency(s, t))?;
+    let result = match chart {
+        None => ritz::helike_and_competitor(&op, &eigs, ritz::helike_frequency(s, t))?,
+        Some(c) => ritz::helike_and_competitor_modes(&op, &eigs, &[c.roles[0], c.roles[1]], c.roles[2])?,
+    };
     let fine = ConeOperator::new(bg.clone(), mq, extra + 2, Mutation::None)?;
     let hx = fine.apply(&eigs.vectors, Part::Full);
     let quadrature_cross_check = eigs

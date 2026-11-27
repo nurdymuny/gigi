@@ -113,6 +113,9 @@ enum Cmd {
         /// solves use exact Kronecker moments; the independent grid cross-check uses order (Mq + 2) + extra + 2 per axis
         #[arg(long, default_value_t = 4)]
         extra: usize,
+        /// flux-method §5.10: solve in this dressed chart (helike-lab/dressed-chart/v1) instead of the bare frame
+        #[arg(long)]
+        chart: Option<PathBuf>,
     },
     /// The two weak-coupling controls (s = 1.15, t = 3, g^2 = 0.004, 0.002) at one cutoff, with the frozen rule.
     ConeControls {
@@ -195,6 +198,12 @@ enum Cmd {
         mq: usize,
         #[arg(long)]
         states_out: PathBuf,
+        /// flux-method §5.10: solve in this dressed chart
+        #[arg(long)]
+        chart: Option<PathBuf>,
+        /// quasimode (the certificate path, w~ >= 0.95) or grid (the grid's identified states, w~ >= 0.9)
+        #[arg(long, default_value = "quasimode")]
+        selection: String,
     },
     /// M8: solve one point with exact moments and export every Ritz level (vectors, residuals, degenerate clusters with
     /// charges, dressed overlaps, identification). Writes `--levels-out`. Report-only data.
@@ -209,6 +218,9 @@ enum Cmd {
         mq: usize,
         #[arg(long)]
         levels_out: PathBuf,
+        /// flux-method §5.10: solve in this dressed chart
+        #[arg(long)]
+        chart: Option<PathBuf>,
     },
     /// M8: signed physical overlaps <Psi_a(A), Psi_b(B)> between every level of two cone-levels exports, on B's grid
     /// at the given quadrature order (A3.1). Report-only data.
@@ -317,9 +329,12 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
             let ts = roots::brent(|t| helike::phi(&Member::berger(t), Spectrum::S, *jmax), 2.68, 2.72, 1e-13, 200);
             (json!({"jmax": jmax, "bracket_A": [2.70, 2.76], "bracket_S": [2.68, 2.72]}), json!({"t_A": ta, "t_star": ts}))
         }
-        Cmd::Cone { s, t, g2, mq, extra } => {
-            let r = run::solve_point(*s, *t, *g2, *mq, *extra, &SolveSettings::default())?;
-            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "extra": extra, "solver": SolveSettings::default()}), serde_json::to_value(&r).unwrap())
+        Cmd::Cone { s, t, g2, mq, extra, chart } => {
+            let cf = chart.as_ref().map(|p| helike_quantum::model::ChartFile::read(p)).transpose()?;
+            let r = run::solve_point_chart(*s, *t, *g2, *mq, *extra, &SolveSettings::default(), cf.as_ref())?;
+            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "extra": extra, "solver": SolveSettings::default(),
+                    "chart": chart, "chart_sha256_lf": chart.as_ref().map(|p| helike_stream::text_sha256(p))}),
+             serde_json::to_value(&r).unwrap())
         }
         Cmd::ConeSupport { s, t, g2, mq, support_out } => {
             let r = helike_quantum::support::diagnose(*s, *t, *g2, *mq, &SolveSettings::default())?;
@@ -373,16 +388,24 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                     "registration": "docs/research/helike-heat-signal-registration-2026-11-26.md"}),
              serde_json::to_value(&r).unwrap())
         }
-        Cmd::ConeExport { s, t, g2, mq, states_out } => {
-            let e = helike_quantum::export::export_point(*s, *t, *g2, *mq, &SolveSettings::default())?;
+        Cmd::ConeExport { s, t, g2, mq, states_out, chart, selection } => {
+            let sel = match selection.as_str() {
+                "quasimode" => helike_quantum::export::Selection::Quasimode,
+                "grid" => helike_quantum::export::Selection::Grid,
+                o => return Err(format!("unknown selection {o:?}; use quasimode or grid")),
+            };
+            let cf = chart.as_ref().map(|p| helike_quantum::model::ChartFile::read(p)).transpose()?;
+            let e = helike_quantum::export::export_point_with(*s, *t, *g2, *mq, &SolveSettings::default(), cf.as_ref(), sel)?;
             std::fs::write(states_out, serde_json::to_string(&e).unwrap()).map_err(|x| x.to_string())?;
-            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "states_out": states_out}),
+            (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "states_out": states_out, "selection": selection,
+                    "chart": chart}),
              json!({"compressed_charges": e.compressed_charges, "pair_weights": e.pair_weights,
                     "competitor_weight": e.competitor_weight, "level_indices": e.level_indices,
                     "states_sha256_lf": helike_stream::text_sha256(states_out)}))
         }
-        Cmd::ConeLevels { s, t, g2, mq, levels_out } => {
-            let e = helike_quantum::export::export_levels(*s, *t, *g2, *mq, &SolveSettings::default())?;
+        Cmd::ConeLevels { s, t, g2, mq, levels_out, chart } => {
+            let cf = chart.as_ref().map(|p| helike_quantum::model::ChartFile::read(p)).transpose()?;
+            let e = helike_quantum::export::export_levels_chart(*s, *t, *g2, *mq, &SolveSettings::default(), cf.as_ref())?;
             std::fs::write(levels_out, serde_json::to_string(&e).unwrap()).map_err(|x| x.to_string())?;
             (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "levels_out": levels_out,
                     "registration": "docs/research/helike-M8-weighted-geometry-registration-2026-11-26.md"}),

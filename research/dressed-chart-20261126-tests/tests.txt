@@ -7,9 +7,11 @@ test_roles_by_overlap_under_permutation_and_rotation (test_helike_dressed_chart.
 Dressed modes permuted, rotated inside the doublet, and slightly perturbed: roles are recovered by overlap. ... ok
 test_shifted_and_deformed_gaussian_is_recovered (test_helike_dressed_chart.Dressing.test_shifted_and_deformed_gaussian_is_recovered)
 psi0 = exp(-1/2 (z-a)^T Omega (z-a)) with a sheared constant kinetic form G: the dressed centre is a, the ... ok
+test_symmetrization_restores_the_rotation (test_helike_dressed_chart.Dressing.test_symmetrization_restores_the_rotation)
+§5.10 A1: a planted rotation-breaking perturbation of the vacuum moments is removed: doublet means vanish, ... ok
 
 ----------------------------------------------------------------------
-Ran 5 tests in 0.045s
+Ran 6 tests in 0.038s
 
 OK
 exit 0

@@ -1,0 +1,12 @@
+test_bare_chart_file_reproduces_the_bare_solver_exactly (test_helike_dressed_point.Plumbing.test_bare_chart_file_reproduces_the_bare_solver_exactly) ... ok
+test_dressing_loop_settles_with_bare_roles (test_helike_dressed_point.Plumbing.test_dressing_loop_settles_with_bare_roles) ... ok
+test_both_selections_agree_where_both_apply (test_helike_dressed_point.Selection.test_both_selections_agree_where_both_apply) ... ok
+test_domain_gate_asks_for_the_grid_selection (test_helike_dressed_point.Selection.test_domain_gate_asks_for_the_grid_selection) ... ok
+test_grid_selection_accepts_what_the_grid_identified (test_helike_dressed_point.Selection.test_grid_selection_accepts_what_the_grid_identified)
+At s = 1.18, t = 3, g2 = 0.03, Mq = 6 the competitor has w~ = 0.916: the quasimode rule refuses, the grid ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 71.982s
+
+OK
+exit 0

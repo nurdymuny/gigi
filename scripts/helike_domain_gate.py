@@ -123,13 +123,25 @@ def verdict(rows):
     return lg.overall_cut([rows[n] for n in GATED])
 
 
-def domain_gate_point(s, t, g2, mq, workdir=None):
+# §5.10: the gate checks exactly the states the grid identified, under the grid's own rule (w~ >= 0.9). The
+# quasimode certificate's 0.95 selection stays in the certificate path.
+SELECTION = "grid"
+
+
+def export_args(s, t, g2, mq, export_path, chart=None):
+    args = ["cone-export", "--s", str(s), "--t", str(t), "--g2", str(g2), "--mq", str(mq),
+            "--states-out", str(export_path), "--selection", SELECTION]
+    if chart is not None:
+        args += ["--chart", str(chart)]
+    return args
+
+
+def domain_gate_point(s, t, g2, mq, workdir=None, chart=None):
     with tempfile.TemporaryDirectory() as tmp:
         d = Path(workdir) if workdir else Path(tmp)
         d.mkdir(parents=True, exist_ok=True)
         export_path = d / "export.json"
-        exp = run_helike(["cone-export", "--s", str(s), "--t", str(t), "--g2", str(g2), "--mq", str(mq),
-                          "--states-out", str(export_path)], d / "export-receipt.json")
+        exp = run_helike(export_args(s, t, g2, mq, export_path, chart), d / "export-receipt.json")
         x = load_export(export_path)
         states_path = d / "states.json"
         states_path.write_text(json.dumps(states_document(export_path, x)) + "\n")

@@ -1,0 +1,80 @@
+{
+ "all_caught": true,
+ "mutants": [
+  {
+   "name": "relax_convergence_tol",
+   "caught_by_assertion": true,
+   "log": "test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... FAIL\n\n======================================================================\nFAIL: test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 41, in test_frozen_design_is_the_registration_with_the_amended_ladder\n    self.assertEqual(grid.DESIGN[key], old.DESIGN[key], key)\nAssertionError: 0.004 != 0.003 : convergence_tol\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "relax_weight_min",
+   "caught_by_assertion": true,
+   "log": "test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... FAIL\n\n======================================================================\nFAIL: test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 41, in test_frozen_design_is_the_registration_with_the_amended_ladder\n    self.assertEqual(grid.DESIGN[key], old.DESIGN[key], key)\nAssertionError: 0.85 != 0.9 : weight_min\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "relax_s_tolerance",
+   "caught_by_assertion": true,
+   "log": "test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... FAIL\n\n======================================================================\nFAIL: test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 41, in test_frozen_design_is_the_registration_with_the_amended_ladder\n    self.assertEqual(grid.DESIGN[key], old.DESIGN[key], key)\nAssertionError: 0.03 != 0.015 : s_tolerance\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "drop_domain_gate",
+   "caught_by_assertion": true,
+   "log": "test_domain_gate_must_pass (test_helike_flux_grid.Point.test_domain_gate_must_pass) ... FAIL\n\n======================================================================\nFAIL: test_domain_gate_must_pass (test_helike_flux_grid.Point.test_domain_gate_must_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 59, in test_domain_gate_must_pass\n    self.assertFalse(grid.assess_point(point(1.18, 0.002, domain=g), grid.DESIGN)[\"converged\"])\nAssertionError: True is not false\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "any_point_suffices",
+   "caught_by_assertion": true,
+   "log": "test_unresolved_if_any_point_fails (test_helike_flux_grid.Case.test_unresolved_if_any_point_fails) ... FAIL\n\n======================================================================\nFAIL: test_unresolved_if_any_point_fails (test_helike_flux_grid.Case.test_unresolved_if_any_point_fails)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 93, in test_unresolved_if_any_point_fails\n    self.assertEqual(grid.assess_case(c, grid.DESIGN)[\"status\"], \"UNRESOLVED\")\nAssertionError: 'SUPPORTED' != 'UNRESOLVED'\n- SUPPORTED\n+ UNRESOLVED\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "gate_always_passes",
+   "caught_by_assertion": true,
+   "log": "test_domain_gate_passes_the_stage_verdict_through (test_helike_flux_grid.Release.test_domain_gate_passes_the_stage_verdict_through) ... FAIL\n\n======================================================================\nFAIL: test_domain_gate_passes_the_stage_verdict_through (test_helike_flux_grid.Release.test_domain_gate_passes_the_stage_verdict_through)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 184, in test_domain_gate_passes_the_stage_verdict_through\n    self.assertEqual(grid.domain_gate(1.15, 3.0, 0.05, 10)[0], v)\nAssertionError: 'PASS' != 'FAIL'\n- PASS\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "refusal_becomes_pass",
+   "caught_by_assertion": true,
+   "log": "test_domain_gate_passes_the_stage_verdict_through (test_helike_flux_grid.Release.test_domain_gate_passes_the_stage_verdict_through) ... FAIL\n\n======================================================================\nFAIL: test_domain_gate_passes_the_stage_verdict_through (test_helike_flux_grid.Release.test_domain_gate_passes_the_stage_verdict_through)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 188, in test_domain_gate_passes_the_stage_verdict_through\n    self.assertEqual(grid.domain_gate(1.15, 3.0, 0.05, 10)[0], \"OPEN\")\nAssertionError: 'PASS' != 'OPEN'\n- PASS\n+ OPEN\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "no_explicit_flag",
+   "caught_by_assertion": true,
+   "log": "test_the_grid_needs_an_explicit_flag (test_helike_flux_grid.Release.test_the_grid_needs_an_explicit_flag)\nNever reaches the real solver: solve and the domain gate are stubs that record whether the grid started. ... UNRESOLVED\nFAIL\n\n======================================================================\nFAIL: test_the_grid_needs_an_explicit_flag (test_helike_flux_grid.Release.test_the_grid_needs_an_explicit_flag)\nNever reaches the real solver: solve and the domain gate are stubs that record whether the grid started.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 210, in test_the_grid_needs_an_explicit_flag\n    self.assertEqual(code, 2)\nAssertionError: 0 != 2\n\n----------------------------------------------------------------------\nRan 1 test in 0.202s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "bare_weight_identification",
+   "caught_by_assertion": true,
+   "log": "test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold (test_helike_flux_grid.Dressed.test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold) ... FAIL\n\n======================================================================\nFAIL: test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold (test_helike_flux_grid.Dressed.test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 165, in test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold\n    self.assertTrue(grid.assess_point(p, grid.DESIGN)[\"identified\"])     # bare 0.836 / 0.818, dressed 0.95 / 0.93\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "competitor_not_gated",
+   "caught_by_assertion": true,
+   "log": "test_verdict_aggregation (test_helike_flux_grid.DomainStage.test_verdict_aggregation) ... FAIL\n\n======================================================================\nFAIL: test_verdict_aggregation (test_helike_flux_grid.DomainStage.test_verdict_aggregation)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 332, in test_verdict_aggregation\n    self.assertEqual(dg.verdict(rows), \"FAIL\")\nAssertionError: 'PASS' != 'FAIL'\n- PASS\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "relative_gate_decisive",
+   "caught_by_assertion": true,
+   "log": "test_relative_ratio_never_decides (test_helike_flux_grid.CutGate.test_relative_ratio_never_decides) ... FAIL\n\n======================================================================\nFAIL: test_relative_ratio_never_decides (test_helike_flux_grid.CutGate.test_relative_ratio_never_decides)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 280, in test_relative_ratio_never_decides\n    self.assertEqual(s[\"cut_gate\"], \"PASS\"); self.assertTrue(s[\"state_passed\"])\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'FAIL' != 'PASS'\n- FAIL\n+ PASS\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "tail_term_dropped",
+   "caught_by_assertion": true,
+   "log": "test_tail_term_counts (test_helike_flux_grid.CutGate.test_tail_term_counts) ... FAIL\n\n======================================================================\nFAIL: test_tail_term_counts (test_helike_flux_grid.CutGate.test_tail_term_counts)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 267, in test_tail_term_counts\n    self.assertEqual(s[\"cut_gate\"], \"FAIL\")\nAssertionError: 'PASS' != 'FAIL'\n- PASS\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "open_read_as_pass_state",
+   "caught_by_assertion": true,
+   "log": "test_unresolved_enclosure_is_open_never_pass (test_helike_flux_grid.CutGate.test_unresolved_enclosure_is_open_never_pass) ... FAIL\n\n======================================================================\nFAIL: test_unresolved_enclosure_is_open_never_pass (test_helike_flux_grid.CutGate.test_unresolved_enclosure_is_open_never_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 291, in test_unresolved_enclosure_is_open_never_pass\n    self.assertEqual(s[\"cut_gate\"], \"OPEN\"); self.assertFalse(s[\"state_passed\"])\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 'PASS' != 'OPEN'\n- PASS\n+ OPEN\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "open_read_as_pass_point",
+   "caught_by_assertion": true,
+   "log": "test_unresolved_enclosure_is_open_never_pass (test_helike_flux_grid.CutGate.test_unresolved_enclosure_is_open_never_pass) ... FAIL\n\n======================================================================\nFAIL: test_unresolved_enclosure_is_open_never_pass (test_helike_flux_grid.CutGate.test_unresolved_enclosure_is_open_never_pass)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 292, in test_unresolved_enclosure_is_open_never_pass\n    self.assertEqual(lg.overall_cut([s, s, s]), \"OPEN\")\nAssertionError: 'PASS' != 'OPEN'\n- PASS\n+ OPEN\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  },
+  {
+   "name": "threshold_full_tolerance",
+   "caught_by_assertion": true,
+   "log": "test_threshold_is_a_tenth_of_the_gap_tolerance (test_helike_flux_grid.CutGate.test_threshold_is_a_tenth_of_the_gap_tolerance) ... FAIL\n\n======================================================================\nFAIL: test_threshold_is_a_tenth_of_the_gap_tolerance (test_helike_flux_grid.CutGate.test_threshold_is_a_tenth_of_the_gap_tolerance)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/Users/bdavis/.claude/jobs/c8f0f39d/tmp/hqwork/scripts/test_helike_flux_grid.py\", line 273, in test_threshold_is_a_tenth_of_the_gap_tolerance\n    self.assertEqual(self.state(F(1, 10**3), 0, 1, 1)[\"cut_gate\"], \"FAIL\")\nAssertionError: 'PASS' != 'FAIL'\n- PASS\n+ FAIL\n\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nFAILED (failures=1)\n"
+  }
+ ]
+}

@@ -323,6 +323,16 @@ impl Background {
         Ok(Background { model, g0, m: matmul6(&sq, &o), w, grad_norm })
     }
 
+    /// Flux-method §5.10: the model on the Maurer–Cartan line, with a supplied (dressed) chart instead of the bare
+    /// normal frame. The Hamiltonian is unchanged; only the trial space moves.
+    pub fn dressed(s: f64, t: f64, g: f64, g0: M3, m: M6, w: [f64; 6]) -> Result<Self, String> {
+        let bare = Self::maurer_cartan(s, t, g)?;
+        if w.iter().any(|&v| !(v > 0.0 && v.is_finite())) {
+            return Err("dressed widths must be positive and finite".into());
+        }
+        Ok(Self::from_parts(bare.model, g0, m, w))
+    }
+
     /// A background given in full (for parity runs that reuse another implementation's frame).
     pub fn from_parts(model: Model, g0: M3, m: M6, w: [f64; 6]) -> Self {
         let (grad, _) = model.gradient_hessian(&gram_entries(&g0));
@@ -388,5 +398,58 @@ mod tests {
         assert!(b.grad_norm < 1e-9, "{}", b.grad_norm);
         let wh = (2.0 * s * (1.0 + 2.0 / t - s)).sqrt();
         assert_eq!(b.w.iter().filter(|&&w| (w - wh).abs() < 1e-6).count(), 2);
+    }
+}
+
+/// A dressed chart file (flux-method §5.10): schema "helike-lab/dressed-chart/v1", with bit patterns for G0 (3x3),
+/// M (6x6) and w (6), and the role map [h1, h2, c, x, s1, s2] as chart-mode indices.
+pub struct ChartFile {
+    pub g0: M3,
+    pub m: M6,
+    pub w: [f64; 6],
+    pub roles: [usize; 6],
+}
+
+impl ChartFile {
+    pub fn read(path: &std::path::Path) -> Result<Self, String> {
+        let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
+        if v["schema"] != "helike-lab/dressed-chart/v1" {
+            return Err("not a dressed-chart file".into());
+        }
+        let bits = |k: &str, n: usize| -> Result<Vec<f64>, String> {
+            let a = v[k].as_array().ok_or(format!("missing {k}"))?;
+            if a.len() != n {
+                return Err(format!("{k} must have {n} entries"));
+            }
+            a.iter().map(|x| x.as_u64().map(f64::from_bits).ok_or(format!("{k}: expected u64 bits"))).collect()
+        };
+        let (g, m, w) = (bits("G0", 9)?, bits("M", 36)?, bits("w", 6)?);
+        let r = v["roles"].as_array().ok_or("missing roles")?;
+        if r.len() != 6 {
+            return Err("roles must list [h1, h2, c, x, s1, s2]".into());
+        }
+        let mut roles = [0usize; 6];
+        for (i, x) in r.iter().enumerate() {
+            roles[i] = x.as_u64().ok_or("roles: expected integers")? as usize;
+        }
+        let mut sorted = roles;
+        sorted.sort();
+        if sorted != [0, 1, 2, 3, 4, 5] {
+            return Err("roles must be a permutation of the six chart modes".into());
+        }
+        let mut g0 = [[0.0; 3]; 3];
+        let mut mm = [[0.0; 6]; 6];
+        for i in 0..3 {
+            for j in 0..3 {
+                g0[i][j] = g[i * 3 + j];
+            }
+        }
+        for i in 0..6 {
+            for j in 0..6 {
+                mm[i][j] = m[i * 6 + j];
+            }
+        }
+        Ok(ChartFile { g0, m: mm, w: w.try_into().unwrap(), roles })
     }
 }

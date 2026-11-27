@@ -41,7 +41,8 @@ def main():
          Dressed, "test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold"),
     ]:
         src = textwrap.dedent(inspect.getsource(getattr(grid, func)))
-        assert src.count(old) == 1, name
+        # a refusal mutant must turn EVERY refusal branch into a pass (the stderr-preserving branch added a second one)
+        assert src.count(old) == 1 or (name == "refusal_becomes_pass" and src.count(old) >= 1), name
         original = getattr(grid, func)
         exec(src.replace(old, new), grid.__dict__)          # live namespace: the tests' stubs apply to the mutant
         try:

@@ -418,6 +418,17 @@ pub fn helike_and_competitor(op: &ConeOperator, eigs: &Eigs, wh: f64) -> Result<
         return Err("ambiguous harmonic reference channel".into());
     }
     let comp = *single.iter().min_by(|&&a, &&b| w[a].partial_cmp(&w[b]).unwrap()).unwrap();
+    helike_and_competitor_modes(op, eigs, &hel, comp)
+}
+
+/// The identification with the Helike doublet and the competitor mode given explicitly (flux-method §5.10: in a
+/// dressed chart the roles come from overlap with the bare modes, never from a frequency). `helike_and_competitor`
+/// is this function with the roles found from ω_H, so the bare path is unchanged.
+pub fn helike_and_competitor_modes(op: &ConeOperator, eigs: &Eigs, hel: &[usize], comp: usize) -> Result<HelikeCompetitor, String> {
+    if hel.len() != 2 || hel.contains(&comp) || hel.iter().chain([&comp]).any(|&m| m >= 6) || eigs.values.len() < 2 {
+        return Err("ambiguous harmonic reference channel".into());
+    }
+    let hel: Vec<usize> = hel.to_vec();
     let k = eigs.vectors.len();
     // The overlap integrand is not polynomial in the chart, so Gauss–Hermite order must be raised until consecutive
     // orders agree to the frozen tolerance 1e-6. The orders (10, 12) resolve the g² = 0.002 / 0.004 controls; the

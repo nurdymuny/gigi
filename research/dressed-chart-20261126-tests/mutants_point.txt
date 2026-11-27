@@ -1,0 +1,2 @@
+CAUGHT  the export's 0.95 rule restored in the domain gate
+1/1 mutants caught

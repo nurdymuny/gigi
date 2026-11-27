@@ -2,4 +2,5 @@ CAUGHT  the dressed centre dropped
 CAUGHT  the dressed widths dropped (bare widths kept)
 CAUGHT  the kinetic whitening dropped
 CAUGHT  roles assigned by frequency order
-4/4 mutants caught
+CAUGHT  the rotation symmetrization dropped (A1)
+5/5 mutants caught

@@ -1,0 +1,72 @@
+% s7: the room grows (point 5, first half). ASCII only.
+\section*{7. The room grows}
+
+\spine{5} The infinite world is the last room. The radius $R$ belongs to the base of the bundle. Over each $R$ sits the
+whole quantum theory in that room, with its carriers and its gap $\Delta(R)$, the lowest energy above the vacuum over the
+entire physical Hilbert space (every charge, every parity). Moving along $R$ is the renormalization group: the coupling
+$g^2(R)$ grows with the room, as asymptotic freedom says.
+
+\textbf{Dimensional transmutation.} Pure Yang--Mills has no mass in its Lagrangian. The running manufactures one: holding
+the theory fixed while the cutoff is removed defines a scale $\Lambda$ (from the coefficients $b_0=22/3$, $b_1=136/3$).
+After that only $R$ and $\Lambda$ remain, so any mass is a pure number times $\Lambda$.
+
+\begin{claim}{PROVED}{The scaling reduction}\label{b:scaling}
+Given that each continuum room exists, $H_R\cong R^{-1}\mathcal K(x)$ for a one-parameter family $\mathcal K(x)$ on the
+unit sphere, $x=R\Lambda$. With $\delta(x)=R\,\Delta(R)$ the gap of $\mathcal K(x)$, $\Delta(R)/\Lambda=\delta(x)/x$, and
+the mass gap problem becomes one statement: $\inf_{x>0}\delta(x)/x>0$.
+\evidence{Exact dimensional analysis; the existence of each room is H4$'$ (\S8)~\cite{ClosedSet}.}
+\lines{20, 23}
+\end{claim}
+
+So the gap is a \emph{section} over the half-line $x\in(0,\infty)$, a choice of one number over each room, and the
+infrared problem is that it never touches zero. A section stays off zero when three things hold.
+\emph{(1) Continuity along the base.} A change of carrier between different charges is an exact crossing
+(Box~\ref{b:cross}), and the minimum of continuous level curves is continuous, so a switch never breaks the section; it
+only changes who carries it. \emph{(2) No zero in any room:} a discrete spectrum and a single vacuum give $\delta(x)>0$.
+With (1), compactness gives a positive minimum on every bounded stretch.
+
+\begin{claim}{CONJECTURE}{Continuity and positivity on every compact stretch}\label{b:compact}
+For every $0<x_0<X$, $\min_{[x_0,X]}\delta(x)/x>0$. Sub-conjectures: (i) compact resolvent and a unique ground state
+survive the ultraviolet limit in each room; (ii) $\mathcal K(x)$ is norm-resolvent continuous in $x$~\cite{Kato}.
+\evidence{Both hold for every lattice regularization (positivity-improving transfer matrix~\cite{OsterwalderSeiler78})
+and for the slow sector by Theorem A; the divergence to remove is the one matched in \S6.}
+\lines{20, 17, 19}
+\end{claim}
+
+\emph{(3) Control at both ends.} As $x\to0$, $g^2(R)=8\pi^2/(b_0\log(1/x))\to0$, the low spectrum is the reduced model
+dressed, and $\delta(x)=\delta_0+O(g^2)$ with $\delta_0>0$: tiny rooms are enormously gapped in units of $\Lambda$.
+
+\begin{claim}{CONDITIONAL}{The small-room end}\label{b:smallend}
+$\delta(x)/x\to\infty$ as $x\to0$. The sector realizing $\delta$ there is the charge-0 scalar carrier (H8), but only
+$\delta_0>0$ is used, so this end does not wait on the kinetic term.
+\evidence{Conditional on H2 (Box~\ref{b:m3}) in a strengthened form (bounds on the high block and the off-diagonal block);
+the small-volume picture of~\cite{Luscher83,KollerVanBaal88,vanBaal00} moved to the sphere.}
+\lines{16, 18, 20}
+\end{claim}
+
+The large end is the wall. Strong coupling is not it (\S3): every room's continuum limit sends the bare coupling to zero.
+What the large end needs is a \emph{finite-size criterion}, the statistical-mechanics idea that mixing checked at one
+finite scale forces it at every scale~\cite{DobrushinShlosman85,MartinelliOlivieri94}.
+
+\begin{claim}{CONJECTURE}{The large-room end: one-scale mixing (MS)}\label{b:ms}
+There are a physical scale $\rho_*$, an integer $L$ and $\alpha<1$ such that, in a 4-cube of side $L\rho_*$ tiled by
+blocks of side $\rho_*$, the total influence of the boundary blocks on smoothed gauge-invariant observables of the central
+block is at most $\alpha$, uniformly in boundary condition and cutoff. Then correlations decay at rate
+$\log(1/\alpha)/(L\rho_*)$ and $\liminf_{x\to\infty}\delta(x)/x>0$.
+\evidence{Proved for lattice spin systems~\cite{DobrushinShlosman85,MartinelliOlivieri94} and lattice Yang--Mills at
+strong coupling~\cite{ShenZhuZhu23}; no version for gauge fields uniform in the spacing is known to me.}
+\lines{20}
+\end{claim}
+
+\begin{claim}{CONJECTURE}{H3 (M2): the gap in the field's own scale}\label{b:h3}
+There is $c>0$, depending only on the group and on $t\ne1$, with $\Delta(R)/\Lambda\ge c$ for every $R$. The gap is over
+the whole physical Hilbert space, so each room's vacuum is simple. Route: Boxes~\ref{b:scaling}--\ref{b:ms}.
+\evidence{Lattice spectroscopy shows a gap that is a fixed multiple of $\Lambda$~\cite{MorningstarPeardon99}; step
+scaling tracks the running across volumes~\cite{LWW91}. This is the infrared half of the problem~\cite{JaffeWitten}.}
+\lines{20}
+\end{claim}
+
+Every room can be gapped and the theory still massless: if $\delta(x)\sim x^p$ with $p<1$, then $R\Delta(R)\to\infty$
+while $\Delta/\Lambda\to0$, which only the ratio to $\Lambda$ sees. In GIGI I can follow the section room by
+room, a switch showing as an exact crossing: evidence, in the spirit of step scaling~\cite{LWW91}, not proof. The rooms, as they grow, must finally become all of
+space.

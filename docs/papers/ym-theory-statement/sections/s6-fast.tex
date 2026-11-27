@@ -1,0 +1,81 @@
+% s6: the fast modes dress; they do not erase (point 4 of the theory). ASCII only.
+\section*{6. The fast modes dress; they do not erase}
+
+\spine{4} The fine grain cannot erase the note. A field on the sphere has infinitely many modes finer than the room. My
+answer to what they do to the slow note is that they dress it: at leading order their whole effect is one thing everybody
+already knows, the running of the coupling~\cite{GrossWilczek73,Politzer73}.
+
+\textbf{The scale fibration.} $S^3_t$ is itself a group, so fields on it sort by how they transform under left
+translations (Peter--Weyl): sectors $j=0,1,2,\dots$, sector $j$ with multiplicity $j+1$. Sector $j=0$ is exactly the
+homogeneous fields. So the configuration space is a fibration: a slow \emph{base} (the nine numbers $q$ modulo colour)
+and over each point a \emph{fibre} of fast modes, $j\ge1$.
+
+\begin{claim}{PROVED}{The slow base is exactly the reduced model}\label{b:pw}
+The Yang--Mills Hamiltonian on $S^3_t$ splits into the slow sector $j=0$, which is exactly $H_{\rm red}$ (with
+$\mu_{\rm YM}=4\omega^2_{\rm red}$ and $F=2gq$), plus fast sectors $j\ge1$. A single fast quantum carries left spin at
+least $\tfrac12$, so it cannot mix singly into the invariant slow levels.
+\evidence{Representation theory on $S^3=SU(2)$; the unit map checked to $2\times10^{-8}$~\cite{HelikeReport,ClosedSet}.}
+\lines{13}
+\end{claim}
+
+On the round sphere van Baal and van den Heuvel keep eighteen degenerate slow modes, left- and
+right-invariant~\cite{vanBaalvandenHeuvel94,vanBaal00}; I put the right-invariant ones in the fibre and stretch the
+sphere ($t\ne1$). My split rests not on a frequency gap but on the coupling: every slow--fast coupling carries a factor
+$g$, through $F=2gq$. That is unconventional, and H2 below must justify it.
+
+\textbf{Born--Oppenheimer.} Freeze the slow variables at $q$. The fast modes form a harmonic system with ground state
+$\Omega(q)$ and zero-point energy $E_0(q)=\tfrac12\sum\omega_n(q)$, as electrons do around frozen nuclei. $\Omega$ is
+real, so its Berry connection is flat, and the fast modes act on the slow wavefunctions through the potential
+$\tfrac12E_0(2gq)$ plus terms of order $g^2$. The sum diverges, and the regulator must be a function of the spectrum,
+never of the sector label: gauge invariance forces a fast shift of exactly $-2$ between the two vacua at $t=1$; a
+sector cutoff gives $-8.67$, a heat trace $-1.99999997$.
+
+\begin{claim}{COMPUTED}{The dressing's divergence is asymptotic freedom}\label{b:b0}
+$E_0=-\dfrac{b_0}{8\pi^2}\log(\Lambda_{\rm cut}R)\,S_{\rm cl}+E_0^{\rm fin}$ with $b_0=22/3$, the one-loop coefficient
+of $SU(2)$: the ratio is $1.0000\pm10^{-4}$ at every point sampled on the Maurer--Cartan line, at the sphaleron and off
+it. The divergence is absorbed by running $1/g^2$; nothing is tuned.
+\evidence{Heat trace on the Berger slice spectrum~\cite{HelikeReport}; the coefficient of~\cite{GrossWilczek73,Politzer73}.
+Computed, not proved; my first pass had the sign wrong, corrected in the register~\cite{ClosedSet}.}
+\lines{14}
+\end{claim}
+
+This is the place I find most beautiful: at leading order the infinitely many fast modes only rename the coupling. The
+fine grain cannot reach the note except through the one number that runs.
+
+What is left, $E_0^{\rm fin}$, moves the slow frequencies: $\delta\omega_k=g^2u_k\cdot\nabla^2E_0^{\rm fin}\cdot
+u_k/\omega_k$ for a slow mode $u_k$.
+
+\begin{claim}{COMPUTED}{The potential part of the dressing widens Helike's lead}\label{b:widen}
+At the controls and $g^2=0.002$ the harmonic separation $0.0165$ between Helike and the competitor becomes $0.0191$ (range
+$0.0183$--$0.0200$ over regulator windows); at $g^2=0.004$, $0.0216$. This is the potential part of the $O(g^2)$ shift
+only.
+\evidence{Curvatures of $E_0^{\rm fin}$ along the two modes, $8.89$ and $10.42$, converged to four
+digits~\cite{HelikeReport,ClosedSet}.}
+\lines{15}
+\end{claim}
+
+\begin{claim}{OPEN}{The kinetic correction at the same order}\label{b:kinetic}
+A second $O(g^2)$ correction is not computed: the non-adiabatic mass of the fast modes dragged by the slow motion (which
+screens) plus the Coulomb term of the fast Gauss law (which anti-screens), entering as $-m^{\rm ren}_{u_ku_k}\omega_k$.
+Until it is computed, the sign of the $O(g^2)$ change in the separation is open, and so is H8 (Box~\ref{b:h8}): this one
+term decides both.
+\evidence{Identified by the referee pass; recorded as the correction to line 15~\cite{ClosedSet}.}
+\lines{15, 16}
+\end{claim}
+
+\begin{claim}{CONJECTURE}{H2 (M3): uniform dressing at small $R$}\label{b:m3}
+At $s=1$, on a chart around $q=0$, for $t\ne1$ and small $g(R)$: the levels of the full Hamiltonian (gauge-invariant
+spectral cutoff $\Lambda_{\rm cut}$, bare coupling run as above) in a low window converge as $\Lambda_{\rm cut}\to\infty$
+and lie within $C\,g^2(R)/R$ of the reduced model's, uniformly in $\Lambda_{\rm cut}$.
+\evidence{Proved pieces: the split, the flat Berry connection, the selection rule. Computed: $b_0$. Templates:
+L\"uscher~\cite{Luscher83}, Koller--van Baal~\cite{KollerVanBaal88}, van Baal on $S^3$~\cite{vanBaal00}; rigorous
+Born--Oppenheimer for finitely many fast modes with a gap~\cite{Teufel03}.}
+\lines{16}
+\end{claim}
+
+The route I see is Ba{\l}aban's multiscale method~\cite{Balaban} in Hamiltonian form: integrate the fast modes in
+spectral shells; by asymptotic freedom shell $m$ has coupling $g_m=g(2^{-m}R)\le g(R)$, and if each contributes at most
+$Kg_m^22^{-m}/R$ after the running of $1/g^2$ (and of a speed of light $c_0$) is subtracted, the sum is geometric and at
+most $Kg^2(R)/R$. The first step is kinetic consistency, that electric and magnetic couplings run alike, which is
+Khriplovich's Coulomb-gauge decomposition of $b_0$~\cite{Khriplovich69} and the same term as Box~\ref{b:kinetic}. Granting H2, the carriers of \S5
+are the carriers of the small room, up to $g^2(R)$. But a small room is not the world; the room must now grow.

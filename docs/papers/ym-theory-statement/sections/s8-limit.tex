@@ -1,0 +1,82 @@
+% s8: from the rooms to all of space (point 5, second half). ASCII only.
+\section*{8. From the rooms to all of space}
+
+The usual road builds the theory in a box, argues the box away, and lets it grow. I start from spheres and stay on spheres: the theory on $\mathbb R^4$ is \emph{defined} as
+the $R\to\infty$ end of the continuum theories on $S^3_R\times\mathbb R$. Every ball of fixed size in a sphere of radius
+$R$ becomes flat as $R$ grows, so correlations on compact regions have somewhere to converge, and the box-versus-sphere
+matching problem disappears. In my register this is a merge: the old ``one geometry'' line 29 is folded into line 23,
+and two hypotheses become one, H4$'$~\cite{ClosedSet}. Clay asks for no box, only a theory on $\mathbb R^4$ with the
+Osterwalder--Schrader properties~\cite{JaffeWitten}.
+
+Inside each room the fine grain must still be removed. The templates are Ba{\l}aban's block-spin renormalization
+group~\cite{Balaban} and the construction of Magnen, Rivasseau and S\'en\'eor~\cite{MRS93}.
+
+\begin{claim}{PROVED (CITED)}{The ultraviolet limit in a finite box (partial)}\label{b:box}
+Four-dimensional lattice Yang--Mills in a finite box is ultraviolet stable uniformly in the spacing, and the $SU(2)$
+Schwinger functions exist with the ultraviolet cutoff removed at fixed infrared cutoff.
+\evidence{\cite{Balaban,MRS93}. Neither removes the infrared cutoff or proves a gap; on my geometry they are templates
+for the sphere, not results on it.}
+\lines{21}
+\end{claim}
+
+\begin{claim}{PROVED}{Reflection positivity survives limits}\label{b:rplimit}
+$\langle\overline{\Theta F}\,F\rangle\ge0$ for observables $F$ on one side of a reflection is a closed condition, so it
+holds in every limit of reflection-positive measures in which these expectations converge.
+\evidence{A limit of nonnegative numbers is nonnegative~\cite{GlimmJaffe}; the lattice input is Box~\ref{b:rp}. For flowed
+observables, which are not strictly local, an approximation lemma is needed, which I place inside H4$'$.}
+\lines{22, 2}
+\end{claim}
+
+Two features are new on the sphere. Nothing mixes time with space on $S^3\times\mathbb R$, so $\mathrm{tr}\,F_{0i}^2$
+and $\mathrm{tr}\,F_{ij}^2$ renormalize separately and the limit tunes \emph{two} bare parameters, the coupling $g_0$ and a
+speed of light $c_0$. And bare Wilson loops diverge with their perimeter in four dimensions, so I measure observables
+smoothed by the gradient flow, finite to all orders~\cite{Luscher10,LuscherWeisz11}.
+
+\begin{claim}{CONJECTURE}{H4$'$: the sphere family (line 23, with line 29 merged)}\label{b:h4}
+For every $R$ the ultraviolet limit exists on $S^3_R\times\mathbb R$, with the cutoff of H2 removed, $(g_0,c_0)$ tuned,
+and Osterwalder--Schrader regularity bounds. As $R\to\infty$ the flowed correlation functions converge on compact regions
+to an $\mathbb R^4$ theory with full Euclidean invariance. With Box~\ref{b:rplimit} the OS axioms hold, and reconstruction
+gives a relativistic (Wightman) quantum theory~\cite{OS73,OS75,GlimmJaffe}.
+\evidence{No construction on $S^3\times\mathbb R$ exists. Support: the box results~\cite{Balaban,MRS93}; the sphere's
+divergence is exactly $b_0$ (Box~\ref{b:b0}); flowed observables are finite~\cite{Luscher10,LuscherWeisz11}; the
+flat-limit derivative is a flowed stress-tensor insertion~\cite{Suzuki13}.}
+\lines{23, 29}
+\end{claim}
+
+\textbf{The gap survives the limit.} For the gap, the step from rooms to space is one clean lemma. By the spectral
+theorem the truncated correlation $\langle A;e^{-\tau H}A\rangle$ is $\int e^{-\tau E}d\nu_A(E)$ for a positive measure on
+the energies above the vacuum.
+
+\begin{claim}{PROVED}{The spectral lemma}\label{b:lemma}
+If $\langle A;e^{-\tau H}A\rangle\le C_Ae^{-m\tau}$ for all $\tau>0$ and all $A$ in a set whose vectors are dense, then
+$\mathrm{spec}\,H\cap(0,m)=\emptyset$.
+\evidence{Weight of $\nu_A$ on $[0,m)$ would decay more slowly than $e^{-m\tau}$; density does the rest~\cite{ReedSimonIV}.}
+\lines{28}
+\end{claim}
+
+\begin{claim}{CONDITIONAL}{The gap reaches $\mathbb R^4$, with exponential clustering}\label{b:deduce}
+In each room the bound holds with rate $\Delta(R)\ge c\Lambda$ (H3), and $C_A\le\|A\|_\infty^2$ for bounded flowed
+observables. The bound survives the convergence of H4$'$, so on $\mathbb R^4$ truncated correlations cluster at rate
+$c\Lambda$ (the OS clustering axiom, in its strong form) and $\mathrm{spec}\,H\cap(0,c\Lambda)=\emptyset$.
+\evidence{On H3 and H4$'$. The pass to the limit runs along the sphere family and uses only the sphere-side gap, never
+the flat-space result it is proving.}
+\lines{28, 20, 23}
+\end{claim}
+
+\begin{claim}{CONDITIONAL}{A unique vacuum}\label{b:vacuum}
+The $\mathbb R^4$ vacuum is unique: the spectral measure of every truncated state has no atom at zero.
+\evidence{It follows from the hypothesis of the lemma, $\nu_A(\{0\})=0$, not from its conclusion; in the reduced model it
+holds by Perron--Frobenius~\cite{GlimmJaffe,ReedSimonIV}. So it is conditional on exactly what Box~\ref{b:deduce} is.}
+\lines{27, 28}
+\end{claim}
+
+\textbf{An idea for the time--space residue.} Round $S^3\times\mathbb R$ is conformally $\mathbb R^4$ minus a point,
+and classical Yang--Mills is conformal; the quantum breaking is the trace anomaly, $\propto b_0\,g^2\,\mathrm{tr}\,F^2$
+\cite{CDJ77}, whose size is the $b_0$ I matched in \S6.
+
+My conjecture, an idea rather than an argument, is that the separate tuning of $c_0$ is controlled entirely by this
+anomaly, so full Euclidean invariance at $R\to\infty$ follows from the conformal map and the matched $b_0$ (cleanest at
+$t=1$; $S^3_t$ is not conformally flat, though every fixed ball still flattens).
+
+If H3 and H4$'$ hold, the limit is a relativistic quantum theory on $\mathbb R^4$ with one vacuum and nothing between it
+and $c\Lambda$. That is existence and a gap. The Clay statement also asks what the theory contains.

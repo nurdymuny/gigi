@@ -1,0 +1,95 @@
+% s4: the small room. ASCII only.
+\section*{4. The small room}
+
+Asymptotic freedom makes small rooms weakly coupled: on a space of size $R$ the effective coupling $g^2(R)$ goes to zero
+as $R$ shrinks~\cite{GrossWilczek73,Politzer73}. So a small closed space is where the field can be solved, the finite-volume programme of L\"uscher on the torus~\cite{Luscher83}, of Koller and
+van Baal~\cite{KollerVanBaal88}, and of van Baal and van den Heuvel on the three-sphere~\cite{vanBaalvandenHeuvel94,vanBaal00}.
+
+\textbf{The room and its slowest modes.} The three-sphere is the group $SU(2)$, with three left-invariant directions
+$\sigma^1,\sigma^2,\sigma^3$. The Berger sphere $S^3_t$ has metric $t(\sigma^1)^2+(\sigma^2)^2+(\sigma^3)^2$: round at
+$t=1$, stretched along the circles of $\sigma^1$ otherwise; my controls use $t=3$. Stretching leaves one circle of
+rotations, and its integer charge $m$ labels states as spin does on the round sphere. The slowest fields are the
+homogeneous ones, $A=q_{ka}\theta^kT_a$, with $\theta^k$ the orthonormal coframe and $q$ a constant $3\times3$ matrix
+(rows: space; columns: colour). The only gauge transformations that keep a field homogeneous are constant colour rotations.
+
+\begin{claim}{PROVED}{The slow space}\label{b:slow}
+Homogeneous fields modulo gauge form $\mathbb R^9/SO(3)$, $q\mapsto qO^T$. With $q=PO$, $P$ symmetric with eigenvalues
+$\lambda_i$, the flat measure is $\prod_{i<j}|\lambda_i+\lambda_j|\,dP\,dO$: the finite version of the weight of
+$\mathcal A/\mathcal G$.
+\evidence{Residual gauge group and polar Jacobian~\cite{HelikeReport}; the quotient picture of~\cite{Singer78,Gribov78}.}
+\lines{7}
+\end{claim}
+
+The quotient has a fold: the colour-blind shape $qq^T$ does not see the sign of $\det q$, so the slow space is a drum
+folded over on itself, two sheets glued where $q$ loses rank. The physical operator crosses the fold freely (the
+\emph{natural} realization); a basis that vanishes there sees a wall (the \emph{Dirichlet} realization).
+
+\textbf{The line between two windings.} On $S^3=SU(2)$ the Maurer--Cartan form $x^{-1}dx$ is a flat connection of winding
+one, gauge equivalent to $A=0$, and it is homogeneous: the point $q_{\rm MC}=\mathrm{diag}(t^{-1/2},1,1)/g$. The line
+$\lambda q_{\rm MC}$ joins winding zero to winding one, the finite image of the vacuum periodicity of Jackiw--Rebbi and
+Callan--Dashen--Gross~\cite{JackiwRebbi76,CallanDashenGross76}.
+
+\begin{claim}{PROVED}{Topology on the Maurer--Cartan line}\label{b:mc}
+Along the line $CS(\lambda)=3\lambda^2-2\lambda^3$ and $V=(1+2/t)(\lambda-\lambda^2)^2/(2g^2)$: a double well with zeros
+at the two windings and the sphaleron at $\lambda=CS=\tfrac12$. My controls hold the background $q_{\rm bg}=s\,q_{\rm MC}$
+just past the winding-one vacuum, with sources that vanish at $s=1$.
+\evidence{$d\Omega=-\Omega^2$ and a diagonal computation, confirmed to $10^{-13}$~\cite{HelikeReport,ClosedSet}; the
+sphaleron is the finite analogue of Klinkhamer--Manton's~\cite{KlinkhamerManton84}.}
+\lines{8}
+\end{claim}
+
+The sources are my own departure. They live in the reduced model only, with no gauge-invariant lift yet, and they are
+scaffolding that \S5 removes.
+
+\begin{claim}{PROVED}{Theorem A: the spectrum is discrete}\label{b:thmA}
+For $t\ge1$ and $0<s<(t+2)/(t+1)$, $V\ge\tfrac\kappa2\|q\|^2-S^4/(2g^2)$ with $\kappa>0$ and $S=\sqrt t+2/\sqrt t$. The
+reduced Hamiltonian is essentially self-adjoint with compact resolvent: its spectrum is discrete in every charge sector.
+\evidence{Expand the square, bound $\|\mathrm{cof}\,q\|^2\ge3|\det q|^{4/3}$, then~\cite{ReedSimonIV}.}
+\lines{9}
+\end{claim}
+
+\textbf{Helike and her competitor.}\ \spine{1} The lowest note in the room has a name. Helike is the charge-2 field
+$(\hat\theta^1+i\hat\theta^2)\otimes(\tau_1+i\tau_2)$: frame and colour turn together, at the largest charge the circle
+allows. Her competitor is the charge-0 \emph{breathing} mode in the plane $\mathrm{diag}(x,y,y)$, which \S5 shows is the
+direction of topology.
+
+\begin{claim}{PROVED (CITED)}{Helike is an exact eigenvector and the floor}\label{b:helike}
+For every $t$, every circle-symmetric homogeneous background $(x,y)$ and every harmonic $j$, Helike is an exact
+gauge-orthogonal eigenvector of the Yang--Mills Hessian, alone in her charge block, with eigenvalue
+$(x+(j+2)/\sqrt t)^2+2\sqrt t\,x-y^2$ (helicity squared minus the flux along her circle), and she is the floor of the
+spectrum for $t\in[2.75,10]$ on the stated domain. In the reduced model $\omega_H^2=2s(1+2/t-s)$.
+\evidence{My papers \emph{By Enough, But Not Too Much} and the Floor Theorem v3.3~\cite{ByEnough,Floor}, not yet
+refereed; the reduced formula in~\cite{HelikeReport}.}
+\lines{10}
+\end{claim}
+
+At the controls ($t=3$, $s=1.15$) the two are close, $\omega_H=1.0901$ against $\omega_C=1.1067$. Ordering the true
+quantum levels needs a count: in charge 0, no third level may hide below a threshold $\rho_C$.
+
+\begin{claim}{CONJECTURE}{H1 ($S_C$): at most two charge-0 levels below $\rho_C$}\label{b:sc}
+At each control, the natural realization has at most two charge-0 colour-singlet eigenvalues below
+$\rho_C=E_0^c+2\omega_H-\omega_{\min}/4$.
+\evidence{The route is proved in 128-bit ball arithmetic except the last Lehmann step~\cite{Lehmann}, whose margins
+($+0.21$ to $+0.24$) are floating point; the interval version (R2) remains.}
+\lines{11}
+\end{claim}
+
+\begin{claim}{CONDITIONAL}{Helike lowest at the controls (on H1)}\label{b:order}
+At $t=3$, $s=1.15$, Helike's level lies strictly below the second charge-0 level for three of four certificates
+$(g^2,M_q)$, covering $g^2=0.002$ and $0.004$, with margins $+0.0072$, $+0.0100$, $+0.0121$; the fourth, $(0.004,6)$, is
+unresolved. A reduced-model statement.
+\evidence{Min--max and Kato--Temple bounds~\cite{Kato49} with outward rounding; every verdict matched a prediction
+registered in advance~\cite{HelikeReport}.}
+\lines{12}
+\end{claim}
+
+\begin{claim}{CONJECTURE}{The fold costs only tunnelling}\label{b:fold}
+For each level $k$, $0\le\lambda_k(H_D)-\lambda_k(H)\le C_{k,\epsilon}e^{-2(d_0-\epsilon)/g^2}$, $d_0$ the Agmon distance
+to the fold.
+\evidence{Proved: the fold is classically forbidden and natural levels lie below Dirichlet ones. The rest is the
+semiclassics of~\cite{Agmon82,Simon83}. Since $\det q$ is the Chern--Simons cubic, fold and winding are one odd term.}
+\lines{9, 11}
+\end{claim}
+
+So with the sources on, Helike is lowest; \S5 shows that with them off the competitor is, and asks why, and where they
+trade places.

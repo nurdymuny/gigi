@@ -1,0 +1,67 @@
+\documentclass[10pt,letterpaper]{article}
+\usepackage[hmargin=0.6in,top=0.5in,bottom=0.65in,footskip=18pt]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{newpxtext}
+\usepackage[slantedGreek]{newpxmath}
+\linespread{1.0}
+\usepackage{xcolor,booktabs,array,enumitem,microtype,multicol}
+\usepackage[most]{tcolorbox}
+\usepackage[hidelinks]{hyperref}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{-9pt plus -2pt}{4pt}{\normalfont\large\bfseries\color{teal}}}
+\makeatother
+\definecolor{ink}{HTML}{25343D}
+\definecolor{teal}{HTML}{176F78}
+\definecolor{gold}{HTML}{A16623}
+\definecolor{muted}{HTML}{65767D}
+\definecolor{plum}{HTML}{7A3E6B}
+\definecolor{sky}{HTML}{2F6690}
+\setlength{\parindent}{0pt}\setlength{\parskip}{2.5pt}
+\setlist[itemize]{leftmargin=15pt,itemsep=2pt,topsep=3pt}
+\setlist[enumerate]{leftmargin=18pt,itemsep=2pt,topsep=3pt}
+\hypersetup{pdftitle={The Lowest Note: a geometric theory of the Yang-Mills mass gap},pdfauthor={Bee Rosa Davis}}
+
+% ---------------------------------------------------------------- status boxes
+% \begin{claim}{STATUS}{Title} ... \end{claim}
+% STATUS is one of: PROVED, PROVED (CITED), COMPUTED, CONDITIONAL, CONJECTURE, OPEN
+\newcommand{\statuscolor}[1]{%
+  \ifnum\pdfstrcmp{#1}{PROVED}=0 teal\else
+  \ifnum\pdfstrcmp{#1}{PROVED (CITED)}=0 teal\else
+  \ifnum\pdfstrcmp{#1}{COMPUTED}=0 sky\else
+  \ifnum\pdfstrcmp{#1}{CONDITIONAL}=0 gold\else
+  \ifnum\pdfstrcmp{#1}{CONJECTURE}=0 plum\else muted\fi\fi\fi\fi\fi}
+\newcounter{claimno}
+\newtcolorbox{claimbox}[2]{enhanced,breakable,colback=\statuscolor{#1}!4!white,colframe=\statuscolor{#1},
+  boxrule=0pt,leftrule=2.2pt,arc=0pt,outer arc=0pt,left=5pt,right=4pt,top=2pt,bottom=2pt,
+  before skip=3pt,after skip=3pt,fontupper=\small,
+  before upper={{\sffamily\small\bfseries\color{\statuscolor{#1}}\theclaimno.\ #2\ \
+    {\fboxsep=1pt\colorbox{\statuscolor{#1}}{\color{white}\scriptsize #1}}}\ }}
+% \refstepcounter outside the box so that \label inside the box body gives the box number
+\newenvironment{claim}[2]{\refstepcounter{claimno}\begin{claimbox}{#1}{#2}}{\end{claimbox}}
+% marks where a section carries one of the five points of the theory
+\newcommand{\spine}[1]{{\sffamily\small\bfseries\color{plum}Point #1 of the theory.}\ }
+\newcommand{\evidence}[1]{\par\vspace{1pt}{\footnotesize\color{muted}\textbf{Evidence.} #1}}
+\newcommand{\lines}[1]{{\sffamily\scriptsize\color{muted}[lines #1]}}
+
+\begin{document}
+\color{ink}
+{\sffamily\small\color{teal} A NARRATIVE THEORY, NOT A PROOF \hfill 27 NOVEMBER 2026}\par\vspace{4pt}
+{\fontsize{24}{28}\selectfont The Lowest Note\par}
+\vspace{1pt}{\large A geometric theory of the Yang--Mills mass gap\hfill\normalsize Bee Rosa Davis\par}
+\vspace{2pt}{\small\color{muted}\emph{This document supersedes my earlier Zenodo posting, which claimed a proof of the Yang--Mills mass gap. That claim is withdrawn. What follows is a theory, not a proof: my complete account, as of today, of what I believe the mass gap is.}\par}
+\vspace{2pt}
+
+\input{sections/s0-abstract}
+\input{sections/s1-problem}
+\input{sections/s2-framing}
+\input{sections/s3-note}
+\input{sections/s4-room}
+\input{sections/s5-carriers}
+\input{sections/s6-fast}
+\input{sections/s7-growing}
+\input{sections/s8-limit}
+\input{sections/s9-content}
+\input{sections/s10-what-it-is}
+{\scriptsize\setlength{\parskip}{0pt}\begin{multicols}{3}\input{refs}\end{multicols}}
+\end{document}

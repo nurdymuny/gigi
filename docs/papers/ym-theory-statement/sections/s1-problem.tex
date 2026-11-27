@@ -1,0 +1,40 @@
+% s1: the problem, as it is posed. ASCII only.
+\section*{1. The problem, as it is posed}
+
+The target is not mine. It is the Millennium Prize problem as Jaffe and Witten wrote it~\cite{JaffeWitten}. For every
+compact simple gauge group $G$ (the symmetry group of the field, such as $SU(2)$ or $SU(3)$), construct quantum
+Yang--Mills theory on four-dimensional space-time $\mathbb R^4$ and show two things. First, it exists as a genuine
+quantum field theory: it satisfies axioms at least as strong as Wightman's~\cite{StreaterWightman}, or in Euclidean form
+those of Osterwalder and Schrader~\cite{OS73,OS75} (Euclidean invariance, reflection positivity, regularity, clustering),
+from which a relativistic theory is reconstructed; it has local field operators for the gauge-invariant polynomials in
+the curvature $F$, such as $\mathrm{tr}\,F^2$; at short distance it agrees with perturbation theory and asymptotic
+freedom~\cite{GrossWilczek73,Politzer73}; and it is non-trivial, not a free field in disguise. Second, it has a mass gap:
+every state other than the vacuum carries energy at least $\Delta>0$.
+
+The problem is hard because of two infinities. The \emph{ultraviolet} is the fine grain: zoom in and the field has ever
+finer ripples, infinitely many, which must be controlled together (renormalization). The \emph{infrared} is the growing
+room: zoom out, and the gap must survive in infinite space, exactly where the coupling becomes strong and no small
+parameter is left. Every computation, mine included, cuts off one or both, with a lattice of spacing $a$ or a room of
+finite size. The difficulty is to remove the scaffolding and keep the answer.
+
+What has been done shows where the wall is. Interacting theories were built in two and three
+dimensions~\cite{GlimmJaffe}; two-dimensional Yang--Mills is solved exactly~\cite{Migdal75,GrossWitten80,Sengupta97,Levy03};
+on a lattice at strong coupling the gap is a theorem~\cite{OsterwalderSeiler78,ShenZhuZhu23}, at the wrong end of the
+coupling. In four dimensions Ba{\l}aban
+controlled the ultraviolet in a finite box~\cite{Balaban}, and Magnen, Rivasseau and S\'en\'eor built the $SU(2)$
+Schwinger functions with an infrared cutoff kept~\cite{MRS93}. Nobody has removed the infrared cutoff. Physically the
+gap is not in doubt: simulations find a lightest glueball, a scalar $0^{++}$~\cite{MorningstarPeardon99}.
+
+\begin{claim}{OPEN}{The Clay statement (my Main Conjecture)}\label{b:clay}
+For $G=SU(2)$, and then every compact simple $G$, quantum Yang--Mills theory on $\mathbb R^4$ exists with every
+property above (OS and so Wightman axioms, local fields, short-distance agreement, non-triviality, a unique vacuum), and
+its Hamiltonian has nothing in $(0,\Delta)$, $\Delta=c\,\Lambda$, with $\Lambda$ the scale the theory makes for itself
+and $c>0$ a pure number.
+\evidence{The problem itself~\cite{JaffeWitten}. My register splits it into 29 lines and maps every clause to them
+(Table~2); it rests on four hypotheses, H3, H4$'$, H6, H7~\cite{ClosedSet}.}
+\lines{1--29}
+\end{claim}
+
+The scale $\Lambda$ is where the problem turns geometric. The classical equations contain no length; the quantum theory
+makes one through the running coupling. A gap that is a pure number times a length the theory made for itself is a
+property of shape, not of any box. So I begin with the shape.

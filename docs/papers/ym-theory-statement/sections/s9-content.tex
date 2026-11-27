@@ -1,0 +1,85 @@
+% s9: what the theory contains. ASCII only.
+\section*{9. What the theory contains}
+
+Jaffe and Witten ask for local fields for the gauge-invariant polynomials in the curvature, agreement with perturbation
+theory at short distance, a theory that is not free, and all of it for every compact simple group~\cite{JaffeWitten}.
+
+\textbf{Local fields.} Traces of products of $F$ and its covariant derivatives are gauge invariant; graded by dimension
+($F$ counts 2, each derivative 1), the first is $\mathrm{tr}\,F^2$, the energy density. A \emph{renormalized local field} is the limit of a lattice transcription (for
+$\mathrm{tr}\,F^2$, the six plaquettes at a point) after a finite mixing with fields of equal or lower dimension; its correlations must be tempered distributions
+(singular only polynomially where points meet) obeying the growth condition OS0$'$ that reconstruction
+needs~\cite{OS75}. Perturbatively this is a theorem~\cite{Reisz88,Reisz89}, and the gradient flow gives fields
+finite with no renormalization, the stress tensor included~\cite{Luscher10,LuscherWeisz11,Suzuki13}. The nearest
+complete non-perturbative analogue is the two-dimensional Gross--Neveu model~\cite{GawedzkiKupiainen85,FMRS86}; nothing
+comparable is proved in four dimensions.
+
+\begin{claim}{CONJECTURE}{H6: local fields, and agreement with perturbation theory}\label{b:h6}
+On the sphere family and its $\mathbb R^4$ end, every gauge-invariant polynomial in $F$ and its covariant derivatives,
+$\mathrm{tr}\,F^2$ first, is a renormalized local field (tempered, OS0$'$, unique up to contact terms) that reconstructs
+to a local covariant operator-valued distribution. A conserved stress tensor generates translations, with trace
+$\Theta=\frac{\beta(g)}{2g}[\mathrm{tr}\,F^2]$, $\beta(g)=-\frac{b_0}{16\pi^2}g^3+O(g^5)$. At short distance every
+correlation function agrees with renormalized perturbation theory in the running coupling, asymptotically to all orders.
+\evidence{The perturbative ingredients are established~\cite{GrossWilczek73,Politzer73,ACD77,CDJ77,Luscher10,LuscherWeisz11,Suzuki13};
+my sphere coefficient $b_0/8\pi^2$ (Box~\ref{b:b0}) is the logarithm whose cutoff derivative is the one-loop trace
+anomaly~\cite{ClosedSet}.}
+\lines{25, 14}
+\end{claim}
+
+On the lattice the trace anomaly is not a conjecture but an identity: varying the inverse coupling in the Wilson measure
+differentiates every expectation by minus its correlation with the action, and along the line of constant physics that
+derivative is the response to a change of scale.
+
+\begin{claim}{PROVED}{The trace anomaly is the running plaquette (lattice identity)}\label{b:anomaly}
+On every finite lattice $\partial_{(4/g_0^2)}\langle X\rangle=-\langle X;S_W\rangle$, $S_W=\sum_p(1-\tfrac12\mathrm{tr}\,U_p)$.
+Along the line of constant physics this makes the anomaly density $\Theta_a(x)=-\frac{d(4/g_0^2)}{d\ln a}a^{-4}
+\sum_{p\text{ at }x}(s_p-\langle s_p\rangle)$, with $-\frac{d(4/g_0^2)}{d\ln a}=\frac{b_0}{2\pi^2}+O(g_0^2)$ and no further
+renormalization; at one loop this is $-\frac{\beta(g)}{2g}\mathrm{tr}\,F^2$. Convergence of $\Theta_a$ to $\Theta$ belongs
+to H6.
+\evidence{Differentiation under the integral; factor and plaquette count verified by the referee pass~\cite{ClosedSet}.}
+\lines{1, 25}
+\end{claim}
+
+\textbf{Non-triviality.} A free massive theory also has a gap. My first criterion (a nonzero connected four-point function of
+$\mathrm{tr}\,F^2$) holds in free theories too, and I withdrew it~\cite{ClosedSet}. The corrected one is a fingerprint
+only an asymptotically free theory leaves: by H6, $|x|^8\langle\Theta(x)\Theta(0)\rangle\to C_O(N^2-1)/\bigl(16\ln^2(1/|x|\Lambda)\bigr)$ as
+$|x|\to0$, an inverse square logarithm, while in any Wick-polynomial free theory the same quantity tends to a nonzero
+constant. A \emph{generalized free field} (a Gaussian field with an arbitrary two-point function) could still mimic it; a
+nonzero connected three-point function excludes that, and the leading one is $(b_0\bar g^2/32\pi^2)^3$ times the free
+Wick triangle $T_O$ of three $\mathrm{tr}\,F^2$, a finite computation I have not done.
+
+\begin{claim}{CONDITIONAL}{The theory is not free}\label{b:nontrivial}
+If H6 holds and $T_O\not\equiv0$, the limit is neither a Wick-polynomial free theory nor a generalized free field in its
+$\Theta$ sector: it is non-trivial.
+\evidence{Deduction from H6 and the free-field lemma; the constant $1/16$ checked by the referee~\cite{ClosedSet}.}
+\lines{26, 25}
+\end{claim}
+
+\textbf{Every compact simple group.} Nothing so far needed $SU(2)$ as structure group except for definiteness; space is
+still $S^3$, and a dictionary carries the rest: $b_0\to11h^\vee/3$ ($h^\vee$ the dual Coxeter number); the note $\tfrac34\to
+C_{\min}(G)$, the smallest nontrivial Casimir; $\mathbb R^9/SO(3)\to\mathfrak g^3/\mathrm{Ad}(G)$; and the
+Maurer--Cartan line runs through a long-root $\mathfrak{su}(2)$, where the minimal instanton lives~\cite{BPST75,BCGW77}.
+I take $G$ simply connected; its other global forms share the local sector, which is all the gap and the local fields
+see~\cite{AharonySeibergTachikawa13}.
+
+\begin{claim}{PROVED}{The lattice layer and the strong-coupling note for every $G$}\label{b:everyGlat}
+For every compact $G$, lines 1--3 hold~\cite{OsterwalderSeiler78}. On the Hamiltonian lattice (periodic side $\ge4$) the
+first electric level is exactly $2C_{\min}(G)g^2/a$, the leading strong-coupling gap; in two dimensions
+$\sigma_{\rm adj}/\sigma_{r_{\min}}\to h^\vee/C_{\min}$; and Helike's charge-2 doublet is an exact Hessian eigenvector
+for every $G$, with the $SU(2)$ frequency.
+\evidence{Lines 1--3 cited~\cite{OsterwalderSeiler78}; Peter--Weyl plus Gauss's law~\cite{KogutSusskind75}; the $j=1$
+part of the adjoint under a long-root $\mathfrak{su}(2)$ is that $\mathfrak{su}(2)$~\cite{ClosedSet,ByEnough}.}
+\lines{1--6, 10, 24}
+\end{claim}
+
+\begin{claim}{CONJECTURE}{H7: the whole theory for every compact simple $G$}\label{b:h7}
+For every compact simple $\mathfrak g$ there is $c_{\mathfrak g}>0$ such that, through the dictionary, the $\mathbb R^4$
+theory exists with the OS axioms, has local fields governed by $b_0(G)$ at short distance, a unique vacuum, and
+$\mathrm{spec}\,H\cap(0,c_{\mathfrak g}\Lambda_G)=\emptyset$.
+\evidence{Clay$(G)$ rests on H2$(G)$, H3$(G)$, H4$'(G)$, H6$(G)$ only; the carriers are not needed, because the minimum
+of continuous levels is continuous. Discreteness of the small room for general $G$ needs a cubic--quartic inequality I
+have not proved. The scalar is lightest for $SU(3)$ too~\cite{MorningstarPeardon99}.}
+\lines{24}
+\end{claim}
+
+The carriers are how I \emph{understand} the gap; they are not what Clay$(G)$ needs. What remains is to say in one
+breath what the inventory is \emph{of}.

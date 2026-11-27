@@ -1,0 +1,41 @@
+% s2: begin with the geometry. ASCII only.
+\section*{2. Begin with the geometry}
+
+I start from the geometry the theory already lives on, a principal fibre bundle. Its layers are not my choice; every
+bundle has them, and each piece of the theory sits in one. The \emph{base} is space,
+with a size and therefore a scale. Over each point sits a copy of the \emph{structure group} $SU(2)$, the double cover of
+the rotation group $SO(3)$; its centre $\{\pm1\}$ is invisible to rotations and is what makes half-integer spin and the
+confinement of the fundamental loop possible~\cite{tHooft78}. A \emph{connection} $A$ is the gauge field, a rule for
+carrying the fibre along a path; around a closed loop $C$ it returns a \emph{holonomy} $\mathrm{Hol}_C(A)\in SU(2)$, and
+its infinitesimal holonomy is the curvature $F$. A \emph{gauge transformation} relabels each fibre, so the physical
+configurations are connections modulo relabelling, the space $\mathcal A/\mathcal G$. That space is curved and folded,
+and no single choice of labels covers it (the Gribov problem~\cite{Gribov78,Singer78}). It has \emph{topology}: winding
+classes $\pi_3(SU(2))=\mathbb Z$, counted by the Chern--Simons function~\cite{ChernSimons74} and joined by
+instantons~\cite{BPST75,JackiwRebbi76,CallanDashenGross76}. The quantum theory adds a measure, a spectrum, and a sorting of
+modes into slow and fast.
+
+A field value at a point is not physical, since relabelling changes it. The physical readings are loops:
+$W_C=\mathrm{tr}_\rho\,\mathrm{Hol}_C(A)$ is unchanged by relabelling, because the trace does not see conjugation, and by
+Giles' theorem the loops determine the field up to gauge~\cite{Giles81}. Wilson's lattice theory~\cite{Wilson74} is this
+bundle sampled: the base at the vertices of a grid of spacing $a$, a group element $U_\ell$ on each edge, and the action
+read from the holonomy $U_p$ of each elementary square (plaquette).
+
+\begin{claim}{PROVED}{The lattice measure lives on connections modulo gauge}\label{b:wilson}
+$d\mu_{a,L}=Z^{-1}\exp\bigl(-\beta\sum_p(1-\tfrac12\mathrm{tr}\,U_p)\bigr)\prod_\ell dU_\ell$, $\beta=4/g^2$, is gauge
+invariant and descends to a probability measure on lattice connections modulo gauge, with no gauge fixing and therefore
+no Gribov problem. Every Wilson loop is gauge invariant.
+\evidence{Traces of holonomies and an invariant Haar measure~\cite{Wilson74}; checked in my engine (\S3).}
+\lines{1}
+\end{claim}
+
+\begin{claim}{PROVED (CITED)}{Reflection positivity and the transfer matrix}\label{b:rp}
+The Wilson measure is reflection positive, so there are a Hilbert space, a vacuum and a transfer matrix $T=e^{-aH}$ with
+$H\ge0$.
+\evidence{Osterwalder and Seiler~\cite{OsterwalderSeiler78}, in the sense of~\cite{OS73,OS75}.}
+\lines{2}
+\end{claim}
+
+Two choices shape the rest. The size of the room is a coordinate of the base, not a nuisance, so the gap is a function
+over the family of rooms (\S7). And the rooms are spheres throughout, where the slowest fields are homogeneous and carry
+the topology, and infinite space is the end of the family, not a box argued away (\S8). First, though, the lattice
+already gives the gap a meaning at strong coupling, where it can be read off by hand.

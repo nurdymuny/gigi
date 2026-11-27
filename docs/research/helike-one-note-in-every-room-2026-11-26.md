@@ -103,12 +103,15 @@ tr F².
   was the constructive field theory of the 1970s and 1980s: Glimm, Jaffe, Spencer and others (Glimm and Jaffe,
   *Quantum Physics: A Functional Integral Point of View*).
 - **Yang–Mills in two dimensions** is constructed, as a measure whose Wilson-loop expectations are known (Sengupta;
-  Lévy, *Yang–Mills measure on compact surfaces*, Mem. AMS 2003). *verify* the exact references.
+  Lévy, *Yang–Mills measure on compact surfaces*, Mem. AMS no. 790, 2003, arXiv:math/0101239). Lévy defines the
+  measure through random holonomy along a natural class of loops.
 - **Yang–Mills in four dimensions, in a finite volume.**
   - Bałaban's renormalization-group programme (Commun. Math. Phys., 1980s) controls the ultraviolet, scale by scale,
     on the lattice.
-  - Magnen, Rivasseau and Sénéor (Commun. Math. Phys. 155 (1993)) construct Euclidean four-dimensional Yang–Mills
-    with an infrared cutoff. *verify* the page range.
+  - Magnen, Rivasseau and Sénéor, "Construction of YM₄ with an infrared cutoff", Commun. Math. Phys.,
+    doi:10.1007/BF02097397, construct the Schwinger functions of pure SU(2) Yang–Mills in four dimensions. They work
+    with a fixed infrared cutoff and the ultraviolet cutoff removed, in a regularized axial gauge, and check the
+    Slavnov identities non-perturbatively.
 
   This is the closest anyone has come.
 - **The common tools:** a multi-scale renormalization group, which settles each scale using the one above, and
@@ -661,7 +664,7 @@ sound:
   (Giles, Phys. Rev. D 24 (1981) 2160). So "query every loop and you reach every section" is a theorem, with loops in
   place of points.
 - **The quantum theory can be written in loops.** In two dimensions the measure is known through its loop expectations
-  (Lévy). In four dimensions, loop equations (Makeenko–Migdal) relate them.
+  (Lévy: random holonomy along loops). In four dimensions, loop equations (Makeenko–Migdal) relate them.
 - **The gap, in loop language:**
   - correlations between two small loops decay like e^{−Δ·separation};
   - a single large loop decays like e^{−σ·area}, confinement.
@@ -671,8 +674,9 @@ sound:
 **Fails as stated: the quantum sections are rough.** In the quantum continuum, typical configurations are not smooth
 connections. They are distributional, rougher than any classical section. So "a section of the bundle" is not the
 right space for the quantum theory. Which space of generalized connections carries the four-dimensional measure is
-itself part of the open problem. Chatterjee constructs a candidate state space of gauge orbits in three dimensions
-(*verify*: "A state space for 3D Euclidean Yang–Mills theories", 2021/2024).
+itself part of the open problem. Cao and Chatterjee construct a candidate state space of gauge orbits in three dimensions
+("A state space for 3D Euclidean Yang–Mills theories", Commun. Math. Phys. (2024),
+doi:10.1007/s00220-023-04870-y, arXiv:2111.12813).
 
 **The framing, corrected.** A quantum gauge field is a probability measure on the base A/𝒢. It is read by holonomies
 around loops. The continuum is the statement that these loop answers are consistent across every scale of the base.

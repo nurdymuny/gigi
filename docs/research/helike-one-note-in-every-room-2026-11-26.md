@@ -38,6 +38,9 @@ and a falsifier. *Tightened after a third review:*
 *Added after the M8 design work:* §4.8 now says how I work, seeing and then translating, with Thurston's framing, and
 where the translation corrected the vision.
 
+*Added 27 November:* §1.5, what "the continuum" means and the object a proof must build; §4.10, the fibre-bundle
+framing checked against the mathematics.
+
 *Tightened before implementation:*
 - A crossing needs a subdivision-consistent carrier path, not just a confident match between endpoints.
 - String tension is a ruler only where it is nonzero. The four-dimensional U(1) Coulomb control has its own
@@ -62,6 +65,69 @@ Two infinities make it hard:
 
 Anything I do in a finite-dimensional or finite-volume setting has removed at least one of these by construction. I
 say this first so that nothing below is read as more than it is.
+
+## 1.5 What "the continuum" means, and the object a proof must build
+
+**In plain words.** Every way anyone computes Yang–Mills puts in scaffolding:
+- a lattice of points with spacing a;
+- a finite box of side L;
+- in my case, a small sphere that keeps only the slowest modes.
+
+"The continuum" does not mean that the field is in everything. **It means no grain.** Remove the scaffolding
+(a → 0, L → ∞) and the answers converge to something that no longer remembers it. That is §4.4's principle applied to
+the whole theory: the gluing must not become part of the reading. The continuum is the statement that the reading
+survives deleting all the stitching.
+
+**The object.** A field cannot be read at a sharp point. It is read by what it answers to a smooth probe:
+φ(f) = ∫φ(x)f(x)dx for a test function f. The theory is then its **correlation functions**, the Schwinger functions:
+the joint answers to several probes placed at different places. Equivalently, it is a probability measure on field
+configurations. For a gauge theory the probes must be gauge-invariant: Wilson loops, or local operators such as
+tr F².
+
+**What a proof must do with that object.**
+1. **Construct it** as the limit of scaffolded versions. The lattice spacing goes to zero while the coupling runs as
+   asymptotic freedom dictates, and the box grows.
+2. **Show it satisfies the Osterwalder–Schrader axioms** (Osterwalder and Schrader, Commun. Math. Phys. 31 (1973) 83
+   and 42 (1975) 281):
+   - Euclidean symmetry;
+   - reflection positivity, which guarantees a Hilbert space of states and a positive Hamiltonian;
+   - regularity under refinement;
+   - clustering.
+
+   The reconstruction theorem then gives a relativistic quantum field theory.
+3. **Show the gap.** Correlations between distant probes decay like e^{−Δ·distance}, with Δ > 0 uniform in the
+   scaffolding. Equivalently, the reconstructed Hamiltonian has nothing between 0 and Δ.
+
+**Where this has been done.**
+- **φ⁴ in two and three dimensions** was fully constructed, axioms verified, with a mass gap at weak coupling. This
+  was the constructive field theory of the 1970s and 1980s: Glimm, Jaffe, Spencer and others (Glimm and Jaffe,
+  *Quantum Physics: A Functional Integral Point of View*).
+- **Yang–Mills in two dimensions** is constructed, as a measure whose Wilson-loop expectations are known (Sengupta;
+  Lévy, *Yang–Mills measure on compact surfaces*, Mem. AMS 2003). *verify* the exact references.
+- **Yang–Mills in four dimensions, in a finite volume.**
+  - Bałaban's renormalization-group programme (Commun. Math. Phys., 1980s) controls the ultraviolet, scale by scale,
+    on the lattice.
+  - Magnen, Rivasseau and Sénéor (Commun. Math. Phys. 155 (1993)) construct Euclidean four-dimensional Yang–Mills
+    with an infrared cutoff. *verify* the page range.
+
+  This is the closest anyone has come.
+- **The common tools:** a multi-scale renormalization group, which settles each scale using the one above, and
+  cluster expansions, which show that distant regions decouple.
+
+**The base key is scale.** The hard part is not showing that the field is present everywhere. It is showing that the
+answers stay consistent as the base is sampled ever more finely, and as the room grows without end. That is a
+consistent section along the direction of scale: from the small rooms where I work, where the gap is the note of one
+turn (§4.9), to infinite space. This is §4.3's translator, and it splits into my two missing milestones:
+- **M3, the ultraviolet half:** the fast modes only dress the slow ones, uniformly in the cutoff. This is Bałaban's
+  territory.
+- **M2, the infrared half:** the room grows, and the gap, read in the field's own scale, stays away from zero.
+
+**What I take from working backwards.** The end object is fixed: correlation functions that are positive, consistent
+across scales, and exponentially clustering. Each piece of my programme should be judged by which of those three it
+moves:
+- the reduction and Helike's carrier work produce exact, identified gaps in the smallest room;
+- the unfolded chart (flux-method §5.11) is the first tool that keeps the vacuum's shape honest as the coupling grows,
+  which is the direction the infrared half has to travel.
 
 ## 2. Where I am (proved, computed, open)
 
@@ -547,6 +613,77 @@ properties are reported separately in all three. These are distinct control prot
 one ruler. Before M9 runs, I will register the actions, couplings, volumes, momentum channels, fit windows,
 discretization and uncertainty checks, and numerical acceptance criteria. A zero-mass fit inside an unresolved
 uncertainty is OPEN, not evidence of masslessness. No U(1) control result is claimed here.
+
+### 4.10 The fibre-bundle framing, checked
+
+My picture: reality as one great bundle over a shared base; a query on the bundle reaching any section; the gap as
+what keeps the sections connected but distinct. Here it is, piece by piece, against the mathematics.
+
+**Holds exactly (classical theory).**
+- **Yang–Mills is a theory of connections.** It lives on a principal bundle P → M:
+  - the base M is spacetime;
+  - the fibre is the gauge group, SU(2) or SU(3);
+  - the gauge field is a connection, that is, the parallel-transport rule;
+  - the field strength is its curvature;
+  - the action is the squared norm of the curvature.
+
+  This is standard, and not a metaphor.
+- **One base, many fibres.** The Standard Model's forces are connections on a single bundle over the same spacetime,
+  with structure group (SU(3) × SU(2) × U(1))/ℤ₆. Matter fields are sections of associated vector bundles. So "one
+  great bundle sharing a base" is correct for the three non-gravitational forces.
+- **Gravity is different.** It is the geometry of the base itself. Its Levi-Civita connection is a connection on the
+  frame bundle, but the metric is dynamical. That is why gravity does not fit as just one more fibre.
+
+**Holds exactly (lattice).** Wilson's lattice gauge theory (Phys. Rev. D 10 (1974) 2445) *is* a discretized bundle:
+- the base is sampled at vertices, which are keys;
+- each edge stores a group element, the parallel transport along it;
+- gauge symmetry acts at the vertices;
+- the action is built from the transport around each plaquette, that is, from holonomy.
+
+This is GIGI's picture: a base of keys, with fibre data attached to the connections between them.
+
+**Holds exactly (the quotient).** The space of all connections modulo gauge, A/𝒢, is the base of an
+infinite-dimensional bundle A → A/𝒢 whose fibre is the gauge group. Singer showed that this bundle is non-trivial, so
+no global gauge choice exists: the Gribov ambiguity (Commun. Math. Phys. 60 (1978) 7). My reduced model is its finite
+version:
+- the reduced field space ℝ⁹ (the matrix q) is folded by colour SO(3);
+- the measure on the quotient is the colour-orbit volume, verified numerically
+  (`helike-M8-positive-ground-design-DRAFT-2026-11-26.md`);
+- the unfolded chart q = P·O separates the fibre (O) from the base (P), which is why the vacuum is nearly Gaussian in P
+  (`helike-vacuum-shape-diagnostic-2026-11-26.md`).
+
+The "folded drum" of §4.1 is this quotient.
+
+**Needs a correction: the query.** A "point query" cannot be made: the value of a connection at a point is not
+gauge-invariant. The right query is the **holonomy around a loop**, the Wilson loop W_C = tr Hol_C(A). Its framing is
+sound:
+- **Loops determine the field.** Classically, the Wilson loops of all loops determine the connection up to gauge
+  (Giles, Phys. Rev. D 24 (1981) 2160). So "query every loop and you reach every section" is a theorem, with loops in
+  place of points.
+- **The quantum theory can be written in loops.** In two dimensions the measure is known through its loop expectations
+  (Lévy). In four dimensions, loop equations (Makeenko–Migdal) relate them.
+- **The gap, in loop language:**
+  - correlations between two small loops decay like e^{−Δ·separation};
+  - a single large loop decays like e^{−σ·area}, confinement.
+
+  "Connected but not equally": the connection fades at a definite rate.
+
+**Fails as stated: the quantum sections are rough.** In the quantum continuum, typical configurations are not smooth
+connections. They are distributional, rougher than any classical section. So "a section of the bundle" is not the
+right space for the quantum theory. Which space of generalized connections carries the four-dimensional measure is
+itself part of the open problem. Chatterjee constructs a candidate state space of gauge orbits in three dimensions
+(*verify*: "A state space for 3D Euclidean Yang–Mills theories", 2021/2024).
+
+**The framing, corrected.** A quantum gauge field is a probability measure on the base A/𝒢. It is read by holonomies
+around loops. The continuum is the statement that these loop answers are consistent across every scale of the base.
+The gap is the statement that the answers for distant loops decouple at a fixed rate.
+
+My picture survives with three substitutions:
+- **loops for points;**
+- **a measure on the base A/𝒢 for a single section;**
+- **consistency across scale for "reaching everything".**
+
+In that form it is not a metaphor. It is the standard framing, and the right one to work backwards from.
 
 ## 5. What a proof requires, and my answer to each part
 

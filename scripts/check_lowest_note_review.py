@@ -73,6 +73,63 @@ class Algebra(unittest.TestCase):
             self.assertGreater(s, 1.)
             self.assertLess(s, (t+2)/(t+1))
 
+    def test_frequency_uses_kinetic_metric_and_is_coordinate_invariant(self):
+        lam = sp.Symbol('lam')
+        K = sp.diag(1, 4)
+        G = sp.diag(4, 1)
+        self.assertEqual((G.inv()*K).eigenvals(), {sp.Rational(1,4): 1, sp.Integer(4): 1})
+        self.assertNotEqual((G.inv()*K).eigenvals(), K.eigenvals())
+        S = sp.Matrix([[1,1],[0,1]])
+        transformed = (S.T*G*S).inv()*(S.T*K*S)
+        self.assertEqual(transformed.charpoly(lam).as_expr(), (G.inv()*K).charpoly(lam).as_expr())
+
+    def test_potential_hessian_is_superpotential_hessian_squared_at_wells(self):
+        variables = sp.symbols('q0:9', real=True)
+        q = sp.Matrix(3,3,variables)
+        weights = [sp.sqrt(3), 1/sp.sqrt(3), 1/sp.sqrt(3)]
+        W = sum(weights[k]*sum(q[k,c]**2 for c in range(3))/2 for k in range(3))-q.det()
+        gradient = sp.Matrix([sp.diff(W,v) for v in variables])
+        J = sp.hessian(W,variables)
+        K = sp.hessian(gradient.dot(gradient)/2,variables)
+        for point in (sp.zeros(3), sp.diag(1/sp.sqrt(3),1,1)):
+            subs = dict(zip(variables,list(point)))
+            self.assertEqual(gradient.subs(subs),sp.zeros(9,1))
+            self.assertEqual(sp.simplify(K.subs(subs)-J.subs(subs)**2),sp.zeros(9))
+        # Away from a critical point, the gradient/third-derivative term cannot be dropped.
+        midpoint = dict(zip(variables,list(sp.diag(1/(2*sp.sqrt(3)),sp.Rational(1,2),sp.Rational(1,2)))))
+        self.assertNotEqual(sp.simplify(K.subs(midpoint)-J.subs(midpoint)**2),sp.zeros(9))
+
+    def test_frequency_shift_includes_potential_and_kinetic_terms(self):
+        eps, lam = sp.symbols('eps lam', real=True)
+        K = sp.diag(1,4)
+        G = sp.diag(4,1)
+        dK = sp.Matrix([[3,1],[1,2]])
+        dG = sp.Matrix([[1,sp.Rational(1,2)],[sp.Rational(1,2),2]])
+        characteristic = (K+eps*dK-lam*(G+eps*dG)).det()
+        v = sp.Matrix([1,0]); omega = sp.Rational(1,2)
+        point = {eps:0, lam:omega**2}
+        derivative_from_root = -sp.diff(characteristic,eps).subs(point)/sp.diff(characteristic,lam).subs(point)/(2*omega)
+        potential = (v.T*dK*v)[0]/(2*omega*(v.T*G*v)[0])
+        kinetic = -(v.T*dG*v)[0]*omega/(2*(v.T*G*v)[0])
+        self.assertEqual(sp.simplify(derivative_from_root-potential-kinetic),0)
+        self.assertEqual(derivative_from_root,sp.Rational(11,16))
+        self.assertNotEqual(derivative_from_root,potential)
+        self.assertNotEqual(derivative_from_root,kinetic)
+
+    def test_gap_variational_problem_uses_vacuum_orthogonal_states(self):
+        H = sp.diag(7,9,12)
+        excited = sp.Matrix([[0,0],[1,0],[0,1]])
+        restricted = excited.T*(H-7*sp.eye(3))*excited
+        self.assertEqual(min(restricted.eigenvals()),2)
+        self.assertEqual(min((H-7*sp.eye(3)).eigenvals()),0)
+        change = sp.Matrix([[0,1,0],[0,0,1],[1,0,0]])
+        rotated = (change*excited).T*(change*H*change.T-7*sp.eye(3))*(change*excited)
+        self.assertEqual(rotated,restricted)
+        degenerate = sp.diag(7,7,9)
+        self.assertEqual(min((excited.T*(degenerate-7*sp.eye(3))*excited).eigenvals()),0)
+        above_vacuum_space = sp.Matrix([0,0,1])
+        self.assertEqual((above_vacuum_space.T*(degenerate-7*sp.eye(3))*above_vacuum_space)[0],2)
+
     def test_ordered_projection_can_jump_at_crossing(self):
         a = np.diag([-1., 1.]); b = -a
         ua = np.linalg.eigh(a)[1][:, 0]; ub = np.linalg.eigh(b)[1][:, 0]

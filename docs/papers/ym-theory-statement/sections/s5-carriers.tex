@@ -16,11 +16,13 @@ sector~\cite{Kato}.}
 \lines{17}
 \end{claim}
 
-\spine{2} My proposed reason for the ordering is topological. With the sources off, the potential of the room is the squared slope of
-one function, the Chern--Simons number: Witten's form of a Schr\"odinger operator~\cite{Witten82}, whose low levels sit
-at the critical points of that function, sorted by their number of downhill directions.
+\spine{2} My proposed reason for the ordering is the meeting of topology, geometry and quantum dynamics. With the
+sources off, the reduced potential is the squared slope of Chern--Simons, measured in the reduced field-space metric.
+Witten's factorization~\cite{Witten82} makes the connection explicit: the critical points and their downhill directions
+organize the weak-coupling states, while the sizes of the Hessian eigenvalues and the kinetic term set their energies.
+Counting downhill directions alone does not rank the quantum levels.
 
-\begin{claim}{PROVED}{The landscape is the slope of Chern--Simons; the competitor is the topological direction}\label{b:susy}
+\begin{claim}{PROVED}{The Chern--Simons landscape and its softest local direction}\label{b:susy}
 Let $\omega=(\sqrt t,t^{-1/2},t^{-1/2})$, $S=\sum_k\omega_k$ and $W(q)=\tfrac12\sum_k\omega_k\|q_k\|^2-g\det q$. Then
 $V_0=\tfrac12|\nabla W|^2$, $W=CS/(2\sqrt t\,g^2)$ on homogeneous fields, and $H=\tfrac12\sum_ia_i^*a_i+\tfrac32S$
 exactly, $a_i=\partial_i+\partial_iW$; hence the vacuum energy is at least $\tfrac32S$. A localized $e^{-W}$ trial
@@ -34,10 +36,42 @@ These are identities and harmonic statements at $s=1$, not a finite-$g$ spectral
 \lines{8, 18}
 \end{claim}
 
+\textbf{Where the cost comes from.} Near a stable stationary field, write a small physical displacement as $\xi$,
+with gauge directions removed. Its quadratic Lagrangian uses a positive kinetic metric $G_{\rm kin}$ and the
+potential Hessian $K_{\rm pot}$:
+\[
+ L^{(2)}=\tfrac12\dot\xi^T G_{\rm kin}\dot\xi-\tfrac12\xi^T K_{\rm pot}\xi,
+ \qquad K_{\rm pot}v=\omega^2G_{\rm kin}v.
+\]
+So a frequency measures stiffness relative to the kinetic ruler, not curvature without a ruler. In the orthonormal
+reduced $q$ coordinates, at a critical point $q_*$ of $W$, differentiating $V_0=\tfrac12|\nabla W|^2$ gives
+\[
+ \left.\nabla^2V_0\right|_{q_*}=\bigl(\left.\nabla^2W\right|_{q_*}\bigr)^2,
+ \qquad \left.\nabla^2W\right|_{q_*}v=\mu v\ \Longrightarrow\ \omega=|\mu|.
+\]
+The downhill sign in $W$ is therefore compatible with a positive oscillation cost in $V_0$. The local competitor
+is soft because the magnitude of that Hessian eigenvalue is small, not merely because its sign is negative.
+
 If I could put one geometric observation first it would be this: the softest local direction at $q_{\rm MC}$ is the
 downhill direction of Chern--Simons. For $t\ne1$ it is not the tangent to the straight Maurer--Cartan line, but a
 candidate departure direction for a curved transition path. This suggests a mechanism for the ordering seen in
 glueball simulations~\cite{MorningstarPeardon99}; it does not yet identify their scalar with this local mode.
+
+\textbf{What I mean by leaning.} The quantum vacuum is not one classical field sitting still at the bottom of a well.
+Its wavefunctional assigns amplitudes across field configurations; an excitation is a different physical state,
+orthogonal to it. A local mode describes a direction near one configuration. My proposal is that such a direction
+can organize the shape of the extended quantum state. It need not complete a change of winding to feel the geometry
+of a winding-changing route. The excitation energy is measured above the quantum vacuum, not read off as the height
+of a classical barrier. In a sector with a unique normalized vacuum $\Omega$ of energy $E_{\rm vac}$, the variational description is
+\[
+ \Delta=\inf_{\substack{\|\Psi\|=1\\ \langle\Omega,\Psi\rangle=0}}
+ \bigl(\langle\Psi,H\Psi\rangle-E_{\rm vac}\bigr),
+\]
+over physical states in the energy-form domain, with the expectation read as a quadratic form~\cite{ReedSimonIV}.
+If the vacuum is degenerate, orthogonality is to its entire eigenspace, not just one chosen vector.
+That is where all three parts meet: topology enters the global identifications and allowed states, geometry enters
+the operator and inner product, and quantum dynamics sets the energy above the vacuum. The local shape gives me a
+way to recognize a candidate carrier inside that larger description.
 
 There is a second distinction. In the \emph{whole} undressed two-well model at $s=1$, the leading charge-0 excitation
 for $t>1$ is the other well's ground state, not one competitor quantum above that well. Its harmonic offset happens
@@ -104,7 +138,7 @@ for that two-well model only; it is not a budget for the physically degenerate p
 $\theta$ is a Bloch phase~\cite{JackiwRebbi76,CallanDashenGross76}, and tunnelling between windings is set by the Agmon
 distance~\cite{Agmon82,Simon83}.
 
-\begin{claim}{PROVED}{The tunnelling length is pinned by topology}\label{b:agmon}
+\begin{claim}{PROVED}{The tunnelling length links winding to geometry}\label{b:agmon}
 In variables $q=p/g$ the Agmon distance from zero field to the winding-one orbit satisfies
 $1/(2\sqrt t)\le d\le\sqrt{(t+2)(2t+1)}/(6t)$ ($0.2887\le d\le0.3287$ at $t=3$).
 The lower bound is Bogomolny's: $\int|\nabla W_1|\,|dp|\ge\Delta W_1$, where $W_1$ is the scaled superpotential.

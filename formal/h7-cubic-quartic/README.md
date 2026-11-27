@@ -110,3 +110,8 @@ The companion [H8 inter-well library](H8-README.md) shares these pinned
 dependencies and is now a second default build target. Its local algebra
 and calculus have a separate audit; the original H7 theorem source is
 unchanged.
+
+The third default target, [H8GroupTransport](H8Group-README.md), checks
+conditional bracket/metric transport into larger colour spaces. Its
+global Lie-theoretic and path-existence inputs remain explicitly in the
+written proof, with separate exact SU(3)/SU(4) fixtures.

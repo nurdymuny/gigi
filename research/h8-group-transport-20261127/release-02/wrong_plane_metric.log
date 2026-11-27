@@ -1,0 +1,10 @@
+Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\release-02\wrong_plane_metric.lean:47:50: error: unsolved goals
+I u x y vx vy : ℝ
+⊢ I * x * u⁻¹ * vx - I * x * y * vy * 2 + I * u * y * vy * 2 - I * y ^ 2 * vx =
+    I * x * u⁻¹ * vx - I * x * y * vy + I * u * y * vy - I * y ^ 2 * vx

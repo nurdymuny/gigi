@@ -1,0 +1,9 @@
+H8GroupDeclarations.lean:3:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.gradient_intertwines`
+H8GroupDeclarations.lean:4:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.cubic_transfer`
+H8GroupDeclarations.lean:5:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.superpotential_transfer`
+H8GroupDeclarations.lean:6:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.plane_pairing`
+H8GroupDeclarations.lean:7:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.plane_dissipation`
+H8GroupDeclarations.lean:8:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.scaled_saddle_height`
+H8GroupDeclarations.lean:9:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.action_density_scale`
+H8GroupDeclarations.lean:10:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.distance_squeeze`
+H8GroupDeclarations.lean:11:7: error(lean.unknownIdentifier): Unknown identifier `H8Group.coupling_action`

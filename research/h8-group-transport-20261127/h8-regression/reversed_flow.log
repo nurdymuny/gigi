@@ -1,0 +1,80 @@
+Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\reversed_flow.lean:24:46: error: unsolved goals
+u x y vx vy : ℝ
+⊢ x * u⁻¹ * vx - x * y * vy * 2 + u * y * vy * 2 - y ^ 2 * vx =
+    x * u⁻¹ * vx + x * y * vy * 2 - u * y * vy * 2 - y ^ 2 * vx
+Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\reversed_flow.lean:30:44: error: unsolved goals
+u x y : ℝ
+⊢ -(x * u * y ^ 2 * 4) + x * u⁻¹ * y ^ 2 * 2 - x ^ 2 * u⁻¹ ^ 2 + x ^ 2 * y ^ 2 * 2 + u ^ 2 * y ^ 2 * 2 - y ^ 4 =
+    x * u * y ^ 2 * 4 + x * u⁻¹ * y ^ 2 * 2 - x ^ 2 * u⁻¹ ^ 2 - x ^ 2 * y ^ 2 * 2 - u ^ 2 * y ^ 2 * 2 - y ^ 4
+Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\reversed_flow.lean:45:60: error: unsolved goals
+u τ : ℝ
+hu : 0 < u
+x y : ℝ → ℝ
+hx : HasDerivAt x (fx u (x τ) (y τ)) τ
+hy : HasDerivAt y (fy u (x τ) (y τ)) τ
+hd :
+  HasDerivAt (fun i => x i ^ 2 / (2 * u) + u * y i ^ 2 - x i * y i ^ 2)
+    (↑2 * x τ ^ (2 - 1) * fx u (x τ) (y τ) / (2 * u) + u * (↑2 * y τ ^ (2 - 1) * fy u (x τ) (y τ)) -
+      (fx u (x τ) (y τ) * y τ ^ 2 + x τ * (↑2 * y τ ^ (2 - 1) * fy u (x τ) (y τ))))
+    τ
+⊢ x τ * y τ ^ 2 * u * 2 - x τ * y τ ^ 2 * u ^ 3 * 4 - x τ ^ 2 + x τ ^ 2 * y τ ^ 2 * u ^ 2 * 2 + y τ ^ 2 * u ^ 4 * 2 -
+      y τ ^ 4 * u ^ 2 =
+    x τ * y τ ^ 2 * u * 2 + x τ * y τ ^ 2 * u ^ 3 * 4 - x τ ^ 2 - x τ ^ 2 * y τ ^ 2 * u ^ 2 * 2 - y τ ^ 2 * u ^ 4 * 2 -
+      y τ ^ 4 * u ^ 2
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\reversed_flow.lean:56:47: error: linarith failed to find a contradiction
+u x y : ℝ
+hu : 0 < u
+hxu : x ≤ u
+hy : 0 ≤ y
+hy1 : y ≤ 1
+hs : y ^ 2 ≤ 1
+a✝ : 0 < u - x
+⊢ False
+failed
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\reversed_flow.lean:60:43: error: Application type mismatch: The argument
+  hxu
+has type
+  x < u
+but is expected to have type
+  u < x
+in the application
+  sub_neg.mpr hxu
+
+Note: The following definitions were not unfolded because their definition is not exposed:
+  Real.instLT ↦ 4
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\reversed_flow.lean:69:39: error: Application type mismatch: The argument
+  Or.resolve_right (mul_eq_zero.mp hh) hz
+has type
+  u - x = 0
+but is expected to have type
+  x - u = 0
+in the application
+  sub_eq_zero.mp (Or.resolve_right (mul_eq_zero.mp hh) hz)
+
+Note: The following definitions were not unfolded because their definition is not exposed:
+  Real.instAdd ↦ 2
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\reversed_flow.lean:107:2: error: linarith failed to find a contradiction
+u x y M : ℝ
+hx : x ≤ M
+hy : 0 ≤ y
+a✝ : -(u - M) * y < (u - x) * y
+⊢ False
+failed

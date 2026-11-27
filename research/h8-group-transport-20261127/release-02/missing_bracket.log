@@ -1,0 +1,2 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\release-02\missing_bracket.lean:22:25: error: Invalid rewrite argument: Expected an equality or iff proof or definition name, but `hbr` is a proof of
+  True

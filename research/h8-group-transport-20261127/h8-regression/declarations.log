@@ -1,0 +1,22 @@
+H8.metric_pairing (u x y vx vy : ℝ) :
+  (x / u - y ^ 2) * vx + 2 * ((u - x) * y) * vy = -(H8.fx u x y * vx + 2 * H8.fy u x y * vy)
+H8.dissipation (u x y : ℝ) :
+  (x / u - y ^ 2) * H8.fx u x y + 2 * ((u - x) * y) * H8.fy u x y = -(H8.fx u x y ^ 2 + 2 * H8.fy u x y ^ 2)
+H8.path_derivative {u τ : ℝ} (hu : 0 < u) {x y : ℝ → ℝ} (hx : HasDerivAt x (H8.fx u (x τ) (y τ)) τ)
+  (hy : HasDerivAt y (H8.fy u (x τ) (y τ)) τ) :
+  HasDerivAt (fun s => H8.W u (x s) (y s)) (-(H8.fx u (x τ) (y τ) ^ 2 + 2 * H8.fy u (x τ) (y τ) ^ 2)) τ
+H8.rectangle_boundaries {u x y : ℝ} (hu : 0 < u) (hxu : x ≤ u) (hy : 0 ≤ y) (hy1 : y ≤ 1) :
+  0 ≤ H8.fx u 0 y ∧ H8.fx u u y ≤ 0 ∧ H8.fy u x 0 = 0 ∧ H8.fy u x 1 ≤ 0
+H8.interior_descent {u x y : ℝ} (hxu : x < u) (hy : 0 < y) : H8.fy u x y < 0
+H8.equilibria {u x y : ℝ} (hu : 0 < u) (hy : 0 ≤ y) (hf : H8.fx u x y = 0) (hh : H8.fy u x y = 0) :
+  x = 0 ∧ y = 0 ∨ x = u ∧ y = 1
+H8.saddle_height {u : ℝ} (hu : 0 < u) : H8.W u u 1 - H8.W u 0 0 = u / 2
+H8.unstable_root {u : ℝ} (hu : 0 < u) :
+  0 < H8.unstableRate u ∧ H8.unstableRate u ^ 2 + 1 / u * H8.unstableRate u - 2 = 0
+H8.unstable_direction {u : ℝ} (hu : 0 < u) : -H8.unstableRate u / u + 2 = H8.unstableRate u ^ 2 ∧ -H8.unstableRate u < 0
+H8.rectangle_ceiling {u x y : ℝ} (hu : 0 < u) (hx : x < u) (hy : 0 ≤ y) (hy1 : y < 1) : max x (u * y ^ 2) < u
+H8.decay_direction {u x y M : ℝ} (hx : x ≤ M) (hy : 0 ≤ y) : H8.fy u x y ≤ -(u - M) * y
+H8.weighted_cauchy (a b c d : ℝ) : (a * c + 2 * b * d) ^ 2 ≤ (a ^ 2 + 2 * b ^ 2) * (c ^ 2 + 2 * d ^ 2)
+H8.straight_excess (u : ℝ) : (u ^ 2 + 2) * (1 + 2 * u ^ 2) / 36 - (u / 2) ^ 2 = (u ^ 2 - 1) ^ 2 / 18
+H8.coupling_scaling {g : ℝ} (hg : 0 < g) (u x y : ℝ) :
+  (x / g) ^ 2 / (2 * u) + u * (y / g) ^ 2 - g * (x / g) * (y / g) ^ 2 = H8.W u x y / g ^ 2

@@ -1,0 +1,9 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\h8-regression\missing_domain.lean:101:28: error: linarith failed to find a contradiction
+u x y : ℝ
+hu : 0 < u
+hx : x < u
+hy : 0 ≤ y
+hy1 : True
+a✝ : 1 ≤ y ^ 2
+⊢ False
+failed

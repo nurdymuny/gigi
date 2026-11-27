@@ -1,0 +1,25 @@
+Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\release-02\missing_index.lean:41:45: error: unsolved goals
+E : Type u_1
+F : Type u_2
+inst✝³ : AddCommGroup E
+inst✝² : Module ℝ E
+inst✝¹ : AddCommGroup F
+inst✝ : Module ℝ F
+L : E →ₗ[ℝ] F
+B : E → E → ℝ
+C : F → F → ℝ
+b : E → E → E
+c : F → F → F
+I : ℝ
+hbr : ∀ (x y : E), L (b x y) = c (L x) (L y)
+hmetric : ∀ (x y : E), C (L x) (L y) = I * B x y
+w1 w2 w3 : ℝ
+x y z : E
+⊢ w1 * I * B x x * (1 / 2) + I * w2 * B y y * (1 / 2) + I * w3 * B z z * (1 / 2) - I * B x (b y z) =
+    w1 * B x x * (1 / 2) + w2 * B y y * (1 / 2) + w3 * B z z * (1 / 2) - B x (b y z)

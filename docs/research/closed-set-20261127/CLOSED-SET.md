@@ -137,6 +137,16 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 
 ## Change log
 
+- **27 Nov, larger-colour-space path transport (bounded deduction).** The
+  inter-well path extends through each injective su(2) embedding into a
+  compact simple metric Lie algebra. To its specified endpoint orbit the
+  ambient action is I/(2 sqrt(t)), with I the measured pullback metric
+  factor. Extra colour directions cannot lower this endpoint-specific
+  action. This extends the reduced classical geometry of line 8; no
+  carrier ordering, quantum gap or continuum status changes. H7 and H8
+  remain hypotheses. Full deduction and formal boundary:
+  `docs/research/h8-group-transport-proof-2026-11-27.md`.
+
 - **27 Nov, inter-well action closure (bounded geometric step).** H8 Step 6's
   gradient-connection sub-conjecture is proved for the original unsourced
   reduced potential and every t > 0. The inward branch in diag(x,y,y)

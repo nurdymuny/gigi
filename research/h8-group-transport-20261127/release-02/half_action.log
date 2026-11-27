@@ -1,0 +1,11 @@
+Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-group-transport-20261127\release-02\half_action.lean:58:43: error: unsolved goals
+u : ℝ
+hu : 0 < u
+I : ℝ
+⊢ I * u * (1 / 2) = I * u * (1 / 4)

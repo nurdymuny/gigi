@@ -113,6 +113,19 @@ This is the orbit volume. The reduced operator is $-\tfrac12\rho^{-1}\nabla\!\cd
 $$V(\lambda q^\iota_{\rm MC})=(1+2/t)\frac{(\lambda-\lambda^2)^2}{2g^2},\qquad \mathrm{CS}=3\lambda^2-2\lambda^3 ,$$
 exactly as for $SU(2)$, and $\lambda=1$ is the winding-1 vacuum, a generator of $\pi_3(G)$. An embedding of index $j$ multiplies $V$, $|q|^2$ and CS by $j$. That is $SU(2)$ at coupling $g^2/j$, with winding $j$.
 
+*(8 extended: the curved path) [D, 27 November].* The inter-well trajectory
+transports through any injective su(2) Lie-algebra map. With the source basis
+orthonormal and cyclic brackets normalized to one, measure I > 0 from the
+pullback inner product. The ambient Agmon distance from 0 to the specified
+embedded Maurer--Cartan orbit is I/(2 sqrt(t)) in p coordinates, or
+I/(2 sqrt(t) g^2) in q coordinates. The full gradient intertwines without
+an I factor; the action includes I. The endpoint bound rules out a cheaper
+path through the additional colour directions. This is not a statement
+about the lowest quantum carrier or a minimum over different embeddings.
+See [the full deduction and verification boundary](../h8-group-transport-proof-2026-11-27.md).
+The scalar I is not identified with an integer Dynkin index without the
+matching metric convention. H7 remains open.
+
 *(9) Potential for G.* Write $Y_k=\tfrac12\varepsilon_{klm}[X_l,X_m]$, the replacement for $\operatorname{cof}q$, and $\mathcal C(q)=\langle X_1,[X_2,X_3]\rangle$, the replacement for $\det q$. Ad-invariance gives $\langle X_k,Y_k\rangle=\mathcal C$ for each $k$. Then
 $$V(q)=\sum_k\tfrac12\|\omega_kX_k-gY_k\|^2-\tfrac12\sum_k\mathrm{src}_k\|X_k\|^2=\tfrac12\sum_k(\omega_k^2-\mathrm{src}_k)\|X_k\|^2-gS\,\mathcal C(q)+\tfrac{g^2}2\sum_k\|Y_k\|^2 .$$
 The quadratic part, and so $\kappa=\min_k(\omega_k^2-\mathrm{src}_k)$ and the window $0<s<(t+2)/(t+1)$, do not depend on $G$.

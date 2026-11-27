@@ -1,0 +1,16 @@
+test_written_proof_and_scope (__main__.Document.test_written_proof_and_scope) ... ok
+test_action_density_has_full_index_not_square_root (__main__.Geometry.test_action_density_has_full_index_not_square_root) ... ok
+test_arbitrary_nine_coordinate_restriction (__main__.Geometry.test_arbitrary_nine_coordinate_restriction) ... ok
+test_bad_frames_and_wrong_index_rejected (__main__.Geometry.test_bad_frames_and_wrong_index_rejected) ... ok
+test_conjugation_preserves_W_and_metric (__main__.Geometry.test_conjugation_preserves_W_and_metric) ... ok
+test_endpoints_are_ambient_critical (__main__.Geometry.test_endpoints_are_ambient_critical) ... ok
+test_factor_cancels_from_velocity_not_action (__main__.Geometry.test_factor_cancels_from_velocity_not_action) ... ok
+test_frames_and_measured_indices (__main__.Geometry.test_frames_and_measured_indices) ... ok
+test_full_su3_ambient_differential (__main__.Geometry.test_full_su3_ambient_differential) ... ok
+test_inherited_plane_metric (__main__.Geometry.test_inherited_plane_metric) ... ok
+test_q_coupling_scaling (__main__.Geometry.test_q_coupling_scaling) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 4.129s
+
+OK

@@ -1,0 +1,20 @@
+H8Group.gradient_intertwines.{u_1, u_2} {E : Type u_1} {F : Type u_2} [AddCommGroup E] [Module ℝ E] [AddCommGroup F]
+  [Module ℝ F] (L : E →ₗ[ℝ] F) (b : E → E → E) (c : F → F → F) (x y z : E) (ω : ℝ) (hbr : L (b x y) = c (L x) (L y)) :
+  L (ω • z - b x y) = ω • L z - c (L x) (L y)
+H8Group.cubic_transfer.{u_1, u_2} {E : Type u_1} {F : Type u_2} [AddCommGroup E] [Module ℝ E] [AddCommGroup F]
+  [Module ℝ F] (L : E →ₗ[ℝ] F) (B : E → E → ℝ) (C : F → F → ℝ) (b : E → E → E) (c : F → F → F) (I : ℝ)
+  (hbr : ∀ (x y : E), L (b x y) = c (L x) (L y)) (hmetric : ∀ (x y : E), C (L x) (L y) = I * B x y) (x y z : E) :
+  C (L x) (c (L y) (L z)) = I * B x (b y z)
+H8Group.superpotential_transfer.{u_1, u_2} {E : Type u_1} {F : Type u_2} [AddCommGroup E] [Module ℝ E] [AddCommGroup F]
+  [Module ℝ F] (L : E →ₗ[ℝ] F) (B : E → E → ℝ) (C : F → F → ℝ) (b : E → E → E) (c : F → F → F) (I : ℝ)
+  (hbr : ∀ (x y : E), L (b x y) = c (L x) (L y)) (hmetric : ∀ (x y : E), C (L x) (L y) = I * B x y) (w1 w2 w3 : ℝ)
+  (x y z : E) : H8Group.superpotential C c w1 w2 w3 (L x) (L y) (L z) = I * H8Group.superpotential B b w1 w2 w3 x y z
+H8Group.plane_pairing (I u x y vx vy : ℝ) :
+  I * (x / u - y ^ 2) * vx + 2 * I * ((u - x) * y) * vy = -(I * H8.fx u x y * vx + 2 * I * H8.fy u x y * vy)
+H8Group.plane_dissipation (I u x y : ℝ) :
+  I * ((x / u - y ^ 2) * H8.fx u x y + 2 * ((u - x) * y) * H8.fy u x y) = -I * (H8.fx u x y ^ 2 + 2 * H8.fy u x y ^ 2)
+H8Group.scaled_saddle_height {u : ℝ} (hu : 0 < u) (I : ℝ) : I * (H8.W u u 1 - H8.W u 0 0) = I * u / 2
+H8Group.action_density_scale {I : ℝ} (hI : 0 < I) (a b : ℝ) : √(I * a) * √(I * b) = I * (√a * √b)
+H8Group.distance_squeeze (d I u : ℝ) (lower : I * u / 2 ≤ d) (upper : ∀ (ε : ℝ), 0 < ε → d ≤ I * u / 2 + ε) :
+  d = I * u / 2
+H8Group.coupling_action {g : ℝ} (hg : 0 < g) (I u : ℝ) : I * (u / 2) / g ^ 2 = I * u / (2 * g ^ 2)

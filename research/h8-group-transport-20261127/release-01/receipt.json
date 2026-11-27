@@ -1,0 +1,82 @@
+{
+  "passed": false,
+  "mode": "release",
+  "scope": "Exact matrix examples and conditional Lean algebra; general global theorem written separately",
+  "source_revision": "e213f9fda4b2277f1851fbf024483ca99dd32b89",
+  "runs": [
+    {
+      "command": [
+        "lake",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H8GroupDeclarations.lean"
+      ],
+      "exit_code": 0,
+      "log": "declarations.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H8GroupVerification.lean"
+      ],
+      "exit_code": 1,
+      "log": "verification.log"
+    }
+  ],
+  "failures": [
+    "Lean verification failed"
+  ],
+  "exact": {
+    "tests": 11,
+    "failures": 0,
+    "errors": 0
+  },
+  "sympy": "1.14.0",
+  "metric_factors": {
+    "su3_block": "1",
+    "su3_spin1": "4",
+    "su4_two_blocks": "2",
+    "su3_conjugated": "1"
+  },
+  "dependency_revisions": {
+    "mathlib": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "plausible": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "LeanSearchClient": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "importGraph": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "proofwidgets": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "aesop": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "Qq": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "batteries": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "Cli": "50810f72af7618bee62fe9800dc26e806c188703"
+  },
+  "toolchain": "leanprover/lean4:v4.36.0",
+  "sha256_lf": {
+    "scripts/check_h8_group_transport.py": "4084cd0e88d594d982ff1d3a0599786f0e8993a39c3c8e388cf460a027ea4ea1",
+    "scripts/check_h7_lean.py": "a9d6f4dd3af65d890ecedd23bcdae0053c24b6ab75e9a64ef4a05d9515950123",
+    "docs/research/h8-group-transport-proof-2026-11-27.md": "308c0f82deddfd337cff9fb9c891af140bef4de05670730ae036fb8f07d63cf3",
+    "docs/research/h8-group-transport-contract-2026-11-27.md": "937963dc9baf4fb3744c6581fa0f227e53d44357d552468ffe1573e1e02b3572",
+    "docs/research/h8-interwell-proof-2026-11-27.md": "d245425366fae150c7b19ce077e858f4d87df928e5033b571dd1ef1cc0db2ed2",
+    "formal/h7-cubic-quartic/Declarations.lean": "b02a40c9c6d3439651d90064e7b7ffd38a9c2fde57753f65cd50a61577d9fc10",
+    "formal/h7-cubic-quartic/H7CubicQuartic.lean": "7468a35e140eaa1e4e6b7e9832d89dd177e9bb84bf6cb7d5f23fdddbd2d9fbe4",
+    "formal/h7-cubic-quartic/H8Declarations.lean": "e6cb3817cb134a8e68844429a831db905384f7e9924892b014dbb8899fda4f26",
+    "formal/h7-cubic-quartic/H8GroupDeclarations.lean": "0c92ccdf4c6000e5931f4b2bf416a52958085138d2df9e4964adfe13def45a45",
+    "formal/h7-cubic-quartic/H8GroupTransport.lean": "13a404a5f9b21fb1ff128632936e54793138d21198511186755d5889c27eb434",
+    "formal/h7-cubic-quartic/H8GroupVerification.lean": "5b42b55303d66bbe840d07fefae4890fd250d12d9f5668ddf276310685b01552",
+    "formal/h7-cubic-quartic/H8Interwell.lean": "315e8c8c2de5e9ee76c7c3ca792ff021b08faf540ad543dff319a4e62359edbc",
+    "formal/h7-cubic-quartic/H8Verification.lean": "832d7518149ed5eef50911167fc53b18678de798e5b2a5264d4a014635f3119c",
+    "formal/h7-cubic-quartic/Verification.lean": "9995c06b079b7b97599efa7aba78dc1afc0eff3a7b2f7d82cdd931d7c249f2fa",
+    "formal/h7-cubic-quartic/lakefile.toml": "0a2c2fd496fff650b7a76348631a13be116f63ec810fb223b50aadec1589bca5",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a"
+  }
+}

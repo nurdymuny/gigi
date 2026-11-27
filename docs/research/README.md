@@ -25,6 +25,7 @@ papers cite some of these paths, so files are never renamed or moved.
 | 27 Nov | [The cubic interaction cannot escape its bracket geometry](h7-cubic-quartic-proof-2026-11-27.md): A_g closed by deduction from Austing--Wheater; fixed-group reduced compact resolvent, not closure of H7 |
 | 27 Nov | [Lean verification contract](h7-lean-contract-2026-11-27.md) and [checked source](../../formal/h7-cubic-quartic/README.md): the real-algebraic deduction is kernel-checked with the published global bound explicit as a hypothesis; not end-to-end formal verification of H7 |
 | 27 Nov | [Inter-well contract](h8-interwell-contract-2026-11-27.md) and [The curved path reaches the other well](h8-interwell-proof-2026-11-27.md): the inward branch reaches 0 and gives exact action 1/(2 sqrt(t)); local geometry checked in Lean, global ODE argument written explicitly; H8 remains open |
+| 27 Nov | [Group-transport contract](h8-group-transport-contract-2026-11-27.md) and [The curve survives the larger colour space](h8-group-transport-proof-2026-11-27.md): exact ambient action I/(2 sqrt(t)) to a specified embedded orbit, with measured metric factor I; conditional transfer algebra in Lean, explicit SU(3)/SU(4) checks; H7/H8 remain open |
 
 **Bounded flux-grid diagnostic:** [One-point Mq 10 -> 12 smoke registration](helike-flux-basis-smoke-registration-2026-11-26.md).
 Results: [basis refinement improves the estimates but does not repair the gate](helike-flux-basis-smoke-results-2026-11-26.md).

@@ -1,0 +1,11 @@
+'H8Group.gradient_intertwines' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.cubic_transfer' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.superpotential_transfer' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.plane_pairing' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.plane_dissipation' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.scaled_saddle_height' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.action_density_scale' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.distance_squeeze' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Group.coupling_action' depends on axioms: [propext, Classical.choice, Quot.sound]
+H8GroupVerification.lean:15:57: error: unsolved goals
+⊢ ¬2 = √4 * (1 / 2)

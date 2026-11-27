@@ -1,0 +1,12 @@
+test_factorization_sign_and_formal_zero_mode (__main__.Algebra.test_factorization_sign_and_formal_zero_mode) ... ok
+test_gaussian_equality_at_zero_coupling_or_zero_cubic (__main__.Algebra.test_gaussian_equality_at_zero_coupling_or_zero_cubic) ... ok
+test_no_kernel_is_not_a_positive_spectral_bottom (__main__.Algebra.test_no_kernel_is_not_a_positive_spectral_bottom) ... ok
+test_open_cone_and_positive_cubic_witness (__main__.Algebra.test_open_cone_and_positive_cubic_witness) ... ok
+test_row_trilinearity_in_arbitrary_colour_examples (__main__.Algebra.test_row_trilinearity_in_arbitrary_colour_examples) ... ok
+test_su2_gradient_laplacian_and_potential (__main__.Algebra.test_su2_gradient_laplacian_and_potential) ... ok
+test_written_proof_and_scope (__main__.Document.test_written_proof_and_scope) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 3.024s
+
+OK

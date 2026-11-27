@@ -1,0 +1,7 @@
+H8VacuumDeclarations.lean:3:7: error(lean.unknownIdentifier): Unknown identifier `H8Vacuum.factorization_jet`
+H8VacuumDeclarations.lean:4:7: error(lean.unknownIdentifier): Unknown identifier `H8Vacuum.squares_zero`
+H8VacuumDeclarations.lean:5:7: error(lean.unknownIdentifier): Unknown identifier `H8Vacuum.cone_tail_identity`
+H8VacuumDeclarations.lean:6:7: error(lean.unknownIdentifier): Unknown identifier `H8Vacuum.cone_tail_bound`
+H8VacuumDeclarations.lean:7:7: error(lean.unknownIdentifier): Unknown identifier `H8Vacuum.strict_floor_of_attained`
+H8VacuumDeclarations.lean:8:7: error(lean.unknownIdentifier): Unknown identifier `H8Vacuum.sector_floor`
+H8VacuumDeclarations.lean:9:7: error(lean.unknownIdentifier): Unknown identifier `H8Vacuum.gaussian_jet`

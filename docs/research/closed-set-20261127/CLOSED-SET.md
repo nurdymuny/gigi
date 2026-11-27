@@ -137,6 +137,17 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 
 ## Change log
 
+- **27 Nov, strict vacuum-floor closure (bounded deduction).** For the
+  unsourced reduced operator at every fixed t > 0, g > 0 and compact
+  simple metric colour algebra of dimension n, E0 > nS/2. The previously
+  proved confinement makes the bottom attained. Factorization forces
+  equality states to be multiples of exp(-W); a nonzero bracket supplies
+  a positive-measure cone on which that candidate is not normalizable.
+  At g = 0 the Gaussian attains the floor exactly. This is not an
+  excitation-gap or carrier-ordering result. H7 and H8 remain open;
+  the seven top-level hypotheses are unchanged. Proof and bounded Lean
+  scope: `docs/research/h8-vacuum-floor-proof-2026-11-27.md`.
+
 - **27 Nov, larger-colour-space path transport (bounded deduction).** The
   inter-well path extends through each injective su(2) embedding into a
   compact simple metric Lie algebra. To its specified endpoint orbit the

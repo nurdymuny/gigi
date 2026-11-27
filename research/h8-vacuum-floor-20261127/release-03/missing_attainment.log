@@ -1,0 +1,6 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-vacuum-floor-20261127\release-03\missing_attainment.lean:47:30: error(lean.unknownIdentifier): Unknown identifier `he`
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-vacuum-floor-20261127\release-03\missing_attainment.lean:50:14: error(lean.unknownIdentifier): Unknown identifier `x`
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-vacuum-floor-20261127\release-03\missing_attainment.lean:50:16: error(lean.unknownIdentifier): Unknown identifier `hx`
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-vacuum-floor-20261127\release-03\missing_attainment.lean:50:24: error(lean.unknownIdentifier): Unknown identifier `x`
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-vacuum-floor-20261127\release-03\missing_attainment.lean:50:26: error(lean.unknownIdentifier): Unknown identifier `hx`
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-vacuum-floor-20261127\release-03\missing_attainment.lean:50:30: error(lean.unknownIdentifier): Unknown identifier `he.trans`

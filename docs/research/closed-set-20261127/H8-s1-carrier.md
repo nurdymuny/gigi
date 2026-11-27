@@ -71,7 +71,13 @@ $$
 H_g=\tfrac12\sum_i a_i^*a_i+\tfrac32S\qquad\text{(exact, on }C_c^\infty).
 $$
 
-Hence $E_0\ge\frac32S$ for every $g$ and $t$.
+Hence $E_0\ge\frac32S$ for every $g$ and $t$. For every t > 0 and
+g > 0 this inequality is **strict**, by the
+[vacuum-floor deduction](../h8-vacuum-floor-proof-2026-11-27.md):
+compact resolvent makes the bottom attained, while the only formal
+zero mode of all the a_i, exp(-W), grows on a positive-measure cone and
+is not in L2. At g = 0 the Gaussian does attain the floor. This is a
+ground-energy statement, not the ordering of the excited carriers.
 
 **Step 2. Hessians [P].** Scale $q=p/g$: $H_g=g^{-2}\bigl[-\tfrac{\hbar^2}2\Delta_p+V_1(p)\bigr]$ with $\hbar=g^2$, $V_1=V_0|_{g=1}$. So the harmonic frequencies do not depend on $g$. At a zero of $V_0$, $\operatorname{Hess}V_0=J^2$ with $J=\operatorname{Hess}W$ (symmetric), so the frequencies are $|{\rm eig}\,J|$.
 
@@ -111,6 +117,13 @@ $$
 In Witten's language: $0$ is the minimum of $W$, and $q_{\rm MC}$ is an index-1 saddle (mod gauge) whose unstable direction is the competitor mode. $e_0(0)=\frac32S$ is exactly the bound of Step 1. So:
 
 *(a) Ground state [P].* $\tfrac32S\le E_0\le\tfrac32S+C_\eta\,g^{-p}\,e^{-(1-\eta)/(\sqrt t\,g^2)}$ for any $\eta>0$ (some fixed power $p$). Proof of the upper bound: take the trial function $\chi e^{-W}$, which is colour invariant. Then $\langle\chi e^{-W},(H-\frac32S)\chi e^{-W}\rangle=\frac12\int|\nabla\chi|^2e^{-2W}$. Take $\chi=f(W)$ on the connected component $B$ of $\{W<w_0\}$ containing $0$, where $w_0=W(q_{\rm MC})=1/(2\sqrt t g^2)$, and $\chi=0$ off $B$, with $f=1$ below $(1-\eta)w_0$. $B$ is bounded: along a ray $W=Ar^2-Br^3$ first reaches $w_0$ at $r\le\sqrt{2w_0/\min\omega_k}$. Every ray maximum is $\ge w_0$, because the minimum over rays of the ray maximum is a critical point of $W$ (Nehari), and the only non-zero critical points are the orbit, where $W=w_0$. The denominator is close to $\prod_k(\pi/\omega_k)^{3/2}$. So **the vacuum energy at $s=1$ has no perturbative corrections at all**: the vacuum is the $CS=0$ well, not the background.
+
+**Strict lower endpoint [P].** At positive g, the lower inequality in
+Step 4(a) sharpens to $\tfrac32S<E_0$. The proof uses neither the cutoff
+upper estimate nor perturbation theory. It also extends to every fixed
+compact simple metric colour algebra, with floor $nS/2$ for n its
+dimension. It supplies no quantitative lower shift and does not turn
+H8 into a proved carrier-ordering statement.
 
 *(b) Level list at harmonic order.* The low levels of $H_g$ are $\frac32S$ plus one of:
 - $q=0$ well: colour singlets need $\ge2$ quanta ($\delta_{cc'}$) or 3 ($\epsilon$). The lowest are $2u$ for two row-(2,3) quanta (charges $0,\pm2$, degenerate at this order), $\sqrt t+u$ (charge $\pm1$), and $2\sqrt t$ (row 1, charge 0).

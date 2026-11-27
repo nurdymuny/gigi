@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "checked_source_hashes": 23,
+  "exact_checks": 7,
+  "lean_declarations": 7,
+  "rejected_mutations": 4
+}

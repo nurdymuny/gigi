@@ -1,0 +1,7 @@
+'H8Vacuum.factorization_jet' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Vacuum.squares_zero' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Vacuum.cone_tail_identity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Vacuum.cone_tail_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Vacuum.strict_floor_of_attained' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Vacuum.sector_floor' depends on axioms: [propext, Classical.choice, Quot.sound]
+'H8Vacuum.gaussian_jet' depends on axioms: [propext, Classical.choice, Quot.sound]

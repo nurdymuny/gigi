@@ -1,0 +1,12 @@
+H8Vacuum.factorization_jet (f fp fpp wp wpp : ℝ) :
+  (-(fpp + wpp * f + wp * fp) + wp * (fp + wp * f)) / 2 + wpp * f / 2 = -fpp / 2 + wp ^ 2 * f / 2
+H8Vacuum.squares_zero {N : ℕ} (v : Fin N → ℝ) (h : ∑ i, v i ^ 2 = 0) (i : Fin N) : v i = 0
+H8Vacuum.cone_tail_identity (a g c r : ℝ) :
+  -(g * c * r ^ 3) / 2 - (a * r ^ 2 - g * c * r ^ 3) = r ^ 2 * (g * c * r - 2 * a) / 2
+H8Vacuum.cone_tail_bound (a g c r : ℝ) (h : 2 * a ≤ g * c * r) : a * r ^ 2 - g * c * r ^ 3 ≤ -(g * c * r ^ 3) / 2
+H8Vacuum.strict_floor_of_attained.{u_1} {State : Type u_1} (admissible kernel : State → Prop) (energy : State → ℝ)
+  (floor bottom : ℝ) (hlo : ∀ (x : State), admissible x → floor ≤ energy x)
+  (hatt : ∃ x, admissible x ∧ energy x = bottom) (heq : ∀ (x : State), admissible x → energy x = floor → kernel x)
+  (hno : ∀ (x : State), admissible x → ¬kernel x) : floor < bottom
+H8Vacuum.sector_floor (floor bottom sector : ℝ) (h : floor < bottom) (hs : bottom ≤ sector) : floor < sector
+H8Vacuum.gaussian_jet (w x f : ℝ) : -((w ^ 2 * x ^ 2 - w) * f) / 2 + w ^ 2 * x ^ 2 * f / 2 = w * f / 2

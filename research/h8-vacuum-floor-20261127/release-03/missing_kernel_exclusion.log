@@ -1,0 +1,7 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\h8-vacuum-floor-20261127\release-03\missing_kernel_exclusion.lean:50:10: error: Function expected at
+  hno
+but this term has type
+  True
+
+Note: Expected a function because this term is being applied to the argument
+  x

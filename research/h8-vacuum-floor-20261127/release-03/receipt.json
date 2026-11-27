@@ -1,0 +1,167 @@
+{
+  "passed": true,
+  "mode": "release",
+  "scope": "Exact algebra and conditional Lean deduction; global analysis written separately",
+  "source_revision": "1c31cb6bd533a3685e02681735d89004e68513fd",
+  "runs": [
+    {
+      "command": [
+        "lake",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H8VacuumDeclarations.lean"
+      ],
+      "exit_code": 0,
+      "log": "declarations.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "H8VacuumVerification.lean"
+      ],
+      "exit_code": 0,
+      "log": "verification.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-vacuum-floor-20261127\\release-03\\wrong_floor_shift.lean"
+      ],
+      "exit_code": 1,
+      "log": "wrong_floor_shift.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-vacuum-floor-20261127\\release-03\\missing_attainment.lean"
+      ],
+      "exit_code": 1,
+      "log": "missing_attainment.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-vacuum-floor-20261127\\release-03\\missing_kernel_exclusion.lean"
+      ],
+      "exit_code": 1,
+      "log": "missing_kernel_exclusion.log"
+    },
+    {
+      "command": [
+        "lake",
+        "env",
+        "lean",
+        "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\h8-vacuum-floor-20261127\\release-03\\too_strong_cone_bound.lean"
+      ],
+      "exit_code": 1,
+      "log": "too_strong_cone_bound.log"
+    }
+  ],
+  "failures": [],
+  "exact": {
+    "tests": 7,
+    "failures": 0,
+    "errors": 0
+  },
+  "sympy": "1.14.0",
+  "dependency_revisions": {
+    "mathlib": "fc4f59e577feb1a4956671bc04ac18aaaf8cd842",
+    "plausible": "054b228ce0ac61d767c6e71ba73a24728f191b72",
+    "LeanSearchClient": "4fb58e749ef3fc0395fe274f6cab70c2ea85f1c9",
+    "importGraph": "8370c640afcd1cc3fb1cb9bf1560cc66eafee5e0",
+    "proofwidgets": "2f0f3520daeac2d9310ff25b7a877a0e5cdaa203",
+    "aesop": "66ff77cf0c4c898799e4b94d14db55f7a02d0c5a",
+    "Qq": "ff055a2fcc835935e0ae607339b455a5f5896b4b",
+    "batteries": "b4b25a3886a16daacaf6615c2eea7170a6e8f458",
+    "Cli": "50810f72af7618bee62fe9800dc26e806c188703"
+  },
+  "toolchain": "leanprover/lean4:v4.36.0",
+  "axioms": {
+    "H8Vacuum.factorization_jet": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8Vacuum.squares_zero": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8Vacuum.cone_tail_identity": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8Vacuum.cone_tail_bound": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8Vacuum.strict_floor_of_attained": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8Vacuum.sector_floor": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "H8Vacuum.gaussian_jet": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ]
+  },
+  "audit_rejections": [
+    "sorryAx",
+    "UnverifiedCompactness"
+  ],
+  "mutations_rejected": [
+    "wrong_floor_shift",
+    "missing_attainment",
+    "missing_kernel_exclusion",
+    "too_strong_cone_bound"
+  ],
+  "sha256_lf": {
+    "scripts/check_h8_vacuum_floor.py": "9358e147f32ef1e9cd8d92b5e854ab9ed093f33f70fc97953d54123f34d4f397",
+    "scripts/check_h7_lean.py": "a9d6f4dd3af65d890ecedd23bcdae0053c24b6ab75e9a64ef4a05d9515950123",
+    "docs/research/h8-vacuum-floor-proof-2026-11-27.md": "8c531fb8ab98d610bf095f32f1641959325f1935a7034c28bbd68f4dae5e47c8",
+    "docs/research/h8-vacuum-floor-contract-2026-11-27.md": "a4bd7074bed69ef3d5023e8ba49b70f248e6daed1729cb0d7d3fb2254f6be0ab",
+    "docs/research/h7-cubic-quartic-proof-2026-11-27.md": "0cb4a23ec0959c822f8163224ab28f287e204e924585cd467ab0387997461731",
+    "docs/research/closed-set-20261127/H8-s1-carrier.md": "7d8e3a8e672659328fbd98c252068788eebbca0db106f5d23adac07a52e492fe",
+    "docs/research/closed-set-20261127/CLOSED-SET.md": "eecbf585c3139ecd929bcd054c86283493f555904a7adabd1170e19b5e1fcf47",
+    "formal/h7-cubic-quartic/H8Vacuum-README.md": "b11d457f966d5f76fa8696e86bffa1ae4148b3e1911fe4448c6ec8ef3b9a531a",
+    "formal/h7-cubic-quartic/Declarations.lean": "b02a40c9c6d3439651d90064e7b7ffd38a9c2fde57753f65cd50a61577d9fc10",
+    "formal/h7-cubic-quartic/H7CubicQuartic.lean": "7468a35e140eaa1e4e6b7e9832d89dd177e9bb84bf6cb7d5f23fdddbd2d9fbe4",
+    "formal/h7-cubic-quartic/H8Declarations.lean": "e6cb3817cb134a8e68844429a831db905384f7e9924892b014dbb8899fda4f26",
+    "formal/h7-cubic-quartic/H8GroupDeclarations.lean": "0c92ccdf4c6000e5931f4b2bf416a52958085138d2df9e4964adfe13def45a45",
+    "formal/h7-cubic-quartic/H8GroupTransport.lean": "13a404a5f9b21fb1ff128632936e54793138d21198511186755d5889c27eb434",
+    "formal/h7-cubic-quartic/H8GroupVerification.lean": "fe91a9d02fcb2fe50f3e60a09a6b63a9d71a14e9016a34ebcc34f95ab6f7a18a",
+    "formal/h7-cubic-quartic/H8Interwell.lean": "315e8c8c2de5e9ee76c7c3ca792ff021b08faf540ad543dff319a4e62359edbc",
+    "formal/h7-cubic-quartic/H8VacuumDeclarations.lean": "dbe1ba36be4bce4af28c89d1710fda406271226c4cfa1faefb3676e4546391e1",
+    "formal/h7-cubic-quartic/H8VacuumFloor.lean": "f8e0623e9f429c24008b9c237af433917ceb5ba6273bbab239c15e35a127ae21",
+    "formal/h7-cubic-quartic/H8VacuumVerification.lean": "447536399de3ca3fa1b9d19148de95ee2b7e9a0e0899657bc8b8cf59dd8c4327",
+    "formal/h7-cubic-quartic/H8Verification.lean": "832d7518149ed5eef50911167fc53b18678de798e5b2a5264d4a014635f3119c",
+    "formal/h7-cubic-quartic/Verification.lean": "9995c06b079b7b97599efa7aba78dc1afc0eff3a7b2f7d82cdd931d7c249f2fa",
+    "formal/h7-cubic-quartic/lakefile.toml": "c953b0690a909a9254ac51cc51b9a9d1a594953f0631bdaea636f618e952daaa",
+    "formal/h7-cubic-quartic/lake-manifest.json": "750e9fbdb693a9ac6e68e3e4e1d497aac1f244f2a1cbe569ce48fd87c6ca5cbb",
+    "formal/h7-cubic-quartic/lean-toolchain": "582a63f8f9c5128067b688778c1051cf1464c3ca9d57b9325025c051c29b774a"
+  }
+}

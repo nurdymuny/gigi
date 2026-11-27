@@ -1,0 +1,15 @@
+test_chart_update_and_settling (test_helike_dressed_chart.Dressing.test_chart_update_and_settling) ... ok
+test_genuine_mixing_stays_mixed (test_helike_dressed_chart.Dressing.test_genuine_mixing_stays_mixed)
+A carrier that really mixes two modes keeps its mixing in the dressed frame: w/Z = cos^2(theta). ... ok
+test_planted_width_deformation_reads_one_in_the_dressed_frame (test_helike_dressed_chart.Dressing.test_planted_width_deformation_reads_one_in_the_dressed_frame)
+Bee's control: the true vacuum is twice as stiff along mode 0 (Omega = 2 vs bare w = 1). Its first excitation ... ok
+test_roles_by_overlap_under_permutation_and_rotation (test_helike_dressed_chart.Dressing.test_roles_by_overlap_under_permutation_and_rotation)
+Dressed modes permuted, rotated inside the doublet, and slightly perturbed: roles are recovered by overlap. ... ok
+test_shifted_and_deformed_gaussian_is_recovered (test_helike_dressed_chart.Dressing.test_shifted_and_deformed_gaussian_is_recovered)
+psi0 = exp(-1/2 (z-a)^T Omega (z-a)) with a sheared constant kinetic form G: the dressed centre is a, the ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.045s
+
+OK
+exit 0

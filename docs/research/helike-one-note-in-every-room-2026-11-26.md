@@ -41,7 +41,7 @@ where the translation corrected the vision.
 *Added 27 November:* §1.5, what "the continuum" means and the object a proof must build; §4.10, the fibre-bundle
 framing checked against the mathematics.
 
-*Also 27 November:* §4.11, where Helike sits in the bundle picture.
+*Also 27 November:* §4.11, where Helike sits in the bundle picture. §4.12, the grid: every piece in its cell, with the constraints between cells.
 
 *Tightened before implementation:*
 - A crossing needs a subdivision-consistent carrier path, not just a confident match between endpoints.
@@ -732,6 +732,44 @@ Ways Across a Turn*). Classically it prices Helike's twist. Its expectation give
 coefficient. Its decay between distant loops is the gap. Helike is the named carrier in the middle of the scale
 direction, with the Casimir at the strong-coupling end. The open problem is to show that a note with a traceable
 carrier joins the two all the way to the continuum.
+
+### 4.12 The grid: every piece in its cell
+
+The bundle is the grid. Its layers are not chosen; they are the structures every principal bundle carries. Every piece
+of this programme, including the ones earlier listed as missing, is an object of exactly one layer. The constraints
+*between* layers are how the pieces must add up. Status: **P** proved, **C** computed, **R** registered and running,
+**X** conjecture, **—** not yet constructed. The mathematics for each cell is in
+`helike-bundle-framing-math-2026-11-27.md`.
+
+| layer | classical object | quantum object | my pieces | status |
+|---|---|---|---|---|
+| **1. Base** (space, the room) | the stretched three-sphere, radius R; its isometries | the size of the room as the direction of scale; the field's own scale Λ (dimensional transmutation) | Berger spheres; Δ·R and the translator (§4.3); octave and tone (§4.6) | P for the geometry; X for the translator; — for Λ |
+| **2. Structure group** | SU(2), the **double cover** of SO(3); centre ℤ₂ = {±1} | representations j: the spinor j = ½ exists only because of the double cover; centre symmetry | the Casimir ¾ as the note of a double-covered turn (§4.9); *Three Ways*' half turn U = −1 is the centre element | P |
+| **3. Connection** | parallel transport and holonomy; curvature F | Wilson loops in representation j; their expectations | Helike's twist and its price (the chord); the GIGI loop construction | P (classical); C (GIGI, 2-D) |
+| **4. Gauge group and quotient** | 𝒢 acting on 𝒜; the quotient 𝒜/𝒢 (Singer); the folded drum | the measure lives on 𝒜/𝒢; gauge, chart and scheme invariance | ℝ⁹/SO(3), the orbit-volume measure; the fold (two determinant sheets, an orientation double cover); "the gluing must not become part of the reading" | P for the structure; boundary realization at the fold — |
+| **5. Topology** | characteristic classes: the second Chern class, π₃(SU(2)) = ℤ; the Chern–Simons functional; large gauge transformations | θ-vacua; instantons as tunnelling between winding sectors | **already in the reduced model:** on S³ the Maurer–Cartan connection is the winding-1 pure gauge, and the background lies on the Maurer–Cartan line. So the two vacua, the barrier between them (the sphaleron) and the tunnelling path all live in ℝ⁹ | P (structure); C (barrier, to compute); θ-dependence — |
+| **6. Measure** | — | the vacuum ψ₀² on 𝒜/𝒢; Euclidean ↔ real time (Osterwalder–Schrader) | dressed chart (§5.10), unfolded chart (§5.11), M8's weighted geometry, positive ground e^{−S}, Bakry–Émery; the heat signal's corridor (§4.6); holomorphic gluing (§4.5) | R / C / X |
+| **7. Spectrum** | the Hessian of the action | the Hamiltonian on 𝒜/𝒢; the gap; carriers labelled by the base's symmetry (charge, and in infinite volume spin and parity J^PC) | Helike (charge 2), the competitor (charge 0), the switch; **the glueball link:** in infinite volume the scalar 0⁺⁺ is lighter than the tensor 2⁺⁺ | P (classical floor); R (switch); X (glueball link) |
+| **8. Scale fibration** | the splitting of modes into slow (homogeneous) and fast (higher harmonics) | **M3 as a bundle:** fast modes as fibres over the slow base; their ground state is a line bundle over ℝ⁹/SO(3); the dressing is its zero-point potential and its Berry connection; the renormalization group is the flow along scale | the construction of M3 (Born–Oppenheimer on the Berger sphere) | — (template: Lüscher, van Baal) |
+| **9. Associated bundles** | sections in a representation: matter fields (quarks, Higgs) | the full Standard Model | none: pure Yang–Mills, which is the Clay problem | out of scope by choice |
+| **10. The base's own geometry** | the metric; the frame bundle | gravity | none | outside the problem |
+
+**How the cells must add up (the sudoku's constraints).**
+- **Layers 2 · 3 · 7: the double cover sets the note.** The gap at strong coupling is the j = ½ Casimir ¾. The area law's
+  coefficient is the same ¾. Adjoint loops (j = 1) carry ¾ → 2, a ratio of 8/3 (Casimir scaling). And confinement of
+  j = ½ but not of j = 1 at long distance is the centre ℤ₂, the kernel of the double cover. One fact, three cells.
+- **Layers 4 · 6: the quotient is why the charts work.** The unfolded chart q = P·O separates the colour fibre from the
+  base of the quotient, so the vacuum is Gaussian in P. The orbit volume is the measure's density. The fold's two
+  sheets are the orientation double cover.
+- **Layers 5 · 1 · 7: topology sits on the background's line.** The Maurer–Cartan line joins the winding-0 and winding-1
+  vacua, and the sourced background sits on it. The θ-dependence of the gap must therefore come from tunnelling along
+  this line, which is a computable consequence.
+- **Layers 7 · 1: the switch should become the glueball ordering.** The predicted switch s* rises with g², and a larger
+  g² means a larger room. The region where the charge-0 competitor is lowest grows as the room grows, the direction in
+  which the scalar 0⁺⁺ becomes the lightest glueball. This is a link to known continuum physics that can fail.
+- **Layers 8 · 6 · 7: M3 must preserve the carriers.** The fast modes' Berry connection and zero-point energy must dress
+  Helike and the competitor without exchanging them, except at an identifiable switch. That is M8's continuity
+  condition, read along the scale fibration.
 
 ## 5. What a proof requires, and my answer to each part
 

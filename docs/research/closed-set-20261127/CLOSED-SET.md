@@ -131,6 +131,14 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 
 ## Change log
 
+- **27 Nov, line 15 refined (a proof change, no status change).** From the first-order dressing formula
+  δω = v·(δK − ω²δG)v/(2ω v·Gv) added in the narrative, the kinetic correction enters as δG_kin = 2m^ren, so a unit slow
+  mode shifts by −ω m^ren_uu. The Born–Huang term enters frequencies only at O(g⁴). At the sourced controls (isolated
+  modes), first order gives the competitor-minus-Helike separation D = 0.01655 + g²(−2.208 + 1.258 − κ), with
+  κ = ω_C m̃_CC − ω_H m̃_HH uncomputed. The order reverses only if κ > 7.33 (g² = 0.002) or κ > 3.19 (g² = 0.004). The
+  dressed switch is s* ≈ 1.1436 + g²(0.950 + κ)/2.569. The registered s* (slope 0.86) are reduced-model predictions.
+  The kinetic term stays OPEN; it now has a threshold. Narrative statement `b:threshold`.
+
 - **27 Nov, narrative accuracy review of The Lowest Note.** This review preserves the theory as a description,
   not a proof submission. It corrects the scope of existing lines; it does not add a research programme or close
   a hypothesis. Details and finite algebra checks: `docs/papers/ym-theory-statement/REVIEW-2026-11-27.md`.

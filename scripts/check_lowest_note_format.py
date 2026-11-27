@@ -13,6 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 REL = 'docs/papers/ym-theory-statement'
 PAPER = ROOT / REL
 BASELINE = 'df949c7a69aae59b873230aabf9ccab7e5821910'
+# Statements added after the format revision, each named with its status and its numbered equations.
+# Every baseline statement must still match exactly; anything new must be listed here.
+ADDITIONS = {
+    'b:threshold': ('COMPUTED', 2),   # 27 Nov: the kinetic-term threshold, from eq. (dressing) of the baseline
+}
 
 
 def git(*args):
@@ -63,7 +68,11 @@ class Format(unittest.TestCase):
     def test_statement_bodies_and_statuses_are_preserved(self):
         baseline = statements(self.before)
         self.assertEqual(len(baseline), 46)
-        self.assertEqual(statements(self.after), baseline)
+        after = statements(self.after)
+        for label, (status, _) in ADDITIONS.items():
+            self.assertIn(label, after)
+            self.assertEqual(after.pop(label)[0], status)
+        self.assertEqual(after, baseline)
 
     def test_preservation_checks_reject_changed_math_and_status(self):
         changed_math = self.before.replace('b_0=22/3', 'b_0=23/3')
@@ -101,7 +110,7 @@ class Format(unittest.TestCase):
         self.assertIn(r'\fontsize{9.5}{12}', self.preamble)
         self.assertIn(r'\begin{multicols}{2}', self.preamble)
         self.assertIn('That claim is withdrawn.', self.preamble)
-        self.assertEqual(self.after.count(r'\begin{equation}'), 4)
+        self.assertEqual(self.after.count(r'\begin{equation}'), 4+sum(n for _, n in ADDITIONS.values()))
 
     def test_related_work_and_evidence_are_collected(self):
         intro = (PAPER/'sections/s1-problem.tex').read_text(encoding='utf-8')

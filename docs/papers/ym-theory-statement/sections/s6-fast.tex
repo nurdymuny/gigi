@@ -82,6 +82,35 @@ and so is physical H8 (Statement~\ref{b:h8}). Computing this term is necessary, 
 \lines{15, 16}
 \end{claim}
 
+Equation~\eqref{eq:dressing} turns this open term into a threshold. In the second-order effective Hamiltonian the
+kinetic matrix is $\delta_{ik}-2m^{\rm ren}_{ik}$, so $\delta G_{\rm kin}=2m^{\rm ren}$ to first order and the kinetic
+shift of a unit slow mode is $-\omega_k m^{\rm ren}_{u_ku_k}$. At the sourced controls the Helike doublet and the
+competitor are isolated, not tied, so first-order perturbation applies mode by mode. The Born--Huang term does not
+enter at this order: it is already $O(g^2)$ as a function of $M=2gq$, and its curvature in $q$ carries another $4g^2$.
+
+\begin{claim}{COMPUTED}{How large the kinetic term must be to reverse the order}\label{b:threshold}
+Write $m^{\rm ren}=g^2\tilde m$ in the scheme of line~14 ($\zeta$, $\mu R=1$) and
+$\kappa=\omega_C\tilde m_{CC}-\omega_H\tilde m_{HH}$ for the competitor and Helike modes. At $t=3$, $s=1.15$, to first
+order in $g^2$, the competitor-minus-Helike separation is
+\begin{equation}\label{eq:threshold}
+ D(g^2)=0.01655+g^2\bigl(-2.208+1.258-\kappa\bigr),
+\end{equation}
+where $-2.208$ is the reduced model's own anharmonic shift, matching the converged gaps (separation $0.01210$ at
+$g^2=0.002$), and $+1.258$ is the fast potential dressing of Statement~\ref{b:widen}. Helike stays lowest exactly
+when $g^2<0.01655/(0.950+\kappa)$. At the controls the order reverses only if $\kappa>7.33$ ($g^2=0.002$) or
+$\kappa>3.19$ ($g^2=0.004$). The dressed switch moves to
+\begin{equation}\label{eq:dressedswitch}
+ s^*(g^2)\approx s_0^*+\frac{0.950+\kappa}{2.569}\,g^2,\qquad
+ \frac{d(\omega_C-\omega_H)}{ds}=2.569\ \text{at}\ s_0^*=1.1436 .
+\end{equation}
+Without the fast terms the slope is $2.208/2.569=0.86$, which reproduces the registered $s^*$. Those values are
+therefore reduced-model predictions; the physical switch is lower by $(1.258-\kappa)g^2/2.569$.
+\evidence{All inputs except $\kappa$ are computed: the harmonic block reproduces the solver's frequencies $1.106657$
+and $1.090107$ at $s=1.15$ and gives $s_0^*=1.14357$. The coefficients are taken at $s=1.15$, so the switch formula is a
+first-order estimate. The fast and kinetic pieces are separately scheme dependent; only their sum is physical.}
+\lines{15, 16, 18}
+\end{claim}
+
 \begin{claim}{CONJECTURE}{H2 (M3): uniform dressing at small $R$}\label{b:m3}
 At $s=1$, on a chart around $q=0$, for $t\ne1$ and small $g(R)$: the levels of the full Hamiltonian (gauge-invariant
 spectral cutoff $\Lambda_{\rm cut}$, bare coupling run as above) in a low window converge as $\Lambda_{\rm cut}\to\infty$

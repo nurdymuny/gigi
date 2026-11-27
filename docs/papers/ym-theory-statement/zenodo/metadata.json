@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "upload_type": "publication",
+    "publication_type": "preprint",
+    "title": "The Lowest Note: A Geometric Theory of the Yang–Mills Mass Gap",
+    "creators": [
+      {
+        "name": "Davis, Bee Rosa",
+        "affiliation": "Davis Geometric",
+        "orcid": "0009-0009-8034-4308"
+      }
+    ],
+    "description": "@description.html",
+    "access_right": "open",
+    "license": "cc-by-4.0",
+    "version": "VERSION_NUMBER",
+    "language": "eng",
+    "keywords": [
+      "Yang–Mills mass gap",
+      "Berger sphere",
+      "Chern–Simons functional",
+      "superpotential",
+      "glueball spectrum",
+      "Born–Oppenheimer reduction",
+      "asymptotic freedom",
+      "zeta regularization",
+      "fibre bundle",
+      "lattice gauge theory",
+      "Osterwalder–Schrader axioms",
+      "Helike"
+    ],
+    "subjects": [],
+    "notes": "This version withdraws the earlier version's claim of a proof. It is a narrative theory with every statement labelled proved, computed, conditional, conjecture or open. MSC 2020: 81T13, 81T25, 58J50, 53C05. This work received no funding. The author declares no competing interests.",
+    "related_identifiers": [
+      {
+        "identifier": "OLD_RECORD_DOI",
+        "relation": "isNewVersionOf",
+        "resource_type": "publication-preprint",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "10.5281/zenodo.24472820",
+        "relation": "references",
+        "resource_type": "publication-preprint",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "10.5281/zenodo.24386613",
+        "relation": "references",
+        "resource_type": "publication-preprint",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "10.5281/zenodo.24375338",
+        "relation": "references",
+        "resource_type": "publication-preprint",
+        "scheme": "doi"
+      },
+      {
+        "identifier": "https://github.com/nurdymuny/gigi/tree/lowest-note-v1",
+        "relation": "isSupplementedBy",
+        "resource_type": "software",
+        "scheme": "url"
+      }
+    ],
+    "custom": {
+      "code:codeRepository": "https://github.com/nurdymuny/gigi/tree/lowest-note-v1",
+      "code:programmingLanguage": [
+        {"id": "python", "title": {"en": "Python"}},
+        {"id": "rust", "title": {"en": "Rust"}}
+      ]
+    }
+  }
+}

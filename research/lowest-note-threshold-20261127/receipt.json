@@ -1,0 +1,32 @@
+{
+ "harmonic_at_s_1.15": {
+  "omega_C": 1.106656600042023,
+  "omega_H": 1.090107028384522,
+  "separation": 0.01654957165750104
+ },
+ "s0_star": 1.1435677693908455,
+ "d_sep_ds_at_s0": 2.569240135974482,
+ "anharmonic_coefficient_registered": -2.208,
+ "anharmonic_coefficient_from_converged_gaps": {
+  "0.002": -2.22407241288447,
+  "0.004": -2.239800230609379
+ },
+ "fast_potential_coefficient": 1.2584097470557423,
+ "known_coefficient_without_kinetic": -0.9495902529442579,
+ "kappa_threshold": {
+  "0.002": 7.32519557580626,
+  "0.004": 3.187802661431001
+ },
+ "dressed_switch_slope_kappa0": 0.3695996491912539,
+ "reduced_switch_slope": 0.8593980644641191,
+ "registered_s_star": {
+  "0.03": 1.1674,
+  "0.05": 1.1809,
+  "0.07": 1.1931
+ },
+ "reduced_first_order_s_star": {
+  "0.03": 1.169349711324769,
+  "0.05": 1.1865376726140515,
+  "0.07": 1.2037256339033338
+ }
+}

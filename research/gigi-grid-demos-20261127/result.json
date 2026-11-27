@@ -1,0 +1,99 @@
+{
+ "double_cover": {
+  "adjoint_area_law": {
+   "1x1": {
+    "measured": 0.3543661163160931,
+    "stderr": 0.008400661921855873,
+    "exact": 0.3419527326406404,
+    "z": 1.47766733037512
+   },
+   "1x2": {
+    "measured": 0.1274838207822518,
+    "stderr": 0.012582890666043666,
+    "exact": 0.1169316713604013,
+    "z": 0.8386109123817339
+   },
+   "2x2": {
+    "measured": -0.005758490429105451,
+    "stderr": 0.016605237065054585,
+    "exact": 0.013673015767136894,
+    "z": -1.1702034797886498
+   }
+  },
+  "casimir_scaling": {
+   "2.0": 2.4044019884681336,
+   "4.0": 2.5642481531979415,
+   "16.0": 2.6616014952398697,
+   "64.0": 2.666384603952404,
+   "256.0": 2.666649546101755
+  },
+  "vortex": {
+   "encloses the vortex": {
+    "fund_before": 1.1940680807516302,
+    "fund_after": -1.1940680807516302,
+    "adj_before": 0.4257985814698817,
+    "adj_after": 0.4257985814698817,
+    "fund_flipped": true,
+    "adj_unchanged": true
+   },
+   "crosses the string twice": {
+    "fund_before": 0.3734341387136277,
+    "fund_after": 0.3734341387136277,
+    "adj_before": -0.8605469440432111,
+    "adj_after": -0.8605469440432111,
+    "fund_flipped": false,
+    "adj_unchanged": true
+   },
+   "far away": {
+    "fund_before": -0.027055725978550965,
+    "fund_after": -0.027055725978550965,
+    "adj_before": -0.9992679876917736,
+    "adj_after": -0.9992679876917736,
+    "fund_flipped": false,
+    "adj_unchanged": true
+   }
+  }
+ },
+ "topology": {
+  "point": [
+   1.15,
+   3.0,
+   0.004
+  ],
+  "max_abs_V_free_minus_closed_form": 1.7053025658242404e-13,
+  "max_abs_CS_minus_3l2_2l3": 8.881784197001252e-16,
+  "vacuum_0": {
+   "CS": 0.0,
+   "V_free": 0.0,
+   "V_sourced": 0.0,
+   "id": 50,
+   "lam": 0.0
+  },
+  "sphaleron": {
+   "CS": 0.49999999999999994,
+   "V_free": 13.020833333333336,
+   "V_sourced": 2.8645833333333397,
+   "id": 100,
+   "lam": 0.5
+  },
+  "vacuum_1": {
+   "CS": 1.0,
+   "V_free": 1.5777218104420236e-30,
+   "V_sourced": -40.62499999999998,
+   "id": 150,
+   "lam": 1.0
+  },
+  "background": {
+   "CS": 0.92575,
+   "V_free": 6.199218749999978,
+   "V_sourced": -47.52734374999997,
+   "id": 165,
+   "lam": 1.15
+  },
+  "sourced_minimum_on_line_lambda": 1.15,
+  "expected_background_lambda": 1.15,
+  "sphaleron_closed_form": 13.020833333333332
+ },
+ "gigi_point_queries": 16092,
+ "seconds": 41.772533893585205
+}

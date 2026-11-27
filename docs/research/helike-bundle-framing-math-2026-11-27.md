@@ -334,3 +334,43 @@ sweep.
   none, so the cell is empty by choice.
 - **Gravity.** The base's own geometry is the metric, through the frame bundle. Gravity makes the base dynamical and
   lies outside the problem.
+
+## 13. GIGI demos for the grid cells (27 November)
+
+Script: `scripts/gigi_grid_demos.py`. Output: `research/gigi-grid-demos-20261127/result.json`. Local `gigi-stream`
+0.4.1. 16,088 point queries.
+
+**(A) Layer 2: the double cover and the centre.** These use the same stored lattice bundle as §5 (β = 4, 24
+configurations).
+- **The adjoint area law (Theorem 5).** ⟨χ₁⟩/3 against (I₃/I₁)^{area}, with I₃(4)/I₁(4) = 0.3420:
+
+  | loop | measured | exact | z |
+  |---|---|---|---|
+  | 1×1 | 0.3544 ± 0.0084 | 0.3420 | +1.48 |
+  | 1×2 | 0.1275 ± 0.0126 | 0.1169 | +0.84 |
+  | 2×2 | −0.0058 ± 0.0166 | 0.0137 | −1.17 |
+
+- **Casimir scaling.** σ₁/σ_{½} from the exact formula is 2.404, 2.564, 2.662, 2.6664 and 2.66665 at β = 2, 4, 16, 64
+  and 256. It tends to C₂(1)/C₂(½) = 8/3.
+- **A centre vortex written into the bundle (Theorem 6).** The edges crossed by a Dirac string, from one plaquette up
+  through the top boundary, were rewritten in GIGI as −U.
+  - A loop **enclosing** the vortex: the fundamental loop flips **exactly**, 1.1941 → −1.1941, while the adjoint loop is
+    unchanged, 0.4258 → 0.4258.
+  - A loop crossing the string twice: both unchanged.
+  - A far loop: both unchanged.
+
+  The double-covered loops feel the centre; the integer loops do not. (A first attempt flipped a column of vertical
+  edges. That flips whole plaquette columns rather than making one vortex, and the probes did not see it. The
+  geometry was corrected; the failed attempt is recorded here.)
+
+**(B) Layer 5: topology on the Maurer–Cartan line.** A GIGI bundle `mc_line`: base λ ∈ [−0.5, 1.5] in steps of 0.01;
+fibres V_free, V_sourced and CS. The potentials are computed from the reduced model's V(q) at q = λ·q_MC, with
+s = 1.15, t = 3, g² = 0.004.
+- **The closed forms hold.** V_free matches (1 + 2/t)(λ − λ²)²/(2g²) to 1.7·10⁻¹³. CS matches 3λ² − 2λ³ to 10⁻¹⁵.
+- **Point queries:**
+  - λ = 0: V = 0, CS = 0, the winding-0 vacuum;
+  - λ = 1: V_free = 10⁻³⁰, CS = 1, the winding-1 vacuum;
+  - λ = ½: CS = ½, V_free = 13.0208, which is the closed form (1 + 2/t)/(32g²), the sphaleron.
+- **The background.** The sourced potential's minimum on the line is at **λ = 1.15 = s** exactly, with CS = 0.92575.
+  Its value there, −47.5273, equals the Rust solver's energy shift for this background: an independent cross-check
+  that the line, the sources and the solver describe the same object.

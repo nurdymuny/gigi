@@ -17334,7 +17334,7 @@ async fn main() {
                         init_system_bundles(&mut eng);
                         init_app_bundles(&mut eng);
                     }
-                    #[cfg(unix)]
+                    #[cfg(target_os = "linux")] // malloc_trim is glibc-only; macOS dev builds skip it
                     unsafe { libc::malloc_trim(0); }
                     replay_state.ready.store(true, Ordering::Release);
                     eprintln!("Engine ready — {total} records + _gigi_* system bundles (fast path)");
@@ -17445,7 +17445,7 @@ async fn main() {
 
                 // Force glibc to return freed heap pages to the OS.
                 // Without this, the allocator holds ~13GB of freed arenas.
-                #[cfg(unix)]
+                #[cfg(target_os = "linux")] // malloc_trim is glibc-only; macOS dev builds skip it
                 unsafe { libc::malloc_trim(0); }
 
                 eprintln!("Mmap engine active — {total} records, RSS reduced to page cache");

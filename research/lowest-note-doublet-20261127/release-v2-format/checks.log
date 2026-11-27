@@ -1,0 +1,13 @@
+test_abstract_is_self_contained_and_short (__main__.Format.test_abstract_is_self_contained_and_short) ... ok
+test_bibliography_is_unchanged (__main__.Format.test_bibliography_is_unchanged) ... ok
+test_central_conjecture_and_maps_have_separate_homes (__main__.Format.test_central_conjecture_and_maps_have_separate_homes) ... ok
+test_every_baseline_math_fragment_survives (__main__.Format.test_every_baseline_math_fragment_survives) ... ok
+test_preservation_checks_reject_changed_math_and_status (__main__.Format.test_preservation_checks_reject_changed_math_and_status) ... ok
+test_readable_type_and_unboxed_statements (__main__.Format.test_readable_type_and_unboxed_statements) ... ok
+test_related_work_and_evidence_are_collected (__main__.Format.test_related_work_and_evidence_are_collected) ... ok
+test_statement_bodies_and_statuses_are_preserved (__main__.Format.test_statement_bodies_and_statuses_are_preserved) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.390s
+
+OK

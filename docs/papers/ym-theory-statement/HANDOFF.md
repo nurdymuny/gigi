@@ -13,8 +13,9 @@ claimed a proof; that claim is withdrawn, and the PDF says so under the title.
   mixed-status all-group box is now two boxes; the theory's five-part structure is unchanged.
   The descriptive additions produced 13 pages; the initial paper-format revision was 23 pages, with no LaTeX
   warnings or overfull/underfull boxes. All pages were rendered and visually checked. The prior accuracy-review
-  version was 12 pages. The threshold revision below is 24 pages. The change in length comes from larger type,
-  spacing and readable supporting material, followed by the new threshold discussion.
+  version was 12 pages. The threshold revision below was 24 pages; the introductory doublet revision is 26 pages.
+  The change in length comes from larger type, spacing and readable supporting material, followed by the threshold
+  discussion and the illustrated introduction.
 - `sections/appendix-a-register.tex`: the status synopsis and complete register/Clay maps. Statement numbers are
   generated from stable labels; the central conjecture is now Statement 4, beside the definitions in section 2.
 - `sections/s11-availability.tex`: collected source, data and evidence links pinned to the mathematical baseline.
@@ -167,6 +168,52 @@ Then render the PDF with `pdftoppm` for visual review. A successful algebra chec
   `research/lowest-note-threshold-review-20261127/release-review/` and `release-format/`.
 - Rebuilt with stable references, no LaTeX warnings or overfull/underfull boxes. All 24 pages rendered and
   visually inspected, with the revised equations on pages 13-14 examined at full size. No solver or engine suite run.
+
+## Introducing Helike and drawing the actual doublet
+
+- The first page now introduces Helike before the five-point proposal: a family of field-deformation patterns,
+  with the eigenvector distinguished from its eigenvalue and from a full quantum state. This keeps my voice and
+  points to the existing floor domain rather than making a new floor claim.
+- Page 2 explains charge 2 as a rotation law, not electric charge, beside the actual homogeneous doublet.
+  Page 3 begins the five-point proposal. The diagram is a component map, not an embedding of the sphere or a
+  material ribbon: spatial inputs map to internal colour outputs in a declared orthonormal frame.
+- Figure matrices: D1 = diag(0,1,-1), D2 has only entries (2,3) and (3,2) equal to 1. Rows are space and columns
+  are colour, so evaluation on a spatial vector v is D-transpose times v. Both send e1 to zero and have Frobenius
+  norm sqrt(2). The caption distinguishes this matrix norm from global L2 normalization and higher harmonics.
+- The action is R(theta) D R(theta)-transpose, with positive rotation from direction 2 toward direction 3.
+  It gives D1 -> cos(2 theta) D1 + sin(2 theta) D2. The plotted sequence at 0, 45, 90, 135 and 180 degrees is
+  D1, D2, -D1, -D2, D1. The sign at 90 degrees is retained, not silently identified with the original pattern.
+- Reproducible generator: `scripts/build_lowest_note_doublet.py`; it uses NumPy, Matplotlib and the existing
+  TeX Gyre Pagella fonts located through `kpsewhich`. The paper embeds the vector PDF. Matching SVG and PNG
+  are included alongside JSON containing the exact matrices, plotted vectors, normalization and artifact hashes.
+  Generated SVG and JSON use canonical LF line endings, enforced by their local `.gitattributes`, so their
+  byte hashes survive Windows and Unix checkouts.
+- `scripts/check_lowest_note_doublet.py` runs nine focused checks: actual entries and vector images, the symbolic
+  charge law, normalization, signed return, gauge orthogonality, independent potential-Hessian calculations at
+  t = 1, 3 and 7, deliberate bad-data controls, introduction placement and preservation against `1d7ce3e7`.
+  All 47 incoming statements, their statuses and every incoming mathematical fragment are preserved.
+- The introduction check was red before the text was inserted; geometry checks passed. Five deliberate changes
+  (a diagonal sign, a missing off-diagonal entry, a wrong output arrow, reversed phase orientation and a false
+  quarter-turn return) are rejected. These checks validate this illustration, not the spectral-floor theorem.
+- Verification: nine doublet checks, 26 earlier review checks and eight format checks; artifact mode also verifies
+  generator and figure hashes and the first three PDF pages. The final PDF has 26 pages, stable references,
+  no LaTeX warnings or overfull/underfull boxes, and all pages visually inspected. No full engine or solver run.
+- Logs and receipts: `research/lowest-note-doublet-20261127/`. The `red` and `edited` folders are intermediate;
+  `release-*` checks precede the text-artifact portability fix. The final `release-v2-doublet`, `release-v2-review`
+  and `release-v2-format` identify the released sources and PDF. The raw final build log
+  is retained. No new author, coauthor or attribution is added.
+
+Rebuild and verify from the repository root, using a new output directory for each check:
+
+```text
+python scripts/build_lowest_note_doublet.py
+python scripts/check_lowest_note_doublet.py <new-doublet-output-dir> --artifacts
+python scripts/check_lowest_note_review.py <new-review-output-dir>
+python scripts/check_lowest_note_format.py <new-format-output-dir>
+```
+
+After regenerating the figure, rebuild `statement.tex` twice (or until references stabilize) before the artifact
+check. The checker deliberately rejects an old PDF that lacks the opening spread. Use `pdftoppm` for visual review.
 
 ## Cut for length, for the blog post
 GIGI query counts; the fourth control's details; R2 margins; the shell-estimate formula; the anharmonic slope check.

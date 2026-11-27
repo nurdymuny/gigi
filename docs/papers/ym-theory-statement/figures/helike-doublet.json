@@ -1,0 +1,206 @@
+{
+  "convention": "rows: spatial frame; columns: internal colour; b(v)=D.T @ v",
+  "action": "R(theta) D R(theta).T; positive rotation e2 toward e3",
+  "scope": "homogeneous real doublet at a point in a fixed orthonormal frame, not a spatial trajectory",
+  "normalization": "matrices as written; each has Frobenius norm sqrt(2), not unit L2 normalization",
+  "matrices": [
+    [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    ],
+    [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ]
+    ]
+  ],
+  "images": [
+    [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    ],
+    [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ]
+    ]
+  ],
+  "orbit": [
+    {
+      "theta_degrees": 0,
+      "coefficients": [
+        1.0,
+        0.0
+      ],
+      "matrix": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0
+        ]
+      ]
+    },
+    {
+      "theta_degrees": 45,
+      "coefficients": [
+        0.0,
+        1.0000000000000002
+      ],
+      "matrix": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          4.266421588589642e-17,
+          1.0000000000000002
+        ],
+        [
+          0.0,
+          1.0000000000000002,
+          4.266421588589642e-17
+        ]
+      ]
+    },
+    {
+      "theta_degrees": 90,
+      "coefficients": [
+        -1.0,
+        1.2246467991473532e-16
+      ],
+      "matrix": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          1.2246467991473532e-16
+        ],
+        [
+          0.0,
+          1.2246467991473532e-16,
+          1.0
+        ]
+      ]
+    },
+    {
+      "theta_degrees": 135,
+      "coefficients": [
+        -1.895269253967044e-16,
+        -1.0
+      ],
+      "matrix": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.7938038903913487e-16,
+          -1.0
+        ],
+        [
+          0.0,
+          -1.0,
+          1.9967346175427393e-16
+        ]
+      ]
+    },
+    {
+      "theta_degrees": 180,
+      "coefficients": [
+        1.0,
+        -2.4492935982947064e-16
+      ],
+      "matrix": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          -2.4492935982947064e-16
+        ],
+        [
+          0.0,
+          -2.4492935982947064e-16,
+          -1.0
+        ]
+      ]
+    }
+  ],
+  "generator_sha256_lf": "eacc692cc53647aa57da0ed60655cf3c6d7ae1dbc7c6b104521451ae781dc6a7",
+  "artifacts_sha256": {
+    "helike-doublet.pdf": "9877bbc62184c215d2ac9be03c21a18200f3803131fdca0baf91888738961e45",
+    "helike-doublet.svg": "5ade2b7d225a2bd30590f405092eac63946c3f6cf9302bbf9ee3719d56b876de",
+    "helike-doublet.png": "e95d266a5fd7ac51c11d398a2d8f8abf97ff7ad94dd6f665fd3c51c33fbfbe96"
+  }
+}

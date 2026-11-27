@@ -1,0 +1,230 @@
+{
+  "scope": "Homogeneous doublet geometry and editorial preservation, not a spectrum-floor proof",
+  "source_revision": "1d7ce3e77cc5df8782b5080d93ad25225cfdcc63",
+  "baseline": "1d7ce3e77cc5df8782b5080d93ad25225cfdcc63",
+  "tests": 9,
+  "failures": 1,
+  "errors": 0,
+  "passed": false,
+  "artifacts_verified": null,
+  "sha256_lf": {
+    "scripts/check_lowest_note_doublet.py": "62c8f9fd7b516cc18b27688db5f6e80a9f3be8a7c0b90461008f969de19f90e1",
+    "scripts/build_lowest_note_doublet.py": "1f831bf5f33f07f3a9b1ed5a690fd4f2585c0ccb3ad9b1bc6716b8882414060e",
+    "docs/papers/ym-theory-statement/refs.tex": "97e96a2ab4d1e0e28cf6c2738a7f1c6373b0988372594fab7e0354e3f77eeed5",
+    "docs/papers/ym-theory-statement/sections/appendix-a-register.tex": "0167e002f21dacb67d6648c4cd06408fc49d90fa66611f4210898c9cb2440d52",
+    "docs/papers/ym-theory-statement/sections/s0-abstract.tex": "e8d6697be88408efa2deda9c10ee04440cd6a22ed81f8e153a6f93eaecb7350d",
+    "docs/papers/ym-theory-statement/sections/s1-problem.tex": "ddde2b103c21e84790930ef5d526345c5fafe4905d3d3820a0de60738403a413",
+    "docs/papers/ym-theory-statement/sections/s10-what-it-is.tex": "13ae99f85f4711fd4582357c1b285b096c6b044c2e11bdb28c6e295b8abf6d9a",
+    "docs/papers/ym-theory-statement/sections/s11-availability.tex": "d9203f0fd3c0957c2a1456b0be61672bec2118e96c4de250dd5e2d3f0bbe37f9",
+    "docs/papers/ym-theory-statement/sections/s2-framing.tex": "99a1e49d87d2cca854f950c7a82bfdfdc43dcfd2f14a7a994490a2dcd8a7c418",
+    "docs/papers/ym-theory-statement/sections/s3-note.tex": "39bebbee0128fb9e1739614f7d78d0cc118dc0aca6a321abf0d25d2299f74c1d",
+    "docs/papers/ym-theory-statement/sections/s4-room.tex": "2c01ccf102307ae2d4de85ce1163dc9bd1fe8b5493ebf8ab7fb425ae2109e3d0",
+    "docs/papers/ym-theory-statement/sections/s5-carriers.tex": "460f2337c4a0438bec53e57b449e53ed16ee44c1051d9e3f7622dbe1df290465",
+    "docs/papers/ym-theory-statement/sections/s6-fast.tex": "2981d714e9b7b13960b7081efec8a480df60c5d161cc81d17f53d0012bdcba42",
+    "docs/papers/ym-theory-statement/sections/s7-growing.tex": "261b89a5f2e5bbb076e73dfb2ac0b23dfe57c1afa23f4400937a77cc147df281",
+    "docs/papers/ym-theory-statement/sections/s8-limit.tex": "067c1d17ba30894969357e9061f8d7f0ebcc37e2181303459b9826e443b03f10",
+    "docs/papers/ym-theory-statement/sections/s9-content.tex": "6f25f2471eb2cd1d3f6bb6f21695b2fa8f1025253425a27d05fc982bb9474fcf",
+    "docs/papers/ym-theory-statement/statement.tex": "b794f0ce15cc159d5bd4fa8320d0ca53778d1b36ff4719707b8e600d72227b55"
+  },
+  "pdf_sha256": "e3b3bc2184cd5bb1bf69c74b27f757e6d8daa065e8b7590c50b5e5b8dd3b5be1",
+  "figure": {
+    "convention": "rows: spatial frame; columns: internal colour; b(v)=D.T @ v",
+    "action": "R(theta) D R(theta).T; positive rotation e2 toward e3",
+    "scope": "homogeneous real doublet at a point in a fixed orthonormal frame, not a spatial trajectory",
+    "normalization": "matrices as written; each has Frobenius norm sqrt(2), not unit L2 normalization",
+    "matrices": [
+      [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0
+        ]
+      ],
+      [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ]
+    ],
+    "images": [
+      [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0
+        ]
+      ],
+      [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ]
+      ]
+    ],
+    "orbit": [
+      {
+        "theta_degrees": 0,
+        "coefficients": [
+          1.0,
+          0.0
+        ],
+        "matrix": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            -1.0
+          ]
+        ]
+      },
+      {
+        "theta_degrees": 45,
+        "coefficients": [
+          0.0,
+          1.0000000000000002
+        ],
+        "matrix": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            4.266421588589642e-17,
+            1.0000000000000002
+          ],
+          [
+            0.0,
+            1.0000000000000002,
+            4.266421588589642e-17
+          ]
+        ]
+      },
+      {
+        "theta_degrees": 90,
+        "coefficients": [
+          -1.0,
+          1.2246467991473532e-16
+        ],
+        "matrix": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -1.0,
+            1.2246467991473532e-16
+          ],
+          [
+            0.0,
+            1.2246467991473532e-16,
+            1.0
+          ]
+        ]
+      },
+      {
+        "theta_degrees": 135,
+        "coefficients": [
+          -1.895269253967044e-16,
+          -1.0
+        ],
+        "matrix": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -1.7938038903913487e-16,
+            -1.0
+          ],
+          [
+            0.0,
+            -1.0,
+            1.9967346175427393e-16
+          ]
+        ]
+      },
+      {
+        "theta_degrees": 180,
+        "coefficients": [
+          1.0,
+          -2.4492935982947064e-16
+        ],
+        "matrix": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            -2.4492935982947064e-16
+          ],
+          [
+            0.0,
+            -2.4492935982947064e-16,
+            -1.0
+          ]
+        ]
+      }
+    ]
+  }
+}

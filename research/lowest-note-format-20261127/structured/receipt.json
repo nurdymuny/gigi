@@ -1,0 +1,28 @@
+{
+  "baseline": "df949c7a69aae59b873230aabf9ccab7e5821910",
+  "source_revision": "df949c7a69aae59b873230aabf9ccab7e5821910",
+  "scope": "Document preservation and format only; not a physics acceptance gate",
+  "tests": 8,
+  "failures": 2,
+  "errors": 0,
+  "passed": false,
+  "sha256_lf": {
+    "scripts/check_lowest_note_format.py": "1383a3def803c2748dad050be0c1ea705dab0e0fe036033f7b43129334d58a72",
+    "docs/papers/ym-theory-statement/refs.tex": "97e96a2ab4d1e0e28cf6c2738a7f1c6373b0988372594fab7e0354e3f77eeed5",
+    "docs/papers/ym-theory-statement/sections/appendix-a-register.tex": "42aceadec981a207d206765f44cbdc3b54f6d2bfa48b8e0589d5634ff599eb86",
+    "docs/papers/ym-theory-statement/sections/s0-abstract.tex": "e8d6697be88408efa2deda9c10ee04440cd6a22ed81f8e153a6f93eaecb7350d",
+    "docs/papers/ym-theory-statement/sections/s1-problem.tex": "ddde2b103c21e84790930ef5d526345c5fafe4905d3d3820a0de60738403a413",
+    "docs/papers/ym-theory-statement/sections/s10-what-it-is.tex": "13ae99f85f4711fd4582357c1b285b096c6b044c2e11bdb28c6e295b8abf6d9a",
+    "docs/papers/ym-theory-statement/sections/s11-availability.tex": "66e2e163568ada752fd40b67ef5a277ce496d7fe8e143d32b17eca690523bf74",
+    "docs/papers/ym-theory-statement/sections/s2-framing.tex": "16bbfc49cb9b677d210be75ff0f472cf8401551656c011e64d4d6764d4dd18c9",
+    "docs/papers/ym-theory-statement/sections/s3-note.tex": "39bebbee0128fb9e1739614f7d78d0cc118dc0aca6a321abf0d25d2299f74c1d",
+    "docs/papers/ym-theory-statement/sections/s4-room.tex": "2c01ccf102307ae2d4de85ce1163dc9bd1fe8b5493ebf8ab7fb425ae2109e3d0",
+    "docs/papers/ym-theory-statement/sections/s5-carriers.tex": "460f2337c4a0438bec53e57b449e53ed16ee44c1051d9e3f7622dbe1df290465",
+    "docs/papers/ym-theory-statement/sections/s6-fast.tex": "88f147b7bff650b427228ecf95b4afc65348c0d95cd7249685d7f0ac0502267b",
+    "docs/papers/ym-theory-statement/sections/s7-growing.tex": "261b89a5f2e5bbb076e73dfb2ac0b23dfe57c1afa23f4400937a77cc147df281",
+    "docs/papers/ym-theory-statement/sections/s8-limit.tex": "067c1d17ba30894969357e9061f8d7f0ebcc37e2181303459b9826e443b03f10",
+    "docs/papers/ym-theory-statement/sections/s9-content.tex": "6f25f2471eb2cd1d3f6bb6f21695b2fa8f1025253425a27d05fc982bb9474fcf",
+    "docs/papers/ym-theory-statement/statement.tex": "fff99f1f7f0a79c4c33079c5523de05c2497612dce767c72dd62043632a93958"
+  },
+  "pdf_sha256": "ead859d36d9bc07af21558917a71f5a2a0534bb8b063c7696094cd9c5059609c"
+}

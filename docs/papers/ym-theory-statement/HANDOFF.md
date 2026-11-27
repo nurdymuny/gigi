@@ -4,26 +4,30 @@ My narrative theory of the Yang–Mills mass gap. It is not a proof. It supersed
 claimed a proof; that claim is withdrawn, and the PDF says so under the title.
 
 ## Files and build
-- `statement.tex`: the preamble, the box environment (`claim`, with a status label), and the title.
+- `statement.tex`: the preamble, the unboxed statement environment (`claim`, with a status label), and the title.
 - `sections/s0-abstract.tex` … `s10-what-it-is.tex`. The order is: problem, geometry, the note of one turn, the small
   room, carriers (s5), fast modes (s6), the room grows, the limit, contents, what the gap is.
 - `refs.tex`: every entry verified on 27 Nov (pages, venues, my own DOIs). Every key is cited.
 - Build: `pdflatex -interaction=nonstopmode -halt-on-error statement.tex` until references stabilize.
   The accuracy-review build uses MiKTeX pdfTeX 1.40.25, the existing NewPX fonts, and 46 boxes. The former
   mixed-status all-group box is now two boxes; the theory's five-part structure is unchanged.
-  Current result after the descriptive additions: 13 pages, no LaTeX warnings or overfull/underfull boxes;
-  all pages rendered and visually checked. The prior accuracy-review version was 12 pages.
+  The descriptive additions produced 13 pages; the current paper-format revision is 23 pages, with no LaTeX
+  warnings or overfull/underfull boxes. All pages were rendered and visually checked. The prior accuracy-review
+  version was 12 pages. The change in length comes from larger type, spacing and readable supporting material.
+- `sections/appendix-a-register.tex`: the status synopsis and complete register/Clay maps. Statement numbers are
+  generated from stable labels; the central conjecture is now Statement 4, beside the definitions in section 2.
+- `sections/s11-availability.tex`: collected source, data and evidence links pinned to the mathematical baseline.
 
 ## The one rule
-Every box status comes from the register, `docs/research/closed-set-20261127/CLOSED-SET.md`, and is never stronger
+Every statement status comes from the register, `docs/research/closed-set-20261127/CLOSED-SET.md`, and is never stronger
 than it. Statuses change only when something is proved or fails, never to make a sentence read better. A claim that
 something required is missing must quote the Jaffe–Witten clause it comes from.
 
 ## Checks and scope
 - Original citation pass: each entry and each use was reported checked. The accuracy review revisited the primary
   sources relevant to its corrections; it did not independently re-prove every cited result.
-- Completeness: every register line 1–28 (line 29 is merged into 23) and every Clay clause has a box. The two tables
-  in §10 cite boxes by `\ref`, so they cannot go stale.
+- Completeness: every register line 1–28 (line 29 is merged into 23) and every Clay clause has a statement. The two
+  tables in Appendix A cite statements by `\ref`, so renumbering does not silently invalidate the map.
 - Consistency: the roles of the local harmonic mode, two-well state and physical channel are distinguished in §§5,
   6 and 10; a conjecture remains a conjecture. This is a descriptive theory, not an acceptance-gate report.
 - Fixed by hand after the referee: the abstract called Helike's charge "topological". It is a charge under the room's
@@ -40,8 +44,8 @@ something required is missing must quote the Jaffe–Witten clause it comes from
 5. **The Euclidean time–space residue.** On S³ × ℝ this means two bare parameters, the coupling and the speed of light.
 6. **All groups.** The split boxes distinguish cited compact-group lattice results from the electric note and
    embedded doublet. The latter is not automatically the floor of the additional colour modes.
-7. **Layout.** The existing 10pt type and fonts are retained. References begin after the statement-map float so the
-   tables no longer interrupt the bibliography.
+7. **Layout.** NewPX is retained at 11pt with 0.85-inch margins. References are 9.5pt in two columns, after the
+   appendix's full-width tables. The four central displayed equations now have section-based numbers.
 
 ## Accuracy-review record
 - `REVIEW-2026-11-27.md` explains the changes, with finite counterexamples and source links. The purpose is to
@@ -71,7 +75,7 @@ something required is missing must quote the Jaffe–Witten clause it comes from
   direction at the winding-one vacuum, not the straight Maurer--Cartan tangent. The variational discussion also
   distinguishes a unique vacuum from a degenerate vacuum space; the corresponding finite example is checked.
 
-## Format assessment
+## Format assessment (before the authorized revision)
 The appropriate description is a **conjectural framework supported by reduced-model analysis**, not a proof paper
 and not just an isolated conjecture. It already contains motivation, definitions, derived identities, computations,
 related work and open connections. The present layout is readable as a narrative working note. For a journal-style
@@ -106,7 +110,41 @@ Sources checked 27 November 2026:
 - https://www.ams.org/arc/journals/packages/proc/proc_amslatex/Author_Handbook_Journals.pdf
 - https://americanphysicalsociety.zendesk.com/hc/en-us/articles/45285501563675-Article-Templates
 
-The follow-up preserves the existing layout; it does not silently recast the narrative into a journal submission.
+That assessment initially preserved the layout. The subsequent authorized revision applies the structural and
+readability changes below without turning the narrative into a proof submission.
+
+## Paper-format revision and verification
+
+- Contract: `FORMAT-2026-11-27.md`; fixed mathematical baseline
+  `df949c7a69aae59b873230aabf9ccab7e5821910`.
+- A self-contained abstract opens the paper; the original five-point account is retained in the introduction.
+  Related work is collected there. The central conjecture appears once beside its scope and geometric definitions.
+- All 46 statement bodies and statuses survive, with reference wording updated from "Box" to "Statement".
+  Every baseline math fragment, including repeated occurrences, survives. The bibliography is unchanged.
+- Statements are unboxed. The status synopsis and complete maps are in Appendix A; the conclusion retains the
+  discriminating predictions and first-person account. No author, coauthor, affiliation or submission declaration
+  has been added. The existing correction notice remains.
+- Eight format/preservation checks supplement the 18 algebra, evidence and document checks. Before editing,
+  four formatting checks failed. In-memory mutation controls reject changed mathematics, promoted statuses and
+  duplicated statements. They are editorial checks, not physics acceptance tests.
+- Receipts and raw logs are retained in `research/lowest-note-format-20261127/`. Early folders describe intermediate
+  source/PDF combinations, not the released artifact. `release-format` and `release-review` identify the final PDF
+  and their respective checked sources; `final-pdflatex.log` records the clean build. The earlier `final-*`
+  receipts precede the final whitespace cleanup. The `preservation` folder has only a test log because its PDF
+  was absent after a failed first build; no receipt was issued for that pass.
+- Final layout: 23 pages; all pages checked for text, equations, statement headings, appendix table continuations,
+  reference readability and clipping. No LaTeX, overfull or underfull warnings. No solver or full engine suite run.
+
+From the repository root, choose a distinct new directory for each command:
+
+```text
+python scripts/check_lowest_note_review.py <new-review-output-dir>
+python scripts/check_lowest_note_format.py <new-format-output-dir>
+```
+
+From `docs/papers/ym-theory-statement`, run
+`pdflatex -interaction=nonstopmode -halt-on-error statement.tex` until references stabilize.
+Then render the PDF with `pdftoppm` for visual review. A successful algebra check alone does not verify typesetting.
 
 ## Cut for length, for the blog post
 GIGI query counts; the fourth control's details; R2 margins; the shell-estimate formula; the anharmonic slope check.

@@ -1,5 +1,5 @@
 % s5: who carries the note (points 1-3 of the theory). ASCII only.
-\section*{5. Who carries the note}
+\section{Who carries the note}
 
 The Hamiltonian commutes with the room's circle of symmetry, so it never mixes charges. Helike has charge $\pm2$ (the
 $m=\pm2$ part of a spin-2, tensor-like object); her competitor has charge 0 (scalar-like).
@@ -39,16 +39,16 @@ These are identities and harmonic statements at $s=1$, not a finite-$g$ spectral
 \textbf{Where the cost comes from.} Near a stable stationary field, write a small physical displacement as $\xi$,
 with gauge directions removed. Its quadratic Lagrangian uses a positive kinetic metric $G_{\rm kin}$ and the
 potential Hessian $K_{\rm pot}$:
-\[
+\begin{equation}\label{eq:oscillation}
  L^{(2)}=\tfrac12\dot\xi^T G_{\rm kin}\dot\xi-\tfrac12\xi^T K_{\rm pot}\xi,
  \qquad K_{\rm pot}v=\omega^2G_{\rm kin}v.
-\]
+\end{equation}
 So a frequency measures stiffness relative to the kinetic ruler, not curvature without a ruler. In the orthonormal
 reduced $q$ coordinates, at a critical point $q_*$ of $W$, differentiating $V_0=\tfrac12|\nabla W|^2$ gives
-\[
+\begin{equation}\label{eq:hessian}
  \left.\nabla^2V_0\right|_{q_*}=\bigl(\left.\nabla^2W\right|_{q_*}\bigr)^2,
  \qquad \left.\nabla^2W\right|_{q_*}v=\mu v\ \Longrightarrow\ \omega=|\mu|.
-\]
+\end{equation}
 The downhill sign in $W$ is therefore compatible with a positive oscillation cost in $V_0$. The local competitor
 is soft because the magnitude of that Hessian eigenvalue is small, not merely because its sign is negative.
 
@@ -63,10 +63,10 @@ orthogonal to it. A local mode describes a direction near one configuration. My 
 can organize the shape of the extended quantum state. It need not complete a change of winding to feel the geometry
 of a winding-changing route. The excitation energy is measured above the quantum vacuum, not read off as the height
 of a classical barrier. In a sector with a unique normalized vacuum $\Omega$ of energy $E_{\rm vac}$, the variational description is
-\[
+\begin{equation}\label{eq:gap}
  \Delta=\inf_{\substack{\|\Psi\|=1\\ \langle\Omega,\Psi\rangle=0}}
  \bigl(\langle\Psi,H\Psi\rangle-E_{\rm vac}\bigr),
-\]
+\end{equation}
 over physical states in the energy-form domain, with the expectation read as a quadratic form~\cite{ReedSimonIV}.
 If the vacuum is degenerate, orthogonality is to its entire eigenspace, not just one chosen vector.
 That is where all three parts meet: topology enters the global identifications and allowed states, geometry enters
@@ -99,7 +99,7 @@ dressing of \S6~\cite{ClosedSet}.}
 \end{claim}
 
 \begin{claim}{CONDITIONAL}{A switch exists}\label{b:ivt}
-At any fixed coupling where H8 gives one ordering at $s=1$ and Box~\ref{b:order} gives the opposite ordering at
+At any fixed coupling where H8 gives one ordering at $s=1$ and Statement~\ref{b:order} gives the opposite ordering at
 $s=1.15$ (on H1), continuity gives at least one exact crossing of this pair. The estimate
 $g^2\approx0.0075$ is a first-order crossover estimate, not a proved interval of couplings.
 At the registered larger couplings, a valid bracket needs the opposite ordering at some $s_1\in(s^*,1.25)$.
@@ -127,7 +127,7 @@ $2/\sqrt t$. Their splitting starts at order $g^2$, where the kinetic contributi
 \begin{claim}{OPEN}{H8 in the physical theory}\label{b:h8}
 At $s=1$ the lowest physical excitation has charge 0. In the undressed two-well reduction, $0.3624$ at $t=3$ is the
 \emph{harmonic} margin, not a certified finite-coupling margin. In the physical vacuum chart the competing channels tie
-at harmonic order; their ordering requires the complete $O(g^2)$ effective Hamiltonian, including Box~\ref{b:kinetic},
+at harmonic order; their ordering requires the complete $O(g^2)$ effective Hamiltonian, including Statement~\ref{b:kinetic},
 and a smaller remainder. A missing kinetic contribution is not a theorem that it alone decides the sign.
 \evidence{H8 and H2b in~\cite{ClosedSet}. The reduced margin divided by $0.07$ gives $5.18$, a candidate remainder budget
 for that two-well model only; it is not a budget for the physically degenerate pair.}

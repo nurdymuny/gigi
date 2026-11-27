@@ -1,0 +1,110 @@
+% Complete status and coverage maps, separated from the narrative.
+\section{Statement status and coverage}\label{app:register}
+
+\subsection*{How to read the statements}
+
+This is a narrative theory, not a proof, told as one story from the problem (\S1)
+to what the gap is (\S10). Every important statement, proved or not, has a number and a label giving its
+standing: \textcolor{teal}{\textbf{PROVED}} (derived here) and \textcolor{teal}{\textbf{PROVED (CITED)}} (cited from a separate work, including my own),
+\textcolor{sky}{\textbf{COMPUTED}} (numerically, not proved), \textcolor{gold}{\textbf{CONDITIONAL}} (proved from a
+named hypothesis), \textcolor{plum}{\textbf{CONJECTURE}}, and \textcolor{muted}{\textbf{OPEN}}. Each statement's source entry names the lines
+of my register of statements~\cite{ClosedSet} it covers, and no statement is stronger than its line. All 29 lines (29 is
+merged into 23) appear in Table~\ref{tab:register}. The finer evidence, mine and
+others', is in the companion blog post and the repository~\cite{HelikeReport}.
+
+\subsection*{The five points and their standing}
+
+(1)~\emph{The gap has a name}: Helike is proved and cited
+(Statement~\ref{b:helike}), crossings between the two charges are exact if they occur (Statement~\ref{b:cross}), and that the carrier changes only at
+the switches is a conjecture (Statement~\ref{b:switch}). (2)~\emph{The landscape gives the carriers their costs}: topology
+organizes the routes, the reduced geometry gives the harmonic ordering (Statement~\ref{b:susy}), and the full quantum
+dynamics determines the physical carrier. Its proposed identification is H8
+(Statement~\ref{b:h8}, open). (3)~\emph{Tensor and scalar trade
+places at a calculable point}: $s_0^*$ is proved at harmonic order (Statement~\ref{b:switch0}); the registered $s^*$ are a
+conjecture (Statement~\ref{b:switch}). (4)~\emph{The fine grain cannot erase the note}: $b_0$ is computed (Statement~\ref{b:b0}),
+H2 is a conjecture (Statement~\ref{b:m3}), and the kinetic contribution is open (Statement~\ref{b:kinetic}). (5)~\emph{The infinite world is
+the last room}: the scaling reduction and the spectral lemma are proved (Statements~\ref{b:scaling}, \ref{b:lemma}); H3 and
+H4$'$ are conjectures (Statements~\ref{b:h3}, \ref{b:h4}).
+
+\subsection*{Completeness of the description}
+
+Statement~\ref{b:clay} summarizes the Clay target. Table~\ref{tab:register} places every register
+line~\cite{ClosedSet} with its status and statements; Table~\ref{tab:clay} maps every clause of the problem~\cite{JaffeWitten,OS73,OS75} to
+its lines and statements. This is a map of the theory's coverage, not a claim that a statement settles its clause.
+
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{@{}r>{\raggedright}p{2.12in}>{\raggedright}p{1.42in}>{\raggedright\arraybackslash}p{2.12in}@{}}
+\caption{The register of statements (line 29 is merged into 23).}\label{tab:register}\\
+\toprule
+\textbf{Line} & \textbf{Content} & \textbf{Status} & \textbf{Statements}\\\midrule
+\endfirsthead
+\multicolumn{4}{@{}l}{\small Table \thetable\ continued}\\
+\toprule
+\textbf{Line} & \textbf{Content} & \textbf{Status} & \textbf{Statements}\\\midrule
+\endhead
+\midrule\multicolumn{4}{r@{}}{\small Continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
+1 & Wilson measure, mod gauge & proved & \ref{b:wilson}, \ref{b:anomaly}, \ref{b:everyGlat}\\
+2 & reflection positivity, $T=e^{-aH}$ & proved (cited) & \ref{b:rp}, \ref{b:rplimit}, \ref{b:everyGlat}\\
+3 & strong-coupling gap & proved (cited) & \ref{b:strong}, \ref{b:everyGlat}\\
+4 & electric level $3g^2/2a$ & proved & \ref{b:electric}, \ref{b:everyGmode}\\
+5 & finite-volume leading gap & proved (deduction) & \ref{b:kato}\\
+6 & 2-D area law, ratio $8/3$ & proved & \ref{b:2d}\\
+7 & slow space $\mathbb R^9/SO(3)$ & proved & \ref{b:slow}\\
+8 & Maurer--Cartan line; $W\propto CS$ & proved & \ref{b:mc}, \ref{b:susy}\\
+9 & Theorem A, discreteness & proved & \ref{b:thmA}, \ref{b:fold}\\
+10 & Helike; stated floor domain & proved (cited) & \ref{b:helike}, \ref{b:everyGmode}\\
+11 & $S_C$ (H1) & conjecture & \ref{b:sc}, \ref{b:fold}\\
+12 & Helike lowest, 3 of 4 & conditional on H1 & \ref{b:order}, \ref{b:ivt}\\
+13 & homogeneous restriction & proved & \ref{b:pw}\\
+14 & divergence is $b_0=22/3$ & computed & \ref{b:b0}, \ref{b:h6}\\
+15 & widening; kinetic term & computed; sign open & \ref{b:widen}, \ref{b:kinetic}\\
+16 & uniform dressing (H2) & conjecture & \ref{b:m3}, \ref{b:kinetic}, \ref{b:h8}, \ref{b:smallend}\\
+17 & no avoided crossing across charges & proved & \ref{b:cross}, \ref{b:compact}\\
+18 & switch; H8; existence & conj.; H8 open; exist.\ cond. &
+  \ref{b:susy}--\ref{b:ivt}, \ref{b:h8}--\ref{b:glueball}, \ref{b:smallend}\\
+19 & source bridge & proved (deduction) & \ref{b:bridge}, \ref{b:agmon}, \ref{b:compact}\\
+20 & $\Delta(R)/\Lambda\ge c$ (H3) & conjecture & \ref{b:glueball}, \ref{b:scaling}--\ref{b:h3}, \ref{b:deduce}\\
+21 & UV limit in a box & proved (cited), partial & \ref{b:box}\\
+22 & RP survives limits & proved & \ref{b:rplimit}\\
+23 & sphere family (H4$'$) & conjecture & \ref{b:scaling}, \ref{b:h4}, \ref{b:deduce}\\
+24 & every $G$ (H7) & conjecture & \ref{b:everyGlat}, \ref{b:everyGmode}, \ref{b:h7}\\
+25 & local fields (H6) & conjecture & \ref{b:h6}, \ref{b:anomaly}, \ref{b:nontrivial}\\
+26 & non-triviality diagnostics & conditional; H6 & \ref{b:nontrivial}\\
+27 & unique vacuum & conditional & \ref{b:vacuum}\\
+28 & gap survives the limit & lemma proved; deduction cond. & \ref{b:lemma}, \ref{b:deduce}, \ref{b:vacuum}\\
+\end{longtable}
+
+\begin{longtable}{@{}>{\raggedright}p{3.2in}>{\raggedright}p{0.8in}>{\raggedright\arraybackslash}p{1.95in}@{}}
+\caption{The clauses of the problem and their locations.}\label{tab:clay}\\
+\toprule
+\textbf{Clause} & \textbf{Register lines} & \textbf{Statements}\\\midrule
+\endfirsthead
+\multicolumn{3}{@{}l}{\small Table \thetable\ continued}\\
+\toprule
+\textbf{Clause} & \textbf{Register lines} & \textbf{Statements}\\\midrule
+\endhead
+\midrule\multicolumn{3}{r@{}}{\small Continued on the next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
+every compact simple $G$ & 24 & \ref{b:everyGlat}, \ref{b:h7}\\
+exists on $\mathbb R^4$ & 21, 23 & \ref{b:box}, \ref{b:h4}\\
+Euclidean invariance & 23 & \ref{b:h4}\\
+reflection positivity & 2, 22 & \ref{b:rp}, \ref{b:rplimit}\\
+regularity & 23, 25 & \ref{b:h4}, \ref{b:h6}\\
+clustering & 3, 28 & \ref{b:strong}, \ref{b:deduce}\\
+Wightman reconstruction & 23 & \ref{b:h4}\\
+local fields for polynomials in $F$ & 25 & \ref{b:h6}, \ref{b:anomaly}\\
+short distance, asymptotic freedom & 14, 25 & \ref{b:b0}, \ref{b:h6}\\
+non-trivial & 26 & \ref{b:nontrivial}\\
+unique vacuum & 27 & \ref{b:vacuum}\\
+finite mass $0<m<\infty$ & 20, 25, 28 & \ref{b:clay}, \ref{b:lemma}, \ref{b:deduce}\\
+it is Yang--Mills & 1, 14, 21 & \ref{b:wilson}, \ref{b:b0}, \ref{b:box}\\
+\end{longtable}
+\endgroup

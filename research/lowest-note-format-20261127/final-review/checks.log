@@ -1,0 +1,23 @@
+test_anomaly_normalization_and_sign (__main__.Algebra.test_anomaly_normalization_and_sign) ... ok
+test_factorization_and_mc_hessian (__main__.Algebra.test_factorization_and_mc_hessian) ... ok
+test_frequency_shift_includes_potential_and_kinetic_terms (__main__.Algebra.test_frequency_shift_includes_potential_and_kinetic_terms) ... ok
+test_frequency_uses_kinetic_metric_and_is_coordinate_invariant (__main__.Algebra.test_frequency_uses_kinetic_metric_and_is_coordinate_invariant) ... ok
+test_gap_variational_problem_uses_vacuum_orthogonal_states (__main__.Algebra.test_gap_variational_problem_uses_vacuum_orthogonal_states) ... ok
+test_gaussian_composite_has_nonzero_third_cumulant (__main__.Algebra.test_gaussian_composite_has_nonzero_third_cumulant) ... ok
+test_harmonic_switch_and_window (__main__.Algebra.test_harmonic_switch_and_window) ... ok
+test_negative_direction_is_not_straight_mc_tangent (__main__.Algebra.test_negative_direction_is_not_straight_mc_tangent) ... ok
+test_ordered_projection_can_jump_at_crossing (__main__.Algebra.test_ordered_projection_can_jump_at_crossing) ... ok
+test_path_maximum_is_not_full_berger_saddle (__main__.Algebra.test_path_maximum_is_not_full_berger_saddle) ... ok
+test_pointwise_positive_does_not_give_uniform_gap (__main__.Algebra.test_pointwise_positive_does_not_give_uniform_gap) ... ok
+test_potential_hessian_is_superpotential_hessian_squared_at_wells (__main__.Algebra.test_potential_hessian_is_superpotential_hessian_squared_at_wells) ... ok
+test_vacuum_superposition_is_not_gap_counterexample (__main__.Algebra.test_vacuum_superposition_is_not_gap_counterexample) ... ok
+test_wilson_cost_is_half_squared_quaternion_chord (__main__.Algebra.test_wilson_cost_is_half_squared_quaternion_chord) ... ok
+test_conclusion_does_not_restore_corrected_overclaims (__main__.Document.test_conclusion_does_not_restore_corrected_overclaims) ... ok
+test_labels_citations_and_statuses (__main__.Document.test_labels_citations_and_statuses) ... ok
+test_loop_receipt_and_potential_shift (__main__.Evidence.test_loop_receipt_and_potential_shift) ... ok
+test_running_coupling_ranges (__main__.Evidence.test_running_coupling_ranges) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.449s
+
+OK

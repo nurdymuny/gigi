@@ -157,3 +157,180 @@ and the loop data carry the area law, with string tension equal to the Casimir.
 
 **Engine fix found on the way.** `gigi-stream` did not build on macOS. Two `libc::malloc_trim` calls (glibc-only) were
 gated on `cfg(unix)`; they are now gated on `cfg(target_os = "linux")`. Behaviour on Linux and Fly is unchanged.
+
+---
+
+# Part II: every cell of the grid (note §4.12)
+
+## 6. The structure group: the double cover and the centre (layer 2)
+
+**Facts.**
+- SU(2) → SO(3) is a two-to-one homomorphism with kernel the centre Z = {±1} ≅ ℤ₂.
+- The irreducible representations of SU(2) are labelled by spin j ∈ {0, ½, 1, …}, with dimension d_j = 2j+1, character
+  χ_j and quadratic Casimir C₂(j) = j(j+1).
+- The centre acts as −1 on half-integer j and as +1 on integer j. So the half-integer representations are exactly
+  those that do not descend to SO(3): **they exist because of the double cover**.
+
+**Theorem 5 (every representation's area law in two dimensions).** In the setting of Theorem 4,
+
+  ⟨χ_j(Hol_C)⟩ / d_j = (I_{2j+1}(β) / I₁(β))^{|A|}.
+
+*Proof.* As for Theorem 4, with χ_{1/2} replaced by χ_j. The factorisation E[χ_j(UV)] = E[χ_j(U)]E[χ_j(V)]/d_j holds
+for every irreducible character. For one plaquette, the Peter–Weyl expansion
+e^{(β/2)tr U} = Σ_j d_j c_j(β) χ_j(U), with c_j(β) ∝ I_{2j+1}(β)/β, gives
+E[χ_j(U_p)]/d_j = c_j/c₀ · (normalisation) = I_{2j+1}(β)/I₁(β). ∎
+
+**Corollary (Casimir scaling).** Write σ_j = −ln(I_{2j+1}/I₁). Using I_n(β) ≈ (e^β/√(2πβ))(1 − (4n²−1)/(8β)),
+
+  σ_j = 2 C₂(j)/β + O(β⁻²),  so σ_j / σ_{1/2} → C₂(j)/C₂(½).
+
+In the continuum this ratio is exact: σ₁/σ_{1/2} = 2/(3/4) = 8/3. The tension of a loop is its representation's
+Casimir, the note of that representation's turn.
+
+**Theorem 6 (centre vortices flip exactly the double-covered loops).** Choose a set of plaquettes, a "vortex", and
+multiply one edge of each by the centre element −1. Then every Wilson loop in representation j is multiplied by
+(−1)^{2j·n}, where n is the number of times the loop winds around the vortex.
+
+*Proof.* Each crossing multiplies the holonomy by −1, which is central, so the holonomy is multiplied by (−1)^n. Then
+χ_j(−U) = (−1)^{2j} χ_j(U). ∎
+
+So j = ½ loops feel centre vortices, and integer-j loops do not. Random vortices piercing a loop with density p per
+plaquette give ⟨W_{1/2}⟩ ≈ (1 − 2p)^{|A|}, an area law, while leaving adjoint loops unchanged. That is the centre-vortex
+picture of why the double-covered loops confine (the 't Hooft criterion). In two dimensions it is exact in the
+following sense: the sign of each plaquette's a₀ is a ℤ₂ "vortex" variable.
+
+## 7. Topology on the Maurer–Cartan line (layer 5)
+
+**The setting.** Homogeneous connections on S³ are A = q_{ka} θᵏ T_a, where θᵏ is the left-invariant coframe and T_a
+the generators. The Chern–Simons functional
+CS(A) = (1/8π²) ∫ tr(A∧dA + ⅔ A∧A∧A)
+is metric-independent. It changes by an integer under large gauge transformations, classified by
+π₃(SU(2)) = ℤ.
+
+**Lemma 7 (the winding-1 vacuum is homogeneous).** On S³ = SU(2), the Maurer–Cartan form Ω = U⁻¹dU, with U the
+identity map, is a flat connection of winding number 1. In the left-invariant coframe it is homogeneous: q = q_MC.
+
+*Proof.* Ω is left-invariant by construction. It satisfies dΩ + Ω∧Ω = 0, so F = 0. Its winding is the degree of the
+identity map, which is 1. ∎
+
+**Theorem 8 (the Chern–Simons number along the line).** For A_λ = λΩ,
+
+  CS(λ) = 3λ² − 2λ³.
+
+*Proof.* dΩ = −Ω∧Ω. So tr(A dA) = −λ² tr Ω³ and ⅔ tr A³ = ⅔ λ³ tr Ω³, giving
+CS ∝ (−λ² + ⅔λ³) ∫ tr Ω³. Fixing CS(1) = 1 (winding 1) gives the formula. ∎
+
+The curvature along the line is F_λ = (λ² − λ) Ω∧Ω. So the Yang–Mills energy is ∝ (λ − λ²)²: a double well with zeros
+at λ = 0 (winding 0) and λ = 1 (winding 1), and the sphaleron at λ = ½, where CS = ½.
+
+**Theorem 9 (the model's vacua, and where the background sits).** In the reduced model,
+V(q) = Σ_k Σ_c ½(ω_k q_{kc} − g cof(q)_{kc})² − ½ Σ_k a_k Σ_c q_{kc}²,
+with ω = (√t, 1/√t, 1/√t) and sources (a, b, b).
+- **The vacua.** With the sources off, the zeros on the diagonal are q = 0 and q_MC = diag(1/√t, 1, 1)/g. The second
+  is the winding-1 pure gauge of the Berger sphere.
+- **The potential along the line.** V(λ q_MC) = (1 + 2/t)(λ − λ²)²/(2g²): exactly the double well of Theorem 8.
+- **The background.** The registered background q_bg = diag(s/√t, s, s)/g equals s·q_MC exactly. It sits on the
+  instanton–sphaleron line at λ = s, just past the winding-1 vacuum (1 < s < (t+2)/(t+1)), held there by the sources.
+  Its Chern–Simons number is 3s² − 2s³: 0.953, 0.926, 0.891 and 0.800 at s = 1.12, 1.15, 1.18 and 1.24.
+
+*Proof.*
+1. **The vacua.** For diagonal q = diag(d₁, d₂, d₃), cof(q) = diag(d₂d₃, d₁d₃, d₁d₂). Vacuum means ω_k d_k = g·cof_k,
+   which gives d₁² = ω₂ω₃/g², d₂² = ω₁ω₃/g² and d₃² = ω₁ω₂/g². With the given ω this is q_MC.
+2. **The potential.** Substituting q = λ q_MC gives each term (λ − λ²)·ω_k m_k/… and the stated sum.
+3. **The background.** The background is diag(x, y, y)/(2g) with (x, y) = (2s/√t, 2s), which is s·q_MC. ∎
+
+**What this places.** The θ-angle of pure Yang–Mills is the Bloch phase for the shift λ ↦ λ + 1 (a large gauge
+transformation) along this line. Instantons are the tunnelling paths through the sphaleron. All of it lies inside the
+reduced configuration space ℝ⁹. The Helike family is a walk along this line, from the winding-1 vacuum back toward
+the sphaleron: the topological sector is not missing from the construction, it is its spine.
+
+**Open.**
+- The quantum tunnelling amplitude through the sphaleron.
+- The θ-dependence of the gap, through the Bloch band structure along λ.
+
+Both are computable in the reduced model. Neither is computed.
+
+## 8. The base's scale: running coupling and Λ (layer 1)
+
+**Facts (one loop, standard).**
+- With the action (1/2g²)∫tr F², the coupling runs as μ dg/dμ = −b₀ g³, with b₀ = 11N/(48π²) for SU(N).
+- So 1/g²(μ) = 2b₀ ln(μ/Λ). The scale Λ is generated, and does not appear in the classical theory: this is
+  dimensional transmutation.
+- On a sphere of radius R, the coupling is g²(1/R), so RΛ = exp(−1/(2b₀g²)).
+
+**What it places.** The gap must come out as Δ = c·Λ, with c a pure number. In the small room, the computed gaps are
+Δ·R = f(g²(R)). The "translator" (§4.3) is the map f ↦ c as R → ∞. The infrared half of the proof (M2) is to show that
+Δ·R/(RΛ) stays bounded away from zero.
+
+**Open.** Everything beyond one loop, and the matching between the reduced model's g² and a scheme. Bloch's g²(R)/2π²
+(van den Heuvel) is the existing bridge.
+
+## 9. M3 as a bundle over the slow configurations (layer 8)
+
+**The construction (Born–Oppenheimer).**
+- Split the connection on the small sphere into slow modes (the homogeneous q ∈ ℝ⁹) and fast modes (the higher
+  harmonics η).
+- At fixed q, the fast modes see a Hamiltonian H_fast(q). Its stiffness grows like n/R for the n-th harmonic.
+- The ground state |0(q)⟩ of H_fast(q) defines a **line bundle over the slow space** ℝ⁹/SO(3).
+- Projecting onto that line bundle gives the effective slow Hamiltonian
+
+  H_eff = ½ g^{ij}(q)(pᵢ − 𝒜ᵢ(q))(pⱼ − 𝒜ⱼ(q)) + V(q) + E₀(q) + Φ(q),
+
+  where:
+  - 𝒜ᵢ = i⟨0(q)|∂ᵢ 0(q)⟩ is the **Berry connection** of the fast ground state;
+  - E₀(q) = ½ Σ_n ω_n(q) is the fast zero-point energy, a q-dependent potential;
+  - Φ is the Born–Huang scalar correction.
+
+**Where it meets the other cells.**
+- **Layer 1.** The zero-point sum Σ_n ω_n(q) diverges in the ultraviolet. Its q-dependent divergent part has the form of
+  the classical action, so it renormalizes g. The running coupling of §8 *is* the divergent part of the dressing.
+- **Layer 7.** The finite part shifts the slow levels. M3 is the statement that these shifts are uniformly bounded below
+  the gap and do not exchange Helike and the competitor except at an identifiable switch.
+
+**Template, and what is missing.** Lüscher on the torus, and van Baal on S³, computed these corrections in
+perturbation theory, and van Baal's effective Hamiltonian was accurate. What is missing is a bound uniform as the
+cutoff on n goes to infinity, which is Bałaban's territory. A first computation is in reach: the Berger-sphere Hessian
+spectrum at homogeneous q is already computed (*By Enough*, Floor), so E₀(q) can be summed over the lowest sectors as a
+function of q and compared with the gaps.
+
+## 10. The fold: two sheets and the boundary realization (layer 4)
+
+**Facts.**
+- G = qqᵀ does not see the sign of det q. The two sheets det q > 0 and det q < 0 meet where rank q < 3. Together they
+  form an orientation double cover of the cone of Gram matrices.
+- The potential is not sheet-symmetric. Its cubic term is −g(Σω) det q, so V(q) − V(−q) = −2g(Σω) det q, the signed
+  cubic of report page 12.
+- The physical operator on ℝ⁹ imposes matched values and a vanishing conormal sum across the fold. That is the
+  **natural** realization, with no wall.
+- The log-Cholesky basis vanishes at the fold faster than any power, so its form closure is the **Dirichlet**
+  realization.
+- The unfolded chart P covers both sheets and so approximates the natural one.
+
+**What it places.**
+- The two realizations differ by tunnelling to the fold, which is exponentially small at weak coupling.
+- Through Theorem 9 the fold is also topological: det q is the Chern–Simons cubic, so the sheet structure and the
+  winding structure are the same odd term seen twice.
+
+**Open.** A bound on the realization difference, and its sign.
+
+## 11. The spectrum's labels and the glueball link (layer 7)
+
+**Facts.**
+- States are labelled by representations of the base's isometry group. For the Berger sphere that is the residual
+  U(1), with charge m; for the round sphere and in infinite volume, it is rotations and parity, giving J^PC.
+- Helike is charge 2, a tensor-like state. The competitor is charge 0, a scalar-like state.
+- In infinite volume, lattice studies find the lightest glueball is the scalar 0⁺⁺ and the tensor 2⁺⁺ is heavier.
+  *verify* a citation before quoting ratios.
+
+**The link (conjecture, falsifiable).** The registered predictions s*(g²) rise with g²: 1.1674, 1.1809 and 1.1931 at
+g² = 0.03, 0.05 and 0.07. A larger g² is a larger room. The region s < s*, where the charge-0 competitor is lowest,
+therefore grows with the room. The switch would be the small-volume precursor of the infinite-volume ordering
+0⁺⁺ < 2⁺⁺. The test: the measured s* (§5.11, once the grid runs) must rise with g², and continue to rise along the M2
+sweep.
+
+## 12. Associated bundles and the base's geometry (layers 9 and 10)
+
+- **Matter.** Matter fields are sections of associated vector bundles P ×_G V. Pure Yang–Mills, the Clay problem, has
+  none, so the cell is empty by choice.
+- **Gravity.** The base's own geometry is the metric, through the frame bundle. Gravity makes the base dynamical and
+  lies outside the problem.

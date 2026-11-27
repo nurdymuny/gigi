@@ -41,7 +41,8 @@ FILES=(
   scripts/helike_m3_zero_point.py scripts/helike_m3_zeta.py scripts/helike_m3_background.py
   scripts/helike_m3_deep_analysis.py scripts/gigi_m3_demo.py scripts/gigi_lattice_gauge_demo.py
   scripts/gigi_grid_demos.py scripts/lowest_note_threshold.py scripts/check_lowest_note_review.py
-  scripts/build_lowest_note_doublet.py scripts/check_lowest_note_doublet.py
+  scripts/build_lowest_note_doublet.py scripts/check_lowest_note_doublet.py scripts/check_h7_cubic_quartic.py
+  docs/research/h7-cubic-quartic-proof-2026-11-27.md docs/research/h7-cubic-quartic-contract-2026-11-27.md
   docs/papers/ym-theory-statement/figures/helike-doublet.json
   research/dressed-chart-20261126/controls/report.json
   research/lowest-note-threshold-20261127/receipt.json
@@ -49,7 +50,8 @@ FILES=(
   docs/research/helike-flux-background-registration-2026-11-24.md
 )
 for d in research/m3-zero-point-20261127 research/gigi-m3-20261127 research/gigi-lattice-gauge-20261127 \
-         research/gigi-grid-demos-20261127 research/lowest-note-review-20261127 docs/research/closed-set-20261127; do
+         research/gigi-grid-demos-20261127 research/lowest-note-review-20261127 research/h7-cubic-quartic-20261127 \
+         docs/research/closed-set-20261127; do
   while IFS= read -r f; do FILES+=("$f"); done < <(git ls-files "$d")
 done
 for f in "${FILES[@]}"; do mkdir -p "$C/$(dirname "$f")"; cp "$f" "$C/$f"; done

@@ -1,0 +1,79 @@
+
+running 7 tests
+test checks::analytic_block_includes_both_couplings_and_adjoint ... ok
+test checks::lift_retains_old_space_and_is_isometric_even_when_positions_reorder ... ok
+test checks::projection_does_not_confuse_in_space_and_complement ... ok
+test checks::zero_coupling_does_not_change_old_action ... ok
+test checks::bad_directions_and_asymmetric_block_refuse ... ok
+test checks::residual_whitening_normalizes_and_rotation_preserves_projector ... ok
+test checks::both_controls_match_direct_projected_operator ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+
+   Compiling helike-quantum v0.1.0 (C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\helike-lab\crates\helike-quantum)
+warning: function `norm` is never used
+ --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:9:4
+  |
+9 | fn norm(a: &[f64]) -> f64 { dot(a,a).sqrt() }
+  |    ^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `difference` is never used
+  --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:10:4
+   |
+10 | fn difference(a: &[f64], b: &[f64]) -> f64 { norm(&a.iter().zip(b).map(|(x,y)| x-y).collect::<Vec<_>>()) }
+   |    ^^^^^^^^^^
+
+warning: struct `SavedState` is never constructed
+  --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:87:8
+   |
+87 | struct SavedState {
+   |        ^^^^^^^^^^
+
+warning: struct `OldLevels` is never constructed
+  --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:92:8
+   |
+92 | struct OldLevels { levels: Vec<f64> }
+   |        ^^^^^^^^^
+
+warning: struct `Saved` is never constructed
+  --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:94:8
+   |
+94 | struct Saved {
+   |        ^^^^^
+
+warning: function `decode` is never used
+  --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:99:4
+   |
+99 | fn decode(bits: &[u64], n: usize) -> Result<Vec<f64>,String> {
+   |    ^^^^^^
+
+warning: function `bits` is never used
+   --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:104:4
+    |
+104 | fn bits(v: &[f64]) -> Vec<u64> { v.iter().map(|x| x.to_bits()).collect() }
+    |    ^^^^
+
+warning: struct `EnrichedState` is never constructed
+   --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:107:12
+    |
+107 | pub struct EnrichedState {
+    |            ^^^^^^^^^^^^^
+
+warning: struct `EnrichmentExport` is never constructed
+   --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:113:12
+    |
+113 | pub struct EnrichmentExport {
+    |            ^^^^^^^^^^^^^^^^
+
+warning: function `enrich` is never used
+   --> crates\helike-quantum\tests\enrichment_mutation_probe.rs:127:8
+    |
+127 | pub fn enrich(text: &str) -> Result<EnrichmentExport,String> {
+    |        ^^^^^^
+
+warning: `helike-quantum` (test "enrichment_mutation_probe") generated 10 warnings
+    Finished `release` profile [optimized + debuginfo] target(s) in 4.55s
+     Running tests\enrichment_mutation_probe.rs (target\release\deps\enrichment_mutation_probe-4b3888bc4a9d505b.exe)

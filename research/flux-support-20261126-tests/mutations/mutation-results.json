@@ -1,0 +1,32 @@
+[
+  {
+    "variant": "baseline",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 0
+  },
+  {
+    "variant": "drop_squaring",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  },
+  {
+    "variant": "ignore_occupation_identity",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  },
+  {
+    "variant": "erase_omitted_residual",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  },
+  {
+    "variant": "drop_mass_normalization",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  }
+]

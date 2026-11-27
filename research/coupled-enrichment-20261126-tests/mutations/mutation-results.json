@@ -1,0 +1,32 @@
+[
+  {
+    "variant": "baseline",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 0
+  },
+  {
+    "variant": "drop_forward_coupling",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  },
+  {
+    "variant": "drop_adjoint_coupling",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  },
+  {
+    "variant": "drop_whitening",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  },
+  {
+    "variant": "drop_projection",
+    "compiled_and_ran": true,
+    "gate_pass": true,
+    "returncode": 101
+  }
+]

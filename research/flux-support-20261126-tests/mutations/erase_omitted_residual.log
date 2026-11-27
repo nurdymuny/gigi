@@ -1,0 +1,58 @@
+
+running 8 tests
+test checks::bad_measurements_refuse ... ok
+test checks::embedding_uses_occupation_identity_not_order ... ok
+test checks::planted_probabilities_and_joint_bins ... ok
+test checks::coupled_matrix_exposes_omitted_residual_despite_zero_inner_residual ... FAILED
+test checks::residual_distribution_normalizes_by_its_own_mass ... ok
+test checks::sign_and_subspace_rotation_do_not_change_average_support ... ok
+test checks::zero_distribution_has_no_normalized_summary ... ok
+test checks::nested_operator_actions_agree_on_both_weak_controls ... ok
+
+failures:
+
+failures:
+    checks::coupled_matrix_exposes_omitted_residual_despite_zero_inner_residual
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+
+   Compiling helike-quantum v0.1.0 (C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\helike-lab\crates\helike-quantum)
+warning: field `outer` is never read
+  --> crates\helike-quantum\tests\support_mutation_probe.rs:21:33
+   |
+20 | pub struct ResidualSplit {
+   |            ------------- field in this struct
+21 |     pub residual: Vec<f64>, pub outer: Vec<f64>,
+   |                                 ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `StateSupport` is never constructed
+  --> crates\helike-quantum\tests\support_mutation_probe.rs:97:12
+   |
+97 | pub struct StateSupport {
+   |            ^^^^^^^^^^^^
+
+warning: struct `SupportExport` is never constructed
+   --> crates\helike-quantum\tests\support_mutation_probe.rs:113:12
+    |
+113 | pub struct SupportExport {
+    |            ^^^^^^^^^^^^^
+
+warning: function `diagnose` is never used
+   --> crates\helike-quantum\tests\support_mutation_probe.rs:129:8
+    |
+129 | pub fn diagnose(s: f64, t: f64, g2: f64, mq: usize, set: &SolveSettings) -> Result<SupportExport, String> {
+    |        ^^^^^^^^
+
+warning: `helike-quantum` (test "support_mutation_probe") generated 4 warnings
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.81s
+     Running tests\support_mutation_probe.rs (target\release\deps\support_mutation_probe-d56d0a3165b51c19.exe)
+
+thread 'checks::coupled_matrix_exposes_omitted_residual_despite_zero_inner_residual' (41796) panicked at crates\helike-quantum\tests\support_mutation_probe.rs:257:5:
+assertion `left == right` failed
+  left: 0.0
+ right: 3.0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: test failed, to rerun pass `-p helike-quantum --test support_mutation_probe`

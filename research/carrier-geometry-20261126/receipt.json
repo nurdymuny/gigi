@@ -1,0 +1,82 @@
+{
+ "status": "OPEN",
+ "old_export_gate": "FAIL",
+ "full_grid_released": false,
+ "positivity": {
+  "14": {
+   "norms": [
+    0.999999999999488,
+    0.9999999999995265
+   ],
+   "bad_nodes": 22020,
+   "bad_weight": 1.0134263077309613e-07,
+   "largest_bad_node": {
+    "x": [
+     0.29174551067256205,
+     0.29174551067256205,
+     -2.7484707249854026,
+     0.29174551067256205,
+     -0.29174551067256205,
+     2.7484707249854026
+    ],
+    "ground_polynomial": -0.5058404715465222,
+    "vacuum_node_weight": 8.614598117174807e-11
+   },
+   "passed": false
+  },
+  "16": {
+   "norms": [
+    0.9999999999989726,
+    0.9999999999989789
+   ],
+   "bad_nodes": 25620,
+   "bad_weight": 9.48058593227918e-08,
+   "largest_bad_node": {
+    "x": [
+     0.2734810461381524,
+     0.2734810461381524,
+     -1.9517879909162539,
+     0.2734810461381524,
+     -0.2734810461381524,
+     3.176999161979956
+    ],
+    "ground_polynomial": -0.26993975222260985,
+    "vacuum_node_weight": 5.4637572423079566e-11
+   },
+   "passed": false
+  }
+ },
+ "orders": {},
+ "input_sha256_lf": "15ed4b72a41ab4f1125fbe3a3bb3b6f35775c0ef077f1fc3f8b8f1a8b3969833",
+ "parent_sha256_lf": "b790b53f6186b6d3b1767c91cc1f087486d2db98c2bd291fce14db40524210a6",
+ "source_revision": "d3e03ad13d99755f9559900e2ec6d6e48ff795c1",
+ "source_dirty": true,
+ "command": [
+  "scripts/helike_carrier_geometry_probe.py",
+  "research/carrier-geometry-20261126"
+ ],
+ "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+ "numpy": "2.4.0",
+ "sources_sha256_lf": {
+  "scripts/helike_carrier_geometry_probe.py": "cd920745f7d87bc7621116dcb021da82aaaec249092dbe2515c5ddfbecff8a1a",
+  "scripts/helike_m8_geometry.py": "0b690dd965678c46bf2335bfcbf96e74e695acc656de6336447788008217b352",
+  "scripts/helike_positive_cone.py": "1fb9ab40ca58b810ed9547b2850a9bc9e647772d2aca70ce124580fe1eb35afe"
+ },
+ "point": {
+  "s": 1.18,
+  "t": 3.0,
+  "g2": 0.03,
+  "mq": 12
+ },
+ "seam_orders": [
+  14,
+  16
+ ],
+ "cuts": [
+  1e-12,
+  1e-14
+ ],
+ "blas_threads": 4,
+ "reason": "saved ground state violates registered positivity; ratio geometry not evaluated",
+ "seconds": 3.905999999959022
+}

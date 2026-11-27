@@ -1,0 +1,59 @@
+[
+  {
+    "mutation": "ignore_basis_step",
+    "rejected": true,
+    "failing_tests": [
+      "test_too_large_step_is_not_a_pass (test_helike_flux_basis_smoke.Smoke.test_too_large_step_is_not_a_pass)"
+    ]
+  },
+  {
+    "mutation": "substitute_dressed_overlap",
+    "rejected": true,
+    "failing_tests": [
+      "test_dressed_overlap_cannot_replace_reference_weight (test_helike_flux_basis_smoke.Smoke.test_dressed_overlap_cannot_replace_reference_weight)"
+    ]
+  },
+  {
+    "mutation": "weaken_export_threshold",
+    "rejected": true,
+    "failing_tests": [
+      "test_export_threshold_is_separate (test_helike_flux_basis_smoke.Smoke.test_export_threshold_is_separate)"
+    ]
+  },
+  {
+    "mutation": "ignore_reproduction",
+    "rejected": true,
+    "failing_tests": [
+      "test_bad_reproduction_cannot_pass (test_helike_flux_basis_smoke.Smoke.test_bad_reproduction_cannot_pass)"
+    ]
+  },
+  {
+    "mutation": "ignore_residual",
+    "rejected": true,
+    "failing_tests": [
+      "test_bad_residual_empty_levels_nonfinite_and_weights_refuse (test_helike_flux_basis_smoke.Smoke.test_bad_residual_empty_levels_nonfinite_and_weights_refuse) (fault='residual')"
+    ]
+  },
+  {
+    "mutation": "release_grid",
+    "rejected": true,
+    "failing_tests": [
+      "test_good_smoke_never_releases_grid_or_certifies_domain (test_helike_flux_basis_smoke.Smoke.test_good_smoke_never_releases_grid_or_certifies_domain)"
+    ]
+  },
+  {
+    "mutation": "reuse_evidence",
+    "rejected": true,
+    "failing_tests": [
+      "test_existing_evidence_directory_refuses_without_overwrite (test_helike_flux_basis_smoke.Smoke.test_existing_evidence_directory_refuses_without_overwrite)"
+    ]
+  },
+  {
+    "mutation": "hide_execution_failure",
+    "rejected": true,
+    "failing_tests": [
+      "test_timeout_or_nonzero_exit_cannot_be_completed (test_helike_flux_basis_smoke.Smoke.test_timeout_or_nonzero_exit_cannot_be_completed) (failure=\"Command 'helike' timed out after 900 seconds\")",
+      "test_timeout_or_nonzero_exit_cannot_be_completed (test_helike_flux_basis_smoke.Smoke.test_timeout_or_nonzero_exit_cannot_be_completed) (failure=\"CompletedProcess(args='helike', returncode=2)\")"
+    ]
+  }
+]

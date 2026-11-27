@@ -17,6 +17,15 @@ papers cite some of these paths, so files are never renamed or moved.
 
 **Live status of today's runs:** [STATUS-live.md](STATUS-live.md)
 
+**Bounded flux-grid diagnostic:** [One-point Mq 10 -> 12 smoke registration](helike-flux-basis-smoke-registration-2026-11-26.md).
+Results: [basis refinement improves the estimates but does not repair the gate](helike-flux-basis-smoke-results-2026-11-26.md).
+Next: [registered occupation and omitted-shell diagnostic](helike-flux-support-registration-2026-11-26.md).
+Measured: [the competitor needs coupled room](helike-flux-support-results-2026-11-26.md).
+Test: [one coupled residual enrichment](helike-coupled-enrichment-registration-2026-11-26.md).
+Result: [four coupled directions reduce the measured residual; full grid remains held](helike-coupled-enrichment-results-2026-11-26.md).
+Geometric diagnosis: [registered ground-weighted carrier probe](helike-carrier-geometry-probe-registration-2026-11-26.md).
+Result: [the saved ground crosses zero; geometric probe remains open](helike-carrier-geometry-probe-results-2026-11-26.md).
+
 ## 22 November 2026: the morning notes
 
 | note | what it is |

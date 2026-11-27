@@ -1,0 +1,19 @@
+test_bad_reproduction_cannot_pass (test_helike_flux_basis_smoke.Smoke.test_bad_reproduction_cannot_pass) ... ok
+test_bad_residual_empty_levels_nonfinite_and_weights_refuse (test_helike_flux_basis_smoke.Smoke.test_bad_residual_empty_levels_nonfinite_and_weights_refuse) ... ok
+test_dressed_overlap_cannot_replace_reference_weight (test_helike_flux_basis_smoke.Smoke.test_dressed_overlap_cannot_replace_reference_weight) ... ok
+test_existing_evidence_directory_refuses_without_overwrite (test_helike_flux_basis_smoke.Smoke.test_existing_evidence_directory_refuses_without_overwrite) ... ok
+test_export_threshold_is_separate (test_helike_flux_basis_smoke.Smoke.test_export_threshold_is_separate) ... ok
+test_frozen_design (test_helike_flux_basis_smoke.Smoke.test_frozen_design) ... ok
+test_good_smoke_never_releases_grid_or_certifies_domain (test_helike_flux_basis_smoke.Smoke.test_good_smoke_never_releases_grid_or_certifies_domain) ... ok
+Mq 12 started: helike.exe --out C:\Users\nurdm\AppData\Local\Temp\tmpwalzyxc4\mq12.json cone --s 1.18 --t 3.0 --g2 0.03 --mq 12
+{"Mq": 12, "command": ["helike.exe", "--out", "C:\\Users\\nurdm\\AppData\\Local\\Temp\\tmpwalzyxc4\\mq12.json", "cone", "--s", "1.18", "--t", "3.0", "--g2", "0.03", "--mq", "12"], "started_unix": 1795738576.7254496, "status": "STOPPED", "error": "TimeoutExpired: Command 'helike' timed out after 900 seconds", "elapsed_seconds": 0.038559913635253906}
+Mq 12 started: helike.exe --out C:\Users\nurdm\AppData\Local\Temp\tmpqg9rle3o\mq12.json cone --s 1.18 --t 3.0 --g2 0.03 --mq 12
+{"Mq": 12, "command": ["helike.exe", "--out", "C:\\Users\\nurdm\\AppData\\Local\\Temp\\tmpqg9rle3o\\mq12.json", "cone", "--s", "1.18", "--t", "3.0", "--g2", "0.03", "--mq", "12"], "started_unix": 1795738576.799659, "status": "STOPPED", "returncode": 2, "error": "RuntimeError: solver exited 2; see mq12.stderr.log", "elapsed_seconds": 0.029517650604248047}
+test_timeout_or_nonzero_exit_cannot_be_completed (test_helike_flux_basis_smoke.Smoke.test_timeout_or_nonzero_exit_cannot_be_completed) ... ok
+test_too_large_step_is_not_a_pass (test_helike_flux_basis_smoke.Smoke.test_too_large_step_is_not_a_pass) ... ok
+test_wrong_point_cutoff_settings_or_operator_refuse (test_helike_flux_basis_smoke.Smoke.test_wrong_point_cutoff_settings_or_operator_refuse) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.142s
+
+OK

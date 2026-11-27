@@ -1,0 +1,205 @@
+{
+ "status": "COMPLETE",
+ "point": {
+  "s": 1.18,
+  "t": 3.0,
+  "g2": 0.03
+ },
+ "ladder": [
+  10,
+  12
+ ],
+ "certified": false,
+ "full_grid_released": false,
+ "overall": "UNRESOLVED",
+ "domain_gate": "NOT_RUN",
+ "rungs": [
+  {
+   "Mq": 10,
+   "receipt": "mq10.json",
+   "result": {
+    "Mq": 10,
+    "applications": 556,
+    "background_gradient": 8.881784197001252e-16,
+    "cross_check_quadrature_order": 18,
+    "dimension": 8008,
+    "frequencies": [
+     1.0716964744428963,
+     1.0716964744428963,
+     1.166114520069729,
+     2.451557328175976,
+     2.451557328175976,
+     2.7064694578144683
+    ],
+    "g2": 0.03,
+    "max_in_space_lanczos_residual": 6.298248405608381e-10,
+    "moments": "exact",
+    "quadrature_cross_check": 7.283063041541027e-14,
+    "result": {
+     "E0": 5.420377676484968,
+     "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+     "competitor": {
+      "dressed_overlap": 0.9757546558403825,
+      "dressed_weight": 0.9136404500327204,
+      "gap": 1.096694346922754,
+      "level_index": 3,
+      "log_basis_weight": 0.6505992227000879,
+      "weight": 0.8648821153434145
+     },
+     "dressed_overlap_error": 1.865174681370263e-14,
+     "dressed_overlap_orthonormality": 1.0014211682118912e-13,
+     "energy_shift": -8.215159999999997,
+     "helike": {
+      "dressed_overlap": 0.9935824320847534,
+      "dressed_weight": 0.9650134913870881,
+      "gap": 1.0571307308726174,
+      "level_index": 1,
+      "log_basis_weight": 0.842711369299698,
+      "weight": 0.9135135268320357
+     },
+     "in_space_lanczos_residuals": [
+      7.924544113307262e-14,
+      5.745500610551262e-14,
+      4.221486718660243e-14,
+      4.939337461267378e-14,
+      6.080571854530306e-14,
+      6.517160911696275e-14,
+      5.2016485743163617e-14,
+      6.628543748276212e-14,
+      6.340497865590017e-14,
+      7.008809592992358e-14,
+      6.298248405608381e-10,
+      6.116986976686936e-10
+     ],
+     "levels": [
+      5.420377676484968,
+      6.477508407357585,
+      6.478393263475543,
+      6.517072023407722,
+      7.477055135818772,
+      7.53546263975839,
+      7.5360107958186076,
+      7.572281783342553,
+      7.578731085538233,
+      7.61718549963791,
+      7.854444456841601,
+      7.854480371267534
+     ],
+     "overlap_orders": [
+      18,
+      20
+     ],
+     "reference_weight_error": 1.3735094539502057e-07,
+     "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+     "vacuum_weight": 0.9466329071928025
+    },
+    "s": 1.18,
+    "seconds": 166.2686636,
+    "t": 3.0
+   }
+  },
+  {
+   "Mq": 12,
+   "receipt": "mq12.json",
+   "result": {
+    "Mq": 12,
+    "applications": 652,
+    "background_gradient": 8.881784197001252e-16,
+    "cross_check_quadrature_order": 20,
+    "dimension": 18564,
+    "frequencies": [
+     1.0716964744428963,
+     1.0716964744428963,
+     1.166114520069729,
+     2.451557328175976,
+     2.451557328175976,
+     2.7064694578144683
+    ],
+    "g2": 0.03,
+    "max_in_space_lanczos_residual": 6.492937894950407e-10,
+    "moments": "exact",
+    "quadrature_cross_check": 9.50350909079134e-14,
+    "result": {
+     "E0": 5.420012553018869,
+     "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+     "competitor": {
+      "dressed_overlap": 0.9740076181555388,
+      "dressed_weight": 0.9128515410191,
+      "gap": 1.0903923233976611,
+      "level_index": 3,
+      "log_basis_weight": 0.6412605752307375,
+      "weight": 0.8641938683849978
+     },
+     "dressed_overlap_error": 5.051514762044462e-14,
+     "dressed_overlap_orthonormality": 1.0103029524088925e-13,
+     "energy_shift": -8.215159999999997,
+     "helike": {
+      "dressed_overlap": 0.9933077014644082,
+      "dressed_weight": 0.9653883710547538,
+      "gap": 1.0560672396516049,
+      "level_index": 1,
+      "log_basis_weight": 0.8404625233019909,
+      "weight": 0.9139303308228115
+     },
+     "in_space_lanczos_residuals": [
+      4.7668871334209e-14,
+      5.833280594141568e-14,
+      5.756211176264456e-14,
+      5.799308191765399e-14,
+      7.900791722778145e-14,
+      9.1917884490843e-14,
+      7.700373492709518e-14,
+      8.956512832028702e-14,
+      8.344185728948869e-14,
+      6.415417877205149e-14,
+      6.145076102203963e-11,
+      6.492937894950407e-10
+     ],
+     "levels": [
+      5.420012553018869,
+      6.476079792670474,
+      6.476441282512157,
+      6.51040487641653,
+      7.472260391180271,
+      7.5311169644723845,
+      7.531350799572366,
+      7.559216459071391,
+      7.563017558634063,
+      7.58831174386005,
+      7.852828539336185,
+      7.852850913378777
+     ],
+     "overlap_orders": [
+      18,
+      20
+     ],
+     "reference_weight_error": 5.516255064952347e-07,
+     "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+     "vacuum_weight": 0.9466970581220894
+    },
+    "s": 1.18,
+    "seconds": 393.7829648,
+    "t": 3.0
+   }
+  }
+ ],
+ "source_revision": "d3e03ad13d99755f9559900e2ec6d6e48ff795c1",
+ "binary_sha256": "d981b537d6bd1f1dff305d80c22e833ebddb53b3193d8f768aad7cf0e3cc4c89",
+ "baseline_sha256_lf": "f1c880bb1bb7f025dc8c29a60fbc346746cdbe279ba655c5b2d2a9e96df9081d",
+ "source_status": " M docs/research/README.md\n M scripts/run_helike_flux_grid.py\n M scripts/test_helike_flux_grid.py\n?? docs/research/helike-flux-basis-smoke-registration-2026-11-26.md\n?? research/flux-basis-smoke-20261126/\n?? scripts/check_helike_flux_basis_smoke_mutations.py\n?? scripts/run_helike_flux_basis_smoke.py\n?? scripts/test_helike_flux_basis_smoke.py\n",
+ "harness_sha256_lf": "3e2ca5a5965ec627701fd25b9d6a5d9b3e634ba41dca1484e6eab070c274b4ee",
+ "assessment": {
+  "steps": {
+   "helike": 0.001063491221012569,
+   "competitor": 0.0063020235250927925
+  },
+  "basis_step_pass": false,
+  "grid_identification_pass": true,
+  "competitor_blocks_export": true,
+  "domain_gate": "NOT_RUN",
+  "overall": "UNRESOLVED",
+  "certified": false,
+  "full_grid_released": false,
+  "competitor_step_ratio": 0.68948438222087
+ }
+}

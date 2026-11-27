@@ -1,0 +1,87 @@
+{
+  "scope": "post-diagnostic exploration, not a registered acceptance gate",
+  "receipt_sha256_lf": "b790b53f6186b6d3b1767c91cc1f087486d2db98c2bd291fce14db40524210a6",
+  "joint_support_checks": [
+    {
+      "state": "ground",
+      "pure_c_axis_share": 0.021607587272315917,
+      "c_at_least_7_share": 0.6183363516414637,
+      "top_joint_bin_share": 0.05360653660655964,
+      "top_10_joint_bins_share": 0.3751783138874253
+    },
+    {
+      "state": "helike_a",
+      "pure_c_axis_share": 1.1042275168309214e-26,
+      "c_at_least_7_share": 0.5445204414467643,
+      "top_joint_bin_share": 0.03193494132801089,
+      "top_10_joint_bins_share": 0.2732461985454573
+    },
+    {
+      "state": "helike_b",
+      "pure_c_axis_share": 0.000142646117041132,
+      "c_at_least_7_share": 0.4730876139130293,
+      "top_joint_bin_share": 0.04712179325242053,
+      "top_10_joint_bins_share": 0.29739283471998873
+    },
+    {
+      "state": "competitor",
+      "pure_c_axis_share": 0.053417303439025586,
+      "c_at_least_7_share": 0.823808994008519,
+      "top_joint_bin_share": 0.06361324669926549,
+      "top_10_joint_bins_share": 0.41411245695555127
+    }
+  ],
+  "candidate_span": {
+    "singular_values": [
+      0.23790971714998682,
+      0.11656024702327966,
+      0.10269016075945411,
+      0.02448170680971491
+    ],
+    "orthonormality_error": 7.771561172376096e-16,
+    "projection_error_by_state": [
+      2.8616028504470566e-17,
+      3.989121796871387e-17,
+      2.750272022757953e-17,
+      1.309323730562382e-16
+    ],
+    "old_dimension": 18564,
+    "proposed_dimension": 18568,
+    "full_probe_dimension": 38760,
+    "new_eigensolve_performed": false
+  },
+  "corruptions": [
+    {
+      "fault": "wrong_point",
+      "rejected": true,
+      "reason": "wrong diagnostic point or schema"
+    },
+    {
+      "fault": "false_certificate",
+      "rejected": true,
+      "reason": "diagnostic cannot certify or release a grid"
+    },
+    {
+      "fault": "corrupt_summary",
+      "rejected": true,
+      "reason": "independent summary disagrees: 0.03414562134208573 != 0.03756018347629431"
+    },
+    {
+      "fault": "corrupt_coefficients",
+      "rejected": true,
+      "reason": "independent summary disagrees: 0.900171252192477 != 0.07427020521418051"
+    },
+    {
+      "fault": "missing_shell",
+      "rejected": true,
+      "reason": "incomplete or invalid occupation simplex"
+    },
+    {
+      "fault": "wrong_energy",
+      "rejected": true,
+      "reason": "state energy does not match its level"
+    }
+  ],
+  "full_grid_released": false,
+  "certified": false
+}

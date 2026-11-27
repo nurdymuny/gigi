@@ -121,6 +121,26 @@ enum Cmd {
         #[arg(long, default_value_t = 4)]
         extra: usize,
     },
+    /// Report-only state support and omitted-shell residuals; no larger eigensolve or certificate.
+    ConeSupport {
+        #[arg(long)]
+        s: f64,
+        #[arg(long)]
+        t: f64,
+        #[arg(long)]
+        g2: f64,
+        #[arg(long)]
+        mq: usize,
+        #[arg(long)]
+        support_out: PathBuf,
+    },
+    /// One nested residual enrichment of a saved support diagnostic; no ambient eigensolve or certificate.
+    ConeEnrich {
+        #[arg(long)]
+        support: PathBuf,
+        #[arg(long)]
+        states_out: PathBuf,
+    },
     /// Basis convergence of the controls between two cutoffs at the frozen 0.003 rule.
     ConeConvergence {
         #[arg(long, default_value_t = 6)]
@@ -300,6 +320,21 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
         Cmd::Cone { s, t, g2, mq, extra } => {
             let r = run::solve_point(*s, *t, *g2, *mq, *extra, &SolveSettings::default())?;
             (json!({"s": s, "t": t, "g2": g2, "Mq": mq, "extra": extra, "solver": SolveSettings::default()}), serde_json::to_value(&r).unwrap())
+        }
+        Cmd::ConeSupport { s, t, g2, mq, support_out } => {
+            let r = helike_quantum::support::diagnose(*s, *t, *g2, *mq, &SolveSettings::default())?;
+            std::fs::write(support_out, serde_json::to_string(&r).unwrap()).map_err(|e| e.to_string())?;
+            (json!({"s":s, "t":t, "g2":g2, "Mq":mq, "probe_Mq":mq+2, "solver":SolveSettings::default()}),
+             json!({"identification":r.identification, "seconds":r.seconds, "certified":false, "full_grid_released":false,
+                    "support_sha256_lf":helike_stream::text_sha256(support_out)}))
+        }
+        Cmd::ConeEnrich { support, states_out } => {
+            let text=std::fs::read_to_string(support).map_err(|e| e.to_string())?;
+            let r=helike_quantum::enrichment::enrich(&text)?;
+            std::fs::write(states_out,serde_json::to_string(&r).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+            (json!({"support_sha256_lf":helike_stream::text_sha256(support),"solver":SolveSettings::default()}),
+             json!({"identification":r.identification,"seconds":r.seconds,"certified":false,"full_grid_released":false,
+                    "enrichment_sha256_lf":helike_stream::text_sha256(states_out)}))
         }
         Cmd::ConeControls { mq, extra } => {
             let r = run::controls(*mq, *extra, &SolveSettings::default())?;

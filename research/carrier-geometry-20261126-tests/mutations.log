@@ -1,0 +1,36 @@
+{
+  "status": "OPEN",
+  "old_export_gate": "FAIL",
+  "full_grid_released": false,
+  "positivity": {},
+  "error": "ValueError: changed pinned source",
+  "seconds": 0.01600000000325963
+}
+{"variant": "baseline", "tests_run": 7, "assertion_failures": 0, "errors": 0, "gate_pass": true}
+{
+  "status": "OPEN",
+  "old_export_gate": "FAIL",
+  "full_grid_released": false,
+  "positivity": {},
+  "error": "ValueError: changed pinned source",
+  "seconds": 0.01600000000325963
+}
+{"variant": "drop_derivative", "tests_run": 7, "assertion_failures": 1, "errors": 0, "gate_pass": true}
+{
+  "status": "OPEN",
+  "old_export_gate": "FAIL",
+  "full_grid_released": false,
+  "positivity": {},
+  "error": "ValueError: changed pinned source",
+  "seconds": 0.01600000000325963
+}
+{"variant": "drop_ground_weight", "tests_run": 7, "assertion_failures": 2, "errors": 0, "gate_pass": true}
+{
+  "status": "OPEN",
+  "old_export_gate": "FAIL",
+  "full_grid_released": false,
+  "positivity": {},
+  "error": "ValueError: changed pinned source",
+  "seconds": 0.015000000013969839
+}
+{"variant": "local_cut_normalization", "tests_run": 7, "assertion_failures": 1, "errors": 0, "gate_pass": true}

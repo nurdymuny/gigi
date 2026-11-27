@@ -1,0 +1,49 @@
+   Compiling helike-quantum v0.1.0 (C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\helike-lab\crates\helike-quantum)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.81s
+     Running tests\coupled_enrichment.rs (target\release\deps\coupled_enrichment-e3daa20f91a8bcde.exe)
+
+running 7 tests
+
+thread 'analytic_block_includes_both_couplings_and_adjoint' (41512) panicked at crates\helike-quantum\tests\coupled_enrichment.rs:7:81:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'bad_directions_and_asymmetric_block_refuse' (31664) panicked at crates\helike-quantum\tests\coupled_enrichment.rs:7:81:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+
+thread 'residual_whitening_normalizes_and_rotation_preserves_projector' (34272) panicked at crates\helike-quantum\tests\coupled_enrichment.rs:30:51:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+
+thread 'projection_does_not_confuse_in_space_and_complement' (42516) panicked at crates\helike-quantum\tests\coupled_enrichment.rs:44:51:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+
+thread 'lift_retains_old_space_and_is_isometric_even_when_positions_reorder' (42412) panicked at crates\helike-quantum\tests\coupled_enrichment.rs:11:74:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+
+thread 'zero_coupling_does_not_change_old_action' (35408) panicked at crates\helike-quantum\tests\coupled_enrichment.rs:7:81:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+test bad_directions_and_asymmetric_block_refuse ... FAILED
+test residual_whitening_normalizes_and_rotation_preserves_projector ... FAILED
+test projection_does_not_confuse_in_space_and_complement ... FAILED
+test analytic_block_includes_both_couplings_and_adjoint ... FAILED
+test lift_retains_old_space_and_is_isometric_even_when_positions_reorder ... FAILED
+test zero_coupling_does_not_change_old_action ... FAILED
+
+thread 'both_controls_match_direct_projected_operator' (29908) panicked at crates\helike-quantum\tests\coupled_enrichment.rs:78:49:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+test both_controls_match_direct_projected_operator ... FAILED
+
+failures:
+
+failures:
+    analytic_block_includes_both_couplings_and_adjoint
+    bad_directions_and_asymmetric_block_refuse
+    both_controls_match_direct_projected_operator
+    lift_retains_old_space_and_is_isometric_even_when_positions_reorder
+    projection_does_not_confuse_in_space_and_complement
+    residual_whitening_normalizes_and_rotation_preserves_projector
+    zero_coupling_does_not_change_old_action
+
+test result: FAILED. 0 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p helike-quantum --test coupled_enrichment`

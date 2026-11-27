@@ -1,0 +1,8 @@
+{"variant": "false_grid_release", "rejected": true, "reason": "diagnostic cannot certify or release"}
+{"variant": "relaxed_solver_tolerance", "rejected": true, "reason": "changed solver settings"}
+{"variant": "erased_complement", "rejected": true, "reason": "forged outside residual"}
+{"variant": "zero_direction", "rejected": true, "reason": "nonorthonormal directions"}
+{"variant": "zero_state", "rejected": true, "reason": "nonorthonormal Ritz states"}
+{"variant": "wrong_retained_identity", "rejected": true, "reason": "occupation identity lost"}
+{"variant": "forged_gap", "rejected": true, "reason": "gap differs from levels"}
+{"variant": "substitute_dressed_overlap", "rejected": true, "reason": "w/Z mismatch"}

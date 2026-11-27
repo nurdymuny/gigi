@@ -1,0 +1,9 @@
+test_a_corrupt_native_summary_refuses (test_helike_flux_support.IndependentStatistics.test_a_corrupt_native_summary_refuses) ... ok
+test_bad_dimensions_nonfinite_weights_and_roles_refuse (test_helike_flux_support.IndependentStatistics.test_bad_dimensions_nonfinite_weights_and_roles_refuse) ... ok
+test_statistics_recover_signed_binary64_coefficients (test_helike_flux_support.IndependentStatistics.test_statistics_recover_signed_binary64_coefficients) ... ok
+test_zero_is_absent_not_a_normalized_zero_distribution (test_helike_flux_support.IndependentStatistics.test_zero_is_absent_not_a_normalized_zero_distribution) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK

@@ -1,0 +1,5 @@
+enrichment: rebuilding unchanged operators; no ambient eigensolve
+enrichment: replay and block gates passed; solving dimension=18568, elapsed=17.1s
+enrichment: solve complete; identifying expanded states, elapsed=307.0s
+enrichment: diagnostic complete, elapsed=377.7s
+receipt: C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\research\coupled-enrichment-20261126\native-receipt.json

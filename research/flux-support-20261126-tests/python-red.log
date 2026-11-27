@@ -1,0 +1,19 @@
+test_helike_flux_support (unittest.loader._FailedTest.test_helike_flux_support) ... ERROR
+
+======================================================================
+ERROR: test_helike_flux_support (unittest.loader._FailedTest.test_helike_flux_support)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_helike_flux_support
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\unittest\loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_flux_support.py", line 5, in <module>
+    import run_helike_flux_support as probe
+ModuleNotFoundError: No module named 'run_helike_flux_support'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

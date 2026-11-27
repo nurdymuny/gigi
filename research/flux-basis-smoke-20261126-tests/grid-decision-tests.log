@@ -1,0 +1,43 @@
+test_frozen_design_is_the_registration_with_the_amended_ladder (test_helike_flux_grid.Design.test_frozen_design_is_the_registration_with_the_amended_ladder) ... ok
+test_converged_identified_point (test_helike_flux_grid.Point.test_converged_identified_point) ... ok
+test_domain_gate_must_pass (test_helike_flux_grid.Point.test_domain_gate_must_pass) ... ok
+test_identification_threshold (test_helike_flux_grid.Point.test_identification_threshold) ... ok
+test_incomplete_or_reordered_ladder_refuses (test_helike_flux_grid.Point.test_incomplete_or_reordered_ladder_refuses) ... ok
+test_last_step_change_above_tolerance_is_not_converged (test_helike_flux_grid.Point.test_last_step_change_above_tolerance_is_not_converged) ... ok
+test_a_refused_point_makes_the_case_unresolved (test_helike_flux_grid.Case.test_a_refused_point_makes_the_case_unresolved) ... ok
+test_not_supported_outside_tolerance_or_without_switch (test_helike_flux_grid.Case.test_not_supported_outside_tolerance_or_without_switch) ... ok
+test_overall_rule (test_helike_flux_grid.Case.test_overall_rule) ... ok
+test_supported_when_the_switch_is_within_tolerance (test_helike_flux_grid.Case.test_supported_when_the_switch_is_within_tolerance) ... ok
+test_unresolved_if_any_point_fails (test_helike_flux_grid.Case.test_unresolved_if_any_point_fails) ... ok
+test_an_unexpected_domain_stage_error_is_open (test_helike_flux_grid.Robustness.test_an_unexpected_domain_stage_error_is_open) ... ok
+test_cutoff_degree_cap_is_ten (test_helike_flux_grid.Robustness.test_cutoff_degree_cap_is_ten) ... ok
+test_export_refusal_keeps_the_actual_message_and_exit_code (test_helike_flux_grid.Robustness.test_export_refusal_keeps_the_actual_message_and_exit_code) ... ok
+test_multiple_crossings_are_unresolved_not_a_crash (test_helike_flux_grid.Robustness.test_multiple_crossings_are_unresolved_not_a_crash) ... ok
+test_nonfinite_values_are_written_as_strings (test_helike_flux_grid.Robustness.test_nonfinite_values_are_written_as_strings) ... ok
+test_receipt_digest_ignores_line_endings (test_helike_flux_grid.Robustness.test_receipt_digest_ignores_line_endings) ... ok
+test_zero_difference_at_an_endpoint_is_unresolved_not_a_crash (test_helike_flux_grid.Robustness.test_zero_difference_at_an_endpoint_is_unresolved_not_a_crash) ... ok
+test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold (test_helike_flux_grid.Dressed.test_dressed_weight_identifies_when_the_bare_weight_is_below_threshold) ... ok
+test_genuine_mixing_still_fails_after_dressing (test_helike_flux_grid.Dressed.test_genuine_mixing_still_fails_after_dressing) ... ok
+test_inconsistent_dressed_weight_refuses (test_helike_flux_grid.Dressed.test_inconsistent_dressed_weight_refuses) ... ok
+test_a_changed_certificate_receipt_is_refused (test_helike_flux_grid.Release.test_a_changed_certificate_receipt_is_refused) ... ok
+test_domain_gate_passes_the_stage_verdict_through (test_helike_flux_grid.Release.test_domain_gate_passes_the_stage_verdict_through) ... ok
+test_release_conditions_read_the_pinned_control_receipts (test_helike_flux_grid.Release.test_release_conditions_read_the_pinned_control_receipts) ... ok
+test_the_grid_needs_an_explicit_flag (test_helike_flux_grid.Release.test_the_grid_needs_an_explicit_flag)
+Never reaches the real solver: solve and the domain gate are stubs that record whether the grid started. ... ok
+test_cross_check_does_not_enter_the_decision (test_helike_flux_grid.CrossCheck.test_cross_check_does_not_enter_the_decision) ... ok
+test_solver_output_carries_the_cross_check (test_helike_flux_grid.CrossCheck.test_solver_output_carries_the_cross_check) ... ok
+test_arithmetic_and_boundary (test_helike_flux_grid.CutGate.test_arithmetic_and_boundary) ... ok
+test_assess_point_converges_only_through_the_new_gate (test_helike_flux_grid.CutGate.test_assess_point_converges_only_through_the_new_gate) ... ok
+test_budgets_still_gate (test_helike_flux_grid.CutGate.test_budgets_still_gate) ... ok
+test_relative_ratio_never_decides (test_helike_flux_grid.CutGate.test_relative_ratio_never_decides) ... ok
+test_resolved_budget_failure_is_fail_even_when_r_is_open (test_helike_flux_grid.CutGate.test_resolved_budget_failure_is_fail_even_when_r_is_open) ... ok
+test_tail_term_counts (test_helike_flux_grid.CutGate.test_tail_term_counts) ... ok
+test_threshold_is_a_tenth_of_the_gap_tolerance (test_helike_flux_grid.CutGate.test_threshold_is_a_tenth_of_the_gap_tolerance) ... ok
+test_unresolved_enclosure_is_open_never_pass (test_helike_flux_grid.CutGate.test_unresolved_enclosure_is_open_never_pass) ... ok
+test_verdict_aggregation (test_helike_flux_grid.DomainStage.test_verdict_aggregation) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.098s
+
+OK
+refusing: the registered grid starts only with --registered-grid (run it on the big machine)

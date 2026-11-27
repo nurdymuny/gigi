@@ -3,6 +3,7 @@ The solver is mocked: these tests fix the decision logic, not physics. No grid p
 import copy
 import json
 import sys
+import subprocess
 import tempfile
 from unittest.mock import patch
 from pathlib import Path
@@ -132,6 +133,17 @@ class Robustness(unittest.TestCase):
         with patch("helike_domain_gate.domain_gate_point", side_effect=OSError("disk")):
             v, d = grid.domain_gate(1.18, 3.0, 0.05, 10)
         self.assertEqual(v, "OPEN")
+
+    def test_export_refusal_keeps_the_actual_message_and_exit_code(self):
+        error = subprocess.CalledProcessError(2, ["helike", "cone-export"],
+                                             output="selection started\n", stderr="error: ambiguous state selection\n")
+        with patch("helike_domain_gate.domain_gate_point", side_effect=error):
+            verdict, details = grid.domain_gate(1.18, 3.0, 0.03, 10)
+        self.assertEqual(verdict, "OPEN")
+        self.assertEqual(details["returncode"], 2)
+        self.assertEqual(details["stderr"], "error: ambiguous state selection\n")
+        self.assertEqual(details["stdout"], "selection started\n")
+        self.assertEqual(details["command"], ["helike", "cone-export"])
 
 
     def test_cutoff_degree_cap_is_ten(self):

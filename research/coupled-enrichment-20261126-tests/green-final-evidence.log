@@ -1,0 +1,17 @@
+test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) ... ok
+test_changed_contract_refuses_before_reading_results (test_helike_coupled_enrichment.Evidence.test_changed_contract_refuses_before_reading_results) ... ok
+{
+  "status": "STOPPED",
+  "overall": "UNRESOLVED"
+}
+ValueError: changed registered input
+test_changed_parent_stops_and_existing_output_refuses (test_helike_coupled_enrichment.Evidence.test_changed_parent_stops_and_existing_output_refuses) ... ok
+Audit stopped: incomplete run
+test_failed_replay_replaces_old_pass (test_helike_coupled_enrichment.Evidence.test_failed_replay_replaces_old_pass) ... ok
+test_small_step_cannot_release_grid_or_replace_weight (test_helike_coupled_enrichment.Evidence.test_small_step_cannot_release_grid_or_replace_weight) ... ok
+test_valid_projection (test_helike_coupled_enrichment.Evidence.test_valid_projection) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.060s
+
+OK

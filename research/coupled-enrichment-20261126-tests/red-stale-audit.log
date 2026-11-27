@@ -1,0 +1,24 @@
+test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) ... ok
+test_changed_contract_refuses_before_reading_results (test_helike_coupled_enrichment.Evidence.test_changed_contract_refuses_before_reading_results) ... ok
+{
+  "status": "STOPPED",
+  "overall": "UNRESOLVED"
+}
+ValueError: changed registered input
+test_changed_parent_stops_and_existing_output_refuses (test_helike_coupled_enrichment.Evidence.test_changed_parent_stops_and_existing_output_refuses) ... ok
+test_failed_replay_replaces_old_pass (test_helike_coupled_enrichment.Evidence.test_failed_replay_replaces_old_pass) ... FAIL
+test_small_step_cannot_release_grid_or_replace_weight (test_helike_coupled_enrichment.Evidence.test_small_step_cannot_release_grid_or_replace_weight) ... ok
+test_valid_projection (test_helike_coupled_enrichment.Evidence.test_valid_projection) ... ok
+
+======================================================================
+FAIL: test_failed_replay_replaces_old_pass (test_helike_coupled_enrichment.Evidence.test_failed_replay_replaces_old_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_failed_replay_replaces_old_pass
+    self.assertEqual(result.get('status'),'STOPPED')
+AssertionError: None != 'STOPPED'
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.075s
+
+FAILED (failures=1)

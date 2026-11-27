@@ -1,0 +1,74 @@
+{
+  "scope": "post-failure diagnostic, not a new gate",
+  "witnesses": [
+    {
+      "order": 14,
+      "ground_polynomial": -0.5058404715465209,
+      "competitor_polynomial": 0.9232448525897848,
+      "absolute_disagreement": 1.3322676295501878e-15
+    },
+    {
+      "order": 16,
+      "ground_polynomial": -0.26993975222261035,
+      "competitor_polynomial": 0.24814776007252856,
+      "absolute_disagreement": 4.996003610813204e-16
+    }
+  ],
+  "source_sha256_lf": "15ed4b72a41ab4f1125fbe3a3bb3b6f35775c0ef077f1fc3f8b8f1a8b3969833",
+  "probe_receipt_sha256_lf": "9b01976060cb9caf4fe6a22be6409b6d4c645fa5e08d7f52906191dd02f5b774",
+  "evaluator_sha256_lf": "d1b6fac77067174e05ad5b77f877924a9ba0d0d13e18d09f6c55400ce136124e",
+  "scipy": "1.16.3",
+  "slice_fixed_coordinates": [
+    0.2734810461381524,
+    0.2734810461381524,
+    0.0,
+    0.2734810461381524,
+    -0.2734810461381524,
+    0.0
+  ],
+  "varied_modes": [
+    2,
+    5
+  ],
+  "root_parameter": 0.9222657186527894,
+  "root_bracket": [
+    0.921875,
+    0.9375
+  ],
+  "bracket_ground_values": [
+    0.0007312003267095769,
+    -0.033010640411541725
+  ],
+  "root_method": "Brent, xtol=1e-14; floating-point diagnostic, not interval certification",
+  "root_x": [
+    0.2734810461381524,
+    0.2734810461381524,
+    -1.8000671541002629,
+    0.2734810461381524,
+    -0.2734810461381524,
+    2.930037415282754
+  ],
+  "ground_polynomial_at_root": -1.0617591875150545e-15,
+  "competitor_polynomial_at_root": 0.050926418884193005,
+  "gram_matrix_at_root": [
+    [
+      51.589238971582176,
+      2.509087241868045,
+      -2.509087241868045
+    ],
+    [
+      2.509087241868045,
+      49.719030966561135,
+      2.5090482335979423
+    ],
+    [
+      -2.509087241868045,
+      2.5090482335979423,
+      55.607762633931756
+    ]
+  ],
+  "gram_min_eigenvalue": 46.61194487695084,
+  "metric_min_eigenvalue": 0.2998902759475348,
+  "full_grid_released": false,
+  "old_export_gate": "FAIL"
+}

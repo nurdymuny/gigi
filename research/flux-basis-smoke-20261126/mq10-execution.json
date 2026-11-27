@@ -1,0 +1,21 @@
+{
+ "Mq": 10,
+ "command": [
+  "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\helike-lab\\target\\release\\helike.exe",
+  "--out",
+  "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\flux-basis-smoke-20261126\\mq10.json",
+  "cone",
+  "--s",
+  "1.18",
+  "--t",
+  "3.0",
+  "--g2",
+  "0.03",
+  "--mq",
+  "10"
+ ],
+ "started_unix": 1795738669.5617204,
+ "status": "COMPLETED",
+ "returncode": 0,
+ "elapsed_seconds": 166.96784114837646
+}

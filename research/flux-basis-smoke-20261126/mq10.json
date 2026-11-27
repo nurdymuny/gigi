@@ -1,0 +1,122 @@
+{
+  "schema": "helike-lab/receipt/v1",
+  "created_unix": 1795738836,
+  "provenance": {
+    "tool": "helike",
+    "tool_version": "0.1.0",
+    "git_revision": "d3e03ad13d99755f9559900e2ec6d6e48ff795c1",
+    "git_dirty": false,
+    "source_sha256": "e4600c0bed5abf04e5e77e5480415695efa436ec712aec1c762c56995d1ec242",
+    "source_hash_policy": "sha256-universal-newline-v1",
+    "platform": "windows-x86_64",
+    "threads": 8
+  },
+  "command": [
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\helike-lab\\target\\release\\helike.exe",
+    "--out",
+    "C:\\Users\\nurdm\\AppData\\Local\\Temp\\gigi-m8-contract-corrections-20261126\\research\\flux-basis-smoke-20261126\\mq10.json",
+    "cone",
+    "--s",
+    "1.18",
+    "--t",
+    "3.0",
+    "--g2",
+    "0.03",
+    "--mq",
+    "10"
+  ],
+  "status": "COMPUTED",
+  "params": {
+    "Mq": 10,
+    "extra": 4,
+    "g2": 0.03,
+    "s": 1.18,
+    "solver": {
+      "block": 4,
+      "max_dim": 1600,
+      "nev": 12,
+      "tol": 1e-10
+    },
+    "t": 3.0
+  },
+  "results": {
+    "Mq": 10,
+    "applications": 556,
+    "background_gradient": 8.881784197001252e-16,
+    "cross_check_quadrature_order": 18,
+    "dimension": 8008,
+    "frequencies": [
+      1.0716964744428963,
+      1.0716964744428963,
+      1.166114520069729,
+      2.451557328175976,
+      2.451557328175976,
+      2.7064694578144683
+    ],
+    "g2": 0.03,
+    "max_in_space_lanczos_residual": 6.298248405608381e-10,
+    "moments": "exact",
+    "quadrature_cross_check": 7.283063041541027e-14,
+    "result": {
+      "E0": 5.420377676484968,
+      "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+      "competitor": {
+        "dressed_overlap": 0.9757546558403825,
+        "dressed_weight": 0.9136404500327204,
+        "gap": 1.096694346922754,
+        "level_index": 3,
+        "log_basis_weight": 0.6505992227000879,
+        "weight": 0.8648821153434145
+      },
+      "dressed_overlap_error": 1.865174681370263e-14,
+      "dressed_overlap_orthonormality": 1.0014211682118912e-13,
+      "energy_shift": -8.215159999999997,
+      "helike": {
+        "dressed_overlap": 0.9935824320847534,
+        "dressed_weight": 0.9650134913870881,
+        "gap": 1.0571307308726174,
+        "level_index": 1,
+        "log_basis_weight": 0.842711369299698,
+        "weight": 0.9135135268320357
+      },
+      "in_space_lanczos_residuals": [
+        7.924544113307262e-14,
+        5.745500610551262e-14,
+        4.221486718660243e-14,
+        4.939337461267378e-14,
+        6.080571854530306e-14,
+        6.517160911696275e-14,
+        5.2016485743163617e-14,
+        6.628543748276212e-14,
+        6.340497865590017e-14,
+        7.008809592992358e-14,
+        6.298248405608381e-10,
+        6.116986976686936e-10
+      ],
+      "levels": [
+        5.420377676484968,
+        6.477508407357585,
+        6.478393263475543,
+        6.517072023407722,
+        7.477055135818772,
+        7.53546263975839,
+        7.5360107958186076,
+        7.572281783342553,
+        7.578731085538233,
+        7.61718549963791,
+        7.854444456841601,
+        7.854480371267534
+      ],
+      "overlap_orders": [
+        18,
+        20
+      ],
+      "reference_weight_error": 1.3735094539502057e-7,
+      "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+      "vacuum_weight": 0.9466329071928025
+    },
+    "s": 1.18,
+    "seconds": 166.2686636,
+    "t": 3.0
+  }
+}

@@ -1,0 +1,4 @@
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\check_helike_ground_nodal_geometry.py", line 93
+    f = competitor / ground is singular here. This is a slice, not a probability-mass map.',fontsize=9)
+                                                                                          ^
+SyntaxError: unterminated string literal (detected at line 93)

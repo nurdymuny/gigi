@@ -1,0 +1,84 @@
+   Compiling bytemuck v1.25.2
+   Compiling num-traits v0.2.19
+   Compiling either v1.19.0
+   Compiling syn v3.0.10
+   Compiling zerocopy v0.8.65
+   Compiling windows-sys v0.61.2
+   Compiling dyn-stack v0.13.2
+   Compiling rayon v1.12.0
+   Compiling stacker v0.1.25
+   Compiling pest_stack_guard v1.0.1
+   Compiling pest v2.9.7
+   Compiling num-complex v0.4.6
+   Compiling num-integer v0.1.47
+   Compiling pest_generator v2.9.7
+   Compiling num-bigint v0.4.8
+   Compiling pulp v0.22.3
+   Compiling nano-gemm-c32 v0.2.1
+   Compiling nano-gemm-c64 v0.2.1
+   Compiling serde_derive v1.0.229
+   Compiling pest_derive v2.9.7
+   Compiling spindle v0.2.6
+   Compiling private-gemm-x86 v0.1.22
+   Compiling py_literal v0.4.0
+   Compiling npyz v0.8.4
+   Compiling serde v1.0.229
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling gemm-common v0.19.0
+   Compiling qd v0.8.0
+   Compiling faer-traits v0.24.0
+   Compiling rand_distr v0.5.1
+   Compiling gemm-f64 v0.19.0
+   Compiling gemm-c32 v0.19.0
+   Compiling gemm-c64 v0.19.0
+   Compiling gemm-f32 v0.19.0
+   Compiling gemm v0.19.0
+   Compiling nano-gemm v0.2.2
+   Compiling faer v0.24.4
+   Compiling helike-quantum v0.1.0 (C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\helike-lab\crates\helike-quantum)
+    Finished `release` profile [optimized + debuginfo] target(s) in 2m 30s
+     Running tests\support_diagnostic.rs (target\release\deps\support_diagnostic-1a2223517465b44f.exe)
+
+running 7 tests
+
+thread 'coupled_matrix_exposes_omitted_residual_despite_zero_inner_residual' (20652) panicked at crates\helike-quantum\tests\support_diagnostic.rs:54:76:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'sign_and_subspace_rotation_do_not_change_average_support' (22236) panicked at crates\helike-quantum\tests\support_diagnostic.rs:32:71:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+test bad_measurements_refuse ... ok
+
+thread 'zero_distribution_has_no_normalized_summary' (36540) panicked at crates\helike-quantum\tests\support_diagnostic.rs:24:58:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+
+thread 'planted_probabilities_and_joint_bins' (41436) panicked at crates\helike-quantum\tests\support_diagnostic.rs:10:61:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+
+thread 'embedding_uses_occupation_identity_not_order' (38224) panicked at crates\helike-quantum\tests\support_diagnostic.rs:44:53:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+test coupled_matrix_exposes_omitted_residual_despite_zero_inner_residual ... FAILED
+test sign_and_subspace_rotation_do_not_change_average_support ... FAILED
+test zero_distribution_has_no_normalized_summary ... FAILED
+test embedding_uses_occupation_identity_not_order ... FAILED
+test planted_probabilities_and_joint_bins ... FAILED
+
+thread 'nested_operator_actions_agree_on_both_weak_controls' (39852) panicked at crates\helike-quantum\tests\support_diagnostic.rs:78:61:
+called `Result::unwrap()` on an `Err` value: "not implemented"
+test nested_operator_actions_agree_on_both_weak_controls ... FAILED
+
+failures:
+
+failures:
+    coupled_matrix_exposes_omitted_residual_despite_zero_inner_residual
+    embedding_uses_occupation_identity_not_order
+    nested_operator_actions_agree_on_both_weak_controls
+    planted_probabilities_and_joint_bins
+    sign_and_subspace_rotation_do_not_change_average_support
+    zero_distribution_has_no_normalized_summary
+
+test result: FAILED. 1 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p helike-quantum --test support_diagnostic`

@@ -1,0 +1,15 @@
+   Compiling helike-quantum v0.1.0 (C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\helike-lab\crates\helike-quantum)
+    Finished `release` profile [optimized + debuginfo] target(s) in 17.49s
+     Running tests\coupled_enrichment.rs (target\release\deps\coupled_enrichment-e3daa20f91a8bcde.exe)
+
+running 7 tests
+test analytic_block_includes_both_couplings_and_adjoint ... ok
+test bad_directions_and_asymmetric_block_refuse ... ok
+test lift_retains_old_space_and_is_isometric_even_when_positions_reorder ... ok
+test residual_whitening_normalizes_and_rotation_preserves_projector ... ok
+test zero_coupling_does_not_change_old_action ... ok
+test projection_does_not_confuse_in_space_and_complement ... ok
+test both_controls_match_direct_projected_operator ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+

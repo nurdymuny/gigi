@@ -1,0 +1,165 @@
+test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) ... 
+  test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [0.0, 3.0]}) ... ERROR
+  test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[1., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]}) ... ERROR
+  test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 2., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]}) ... ERROR
+  test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 0], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]}) ... ERROR
+  test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[2., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]}) ... ERROR
+  test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[1., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]}) ... ERROR
+  test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[nan,  0.,  0.,  4.,  0.],
+       [ 0.,  0.,  0.,  0.,  3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]}) ... ERROR
+test_small_step_cannot_release_grid_or_replace_weight (test_helike_coupled_enrichment.Evidence.test_small_step_cannot_release_grid_or_replace_weight) ... ERROR
+test_valid_projection (test_helike_coupled_enrichment.Evidence.test_valid_projection) ... ERROR
+
+======================================================================
+ERROR: test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [0.0, 3.0]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_bad_evidence_refused
+    with self.subTest(x=x),self.assertRaises(ValueError): check.geometry(**x)
+                                                          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+======================================================================
+ERROR: test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[1., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_bad_evidence_refused
+    with self.subTest(x=x),self.assertRaises(ValueError): check.geometry(**x)
+                                                          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+======================================================================
+ERROR: test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 2., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_bad_evidence_refused
+    with self.subTest(x=x),self.assertRaises(ValueError): check.geometry(**x)
+                                                          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+======================================================================
+ERROR: test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 0], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_bad_evidence_refused
+    with self.subTest(x=x),self.assertRaises(ValueError): check.geometry(**x)
+                                                          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+======================================================================
+ERROR: test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[2., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[0., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_bad_evidence_refused
+    with self.subTest(x=x),self.assertRaises(ValueError): check.geometry(**x)
+                                                          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+======================================================================
+ERROR: test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[1., 0., 0., 4., 0.],
+       [0., 0., 0., 0., 3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_bad_evidence_refused
+    with self.subTest(x=x),self.assertRaises(ValueError): check.geometry(**x)
+                                                          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+======================================================================
+ERROR: test_bad_evidence_refused (test_helike_coupled_enrichment.Evidence.test_bad_evidence_refused) (x={'positions': [0, 2], 'columns': array([[0., 1., 0., 0., 0.]]), 'vectors': array([[1., 0., 0.],
+       [0., 1., 0.],
+       [0., 0., 1.]]), 'residuals': array([[nan,  0.,  0.,  4.,  0.],
+       [ 0.,  0.,  0.,  0.,  3.]]), 'inside': [0.0, 0.0], 'outside': [4.0, 3.0]})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 29, in test_bad_evidence_refused
+    with self.subTest(x=x),self.assertRaises(ValueError): check.geometry(**x)
+                                                          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+======================================================================
+ERROR: test_small_step_cannot_release_grid_or_replace_weight (test_helike_coupled_enrichment.Evidence.test_small_step_cannot_release_grid_or_replace_weight)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 34, in test_small_step_cannot_release_grid_or_replace_weight
+    x=check.assessment(old,new)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 3, in assessment
+    def assessment(old,new): raise NotImplementedError('assessment not implemented')
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: assessment not implemented
+
+======================================================================
+ERROR: test_valid_projection (test_helike_coupled_enrichment.Evidence.test_valid_projection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_coupled_enrichment.py", line 16, in test_valid_projection
+    r=check.geometry(**fixture())
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\run_helike_coupled_enrichment.py", line 2, in geometry
+    def geometry(**kwargs): raise NotImplementedError('projection evidence not implemented')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: projection evidence not implemented
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.005s
+
+FAILED (errors=9)

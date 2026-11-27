@@ -1,0 +1,9 @@
+test_exact_deformation_is_not_mixing (test_helike_carrier_geometry_probe.GeometryProbe.test_exact_deformation_is_not_mixing) ... ok
+test_genuine_mixture_remains_mixed (test_helike_carrier_geometry_probe.GeometryProbe.test_genuine_mixture_remains_mixed) ... ok
+test_global_cut_is_independent_of_partition (test_helike_carrier_geometry_probe.GeometryProbe.test_global_cut_is_independent_of_partition) ... ok
+test_slabs_match_full_values_and_derivatives (test_helike_carrier_geometry_probe.GeometryProbe.test_slabs_match_full_values_and_derivatives) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.161s
+
+OK

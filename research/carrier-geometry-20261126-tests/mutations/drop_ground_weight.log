@@ -1,0 +1,28 @@
+test_changed_input_cannot_leave_pass (test_helike_carrier_geometry_probe.GeometryProbe.test_changed_input_cannot_leave_pass) ... ok
+test_decision_keeps_old_gate_and_refuses_bad_evidence (test_helike_carrier_geometry_probe.GeometryProbe.test_decision_keeps_old_gate_and_refuses_bad_evidence) ... ok
+test_exact_deformation_is_not_mixing (test_helike_carrier_geometry_probe.GeometryProbe.test_exact_deformation_is_not_mixing) ... FAIL
+test_genuine_mixture_remains_mixed (test_helike_carrier_geometry_probe.GeometryProbe.test_genuine_mixture_remains_mixed) ... FAIL
+test_global_cut_is_independent_of_partition (test_helike_carrier_geometry_probe.GeometryProbe.test_global_cut_is_independent_of_partition) ... ok
+test_saved_chart_is_reproduced (test_helike_carrier_geometry_probe.GeometryProbe.test_saved_chart_is_reproduced) ... ok
+test_slabs_match_full_values_and_derivatives (test_helike_carrier_geometry_probe.GeometryProbe.test_slabs_match_full_values_and_derivatives) ... ok
+
+======================================================================
+FAIL: test_exact_deformation_is_not_mixing (test_helike_carrier_geometry_probe.GeometryProbe.test_exact_deformation_is_not_mixing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_carrier_geometry_probe.py", line 67, in test_exact_deformation_is_not_mixing
+    self.assertAlmostEqual(r['R'],0.,places=10)
+AssertionError: 0.6249999999956282 != 0.0 within 10 places (0.6249999999956282 difference)
+
+======================================================================
+FAIL: test_genuine_mixture_remains_mixed (test_helike_carrier_geometry_probe.GeometryProbe.test_genuine_mixture_remains_mixed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_carrier_geometry_probe.py", line 76, in test_genuine_mixture_remains_mixed
+    self.assertAlmostEqual(r['shares']['C'],.4,places=10)
+AssertionError: 0.3684210526272983 != 0.4 within 10 places (0.03157894737270173 difference)
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.258s
+
+FAILED (failures=2)

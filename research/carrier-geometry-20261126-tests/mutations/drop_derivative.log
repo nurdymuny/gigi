@@ -1,0 +1,41 @@
+test_changed_input_cannot_leave_pass (test_helike_carrier_geometry_probe.GeometryProbe.test_changed_input_cannot_leave_pass) ... ok
+test_decision_keeps_old_gate_and_refuses_bad_evidence (test_helike_carrier_geometry_probe.GeometryProbe.test_decision_keeps_old_gate_and_refuses_bad_evidence) ... ok
+test_exact_deformation_is_not_mixing (test_helike_carrier_geometry_probe.GeometryProbe.test_exact_deformation_is_not_mixing) ... ok
+test_genuine_mixture_remains_mixed (test_helike_carrier_geometry_probe.GeometryProbe.test_genuine_mixture_remains_mixed) ... ok
+test_global_cut_is_independent_of_partition (test_helike_carrier_geometry_probe.GeometryProbe.test_global_cut_is_independent_of_partition) ... ok
+test_saved_chart_is_reproduced (test_helike_carrier_geometry_probe.GeometryProbe.test_saved_chart_is_reproduced) ... ok
+test_slabs_match_full_values_and_derivatives (test_helike_carrier_geometry_probe.GeometryProbe.test_slabs_match_full_values_and_derivatives) ... FAIL
+
+======================================================================
+FAIL: test_slabs_match_full_values_and_derivatives (test_helike_carrier_geometry_probe.GeometryProbe.test_slabs_match_full_values_and_derivatives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_carrier_geometry_probe.py", line 104, in test_slabs_match_full_values_and_derivatives
+    np.testing.assert_allclose(dg,dexpected,rtol=1e-12,atol=1e-12)
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\testing\_private\utils.py", line 1768, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "C:\Users\nurdm\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\testing\_private\utils.py", line 983, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-12, atol=1e-12
+
+Mismatched elements: 559872 / 559872 (100%)
+First 5 mismatches are at indices:
+ [0, 0, 0]: 0.0 (ACTUAL), -8.622275144929064 (DESIRED)
+ [0, 0, 1]: 0.0 (ACTUAL), -3.1953071690743644 (DESIRED)
+ [0, 1, 0]: 0.0 (ACTUAL), 7.39065789396839 (DESIRED)
+ [0, 1, 1]: 0.0 (ACTUAL), -10.644267297782307 (DESIRED)
+ [0, 2, 0]: 0.0 (ACTUAL), -3.6690360121972154 (DESIRED)
+Max absolute difference among violations: 37.29589211
+Max relative difference among violations: 1.
+ ACTUAL: array([[[0., 0.],
+        [0., 0.],
+        [0., 0.],...
+ DESIRED: array([[[-8.622275e+00, -3.195307e+00],
+        [ 7.390658e+00, -1.064427e+01],
+        [-3.669036e+00,  8.821210e+00],...
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.344s
+
+FAILED (failures=1)

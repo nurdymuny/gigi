@@ -1,0 +1,47 @@
+test_exact_deformation_is_not_mixing (test_helike_carrier_geometry_probe.GeometryProbe.test_exact_deformation_is_not_mixing) ... ERROR
+test_genuine_mixture_remains_mixed (test_helike_carrier_geometry_probe.GeometryProbe.test_genuine_mixture_remains_mixed) ... ERROR
+test_global_cut_is_independent_of_partition (test_helike_carrier_geometry_probe.GeometryProbe.test_global_cut_is_independent_of_partition) ... ERROR
+test_slabs_match_full_values_and_derivatives (test_helike_carrier_geometry_probe.GeometryProbe.test_slabs_match_full_values_and_derivatives) ... ERROR
+
+======================================================================
+ERROR: test_exact_deformation_is_not_mixing (test_helike_carrier_geometry_probe.GeometryProbe.test_exact_deformation_is_not_mixing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_carrier_geometry_probe.py", line 23, in test_exact_deformation_is_not_mixing
+    r=core.analyse(p0,dp0,p,dp,1.5,{'C':(0,),'S':(1,)},np.eye(2),total_vacuum_norm=1.)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Core.analyse() got an unexpected keyword argument 'total_vacuum_norm'
+
+======================================================================
+ERROR: test_genuine_mixture_remains_mixed (test_helike_carrier_geometry_probe.GeometryProbe.test_genuine_mixture_remains_mixed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_carrier_geometry_probe.py", line 36, in test_genuine_mixture_remains_mixed
+    r=core.analyse(p0,dp0,p,dp,1.5,{'C':(0,),'S':(1,)},np.eye(2),total_vacuum_norm=1.)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Core.analyse() got an unexpected keyword argument 'total_vacuum_norm'
+
+======================================================================
+ERROR: test_global_cut_is_independent_of_partition (test_helike_carrier_geometry_probe.GeometryProbe.test_global_cut_is_independent_of_partition)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_carrier_geometry_probe.py", line 45, in test_global_cut_is_independent_of_partition
+    full=core.analyse(p0,dp0,p,dp,1.5,blocks,np.eye(2),cuts=(.01,.001),total_vacuum_norm=1.)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Core.analyse() got an unexpected keyword argument 'total_vacuum_norm'
+
+======================================================================
+ERROR: test_slabs_match_full_values_and_derivatives (test_helike_carrier_geometry_probe.GeometryProbe.test_slabs_match_full_values_and_derivatives)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\test_helike_carrier_geometry_probe.py", line 62, in test_slabs_match_full_values_and_derivatives
+    blocks=list(probe.slabs(basis,coeff,6,2))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\scripts\helike_carrier_geometry_probe.py", line 3, in slabs
+    raise NotImplementedError('slab evaluator')
+NotImplementedError: slab evaluator
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.015s
+
+FAILED (errors=4)

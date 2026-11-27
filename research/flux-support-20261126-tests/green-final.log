@@ -1,0 +1,16 @@
+   Compiling helike-quantum v0.1.0 (C:\Users\nurdm\AppData\Local\Temp\gigi-m8-contract-corrections-20261126\helike-lab\crates\helike-quantum)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.34s
+     Running tests\support_diagnostic.rs (target\release\deps\support_diagnostic-1a2223517465b44f.exe)
+
+running 8 tests
+test coupled_matrix_exposes_omitted_residual_despite_zero_inner_residual ... ok
+test sign_and_subspace_rotation_do_not_change_average_support ... ok
+test embedding_uses_occupation_identity_not_order ... ok
+test planted_probabilities_and_joint_bins ... ok
+test residual_distribution_normalizes_by_its_own_mass ... ok
+test bad_measurements_refuse ... ok
+test zero_distribution_has_no_normalized_summary ... ok
+test nested_operator_actions_agree_on_both_weak_controls ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

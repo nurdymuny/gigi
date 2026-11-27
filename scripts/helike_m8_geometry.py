@@ -81,7 +81,7 @@ class Core:
     def q(self, p, dp, sl):
         return np.sqrt(self.w) * (dp[sl] - self.x[sl] * p[sl, None]) - 0.5 * self.ell * p[sl, None]
 
-    def analyse(self, p0, dp0, p, dp, E0, blocks, A, positivity_floor=1e-12, cuts=(1e-12, 1e-14)):
+    def analyse(self, p0, dp0, p, dp, E0, blocks, A, positivity_floor=1e-12, cuts=(1e-12, 1e-14), total_vacuum_norm=None):
         """Energies, the (★) identity terms, positive shares and the raw block matrix for one real state p.
         Amendment 5: shares and the raw matrix are integrated only where the vacuum weight W p0^2 exceeds cut x total;
         the first cut decides, the second is the cut seam. The identity terms use the full domain."""
@@ -91,6 +91,10 @@ class Core:
                    pos={c: {b: 0.0 for b in names} for c in cuts},
                    raw={c: np.zeros((len(names), len(names))) for c in cuts}, Dcut={c: 0.0 for c in cuts})
         wtot = float(np.sum(self.W * p0 * p0))
+        if total_vacuum_norm is not None:
+            if not math.isfinite(total_vacuum_norm) or total_vacuum_norm <= 0:
+                raise ValueError("global vacuum norm must be finite and positive")
+            wtot = total_vacuum_norm
         bad = 0.0
         for sl in self.chunks():
             W = self.W[sl]
@@ -125,7 +129,10 @@ class Core:
         c0 = cuts[0]
         Dc = acc["Dcut"][c0]
         tot = {c: sum(acc["pos"][c].values()) for c in cuts}
-        shares_by_cut = {c: {b: acc["pos"][c][b] / tot[c] for b in names} for c in cuts}
+        if total_vacuum_norm is None and any(tot[c] <= 0 for c in cuts):
+            raise ArithmeticError("no resolved gradient energy in the share region")
+        # An empty slab contributes zero energy; it is not a zero-valued whole-domain answer.
+        shares_by_cut = {c: {b: acc["pos"][c][b] / tot[c] if tot[c] > 0 else 0.0 for b in names} for c in cuts}
         return dict(D=D, R=acc["R"], identity=D + acc["R"], kinetic=acc["T"], potential=acc["Vp"], norm=acc["norm"],
                     rayleigh=(acc["T"] + acc["Vp"]) / acc["norm"] - E0,
                     shares=shares_by_cut[c0], shares_by_cut={repr(c): v for c, v in shares_by_cut.items()},
@@ -274,7 +281,7 @@ def block_map(roles):
 class Point:
     """One exported point at one quadrature order: chart, metric, potential and normal coordinates on the grid."""
 
-    def __init__(self, X, order):
+    def __init__(self, X, order, nodes=None):
         import helike_positive_cone as pc
         import helike_condensate_pt as cp
         self.X, self.order = X, order
@@ -286,7 +293,7 @@ class Point:
         self.Vterms = V
         self.x0 = np.array([X["G0"][i, j] for i, j in cp.GKEYS])
         self.invM = np.linalg.inv(X["M"])
-        W, x = grid_nodes(order, X["w"])
+        W, x = grid_nodes(order, X["w"]) if nodes is None else nodes
         self.core = Core(W, x, X["w"], self.metric, self.chart.ell, self.potential, self.ycoords, self.dycoords)
         self.blocks = block_map(X["roles"])
         self.A = frame_matrix(self.metric(np.zeros((1, 6)))[0], self.blocks)

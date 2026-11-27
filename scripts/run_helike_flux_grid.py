@@ -114,6 +114,9 @@ def domain_gate(s, t, g2, mq):
     import helike_domain_gate as dg
     try:
         r = dg.domain_gate_point(s, t, g2, mq)
+    except subprocess.CalledProcessError as exc:
+        return "OPEN", {"error": f"{type(exc).__name__}: {exc}", "command": exc.cmd,
+                        "returncode": exc.returncode, "stdout": exc.stdout, "stderr": exc.stderr}
     except Exception as exc:  # noqa: BLE001 -- any refusal or failure inside the stage is OPEN, never PASS
         return "OPEN", {"error": f"{type(exc).__name__}: {exc}"}
     return r["verdict"], r

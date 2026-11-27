@@ -1,0 +1,64 @@
+{
+  "certified": false,
+  "full_grid_released": false,
+  "identification": {
+    "E0": 5.420012553018869,
+    "boundary_status": "UNRESOLVED_PHYSICAL_REALIZATION",
+    "competitor": {
+      "dressed_overlap": 0.9740076181555388,
+      "dressed_weight": 0.9128515410191,
+      "gap": 1.0903923233976611,
+      "level_index": 3,
+      "log_basis_weight": 0.6412605752307375,
+      "weight": 0.8641938683849978
+    },
+    "dressed_overlap_error": 5.051514762044462e-14,
+    "dressed_overlap_orthonormality": 1.0103029524088925e-13,
+    "energy_shift": -8.215159999999997,
+    "helike": {
+      "dressed_overlap": 0.9933077014644082,
+      "dressed_weight": 0.9653883710547538,
+      "gap": 1.0560672396516049,
+      "level_index": 1,
+      "log_basis_weight": 0.8404625233019909,
+      "weight": 0.9139303308228115
+    },
+    "in_space_lanczos_residuals": [
+      4.7668871334209e-14,
+      5.833280594141568e-14,
+      5.756211176264456e-14,
+      5.799308191765399e-14,
+      7.900791722778145e-14,
+      9.1917884490843e-14,
+      7.700373492709518e-14,
+      8.956512832028702e-14,
+      8.344185728948869e-14,
+      6.415417877205149e-14,
+      6.145076102203963e-11,
+      6.492937894950407e-10
+    ],
+    "levels": [
+      5.420012553018869,
+      6.476079792670474,
+      6.476441282512157,
+      6.51040487641653,
+      7.472260391180271,
+      7.5311169644723845,
+      7.531350799572366,
+      7.559216459071391,
+      7.563017558634063,
+      7.58831174386005,
+      7.852828539336185,
+      7.852850913378777
+    ],
+    "overlap_orders": [
+      18,
+      20
+    ],
+    "reference_weight_error": 5.516255064952347e-7,
+    "scope": "positive-cone interior trial values; no boundary or sector convergence certificate",
+    "vacuum_weight": 0.9466970581220894
+  },
+  "seconds": 331.4550921,
+  "support_sha256_lf": "15ed4b72a41ab4f1125fbe3a3bb3b6f35775c0ef077f1fc3f8b8f1a8b3969833"
+}

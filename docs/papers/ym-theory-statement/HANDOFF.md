@@ -11,9 +11,10 @@ claimed a proof; that claim is withdrawn, and the PDF says so under the title.
 - Build: `pdflatex -interaction=nonstopmode -halt-on-error statement.tex` until references stabilize.
   The accuracy-review build uses MiKTeX pdfTeX 1.40.25, the existing NewPX fonts, and 46 boxes. The former
   mixed-status all-group box is now two boxes; the theory's five-part structure is unchanged.
-  The descriptive additions produced 13 pages; the current paper-format revision is 23 pages, with no LaTeX
+  The descriptive additions produced 13 pages; the initial paper-format revision was 23 pages, with no LaTeX
   warnings or overfull/underfull boxes. All pages were rendered and visually checked. The prior accuracy-review
-  version was 12 pages. The change in length comes from larger type, spacing and readable supporting material.
+  version was 12 pages. The threshold revision below is 24 pages. The change in length comes from larger type,
+  spacing and readable supporting material, followed by the new threshold discussion.
 - `sections/appendix-a-register.tex`: the status synopsis and complete register/Clay maps. Statement numbers are
   generated from stable labels; the central conjecture is now Statement 4, beside the definitions in section 2.
 - `sections/s11-availability.tex`: collected source, data and evidence links pinned to the mathematical baseline.
@@ -45,7 +46,8 @@ something required is missing must quote the Jaffe–Witten clause it comes from
 6. **All groups.** The split boxes distinguish cited compact-group lattice results from the electric note and
    embedded doublet. The latter is not automatically the floor of the additional colour modes.
 7. **Layout.** NewPX is retained at 11pt with 0.85-inch margins. References are 9.5pt in two columns, after the
-   appendix's full-width tables. The four central displayed equations now have section-based numbers.
+   appendix's full-width tables. The six central displayed equations have section-based numbers (four original,
+   two in the new threshold statement).
 
 ## Accuracy-review record
 - `REVIEW-2026-11-27.md` explains the changes, with finite counterexamples and source links. The purpose is to
@@ -145,6 +147,26 @@ python scripts/check_lowest_note_format.py <new-format-output-dir>
 From `docs/papers/ym-theory-statement`, run
 `pdflatex -interaction=nonstopmode -halt-on-error statement.tex` until references stabilize.
 Then render the PDF with `pdftoppm` for visual review. A successful algebra check alone does not verify typesetting.
+
+## Threshold follow-up after the new edits
+
+- Reviewed incoming revision `d627989e`; the new threshold statement is retained as COMPUTED, with the
+  kinetic coefficient still OPEN. All 46 earlier statement bodies and statuses remain intact; there are now
+  47 statements and six numbered equations.
+- `THRESHOLD-REVIEW-2026-11-27.md` records the arithmetic, source distinctions and reasons for the sharpening.
+  The rounded kinetic thresholds 7.33 and 3.19 replay correctly. They are local linear-estimate thresholds,
+  not certified finite-coupling ordering or a physical switch.
+- The switch derivative now evaluates coefficients at the harmonic root; the control-point substitution is
+  retained as an explicit estimate. Its constant slope captures the trend, not the three registered values
+  exactly. The model, registration and acceptance tolerances are unchanged.
+- Local Born--Huang power counting, charge-block treatment and possible equilibrium displacement are explicit.
+  No new claim of global ordering or a uniform cutoff bound is attached to the saved calculation.
+- Checks: 26 focused algebra/evidence/document checks and eight format/preservation checks. The added wording
+  check was red before the passage changed; numerical mutation controls reject altered separation, potential
+  coefficient and kinetic sign. Full details and source/PDF hashes are in
+  `research/lowest-note-threshold-review-20261127/release-review/` and `release-format/`.
+- Rebuilt with stable references, no LaTeX warnings or overfull/underfull boxes. All 24 pages rendered and
+  visually inspected, with the revised equations on pages 13-14 examined at full size. No solver or engine suite run.
 
 ## Cut for length, for the blog post
 GIGI query counts; the fourth control's details; R2 margins; the shell-estimate formula; the anharmonic slope check.

@@ -85,29 +85,47 @@ and so is physical H8 (Statement~\ref{b:h8}). Computing this term is necessary, 
 Equation~\eqref{eq:dressing} turns this open term into a threshold. In the second-order effective Hamiltonian the
 kinetic matrix is $\delta_{ik}-2m^{\rm ren}_{ik}$, so $\delta G_{\rm kin}=2m^{\rm ren}$ to first order and the kinetic
 shift of a unit slow mode is $-\omega_k m^{\rm ren}_{u_ku_k}$. At the sourced controls the Helike doublet and the
-competitor are isolated, not tied, so first-order perturbation applies mode by mode. The Born--Huang term does not
-enter at this order: it is already $O(g^2)$ as a function of $M=2gq$, and its curvature in $q$ carries another $4g^2$.
+competitor are separated; a symmetry-preserving correction is treated in their charge blocks, keeping the doublet
+together. This is a local expansion with a positive kinetic matrix. For a smooth gapped fast chart with bounded
+derivatives, writing the Born--Huang potential as $\Phi(q)=g^2\phi(2gq)$ gives
+$\nabla_q^2\Phi=4g^4\nabla_M^2\phi$. Its leading constant cancels in same-well excitation gaps. That local power
+counting does not control offsets between different wells or the uniform removal of the fast cutoff.
 
 \begin{claim}{COMPUTED}{How large the kinetic term must be to reverse the order}\label{b:threshold}
 Write $m^{\rm ren}=g^2\tilde m$ in the scheme of line~14 ($\zeta$, $\mu R=1$) and
-$\kappa=\omega_C\tilde m_{CC}-\omega_H\tilde m_{HH}$ for the competitor and Helike modes. At $t=3$, $s=1.15$, to first
-order in $g^2$, the competitor-minus-Helike separation is
+$\kappa=\omega_C\tilde m_{CC}-\omega_H\tilde m_{HH}$ for the competitor and Helike modes. Here $\kappa$ names the
+kinetic difference, not the finite-counterterm parameter used elsewhere. At $t=3$, $s=1.15$, combining the recorded
+anharmonic coefficient and local quadratic dressing at the same held background gives the linear estimate
 \begin{equation}\label{eq:threshold}
- D(g^2)=0.01655+g^2\bigl(-2.208+1.258-\kappa\bigr),
+ D_{\rm lin}(g^2)=0.01655+g^2\bigl(-2.208+1.258-\kappa\bigr).
 \end{equation}
-where $-2.208$ is the reduced model's own anharmonic shift, matching the converged gaps (separation $0.01210$ at
-$g^2=0.002$), and $+1.258$ is the fast potential dressing of Statement~\ref{b:widen}. Helike stays lowest exactly
-when $g^2<0.01655/(0.950+\kappa)$. At the controls the order reverses only if $\kappa>7.33$ ($g^2=0.002$) or
-$\kappa>3.19$ ($g^2=0.004$). The dressed switch moves to
+The coefficient $-2.208$ is the reduced model's own anharmonic shift, consistent with the converged separation
+$0.01210$ at $g^2=0.002$; $+1.258$ is the fast potential dressing of Statement~\ref{b:widen}.
+Within this estimate and for $g^2>0$, Helike lies below this competitor when
+$\kappa<0.01655/g^2-0.950$; equality is a tie, and the opposite inequality reverses the order.
+The rounded thresholds are $7.33$ at $g^2=0.002$ and $3.19$ at $g^2=0.004$.
+This form also handles $0.950+\kappa\le0$, where division by that quantity would mislead.
+There is no remainder bound here: these are thresholds for the linear estimate, not certified finite-coupling orderings.
+
+I can also ask how the switch responds. Write $D_0(s)=\omega_C(s)-\omega_H(s)$, and let $a(s)$, $p(s)$ and
+$\kappa(s)$ be the anharmonic, potential and kinetic coefficients of this local estimate. If it extends smoothly
+to a simple switch, implicit differentiation gives
 \begin{equation}\label{eq:dressedswitch}
- s^*(g^2)\approx s_0^*+\frac{0.950+\kappa}{2.569}\,g^2,\qquad
- \frac{d(\omega_C-\omega_H)}{ds}=2.569\ \text{at}\ s_0^*=1.1436 .
+ \left.\frac{ds^*}{d(g^2)}\right|_{0}
+ =-\frac{a(s_0^*)+p(s_0^*)-\kappa(s_0^*)}{D_0'(s_0^*)},\qquad
+ D_0'(s_0^*)\simeq2.569 .
 \end{equation}
-Without the fast terms the slope is $2.208/2.569=0.86$, which reproduces the registered $s^*$. Those values are
-therefore reduced-model predictions; the physical switch is lower by $(1.258-\kappa)g^2/2.569$.
-\evidence{All inputs except $\kappa$ are computed: the harmonic block reproduces the solver's frequencies $1.106657$
-and $1.090107$ at $s=1.15$ and gives $s_0^*=1.14357$. The coefficients are taken at $s=1.15$, so the switch formula is a
-first-order estimate. The fast and kinetic pieces are separately scheme dependent; only their sum is physical.}
+The coefficients belong at the harmonic root $s_0^*=1.14357$, not at $s=1.15$. Freezing them at that nearby control
+instead gives $s^*\approx1.1436+(0.950+\kappa)g^2/2.569$, a useful estimate, not the root's evaluated derivative.
+Without the fast terms its slope is about $0.86$: at $g^2=0.03,0.05,0.07$ it predicts $1.1693,1.1865,1.2037$,
+compared with the registered reduced-model values $1.1674,1.1809,1.1931$ obtained with varying coefficients.
+It captures the direction and leading scale, not those values exactly. In the frozen-coefficient estimate the
+dressed switch is lower only if $\kappa<1.258$, by $(1.258-\kappa)g^2/2.569$.
+\evidence{The saved harmonic frequencies are $1.106657$ and $1.090107$; the potential coefficient is the central
+value of the calculation in Statement~\ref{b:widen}, not an uncertainty bound. I have not included displacement
+of the equilibrium by the fast force; at fixed sources that can also change the stiffness at $O(g^2)$.
+The full matched effective Hamiltonian, a source prescription and remainder control are needed for a physical
+switch. The kinetic term remains open.}
 \lines{15, 16, 18}
 \end{claim}
 

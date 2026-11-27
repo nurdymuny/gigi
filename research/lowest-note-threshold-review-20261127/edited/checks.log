@@ -1,0 +1,31 @@
+test_anomaly_normalization_and_sign (__main__.Algebra.test_anomaly_normalization_and_sign) ... ok
+test_born_huang_local_power_count_and_common_offset (__main__.Algebra.test_born_huang_local_power_count_and_common_offset) ... ok
+test_equilibrium_motion_can_contribute_at_the_same_order (__main__.Algebra.test_equilibrium_motion_can_contribute_at_the_same_order) ... ok
+test_factorization_and_mc_hessian (__main__.Algebra.test_factorization_and_mc_hessian) ... ok
+test_frequency_shift_includes_potential_and_kinetic_terms (__main__.Algebra.test_frequency_shift_includes_potential_and_kinetic_terms) ... ok
+test_frequency_uses_kinetic_metric_and_is_coordinate_invariant (__main__.Algebra.test_frequency_uses_kinetic_metric_and_is_coordinate_invariant) ... ok
+test_gap_variational_problem_uses_vacuum_orthogonal_states (__main__.Algebra.test_gap_variational_problem_uses_vacuum_orthogonal_states) ... ok
+test_gaussian_composite_has_nonzero_third_cumulant (__main__.Algebra.test_gaussian_composite_has_nonzero_third_cumulant) ... ok
+test_harmonic_switch_and_window (__main__.Algebra.test_harmonic_switch_and_window) ... ok
+test_kinetic_inverse_metric_sign_and_factor (__main__.Algebra.test_kinetic_inverse_metric_sign_and_factor) ... ok
+test_linear_ordering_includes_negative_zero_and_positive_denominator (__main__.Algebra.test_linear_ordering_includes_negative_zero_and_positive_denominator) ... ok
+test_negative_direction_is_not_straight_mc_tangent (__main__.Algebra.test_negative_direction_is_not_straight_mc_tangent) ... ok
+test_ordered_projection_can_jump_at_crossing (__main__.Algebra.test_ordered_projection_can_jump_at_crossing) ... ok
+test_path_maximum_is_not_full_berger_saddle (__main__.Algebra.test_path_maximum_is_not_full_berger_saddle) ... ok
+test_pointwise_positive_does_not_give_uniform_gap (__main__.Algebra.test_pointwise_positive_does_not_give_uniform_gap) ... ok
+test_potential_hessian_is_superpotential_hessian_squared_at_wells (__main__.Algebra.test_potential_hessian_is_superpotential_hessian_squared_at_wells) ... ok
+test_switch_derivative_uses_coefficients_at_the_root (__main__.Algebra.test_switch_derivative_uses_coefficients_at_the_root) ... ok
+test_vacuum_superposition_is_not_gap_counterexample (__main__.Algebra.test_vacuum_superposition_is_not_gap_counterexample) ... ok
+test_wilson_cost_is_half_squared_quaternion_chord (__main__.Algebra.test_wilson_cost_is_half_squared_quaternion_chord) ... ok
+test_conclusion_does_not_restore_corrected_overclaims (__main__.Document.test_conclusion_does_not_restore_corrected_overclaims) ... ok
+test_labels_citations_and_statuses (__main__.Document.test_labels_citations_and_statuses) ... ok
+test_threshold_keeps_local_estimate_and_root_distinct (__main__.Document.test_threshold_keeps_local_estimate_and_root_distinct) ... ok
+test_frozen_control_slope_is_not_registered_switch_reproduction (__main__.Evidence.test_frozen_control_slope_is_not_registered_switch_reproduction) ... ok
+test_loop_receipt_and_potential_shift (__main__.Evidence.test_loop_receipt_and_potential_shift) ... ok
+test_running_coupling_ranges (__main__.Evidence.test_running_coupling_ranges) ... ok
+test_threshold_numbers_and_root_replay (__main__.Evidence.test_threshold_numbers_and_root_replay) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.645s
+
+OK

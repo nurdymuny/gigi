@@ -69,9 +69,11 @@ class Format(unittest.TestCase):
         baseline = statements(self.before)
         self.assertEqual(len(baseline), 46)
         after = statements(self.after)
-        for label, (status, _) in ADDITIONS.items():
+        for label, (status, numbered_equations) in ADDITIONS.items():
             self.assertIn(label, after)
-            self.assertEqual(after.pop(label)[0], status)
+            actual_status, body = after.pop(label)
+            self.assertEqual(actual_status, status)
+            self.assertEqual(body.count(r'\begin{equation}'), numbered_equations)
         self.assertEqual(after, baseline)
 
     def test_preservation_checks_reject_changed_math_and_status(self):

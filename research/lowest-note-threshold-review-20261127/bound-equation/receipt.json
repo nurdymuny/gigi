@@ -1,0 +1,68 @@
+{
+  "scope": "Finite algebra, saved receipt replay and document consistency; not a proof certificate",
+  "tests": 26,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "source_revision": "d627989e5ec2ee88de6493d905e95071368e659f",
+  "dirty": true,
+  "numpy": "2.4.0",
+  "sympy": "1.14.0",
+  "sha256_lf": {
+    "scripts/check_lowest_note_review.py": "ad6b058d29471eb7dc45bfdad951f1d775b8a7e6a6fb4d474ac5227427f5263d",
+    "docs/papers/ym-theory-statement/refs.tex": "97e96a2ab4d1e0e28cf6c2738a7f1c6373b0988372594fab7e0354e3f77eeed5",
+    "docs/papers/ym-theory-statement/sections/appendix-a-register.tex": "0167e002f21dacb67d6648c4cd06408fc49d90fa66611f4210898c9cb2440d52",
+    "docs/papers/ym-theory-statement/sections/s0-abstract.tex": "e8d6697be88408efa2deda9c10ee04440cd6a22ed81f8e153a6f93eaecb7350d",
+    "docs/papers/ym-theory-statement/sections/s1-problem.tex": "ddde2b103c21e84790930ef5d526345c5fafe4905d3d3820a0de60738403a413",
+    "docs/papers/ym-theory-statement/sections/s10-what-it-is.tex": "13ae99f85f4711fd4582357c1b285b096c6b044c2e11bdb28c6e295b8abf6d9a",
+    "docs/papers/ym-theory-statement/sections/s11-availability.tex": "d9203f0fd3c0957c2a1456b0be61672bec2118e96c4de250dd5e2d3f0bbe37f9",
+    "docs/papers/ym-theory-statement/sections/s2-framing.tex": "99a1e49d87d2cca854f950c7a82bfdfdc43dcfd2f14a7a994490a2dcd8a7c418",
+    "docs/papers/ym-theory-statement/sections/s3-note.tex": "39bebbee0128fb9e1739614f7d78d0cc118dc0aca6a321abf0d25d2299f74c1d",
+    "docs/papers/ym-theory-statement/sections/s4-room.tex": "2c01ccf102307ae2d4de85ce1163dc9bd1fe8b5493ebf8ab7fb425ae2109e3d0",
+    "docs/papers/ym-theory-statement/sections/s5-carriers.tex": "460f2337c4a0438bec53e57b449e53ed16ee44c1051d9e3f7622dbe1df290465",
+    "docs/papers/ym-theory-statement/sections/s6-fast.tex": "2981d714e9b7b13960b7081efec8a480df60c5d161cc81d17f53d0012bdcba42",
+    "docs/papers/ym-theory-statement/sections/s7-growing.tex": "261b89a5f2e5bbb076e73dfb2ac0b23dfe57c1afa23f4400937a77cc147df281",
+    "docs/papers/ym-theory-statement/sections/s8-limit.tex": "067c1d17ba30894969357e9061f8d7f0ebcc37e2181303459b9826e443b03f10",
+    "docs/papers/ym-theory-statement/sections/s9-content.tex": "6f25f2471eb2cd1d3f6bb6f21695b2fa8f1025253425a27d05fc982bb9474fcf",
+    "docs/papers/ym-theory-statement/statement.tex": "b794f0ce15cc159d5bd4fa8320d0ca53778d1b36ff4719707b8e600d72227b55",
+    "docs/papers/ym-theory-statement/HANDOFF.md": "4b21f7c57216ec424be812859fe05ce39a13f08dfb4a72cfb84c9e6d7b32cda6",
+    "docs/papers/ym-theory-statement/REVIEW-2026-11-27.md": "03279737da6e7aa3af1d1811cd4ad0354dfc5e152a6f11b3e5c6a9618ef60cc9",
+    "docs/research/closed-set-20261127/CLOSED-SET.md": "434c9bfabaae198b8ddfa3654e617dc04f1dc423261e1e4d0022bf61ef301108",
+    "docs/papers/ym-theory-statement/THRESHOLD-REVIEW-2026-11-27.md": "bf1bf81fe60248fb71708a340cc0fba28f62219f38e0aa889a053c6e6aae730c",
+    "docs/papers/helike-quantum-probe/proof/part5.tex": "b885ab3449d41179aa411f388534f7fe4d0164efeb0f463b31bda7bbad0c9f6a",
+    "research/gigi-m3-20261127/result.json": "5e1208a7af64f5dc8d8e8487b0f31d1b1e6a51d45683b8238116aeaf30f95b6d",
+    "research/gigi-lattice-gauge-20261127/result.json": "ca42f8547149aa572eab63d8da078900280ded4caf50847c72af149207ecb52d"
+  },
+  "threshold_replay": {
+    "harmonic_separation": 0.01654957628440279,
+    "potential_coefficient": 1.258409747055742,
+    "anharmonic_coefficient": -2.208,
+    "harmonic_root": 1.1435677693908453,
+    "harmonic_slope": 2.569240136138929,
+    "kinetic_thresholds": {
+      "0.002": 7.3251978892571366,
+      "0.004": 3.187803818156439
+    },
+    "frozen_control_switches": [
+      {
+        "g2": 0.03,
+        "estimate": 1.1693497113231186,
+        "registered": 1.1674,
+        "difference": 0.001949711323118608
+      },
+      {
+        "g2": 0.05,
+        "estimate": 1.1865376726113008,
+        "registered": 1.1809,
+        "difference": 0.00563767261130077
+      },
+      {
+        "g2": 0.07,
+        "estimate": 1.203725633899483,
+        "registered": 1.1931,
+        "difference": 0.010625633899483011
+      }
+    ]
+  },
+  "pdf_sha256": "340d8e2b5722495e9e45e147ff89aacd94ec0ff3816c678007960cc8b801f80a"
+}

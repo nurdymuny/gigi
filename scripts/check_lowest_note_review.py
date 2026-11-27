@@ -23,7 +23,78 @@ def receipt(name):
     return json.loads((ROOT / name).read_text(encoding='utf-8'))
 
 
+def threshold_replay():
+    data = receipt('research/gigi-m3-20261127/result.json')['background']
+    h, c = data['helike_mode'], data['competitor_mode']
+    d0 = c['omega'] - h['omega']
+    potential = c['H_zeta']/c['omega'] - h['H_zeta']/h['omega']
+    x = sp.symbols('s', real=True)
+    a = 5*x
+    b = -sp.sqrt(2)*x*(sp.sqrt(3)+2*(1-x)/sp.sqrt(3))
+    c0 = 2*x*x
+    lowest_c = (a+c0-sp.sqrt((a-c0)**2+4*b*b))/2
+    h0 = 2*x*(sp.Rational(5,3)-x)
+    separation = sp.sqrt(lowest_c)-sp.sqrt(h0)
+    root = 5*(sp.sqrt(11)-sp.sqrt(3))/(4*sp.sqrt(3))
+    slope = float(sp.diff(separation,x).subs(x,root))
+    return dict(harmonic_separation=d0, potential_coefficient=potential,
+                anharmonic_coefficient=-2.208, harmonic_root=float(root), harmonic_slope=slope,
+                kinetic_thresholds={str(g):d0/g-2.208+potential for g in (.002,.004)},
+                frozen_control_switches=[dict(g2=g, estimate=float(root)+2.208*g/slope,
+                                             registered=registered,
+                                             difference=float(root)+2.208*g/slope-registered)
+                                        for g,registered in ((.03,1.1674),(.05,1.1809),(.07,1.1931))])
+
+
 class Algebra(unittest.TestCase):
+    def test_kinetic_inverse_metric_sign_and_factor(self):
+        eps, mass, omega = sp.symbols('eps mass omega', positive=True)
+        metric = 1/(1-2*eps*mass)
+        frequency = omega*sp.sqrt(1-2*eps*mass)
+        self.assertEqual(sp.diff(metric,eps).subs(eps,0),2*mass)
+        self.assertEqual(sp.diff(frequency,eps).subs(eps,0),-omega*mass)
+
+    def test_linear_ordering_includes_negative_zero_and_positive_denominator(self):
+        d0, eps = sp.Rational(1655,100000), sp.Rational(2,1000)
+        loss = sp.Rational(950,1000)
+        threshold = d0/eps-loss
+        for kinetic in (-2,-loss,0,threshold-sp.Rational(1,100),threshold,threshold+sp.Rational(1,100)):
+            with self.subTest(kinetic=kinetic):
+                d = d0-eps*(loss+kinetic)
+                self.assertEqual(bool(d>0),bool(kinetic<threshold))
+                self.assertEqual(bool(d<0),bool(kinetic>threshold))
+        # The old quotient condition reverses the answer when its denominator is negative.
+        self.assertGreater(d0-eps*(loss-2),0)
+        self.assertFalse(eps<d0/(loss-2))
+        self.assertEqual(d0-eps*(loss+threshold),0)
+
+    def test_born_huang_local_power_count_and_common_offset(self):
+        g,q,m = sp.symbols('g q m', real=True)
+        phi = sp.Function('phi')
+        scalar = g**2*phi(2*g*q)
+        self.assertEqual(sp.diff(scalar,q,2),4*g**4*sp.diff(phi(m),m,2).subs(m,2*g*q))
+        local = sp.diag(0,2,3)+g**2*sp.eye(3)
+        self.assertEqual(sp.expand(local[1,1]-local[0,0]),2)
+        # Distinct background offsets need not cancel in a comparison between wells.
+        self.assertEqual(sp.expand((2+3*g**2)-g**2),2+2*g**2)
+
+    def test_switch_derivative_uses_coefficients_at_the_root(self):
+        eps = sp.symbols('eps')
+        root, reference = sp.Rational(1), sp.Rational(115,100)
+        # D0=2(s-1), a(s)+p(s)-kappa(s)=3s. This has an exact perturbed root.
+        exact_root = 2/(2+3*eps)
+        derivative = sp.diff(exact_root,eps).subs(eps,0)
+        self.assertEqual(derivative,-3*root/2)
+        self.assertNotEqual(derivative,-3*reference/2)
+
+    def test_equilibrium_motion_can_contribute_at_the_same_order(self):
+        x,g = sp.symbols('x g', real=True)
+        potential = x*x/2+g*x**3/3+g*x
+        # The fast linear force moves the minimum by -g at leading order.
+        moved_stiffness = sp.diff(potential,x,2).subs(x,-g)
+        self.assertEqual(moved_stiffness,1-2*g**2)
+        self.assertEqual(sp.diff(potential,x,2).subs(x,0),1)
+
     def test_wilson_cost_is_half_squared_quaternion_chord(self):
         for angle in (0., .2, np.pi / 2, np.pi):
             u = np.array([np.cos(angle), np.sin(angle), 0., 0.])
@@ -159,6 +230,43 @@ class Algebra(unittest.TestCase):
 
 
 class Evidence(unittest.TestCase):
+    def test_threshold_numbers_and_root_replay(self):
+        data = threshold_replay()
+        text = section('s6-fast.tex')
+        pattern = (r'\\label\{eq:threshold\}\s*D_\{\\rm lin\}\(g\^2\)='
+                   r'([0-9.]+)\+g\^2\\bigl\((-[0-9.]+)\+([0-9.]+)-\\kappa\\bigr\)')
+        def agrees(source):
+            match = re.search(pattern,source)
+            if match is None:
+                return False
+            d0,anharmonic,potential = map(float,match.groups())
+            return (abs(d0-data['harmonic_separation'])<5e-7
+                    and anharmonic==data['anharmonic_coefficient']
+                    and abs(potential-data['potential_coefficient'])<5e-4)
+        self.assertTrue(agrees(text))
+        self.assertFalse(agrees(text.replace('0.01655+','0.02655+',1)))
+        self.assertFalse(agrees(text.replace('-2.208+1.258', '-2.208+0.629',1)))
+        self.assertFalse(agrees(text.replace(r'-\kappa\bigr',r'+\kappa\bigr',1)))
+        self.assertAlmostEqual(data['kinetic_thresholds']['0.002'],7.33,delta=.005)
+        self.assertAlmostEqual(data['kinetic_thresholds']['0.004'],3.19,delta=.005)
+        self.assertAlmostEqual(data['harmonic_root'],1.143568,delta=5e-7)
+        self.assertAlmostEqual(data['harmonic_slope'],2.569,delta=5e-4)
+        for g in (.002,.004):
+            saved = receipt('research/gigi-m3-20261127/result.json')['background'][f'g2_{g}']
+            self.assertAlmostEqual(data['potential_coefficient']*g,saved['fast_fibre_shift_zeta'],places=14)
+        # An opposite kinetic sign or a missing potential factor changes the threshold.
+        self.assertNotAlmostEqual(data['harmonic_separation']/.002-2.208,
+                                  data['kinetic_thresholds']['0.002'],places=2)
+
+    def test_frozen_control_slope_is_not_registered_switch_reproduction(self):
+        data = threshold_replay()
+        for row,expected in zip(data['frozen_control_switches'],(.001950,.005638,.010626)):
+            self.assertAlmostEqual(row['difference'],expected,delta=5e-7)
+            self.assertGreater(row['difference'],.0001)
+        proof = (ROOT/'docs/papers/helike-quantum-probe/proof/part5.tex').read_text(encoding='utf-8')
+        for value in ('1.1674','1.1809','1.1931','c_C=-2.738','c_H=-0.530'):
+            self.assertIn(value,proof)
+
     def test_running_coupling_ranges(self):
         data = receipt('research/gigi-m3-20261127/result.json')
         group = next(v for v in data.values() if isinstance(v, dict) and 'dC_over_prediction' in v)
@@ -181,6 +289,15 @@ class Evidence(unittest.TestCase):
 
 
 class Document(unittest.TestCase):
+    def test_threshold_keeps_local_estimate_and_root_distinct(self):
+        text = section('s6-fast.tex')
+        self.assertNotIn('Helike stays lowest exactly',text)
+        self.assertNotIn('which reproduces the registered',text)
+        self.assertNotIn('the physical switch is lower',text)
+        for required in (r'D_{\rm lin}', 'same held background', 'no remainder bound',
+                         'at the harmonic root', 'equilibrium', 'same-well'):
+            self.assertIn(required,text)
+
     def test_labels_citations_and_statuses(self):
         files = [PAPER/'statement.tex', *sorted((PAPER/'sections').glob('*.tex'))]
         text = '\n'.join(line for p in files for line in p.read_text(encoding='utf-8').splitlines()
@@ -214,6 +331,8 @@ def main():
     (args.out/'checks.log').write_text(log,encoding='utf-8')
     sources = [Path(__file__), *sorted(PAPER.rglob('*.tex')), PAPER/'HANDOFF.md', PAPER/'REVIEW-2026-11-27.md',
                ROOT/'docs/research/closed-set-20261127/CLOSED-SET.md',
+               PAPER/'THRESHOLD-REVIEW-2026-11-27.md',
+               ROOT/'docs/papers/helike-quantum-probe/proof/part5.tex',
                ROOT/'research/gigi-m3-20261127/result.json',ROOT/'research/gigi-lattice-gauge-20261127/result.json']
     hashes = {str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes().replace(b'\r\n',b'\n')).hexdigest() for p in sources}
     out = dict(scope='Finite algebra, saved receipt replay and document consistency; not a proof certificate',
@@ -221,6 +340,7 @@ def main():
                source_revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
                dirty=bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip()),
                numpy=np.__version__,sympy=sp.__version__,sha256_lf=hashes,
+               threshold_replay=threshold_replay(),
                pdf_sha256=hashlib.sha256((PAPER/'statement.pdf').read_bytes()).hexdigest())
     (args.out/'receipt.json').write_text(json.dumps(out,indent=2)+'\n',encoding='utf-8')
     return 0 if result.wasSuccessful() else 1

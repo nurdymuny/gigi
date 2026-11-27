@@ -131,13 +131,19 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 
 ## Change log
 
-- **27 Nov, line 15 refined (a proof change, no status change).** From the first-order dressing formula
+- **27 Nov, line 15 refined (a local estimate, no status change).** From the first-order dressing formula
   δω = v·(δK − ω²δG)v/(2ω v·Gv) added in the narrative, the kinetic correction enters as δG_kin = 2m^ren, so a unit slow
-  mode shifts by −ω m^ren_uu. The Born–Huang term enters frequencies only at O(g⁴). At the sourced controls (isolated
-  modes), first order gives the competitor-minus-Helike separation D = 0.01655 + g²(−2.208 + 1.258 − κ), with
-  κ = ω_C m̃_CC − ω_H m̃_HH uncomputed. The order reverses only if κ > 7.33 (g² = 0.002) or κ > 3.19 (g² = 0.004). The
-  dressed switch is s* ≈ 1.1436 + g²(0.950 + κ)/2.569. The registered s* (slope 0.86) are reduced-model predictions.
-  The kinetic term stays OPEN; it now has a threshold. Narrative statement `b:threshold`.
+  mode shifts by −ω m^ren_uu. On a smooth gapped fast chart, Φ(q) = g²φ(2gq) has q-curvature O(g⁴), while its common
+  O(g²) offset cancels in same-well excitation gaps. This is not a uniform cutoff or inter-well statement.
+  Combining the saved anharmonic coefficient with local quadratic dressing at the held sourced background gives
+  D_lin = 0.01655 + g²(−2.208 + 1.258 − κ), with κ = ω_C m̃_CC − ω_H m̃_HH uncomputed. In this linear estimate the
+  competitor is lower if κ > 7.33 (g² = 0.002) or κ > 3.19 (g² = 0.004), with rounded thresholds and no remainder bound.
+  The switch derivative uses coefficients at s0* = 1.14357. Freezing them instead at s = 1.15 gives
+  s* ≈ 1.1436 + g²(0.950 + κ)/2.569. Its undressed slope 0.86 predicts 1.1693, 1.1865, 1.2037, not the registered
+  1.1674, 1.1809, 1.1931 (which use varying coefficients). The shift is downward only when κ < 1.258.
+  A displaced equilibrium at fixed sources can add an O(g²) stiffness change; it is not included here.
+  The kinetic term stays OPEN; it now has a local diagnostic threshold. Narrative statement `b:threshold`;
+  detailed replay and scope: `docs/papers/ym-theory-statement/THRESHOLD-REVIEW-2026-11-27.md`.
 
 - **27 Nov, narrative accuracy review of The Lowest Note.** This review preserves the theory as a description,
   not a proof submission. It corrects the scope of existing lines; it does not add a research programme or close

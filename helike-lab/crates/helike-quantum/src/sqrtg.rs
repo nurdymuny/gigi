@@ -340,6 +340,10 @@ pub fn self_consistent(model: &Model, frame: Frame, cov: M6, mq: usize, order: u
         if max_iter == 0 {
             break;
         }
+        if mutant() == "frame_unconverged" {
+            settled = true;
+            break;
+        }
         frame = Frame::from_covariance(mean, &cnew);
         cov = cnew;
         if change < 1e-6 && wchange < 1e-6 {
@@ -348,4 +352,63 @@ pub fn self_consistent(model: &Model, frame: Frame, cov: M6, mq: usize, order: u
         }
     }
     Ok(SqrtgResult { mq, order, dim: states_up_to(mq).len(), iterations: its, settled, frame, covariance: cov })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn eig3_matches_faer() {
+        let m = [[3.0, 0.4, -0.2], [0.4, 2.5, 0.1], [-0.2, 0.1, 1.7]];
+        let mut e = eig3(&m).to_vec();
+        e.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let f = faer::Mat::from_fn(3, 3, |i, j| m[i][j]).self_adjoint_eigenvalues(Side::Lower).unwrap();
+        for k in 0..3 {
+            assert!((e[k] - f[k]).abs() < 1e-12, "{e:?} {f:?}");
+        }
+    }
+
+    #[test]
+    fn frame_squares_to_twice_the_covariance() {
+        let c: M6 = std::array::from_fn(|i| std::array::from_fn(|j| if i == j { 0.1 + 0.01 * i as f64 } else { 0.003 }));
+        let f = Frame::from_covariance([1.0; 6], &c);
+        for i in 0..6 {
+            for j in 0..6 {
+                let a2: f64 = (0..6).map(|k| f.a[i][k] * f.a[k][j]).sum();
+                assert!((a2 - 2.0 * c[i][j]).abs() < 1e-12);
+            }
+        }
+    }
+}
+
+/// The bare harmonic vacuum of the classical background, transported to P: centre sqrt(G0), covariance
+/// J (M diag(1/(2w)) M^T) J^T with J = dP/dx at G0 (the same start as the bare chart of §5.10).
+pub fn bare_frame(bg: &crate::model::Background) -> (Frame, M6) {
+    let g0 = bg.g0;
+    // sqrt(G0) by eigen-decomposition of the 3x3 Gram matrix
+    let gm = faer::Mat::from_fn(3, 3, |i, j| g0[i][j]);
+    let e = gm.self_adjoint_eigen(Side::Lower).expect("G0 eigen");
+    let (u, l) = (e.U(), e.S().column_vector());
+    let p0: [[f64; 3]; 3] = std::array::from_fn(|i| std::array::from_fn(|j| (0..3).map(|k| u[(i, k)] * l[k].max(0.0).sqrt() * u[(j, k)]).sum()));
+    let mu = vec6(&p0);
+    let mut dxdp = [[0.0; 6]; 6];
+    for (k, &(i, j)) in KEYS.iter().enumerate() {
+        let mut ek = [[0.0; 3]; 3];
+        ek[i][j] = 1.0;
+        ek[j][i] = 1.0;
+        let pe = mul3(&p0, &ek);
+        let ep = mul3(&ek, &p0);
+        let d: [[f64; 3]; 3] = std::array::from_fn(|r| std::array::from_fn(|c| pe[r][c] + ep[r][c]));
+        let col = vec6(&d);
+        for r in 0..6 {
+            dxdp[r][k] = col[r];
+        }
+    }
+    let jm = inv6(&dxdp);
+    let cx: M6 = std::array::from_fn(|i| std::array::from_fn(|j| (0..6).map(|k| bg.m[i][k] * bg.m[j][k] / (2.0 * bg.w[k])).sum()));
+    let cp: M6 = std::array::from_fn(|i| std::array::from_fn(|j| {
+        (0..6).map(|a| (0..6).map(|b| jm[i][a] * cx[a][b] * jm[j][b]).sum::<f64>()).sum()
+    }));
+    (Frame::from_covariance(mu, &cp), cp)
 }

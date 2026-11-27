@@ -455,12 +455,9 @@ fn run(cmd: &Cmd) -> Result<(Value, Value), String> {
                     (sqrtg::Frame::from_covariance(mu, &c), c)
                 }
                 None => {
-                    // start: P = sqrt of the classical background, isotropic covariance 0.05
+                    // start: the bare harmonic vacuum of the classical background, transported to P (§5.11)
                     let bg = helike_quantum::model::Background::maurer_cartan(*s, *t, g2.sqrt())?;
-                    let g0 = bg.g0;
-                    let mu = [g0[0][0].sqrt(), g0[1][1].sqrt(), g0[2][2].sqrt(), 0.0, 0.0, 0.0];
-                    let c: [[f64; 6]; 6] = std::array::from_fn(|i| std::array::from_fn(|j| if i == j { 0.05 } else { 0.0 }));
-                    (sqrtg::Frame::from_covariance(mu, &c), c)
+                    sqrtg::bare_frame(&bg)
                 }
             };
             let mut rungs = vec![];

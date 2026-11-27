@@ -1,0 +1,5 @@
+CAUGHT  no_rho
+CAUGHT  j_not_inverted
+CAUGHT  face_unchecked
+CAUGHT  frame_unconverged
+4/4 mutants caught

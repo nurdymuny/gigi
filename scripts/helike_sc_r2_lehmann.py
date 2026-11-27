@@ -19,10 +19,11 @@ import json
 import math
 import sys
 import time
+from pathlib import Path
 from collections import defaultdict
 
 import numpy as np
-from flint import arb, arb_mat
+from flint import arb, arb_mat, ctx
 
 import helike_sc_r1 as r1
 from helike_sc_r1 import Poly
@@ -56,7 +57,17 @@ def exact_block_mats(fblock, idx, w2, L, beta, c, dmax=8, log=print):
     lmax = max(fblock.rad[r][0] for r in used)
     t0 = time.time()
     ecut = max(fblock.rad[r][1] for r in used) + 0.5
-    RB = RadialBlock(arb(w2), arb(L), arb(beta), arb(c)); spec, _ = RB.spectrum(ecut)
+    RB = RadialBlock(arb(w2), arb(L), arb(beta), arb(c))
+    # the enclosures take hours: cache them on disk (arb balls round-trip exactly through their string form)
+    import hashlib, json as _json, os
+    key = hashlib.sha256(repr((w2, L, beta, c, ecut, ctx.prec)).encode()).hexdigest()[:16]
+    cache = Path(os.environ.get("R2_CACHE", "/tmp")) / f"r2_radial_spectrum_{key}.json"
+    if cache.exists():
+        spec = [(l, arb(e)) for l, e in _json.loads(cache.read_text())]
+        log(f"    radial enclosures from cache {cache.name}")
+    else:
+        spec, _ = RB.spectrum(ecut)
+        cache.write_text(_json.dumps([(l, E.str(radius=True, more=True)) for l, E in spec]))
     enc = defaultdict(list)
     for l, E in sorted(spec, key=lambda t: (t[0], float(t[1].mid()))):
         enc[l].append(E)
@@ -68,8 +79,13 @@ def exact_block_mats(fblock, idx, w2, L, beta, c, dmax=8, log=print):
         l, E, vals = fblock.rad[r]
         k = order[l].index(r)
         Ee = enc[l][k]
-        if abs(float(Ee.mid()) - E) > 1e-6:
-            raise ValueError(f"level mismatch l={l}: enclosed {float(Ee.mid())} vs floating {E}")
+        # identity matching, not accuracy: the floating radial solver is only ~1e-6 accurate at higher l, so the test is
+        # that the enclosed level matched by (l, order) is the nearest enclosed level of that l to the floating one, by a
+        # margin of at least 100x (the exact functions then carry the identity; their energies are the enclosures)
+        d = [abs(float(x.mid()) - E) for x in enc[l]]
+        near = int(np.argmin(d)); second = sorted(d)[1] if len(d) > 1 else float("inf")
+        if near != k or d[k] > 1e-4 or second < 100 * d[k]:
+            raise ValueError(f"level matching failed l={l}, order {k}: distances {d[:5]}")
         rpos[r] = len(levels); levels.append((l, Ee))
         nz = np.argmax(np.abs(vals) > 1e-8 * np.abs(vals).max()); sign[r] = float(np.sign(vals[nz]))
     XB = rm.ExactBlock(arb(w2), L, arb(beta), arb(c), levels)

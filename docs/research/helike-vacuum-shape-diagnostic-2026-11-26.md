@@ -120,7 +120,7 @@ One Gaussian in √G carries 99.7% of the vacuum; in the chart it carries 94.4%.
   1.3·10⁻⁶.
 - **Seam.** At the smoke point, Mq = 4 at quadrature order 12 agrees with order 10 to 10⁻¹⁵, in E₀ and in every gap.
 
-**4. Why the seam is exact: in the unfolded chart the operator is polynomial.** Along random lines in ζ through the
+**4. Why the seam is so tight (CORRECTED below: the operator is rational, not polynomial).** Along random lines in ζ through the
 vacuum, on the sheet where the signs of P's eigenvalues are constant, these are exact polynomials. "Exact" means a
 fitted polynomial matches to 10⁻¹¹ relative.
 
@@ -160,3 +160,17 @@ Mq = 6 frame; the frame then moved by 3.7·10⁻⁵.
 - **The sign at s = 1.18.** Converged, the competitor is 0.030 above Helike there. That is consistent with a switch
   below s = 1.18; the prediction is s* = 1.1674 at g² = 0.03. These are observations only, and no switch is located
   from one point.
+
+**Correction to 4 (27 November, symbolic check).** Script:
+`research/dressed-chart-20261126/vacuum-shape/symbolic_cometric.py`, using sympy, exact. Item 4 is wrong. The cometric
+in P is rational.
+- **The Jacobian.** det(dx/dP) = 8·det P·w, where w = e₁e₂ − e₃ = ∏_{i<j}(λᵢ+λⱼ), the colour-orbit volume.
+- **No det P singularity.** After cancellation, det P drops out of the cometric entirely.
+- **The weighted cometric.** ρ·g = N₆/w: a polynomial of degree 6 divided by w. Equivalently w²·g is polynomial.
+- **Why the numerical fit fooled me.** Near the vacuum the eigenvalues of P are about 1/g, so w is large and nearly
+  constant over the weighted region. 1/w is then so smooth that a degree-8 polynomial fit matches it to 10⁻¹¹ along
+  lines. The same smoothness makes quadrature orders 10 and 12 agree to 10⁻¹⁵.
+- **So the quadrature converges very fast, but it is not exact.** The order seam, not exactness, is what certifies
+  the matrix elements.
+- **The only singular set** is w = 0, where two eigenvalues sum to zero. That is the face of the fold, far from the
+  vacuum at these couplings.

@@ -742,7 +742,9 @@ does not put an exponential wall on the outer side removes it.
   - **Parity at the controls.** At g² = 0.004, Mq = 6 reproduces the log chart's converged gaps to 2.5·10⁻⁶.
   - **Convergence at the smoke point.** The competitor's step from Mq 6 to 8 is 0.0004.
   - **Symmetry.** Helike's pair is exactly degenerate without symmetrization.
-  - **Exactness.** The integrands are polynomial on the vacuum's sheet, so quadrature of order about Mq + 5 is exact.
+  - **Quadrature.** The integrands are smooth on the vacuum's sheet: ρ·g = N₆/w with w the orbit volume, nearly
+    constant there. So quadrature converges very fast, with orders 10 and 12 agreeing to 10⁻¹⁵, but it is not exact
+    (corrected by a symbolic check).
 
 **The proposal.**
 - **Chart.** P is a symmetric 3×3 matrix, and G = P². Every symmetric P gives an admissible G. P with flipped
@@ -756,6 +758,7 @@ does not put an exponential wall on the outer side removes it.
   - The cometric is J A(x) Jᵀ, with J = dP/dx.
   - The potential is the same V.
   - The quadrature is Gauss–Hermite of order n_q = Mq + 6, with a seam at n_q + 2 that must agree to 10⁻⁸ on the gaps.
+    The integrands are rational (denominator w), not polynomial, so the seam is decisive.
 - **The face.** The quadrature weight on nodes where an eigenvalue of P changes sign is reported, and it must be
   ≤ 10⁻¹². This is where the polynomial structure and the near-vacuum picture stop holding.
 - **Ladder.** Mq ∈ {4, 6, 8}. Convergence is the Mq 6 → 8 change ≤ 0.003, the unchanged tolerance.
@@ -774,7 +777,8 @@ does not put an exponential wall on the outer side removes it.
 2. **The four controls.** The √G gaps at Mq = 8 must agree with the log chart's converged Mq = 10 gaps to ≤ 10⁻⁴.
 3. **The smoke point, fresh,** with the predictions below.
 4. **Then the grid,** as a fresh registered run. That needs a Rust port of the operator (`SlabGrid` streaming with an
-   exact-order polynomial kernel), because the Python prototype takes about 80 minutes per Mq = 8 iteration.
+   pointwise kernel at the seam-checked order), because the Python prototype takes about 80 minutes per Mq = 8
+   iteration.
 
 **Predictions** (from the prototype, so they should be re-measured by the registered code):
 - the smoke point's competitor step from Mq 6 to 8 is ≤ 0.001;

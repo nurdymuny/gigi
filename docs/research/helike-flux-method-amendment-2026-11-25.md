@@ -472,7 +472,7 @@ The run launched from c839dab4 (§5.8) was stopped by Bee before it completed. I
 stopped for the §5.7 re-registration.
 
 
-### 5.10 The dressed chart: measure the competitor in the frame the vacuum occupies (DRAFT, 26 November; not registered until Bee approves)
+### 5.10 The dressed chart: measure the competitor in the frame the vacuum occupies (REGISTERED 26 November, approved by Bee; before any code or value of the dressed chart)
 
 **Where the grid stands.** The gate57 rerun is UNRESOLVED on all five cases. It was not stopped and no rule was
 changed (`research/flux-grid-20261126-gate57/RESULTS.md`). Two numbers fail for the competitor:

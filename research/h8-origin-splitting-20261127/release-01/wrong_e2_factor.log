@@ -1,0 +1,6 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-origin-splitting-20261127\release-01\wrong_e2_factor.lean:17:63: error: unsolved goals
+κ r : ℝ
+hp : 0 < r
+ht : 0 < r ^ 2
+hr : r ≠ 0
+⊢ -(2 * κ) = -(κ * 4)

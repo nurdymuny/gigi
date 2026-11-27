@@ -1,0 +1,8 @@
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-origin-splitting-20261127\release-01\missing_quasimode_bound.lean:69:24: error: Application type mismatch: The argument
+  h0
+has type
+  True
+but is expected to have type
+  |?m.51| ≤ ?m.52
+in the application
+  abs_le.mp h0

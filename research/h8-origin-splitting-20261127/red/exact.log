@@ -1,0 +1,24 @@
+test_casimir_values (__main__.Algebra.test_casimir_values) ... ok
+test_nondegeneracy_at_2u (__main__.Algebra.test_nondegeneracy_at_2u) ... ok
+test_rescaled_metric_rescales_kappa (__main__.Algebra.test_rescaled_metric_rescales_kappa) ... ok
+test_su2_mechanism_and_closed_form (__main__.Algebra.test_su2_mechanism_and_closed_form) ... ok
+test_su2_second_order_quasimode_solves_exactly (__main__.Algebra.test_su2_second_order_quasimode_solves_exactly) ... ok
+test_su3_every_group_formula (__main__.Algebra.test_su3_every_group_formula) ... ok
+test_written_proof_and_scope (__main__.Document.test_written_proof_and_scope) ... FAIL
+test_no_cubic_no_splitting (__main__.Mutations.test_no_cubic_no_splitting) ... ok
+test_non_invariant_cubic_breaks_charge_two (__main__.Mutations.test_non_invariant_cubic_breaks_charge_two) ... ok
+test_reversed_resolvent_flips_the_sign (__main__.Mutations.test_reversed_resolvent_flips_the_sign) ... ok
+test_unequal_frequencies_break_the_eigenfunction (__main__.Mutations.test_unequal_frequencies_break_the_eigenfunction) ... ok
+
+======================================================================
+FAIL: test_written_proof_and_scope (__main__.Document.test_written_proof_and_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\scripts\check_h8_origin_splitting.py", line 246, in test_written_proof_and_scope
+    self.assertTrue(NOTE.exists(), 'Missing origin-splitting proof')
+AssertionError: False is not true : Missing origin-splitting proof
+
+----------------------------------------------------------------------
+Ran 11 tests in 7.336s
+
+FAILED (failures=1)

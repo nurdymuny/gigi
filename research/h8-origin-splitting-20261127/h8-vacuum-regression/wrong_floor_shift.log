@@ -1,0 +1,9 @@
+Try this:
+  [apply] ring_nf
+  
+  The `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.
+    
+  Note that `ring` works primarily in *commutative* rings. If you have a noncommutative ring, abelian group or module, consider using `noncomm_ring`, `abel` or `module` instead.
+C:\Users\nurdm\AppData\Local\Temp\gigi-h8-origin\research\h8-origin-splitting-20261127\h8-vacuum-regression\wrong_floor_shift.lean:16:49: error: unsolved goals
+f fp fpp wp wpp : ℝ
+⊢ fpp * (-1 / 2) - wpp * f + f * wp ^ 2 * (1 / 2) = fpp * (-1 / 2) + f * wp ^ 2 * (1 / 2)

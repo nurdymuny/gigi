@@ -1,0 +1,6 @@
+H8OriginDeclarations.lean:3:7: error(lean.unknownIdentifier): Unknown identifier `H8Origin.e2_closed_form`
+H8OriginDeclarations.lean:4:7: error(lean.unknownIdentifier): Unknown identifier `H8Origin.e2_negative`
+H8OriginDeclarations.lean:5:7: error(lean.unknownIdentifier): Unknown identifier `H8Origin.charge_two_annihilated`
+H8OriginDeclarations.lean:6:7: error(lean.unknownIdentifier): Unknown identifier `H8Origin.charge_two_cross_annihilated`
+H8OriginDeclarations.lean:7:7: error(lean.unknownIdentifier): Unknown identifier `H8Origin.charge_zero_image`
+H8OriginDeclarations.lean:8:7: error(lean.unknownIdentifier): Unknown identifier `H8Origin.ordering_of_quasimodes`

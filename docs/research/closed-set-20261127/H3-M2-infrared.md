@@ -171,7 +171,29 @@ The bridge in 5.2 runs from the small room, where the carrier is known (the $0^{
 
 ---
 
-## 6. Smallest next step
+## 6. Discussion: fixed-scale mixing and the large-room bound
+
+H3's large-room task is to keep the *physical* gap from collapsing as $R\to\infty$. The relevant question is not whether every finite room has a positive gap; Steps 1--4 already separate that finite-room issue from the endpoint. The question is whether a gap estimate can be made uniform in the ultraviolet cutoff and in sufficiently large rooms, with a rate measured in physical units.
+
+The closest proof architecture is the fixed-physical-cube argument of Bhattacharjee, Bhattacharya, Lockwood and Romanov. Their Theorem 45 shows, under their averaged cube condition along a lattice tuning and assuming a continuum limit exists, that the limit has a physical spectral gap. The mechanism is useful for H3: block-scale control yields lattice transfer-matrix decay whose rate may shrink in lattice units but stays positive after conversion to physical units. This is precisely the scale bookkeeping H3's Step 5 needs. [1, Theorems 43 and 45]
+
+The hypotheses are not interchangeable. Their condition is formulated for gauge-fixed link variables on hypercubic lattice blocks, with a Wasserstein/Kantorovich influence and an averaged cube estimate. H3's proposed $\mathrm{MS}(\rho,L,\alpha)$ instead uses worst-case total-variation influence between gauge-class boundary data and a smoothed central-block observable, on the Berger-room family. A theorem transferring the former criterion to the latter object is not supplied by that paper. H3 must either prove its own block criterion or establish a precise comparison of metrics, conditioning, averaging, and geometry.
+
+There is also a useful warning in the same source: the cube-gap condition alone does not guarantee that a continuum limit is nontrivial; the paper constructs strong-coupling sequences satisfying its gap condition whose limits are trivial. [1, Proposition 192] For H3, this does not invalidate the proposed gap route. It clarifies its scope: the criterion can address the spectral lower bound conditional on the continuum room theory already existing, while the construction and nontriviality inputs belong to other parts of the program.
+
+The large-room implication in H3 §5c should therefore be stated as a separate lemma with explicit hypotheses. A suitable version must provide: (i) a block specification with a uniform conditional mixing bound for every relevant translated block and exterior condition; (ii) an iteratable influence estimate, such as a weighted Dobrushin--Shlosman matrix whose row sums are bounded strictly below one; (iii) a resulting covariance bound for the stated observable class, with constants uniform in cutoff and $R\ge R_1$; and (iv) reflection positivity/transfer-matrix assumptions plus density of those observables in the vacuum-orthogonal Hilbert space. Only after these steps does Euclidean-time decay imply $\Delta(R)\ge m_\infty$ for the full physical spectrum. This identifies exactly what the current one-cube sketch compresses into “the Dobrushin mechanism at block scale.”
+
+Related results support parts of the landscape but not this missing H3 estimate. Shen, Zhu and Zhu obtain uniqueness, functional inequalities and exponential correlation decay for lattice Yang--Mills in an explicit strong-coupling regime; that is a different coupling regime from H3's UV trajectory at fixed room. [2] Adhikari and Cao prove decay for finite (possibly non-Abelian) gauge groups at weak coupling, but their structure group is finite, not continuous $SU(2)$, and their result does not give H3's cutoff-uniform Berger-family bound. [3] These results support correlation decay as a productive language for a gap argument while leaving H3's specific uniformity problem untouched.
+
+The synthesis is therefore narrow: existing work gives a rigorous model for turning fixed-physical-scale mixing into a physical spectral gap. H3's distinctive mathematical obligation is to build that bridge for its own geometry and its full physical Hilbert space, uniformly along the cutoff and large-room limits. The next tractable target is not a new numerical scan over $R$, but a precise H3 block-influence lemma, followed by a proof that its hypotheses hold at one scale $\rho_*=y_*/\Lambda$ uniformly in the required limits.
+
+### References for this discussion
+
+1. D. Bhattacharjee, U. Bhattacharya, J. M. Lockwood and T. Romanov, “One Cube Estimate Implies the Yang--Mills Mass Gap,” version 7 (2026), especially Theorems 43 and 45 and Proposition 192. [Paper and version record](https://hexagonmath.org/2610.00341v7); [PDF](https://hexagonmath.org/pdf/2610.00341v7); [formalization and source release](https://zenodo.org/records/23895262).
+2. H. Shen, R. Zhu and X. Zhu, “A stochastic analysis approach to lattice Yang--Mills at strong coupling,” *Communications in Mathematical Physics* 400 (2023), 805--851. [arXiv:2204.12737](https://arxiv.org/abs/2204.12737); [journal DOI](https://doi.org/10.1007/s00220-022-04609-1).
+3. A. Adhikari and S. Cao, “Correlation decay for finite lattice gauge theories at weak coupling,” *Annals of Probability* 53 (2025), 140--174. [arXiv:2202.10375](https://arxiv.org/abs/2202.10375); [journal DOI](https://doi.org/10.1214/24-AOP1702).
+
+## 7. Smallest next step
 
 **Target lemma (finite-size criterion for lattice gauge theory, at fixed $\beta$).** Let $\mu^\omega_{Q}$ be the SU(2) Wilson measure at any inverse coupling $\beta$ on a lattice cube $Q\subset\mathbb Z^4$ with boundary links $\omega$. Suppose that for some side $\ell$, the influences $\gamma_b$ of boundary blocks $b$ (of side $\ell_0\mid\ell$) on bounded gauge-invariant functions of the central block satisfy $\sum_{b\subset\partial Q_\ell}\gamma_b\le\alpha<1$, uniformly in $\omega$. Then the infinite-volume gauge-invariant Gibbs state is unique, and for bounded gauge-invariant $F$ and $G$,
 $$|\mathrm{Cov}(F,G)|\le C(\ell,\alpha)\,\|F\|_\infty\|G\|_\infty\,e^{-\operatorname{dist}(F,G)\log(1/\alpha)/\ell},$$

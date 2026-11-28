@@ -4,6 +4,9 @@
 Status tags as in the register: [PC] proved and cited, [D] closed by deduction, [elem] elementary argument given here,
 [Cd] conditional, [X] open.*
 
+Revised 28 Nov after the referee pass: §1 now cites line 13 (M = 2gq), not line 8, and says the map to Part IV's q is
+an anisotropic linear map; §2.4's Hasenfratz/Karsch numbers flagged as unconfirmed context.
+
 ---
 
 ## 1. The target
@@ -21,7 +24,8 @@ The sign and normalization are the ones that make the kinetic coefficient run li
 (line 14: E₀ = −(b₀/8π²) log(Λ_cut R) S_cl + finite).
 
 **Why KC1 is necessary for H2 and not a choice of coordinates [elem].** In the geometric coordinate a (the connection
-component; line 8 has F = 2gq), the one-loop slow Hamiltonian has the form
+component; line 13 has background coordinates M = 2gq, related to Part IV's q by a constant but anisotropic linear
+map, not a scalar rescaling), the one-loop slow Hamiltonian has the form
 (g_E²/2) π_a² + S(a)/(2 g_B²). The potential S(a) has quadratic, cubic and quartic parts, so the dilation a → λa does
 not keep this form. Then g_E and g_B are each fixed by the spectrum. Line 14 makes g_B finite. KC1 is exactly the
 statement that g_E is finite too, i.e. that the speed of light c = g_E/g_B has no log. If KC1 failed, the levels would
@@ -107,6 +111,8 @@ with the background field method: 0.84 for SU(2), 0.91 for SU(3).
 says that with background fields at weak coupling he computes how the space-like and time-like couplings change with
 the anisotropy ξ, that the two derivatives sum to the one-loop coefficient b₀, and that his result agrees with
 Hasenfratz–Hasenfratz as ξ → ∞.
+*(Referee note, 28 Nov: both papers exist, but the referee could not read either abstract, so the numbers 0.84 and 0.91
+and the "sum to b₀" statement above are not independently confirmed. They are context only, never a proof step.)*
 
 *What I borrow:* a **finite** ratio Λ_H/Λ_E, and finite ∂g_σ⁻²/∂ξ and ∂g_τ⁻²/∂ξ, mean the electric (time-like) and
 magnetic (space-like) couplings carry the **same log** under a regulator that cuts only space and keeps time

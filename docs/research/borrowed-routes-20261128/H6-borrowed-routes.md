@@ -2,6 +2,8 @@
 
 28 November 2026 (written overnight). This is a research note. It changes no status in `CLOSED-SET.md`. H6 stays [X].
 
+Revised 28 Nov after the referee pass: the §5 status line is now [Cd] on torus H4(a) for an interval of schemes plus (L1) (not [D], and not "conditional on H4′"), the "hidden multiplicative factor is excluded" sentence is withdrawn as carrying no evidential weight, and the wrong-sign prefactor definition in §5 is flagged (the correct definition, c_n = −s β_n′ > 0, is in `H6-closure.md` §5).
+
 Each citation below was checked on INSPIRE or arXiv tonight. Where I could not see a detail (a journal volume, the exact
 wording of a theorem), I leave it out or mark it "paraphrase from the abstract".
 
@@ -302,6 +304,8 @@ $\Lambda_{n,L}$, bounded flowed observables $F\in\mathcal O$ (H4 file §1), and 
 Define the lattice anomaly density with H6(b3)'s normalization:
 $$\Theta_n^{(s)}(y):=-\frac{d\beta_0}{d\ln a}\Big|_{n,s}\,a_n^{-4}\sum_{p\ni y}\big(s_p-\langle s_p\rangle\big),\qquad
 -\frac{d\beta_0}{d\ln a}\Big|_{n,s}:=s\,\frac{d\beta_n}{ds}(s).$$
+*(Referee pass, 28 Nov: this definition has the wrong sign. Along a line of constant physics
+$s\,d\beta_n/ds=+\,d\beta_0/d\ln a$, so the correct prefactor is $c_n=-s\beta_n'>0$; see `H6-closure.md` §5.)*
 Here $\sum_{p\ni y}$ runs over the six plaquettes based at $y$, so each plaquette is counted once. Along an exact line of
 constant physics $\beta_0=\beta_0(a\Lambda)$, the derivative in $\ln\Lambda$ at fixed $a$ equals the derivative in $\ln a$
 at fixed $\Lambda$, so this is the register's $-d\beta_0/d\ln a$. Then, for every $\varphi\in C_c^\infty(\ln J)$,
@@ -352,8 +356,9 @@ local tightness.
 
 - **It gives** the first fully non-perturbative piece of H6(b3), conditional only on H4(a) (pointwise convergence of bounded
   flowed observables along continuously varying schemes) plus the regularity (L1). It needs no estimate at all: every
-  step is exact or dominated convergence. It pins the anomaly's normalization to $-d\beta_0/d\ln a$, so a hidden
-  multiplicative factor in the trace is excluded at the integrated level.
+  step is exact or dominated convergence. It pins the anomaly's normalization to $-d\beta_0/d\ln a$. (That is
+  exactly the chain-rule factor, so at the integrated level this is a consistency check, not evidence about the local
+  field; it does not exclude a hidden multiplicative factor in the local trace.)
 - **It does not give** the *local* field $\Theta$. That needs N1 (H6 §6). The integrated insertion includes the region
   where $y$ approaches the loops of $F$. Contact contributions there are part of the left side of $(\ast)$, and only N1
   plus the extension clause of H6(a) separates them.
@@ -366,7 +371,8 @@ local tightness.
   - (L2) is H4(a) for base spacings in an interval, not only $a_0$. This is a mild uniformization of H4 as worded.
   - On my sphere family (H4′), steps 1–4 go through verbatim with two bare parameters, but $\Theta_n$ gains the
     anisotropy term $\frac{dc_0}{du}\,\partial_{c_0}S_{\rm lat}$ ([K82]).
-- **Status if adopted:** [D, conditional on H4(a) for base spacings in an interval, and (L1)]. H6 itself stays [X].
+- **Status if adopted:** [Cd] on torus H4(a) for base spacings in an interval, and (L1). Neither is a register line,
+  so this is not "conditional on H4′". H6 itself stays [X].
 
 ### Why this is the right first bite
 

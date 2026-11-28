@@ -4,6 +4,8 @@
 existing note. Research context: `H2-borrowed-routes.md` (same folder), §§2.1, 2.2, 4, 5. Tags as in the register:
 [PC] proved and cited, [elem] elementary argument given in full here, [Cd] conditional, [X] open.*
 
+Revised 28 Nov after the referee pass: cite line 13 (M = 2gq) not line 8 and call the map to Part IV's q an anisotropic linear map (§1); W_Λ is a Gaussian integral only where both fast operators are positive (§1); added the q-independent α₀ log(ΛR) to (a); ζ remark now via Mellin transform where D_{≥1} > 0; Step 7 paraphrase of line 13 limited to the classical restriction; §5 reads "B = 0" and "log part"; D^χ in the (3.53) quote; j = 2·spin noted; proposed tag [PC] instead of [D]. No change to the mathematics or to KC1 [Cd]/H2 [X].
+
 **Verdict.** The route works for the statement as I give it in §2. Every step is either cited with matching hypotheses or
 proved here. The result is about the one-loop **background-Feynman-gauge effective action with a four-dimensional
 proper-time (or ζ) regulator**. It is not yet KC1 as worded in H2 §6, which is about the Coulomb-chart masses
@@ -36,9 +38,14 @@ connection on the trivial bundle M × su(2)
 
   A_q = q_{ka}(τ) θᵏ T_a,  with no dτ component (temporal gauge).
 
-Every quantity below depends on q only through A_q. The relation between this q and the q of Part IV / register line 8
-(where F = 2gq and energies are in reduced units) is a fixed linear rescaling q ↦ c·g·q with c independent of q and τ.
-The statements below are invariant under any such linear change; §4 Step 7 says what it gives in Part IV's coordinates.
+Every quantity below depends on q only through A_q. The relation between this q and the q of Part IV / register line 13
+(background coordinates M = 2gq, energies in reduced units) is a constant linear map, but it is **anisotropic**, not a
+scalar rescaling. In the Maurer–Cartan coframe θᵏ used here (not orthonormal) the kinetic metric is
+diag(1/t, 1, 1) ⊗ δ. The Berger paper (`berger-spectrum/paper.tex` §Setting) writes A = Σ M_i θ̂ⁱ in the
+**orthonormal** coframe, where the classical kinetic term is isotropic, matching Part IV's flat ½|p|². So the map is
+roughly diag(√t, 1, 1) in the long-axis slot, times g and the frame-bracket factor 2, and it is independent of q and τ.
+The statements below are invariant under any constant linear change of variables; §4 Step 7 says what it gives in
+Part IV's coordinates.
 
 **Peter–Weyl sectors.** SU(2)_L acts on M by left translation on the S³ factor. Left translations are isometries of
 h_t (h_t is left-invariant), so of g, and they fix A_q (each θᵏ is left-invariant and q depends only on τ). Pull-back
@@ -60,8 +67,10 @@ Both are quoted exactly in §3.
 
   W_Λ[q] = −½ ∫_{Λ⁻²}^{R²} (ds/s) [ Tr_{H_{≥1}} e^{−s D_v} − 2 Tr_{H_{≥1}} e^{−s D_gh} ].
 
-This is the proper-time form of ½ log det(D_v|_{≥1}) − log det(D_gh|_{≥1}), that is, of −log of the background-gauge
-Gaussian integral over the fast fluctuations and fast ghosts (Vassilevich (3.51): Z_F = det(D)^{−1/2} det(D^{[gh]})).
+This is the proper-time form of ½ log det(D_v|_{≥1}) − log det(D_gh|_{≥1}). Where both D_v|_{≥1} and D_gh|_{≥1} are
+positive, that is −log of the background-gauge Gaussian integral over the fast fluctuations and fast ghosts
+(Vassilevich (3.51): Z_F = det(D)^{−1/2} det(D^{[gh]})). Where they are not (for large F, Nielsen–Olesen-type negative
+modes appear), W_Λ is simply the proper-time definition above, not literally a Gaussian integral.
 The upper limit R² is an infrared cut. It makes W_Λ finite for every q, also when D_v|_{≥1} has zero or negative
 modes, and it changes W_Λ only by a q-dependent finite amount that does not depend on Λ. Only the ultraviolet end
 matters below.
@@ -74,9 +83,10 @@ matters below.
 
 (a) As Λ → ∞,
 
-  W_Λ[q] = α₄ (ΛR)⁴ + α₂ (ΛR)² + α₁ (ΛR) − (b₀/8π²) log(ΛR) · S₀[A_q] + W_fin[q] + O((ΛR)⁻¹),  b₀ = 22/3,
+  W_Λ[q] = α₄ (ΛR)⁴ + α₂ (ΛR)² + α₁ (ΛR) + α₀ log(ΛR) − (b₀/8π²) log(ΛR) · S₀[A_q] + W_fin[q] + O((ΛR)⁻¹),
+  b₀ = 22/3,
 
-where α₄, α₂, α₁ depend on (t, R, β) but **not on q**, W_fin[q] is finite, and the O((ΛR)⁻¹) term may depend on q.
+where α₄, α₂, α₁, α₀ depend on (t, R, β) but **not on q** (α₀ = −c_R is the field-independent vacuum-energy log), W_fin[q] is finite, and the O((ΛR)⁻¹) term may depend on q.
 In particular the only q-dependent divergence of the fast background-gauge effective action is the logarithm, and its
 coefficient is exactly −(b₀/8π²) times the coupling-free classical action of the path.
 
@@ -139,7 +149,7 @@ Equations read on ar5iv (arXiv HTML) on 27–28 Nov 2026.
   (3.49) ghost connection (ω^{[gh]}_μ)^α_γ = B^β_μ c^α_{βγ}, the ghost operator being "just the ordinary scalar
   Laplacian" with this connection, so E^{[gh]} = 0 (stated at (4.33)),
   (3.51) Z_F(B) = det(D)^{−1/2} det(D^{[gh]}),
-  (3.53) a^{tot}_k = a_k(D) − 2a_k(D^{[gh]}); "only this coefficient [a_n^tot] contains information on the one-loop
+  (3.53) a^{tot}_k = a_k(D^χ) − 2a_k(D^{[gh]}_χ), where D^χ is the operator with the gauge-fixing term added (my D_v); "only this coefficient [a_n^tot] contains information on the one-loop
   divergences".
 - **Flat-space evaluation (§4.2.1, "pure Yang–Mills theory in flat space").** (4.30) tr_V(E²) = 4F^δ_{ρν}F^γ_{ρν}K_{δγ};
   (4.31) tr_V(Ω_{ij}Ω_{ij}) = −4F^δ_{ρν}F^γ_{ρν}K_{δγ}; (4.32) K_{δγ} = c^δ_{αβ}c^γ_{αβ}; (4.33)
@@ -169,7 +179,7 @@ doi:10.1016/S0550-3213(97)00016-3.** Read from the arXiv PDF.
 - His stated approximation: "We will neglect higher order time derivatives of B and also terms of the form BⁿḂ²". So his
   kinetic log is at B = 0 only.
 
-I use this only as an independent check of the special case t = 1, F = 0 (§5). It is not a step of the proof.
+I use this only as an independent check of the special case t = 1, B = 0 (spatial F = 0) (§5). It is not a step of the proof.
 
 ---
 
@@ -188,7 +198,8 @@ connection is Riem ⊗ 1 + 1 ⊗ ad F. The Feynman-gauge operator is exactly thi
 **Step 2. The operators are block-diagonal in j.** [elem] D_v and D_gh are built naturally from g and B. Left translation
 L_h (h ∈ SU(2)) is an isometry of g and L_h^*A_q = A_q, so the pull-back U_h commutes with D_v and D_gh (naturality of
 ∇, Ric, Riem, F under isometries preserving B). Hence P₀ = ∫ U_h dh commutes with both operators and with their heat
-semigroups, and
+semigroups, and (labels: j = 2·spin, as in register line 13's "multiplicity j + 1", so "j ≥ 1" includes spin ½;
+nothing depends on this, since H_{≥1} is defined as H₀^⊥)
 
   Tr_{L²} e^{−sD} = Tr_{H₀} e^{−sD₀} + Tr_{H_{≥1}} e^{−sD_{≥1}},  D₀ := D|_{H₀}, D_{≥1} := D|_{H_{≥1}},
 
@@ -269,9 +280,11 @@ where b^tot = b(D_{v,0}) − 2b(D_{gh,0}), b₀^tot = (4π)^{−1/2}(12 − 6)β
 - s^{1/2} b₂^tot → +½ b₂^tot ∫_{Λ⁻²}^{R²} s^{−1/2} ds = b₂^tot (R − Λ⁻¹): finite, plus a q-dependent O((ΛR)⁻¹);
 - the O(s) remainder is integrable at s = 0; its integral from Λ⁻² equals its integral from 0 plus O(Λ⁻²).
 
-Moving the q-independent −c_R log(ΛR) into the α-terms (it is a field-independent vacuum-energy log), this is (a).
-The ζ form is the same statement: for positive D on H_{≥1}, ζ_{tot,≥1}(0) = a₄^tot − 0 − dim ker = (b₀/8π²)S₀[A_q] +
-const by (2.27) applied blockwise, so the μ-dependence −ζ_{tot,≥1}(0) log(μR) carries the same coefficient.
+Writing the q-independent −c_R log(ΛR) as α₀ log(ΛR) with α₀ = −c_R (a field-independent vacuum-energy log), this is
+(a). The ζ form is the same statement where it applies: where D_{v,≥1} > 0 and D_{gh,≥1} > 0, the Mellin transform of
+the small-s asymptotic above gives ζ_{tot,≥1}(0) = (b₀/8π²)S₀[A_q] + const, so the μ-dependence
+−ζ_{tot,≥1}(0) log(μR) carries the same coefficient. (Positivity fails for large F, so the ζ form holds only where
+positivity does; the proper-time form with the IR cut is unaffected.)
 
 **Step 6. Kinetic and potential parts of S₀[A_q].** [elem] In temporal gauge, with A_q = q_{ka}(τ)θᵏT_a,
 
@@ -289,9 +302,11 @@ for S₀[A_q] in (b), with constant G. Substituting it into (a) gives the log pa
 exactly quadratic in F with no derivatives of F, the log contains no other velocity structure. This is (b).
 
 **Step 7. Part IV coordinates and renormalization.** [elem, given Part IV's normalization] Part IV's reduced model has
-kinetic term ½|p_q|² (flat) and potential V, and line 13 states that the homogeneous sector of the Yang–Mills
-Hamiltonian is H_red. The kinetic metric G is constant and V is the restriction of the magnetic energy, so after a
-constant linear change of variables (absorbing R, V_t, h_t^{kl}, the factor g₀, and the common reduced-unit factor ½)
+kinetic term ½|p_q|² (flat) and potential V, and line 13 states that the homogeneous *classical restriction* of
+Yang–Mills gives H_red (it adds that this is not a direct sum of independent sectors of the interacting quantum
+Hamiltonian; only the classical restriction is used here). The kinetic metric G is constant and V is the restriction
+of the magnetic energy, so after a constant (anisotropic) linear change of variables (absorbing R, V_t, h_t^{kl}, the
+factor g₀, and the common reduced-unit factor ½)
 S₀[A_q]/g₀² = ∫(½|q̇|² + V). Then (a) and (b) read W_Λ ⊃ −g₀²(b₀/8π²) log(ΛR) ∫(½|q̇|² + V), which is (c). The
 classical plus one-loop Euclidean Lagrangian is
 (1/g₀² − (b₀/8π²) log(ΛR)) · g₀²(½|q̇|² + V) + finite, and with 1/g₀²(Λ) = 1/g²(R) + (b₀/8π²) log(ΛR) the bracket is
@@ -301,14 +316,15 @@ classical plus one-loop Euclidean Lagrangian is
 
 ## 5. Cross-check against van den Heuvel
 
-At t = 1 and F = 0 (his B = 0), the theorem predicts the same divergence coefficient for the kinetic and the potential
+At t = 1 and B = 0 (spatial F = 0; the kinetic term still needs F_{0i} = Ḃ ≠ 0), the theorem predicts the same divergence coefficient for the kinetic and the potential
 term. Van den Heuvel finds, in dimensional regularization, the pole 11/(12π²ε) in 1/g² from the potential (eq. (91))
 and a kinetic pole absorbed "by the same coupling constant renormalization of eq. (91)" (eq. (117)). In dimensional
 regularization the 1/ε pole plays the role of my log(ΛR), and 11/12π² = b₀/8π² for SU(2). So his result is the
-t = 1, F = 0 case of (b). Two differences, neither affecting the log: his slow space is 18-dimensional (left- and
+t = 1, B = 0 case of (b). Two differences, neither affecting the log: his slow space is 18-dimensional (left- and
 right-invariant modes) where mine is the 9 left-invariant ones, and his scheme is dimensional, not proper-time. By the
 argument of Step 3, removing any finite-rank set of spatial modes that the operator preserves changes no log, so the
-agreement is expected. My theorem extends his kinetic statement to every t and every F (he neglected BⁿḂ² terms).
+agreement is expected. My theorem extends the **log part** of his kinetic statement to every t and every F (he
+neglected BⁿḂ² terms). He also computes finite parts at B = 0, which this theorem does not.
 
 ---
 
@@ -344,8 +360,10 @@ agreement is expected. My theorem extends his kinetic statement to every t and e
    the one-loop algebraic input that says the electric and magnetic couplings carry one log. The uniform spectral
    theorem with infinitely many fast modes remains the open content of H2.
 
-**Status I would record (for Bee to decide; I have not edited the register).** KC1-ζ as stated in §2: [D], from
-Vassilevich (cited, hypotheses matched; the flat-space step (4.30)–(4.34) re-proved on curved M in Step 4) plus
+**Status I would record (for me to decide at the register; I have not edited it).** KC1-ζ as stated in §2: [PC]
+(the referee's suggestion, replacing my earlier [D]; one cited theorem with matched hypotheses plus elementary steps,
+and close to a standard fact: in background-field gauge the one-loop divergence is a gauge-invariant local functional,
+so the genuinely new steps are the j = 0 subtraction and the homogeneous-path reading), from Vassilevich (cited, hypotheses matched; the flat-space step (4.30)–(4.34) re-proved on curved M in Step 4) plus
 elementary Steps 2, 3, 5–7. KC1 as worded in H2 §6: [Cd] on R3 and R4.
 
 ---

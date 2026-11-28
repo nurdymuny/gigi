@@ -4,6 +4,8 @@
 one sub-statement I can close by citation plus deduction, and one conditional corollary. Both are reduced-model
 statements.
 
+Revised 28 Nov after the referee pass: §5(5) no longer attributes "exactly one spin-1 copy" to Borel–de Siebenthal (it is the elementary root-string fact proved in `H7-closure.md` Step 7), and Corollary B's limit is flagged as min(ω_C, 2√t), so ω_C only for t ≥ 1/3.
+
 ---
 
 ## 1. The precise target
@@ -323,7 +325,7 @@ with eigenvalues (√t ± √(t+8))/2. The single negative one is −ω_C. The 2
 
 **(5) Long-root well.**
 
-- The long-root grading has exactly one spin-1 copy, namely ι(su(2)) (H7 §3, Borel–de Siebenthal). The rest is
+- The long-root grading has exactly one spin-1 copy, namely ι(su(2)) (H7 §3; this is the elementary root-string fact |⟨α, θ^∨⟩| ≤ 1 for α ≠ ±θ, re-proved in `H7-closure.md` Step 7, not Borel–de Siebenthal). The rest is
   doublets and singlets, so Off = ε₁ = ω_C and the Morse index is 1.
 - Every nonzero φ has its own image as a spin-1 copy, so Off(φ) ≥ ε₁.
 - The doublet characteristic polynomial, computed symbolically with u = √t, factors as
@@ -354,7 +356,9 @@ sector on colour singlets. Then for every compact simple 𝔤 and every t > 0 th
 E_{1,0} < inf_{m≠0} E_{0,m}.
 
 That is, the lowest excitation of the unsourced reduced model is charge 0. Moreover E_{1,0} − E_{0,0} → ω_C(t),
-carried by the ground state of the long-root well: the competitor, for every 𝔤.
+carried by the ground state of the long-root well: the competitor, for every 𝔤. *(Referee pass, 28 Nov: this limit
+holds only for t ≥ 1/3. In general the limit is min(ω_C(t), 2√t); for t < 1/3 the origin's X₁-breathing level 2√t is
+lower. See `H7-closure.md` §6 and §8. The charge-0-lowest ordering holds for every t > 0.)*
 
 #### Proof
 

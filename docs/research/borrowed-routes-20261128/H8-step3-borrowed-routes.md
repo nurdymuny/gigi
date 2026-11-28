@@ -3,6 +3,8 @@
 28 November 2026. **Research note. Nothing here changes a status in the register.** Every number marked
 *floating* is an ordinary double-precision estimate, not an enclosure.
 
+Revised 28 Nov after the referee pass: §4a no longer calls the quotient "a ratio of positive integrals" (N_H changes sign, so ∫(h − U)N₁ involves cancellation).
+
 ## 1. The precise targets
 
 The operator is the one in the H8 file, unchanged: on H = L²(ℝ^{3×3})^{SO(3)} (colour singlets, ψ(qOᵀ) = ψ(q)),
@@ -168,7 +170,9 @@ point.)
    near O = 1, which holds because q_MC is invertible.
 3. Interval 2×2 pencil.
 
-Because the quotient is a ratio of positive integrals, the decision is the sign of ∫(h − U)N₁, which is robust. The
+The decision is the sign of ∫(h − U)N₁. *(Referee pass, 28 Nov: this is not a ratio of positive integrals. N₁ > 0,
+but N_H is not positive, h = N_H/N₁ changes sign, and the integral involves cancellation that widens interval
+enclosures; see `H8-step3-closure.md` §7.)* The
 remaining couplings 0.004 and 0.05 interpolate the table but must be run.
 
 ### 4b. Step 4, lower bounds in charges 1–6. The bootstrap can do it in principle, and I would run it second.

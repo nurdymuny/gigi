@@ -1,10 +1,12 @@
-# H7, every compact simple group: the vacua of the unsourced room, closed
+# H7, every compact simple group: vacua of the unsourced reduced model (Theorem A [D]; Corollary B [Cd on (S)])
+
+Revised 28 Nov after the referee pass: retitled so it does not read as "H7 closed" (H7 stays [X]); status line says Theorem A is [D] as a sub-statement; Step 6 now says why every spin-1 copy gives the same ε₁ (Schur, equivariant isometry); Step 9 notes that ρ_θ normalises K; §8 records the referee's suggested uniqueness sketch (still not claimed) and Helffer–Sjöstrand VI as a closer partial precedent for (S). No change to the mathematics; no status upgraded.
 
 28 November 2026 (overnight). Proof note. **I edit no existing file. Line 24 stays [X = H7].**
 
 **Status.**
 
-- **Theorem A: CLOSED BY CITATION PLUS DEDUCTION** for every compact simple 𝔤, every t > 0 and every g > 0, in the
+- **Theorem A: [D], by citation plus deduction** (a sub-statement inside line 24, not H7 itself) for every compact simple 𝔤, every t > 0 and every g > 0, in the
   unsourced (s = 1) reduced model. The one cited theorem with real content is Whitehead's first lemma, and its
   hypotheses match exactly. Everything else is proved here or is elementary linear algebra.
 - **Corollary B: [Cd] on the single named input (S)**, the same input as in my SU(2) small-coupling deduction.
@@ -374,6 +376,13 @@ because g a_l = √(ω_k ω_m) for distinct k, l, m. Hence
 
 f₁ = (Z₁, 0, 0)/ζ,  f₂ = (0, Z₂, Z₃)/(√2 ζ).
 
+*(Every spin-1 copy gives the same ε₁.)* As written, f₁, f₂ live in the particular copy φ(su(2))_ℂ. For a general φ
+with m₁ > 1, Off = Σ m_l ε_l needs every copy U ≅ V_l to give the same ε_l. It does: each irreducible summand carries
+an invariant Hermitian form, unique up to scale (Schur), so an isometric intertwiner U → V_l (up to scale) conjugates
+the block D(1 − L)D on ℂ³⊗U to the model block, and ε_l depends only on l and t. For another spin-1 copy U, replace
+Z_k below by u_k = Ψ(Z_k) for such an equivariant isometry Ψ onto U; the computation is unchanged. (A5 is unaffected,
+since the long-root well has only the copy φ(su(2)).)
+
 Directly from (Lδ)_k = ε_klm [Z_l, δ_m] and [Z_l, Z_m] = Z_k:
 
 - Lf₁ = (0, [Z₃, Z₁], −[Z₂, Z₁])/ζ = (0, Z₂, Z₃)/ζ = √2 f₂;
@@ -443,7 +452,8 @@ This completes Theorem A.
 
 Fix q_φ. Ad(exp θZ₁) fixes Z₁ and rotates (Z₂, Z₃) by θ. Since a₂ = a₃, R_θ q_φ = Ad(exp(−θZ₁)) q_φ. So
 ρ_θ := Ad(exp θZ₁) ∘ R_θ fixes q_φ. It is orthogonal and preserves V, so it commutes with Hess V(q_φ) and preserves
-the normal space.
+the normal space. It normalises K, because it fixes q_φ and commutes with Ad, so it acts on K-invariant functions on
+the normal slice N_φ.
 
 - **On colour-singlet functions ρ_θ acts as R_θ**, which is the charge.
 - **It is a circle action there.** exp(2πZ₁) is central in the image of SU(2), so it lies in the stabiliser K. It
@@ -547,7 +557,13 @@ These were small scripts, run with python3.11 and numpy/sympy, under a minute of
   about 0.392), so the two-carrier story there is not universal. Clause 2 of my SU(2) small-coupling note does not
   transport. Theorem A concerns s = 1 only.
 - **Not (S) itself.** The orbit-and-sector semiclassical limit stays a named input. Simon (B4) covers point wells on
-  the full space; he explicitly leaves the manifold case to later work.
+  the full space; he explicitly leaves the manifold case to later work. (His §6 sketches a manifold version, still with
+  point wells.) A closer partial precedent, found in the referee pass and not used here: B. Helffer and J. Sjöstrand,
+  "Puits multiples en mécanique semi-classique VI. (Cas des puits sous-variétés)", Ann. IHP Phys. Théor. 46 (1987)
+  353–372. It treats submanifold wells in the uniformly degenerate case (transverse zero-point energy constant along
+  the well), which is my situation since Ad(G) is transitive on each orbit well. It gives the bottom level of each well
+  on full L², not the excited harmonic tower in colour-singlet and charge sectors, so (S) still needs a
+  symmetry-reduction step plus IMS localisation in the sectors.
 - **Not the eigenvectors.** Corollary B is about eigenvalues. It does not prove that the E_{1,0} eigenfunction
   localises in the long-root well. That needs the IMS localisation of (S) with error bounds, or Simon's part II
   (tunnelling) adapted to orbits.
@@ -555,6 +571,12 @@ These were small scripts, run with python3.11 and numpy/sympy, under a minute of
   Off = ω_C (i.e. m₁ = 1 and no spin ≥ 3/2), its Gaussian would share the level ν₁, still in charge 0. I expect only
   the long-root class qualifies: m₁ = 1 forces a single root β with β(h) = 2, so e ∈ g_β, and Kostant's conjugacy of
   sl₂-triples would then identify φ with a root su(2). But I have not written that out, so I do not claim it.
+  The referee's suggested sketch (also not written to proof standard): Off(φ) = ω_C forces m₁ = 1 and m_l = 0 for
+  l ≥ 3/2, so ad h has spectrum in {0, ±1, ±2} with dim 𝔤₂ = 1; conjugating h into the closed dominant Weyl chamber
+  gives α(h) ≤ θ(h) ≤ 2, and 𝔤₂ ≠ 0 forces θ(h) = 2, so 𝔤₂ = 𝔤_θ and e ∈ 𝔤_θ; Kostant's conjugacy of sl₂-triples then
+  identifies φ_ℂ with the root triple up to G_ℂ. Passing from G_ℂ- to G-conjugacy of compact homomorphisms needs a
+  precise citation (e.g. Collingwood–McGovern, *Nilpotent Orbits in Semisimple Lie Algebras*, Ch. 3), whose theorem
+  number I have not verified. Still not claimed.
 - **Not C-parity.** For Out(𝔤) ≠ 1, H3(G) must track C (H7 §2). The long-root Gaussian is C-even: C maps the
   long-root class to itself, and the combined map fixing q_θ commutes with Hess V. Turning that into "E_{1,0} is
   C = +" needs (S) in C-sectors plus the uniqueness above. Not claimed.
@@ -574,7 +596,7 @@ These were small scripts, run with python3.11 and numpy/sympy, under a minute of
 |---|---|
 | A1 classification of the vacua by Hom(su(2), 𝔤) | proved here (elementary) |
 | A2 finitely many orbits, compact zero set | proved here (inverse function theorem + norm bound) |
-| A3 Morse–Bott, ker = orbit tangent | **closed by citation**: Whitehead's first lemma (B1), hypotheses exact |
+| A3 Morse–Bott, ker = orbit tangent | **[D] by citation**: Whitehead's first lemma (B1), hypotheses exact |
 | A4 inertia per spin for all t, offset = Σ\|μ<0\|, ε₁ = ω_C | proved here (Sylvester B2 + angular momentum); DSV (B3) is the t = 1 precedent |
 | A5 long root: index 1, Off = ω_C; Off ≥ ω_C for all φ ≠ 0; doublet frequencies | proved here (root-system Cauchy–Schwarz + symbolic blocks) |
 | Corollary B: H8(G) at small g, s = 1, every t > 0; limit min(ω_C, 2√t) | **[Cd] on (S)** |

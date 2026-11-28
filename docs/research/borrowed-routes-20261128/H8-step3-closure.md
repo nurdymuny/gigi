@@ -1,15 +1,17 @@
 # H8 Step 3: the projected-Gaussian min–max lemma (proof note)
 
+Revised 28 Nov after the referee pass: target written as 274/(30√3) = 5.273132 (not 5.27317); the finite-difference receipt is cross-referenced to §7, not §8; the "equivalent" remark is no longer presented as correcting the research note, which already used sufficiency language; §7 now says h = N_H/N₁ changes sign (cancellation widens enclosures), recommends certifying at α = 1 everywhere (α = 4 only after its own convergence check), and asks for the certified upper end of μ₂ to be recorded; the explicit moment expansion of E_{N(c,Σ)}V₀ is pointed to the receipt's E2/E3/E4 (still to be written out in the note). No change to the mathematics; no status upgraded.
+
 28 November 2026. **Proof note for one lemma. It changes no status in the register by itself.** Step 3 stays open
 until the interval computation in §7 is run. Every number marked *floating* is an ordinary double-precision
 estimate, not an enclosure.
 
-The route works. While writing it out I found one claim in the research note that has to be weakened, one gap
-that needed a proof, and one plan for the computation that has to change:
+The route works. While writing it out I found one point to make explicit, one gap that needed a proof, and one
+plan for the computation that has to change:
 
-- **Weakened.** "Step 3 is *equivalent* to certifying μ₂ < 5.2731" is false as stated. Min–max gives E_{2,0} ≤ μ₂,
-  so certifying μ₂ < 5.2731 is **sufficient** for Step 3. It is not necessary: a bad trial space can fail even
-  though Step 3 is true.
+- **Sufficient, not equivalent.** Min–max gives E_{2,0} ≤ μ₂, so certifying μ₂ < 5.2731 is **sufficient** for
+  Step 3. It is not necessary: a bad trial space can fail even though Step 3 is true. (The research note already uses
+  sufficiency language; this is a clarification, not a correction of a claim it made.)
 - **Gap filled.** "φ₀ and ψ₁ are linearly independent (different centres)" is not a proof, because ψ₁ is an
   average of Gaussians and is not centred anywhere. §5 proves it for every g > 0 and α > 0 by comparing decay
   along the competitor mode.
@@ -73,7 +75,7 @@ Then:
 
 **Corollary (what Step 3 needs).** If, at each registered g² ∈ {0.002, 0.004, 0.03, 0.05, 0.07}, an
 interval-arithmetic evaluation verifies (5) with U = 5.2731 for some α > 0 (α may depend on g), then Step 3 holds:
-E_{2,0} < 5.2731 at those couplings. U = 5.2731 is just below 274/(30√3) = 5.27317.
+E_{2,0} < 5.2731 at those couplings. U = 5.2731 is just below 274/(30√3) = 5.273132….
 
 Form (5) avoids square roots. 𝐊 − U𝐌 is negative definite exactly when its (1,1) entry is negative and its
 determinant is positive, and that holds exactly when every Rayleigh quotient on the span is below U.
@@ -143,7 +145,7 @@ Check: row 1 gives √3 − 2r = λ₋; row 2 gives −1 = λ₋ r, since (3 −
 
 So A has eigenvalues 4/√3 (×2), 2/√3 (×2), μ₊, ω_C and α (×3). A > 0 with λ_min(A) = min(α, ω_C). Also
 ½ tr|J| = 3S/2 + ω_C = 5.1224, the harmonic value. All of this was checked against finite differences of ∇W
-(error 3×10⁻¹⁰) in the receipt script (§8).
+(error 3×10⁻¹⁰) in the receipt script (described in §7).
 
 **4.2 Schwartz class.** Write φ_O(q) := φ(qOᵀ). Since qOᵀ − a = (q − aO)Oᵀ,
 
@@ -243,7 +245,9 @@ Then
 The kinetic term comes from Green's formula, ⟨G₁, −½ΔG₂⟩ = ½⟨∇G₁, ∇G₂⟩, with ∇G_i = −A_i(q − a_i)G_i. I then
 write q − a_i = (c − a_i) + z with z ~ N(0, Σ). For the potential term, V₀ is a polynomial of degree 4. Substitute
 q = c + z and apply (B3) to its moments of order ≤ 4. Each of the 9 summands (ω_k q_kc − g cof_kc)² expands into
-2nd-, 3rd- and 4th-order moments of affine functions of z.
+2nd-, 3rd- and 4th-order moments of affine functions of z. *(For an auditable interval code this explicit
+non-central expansion should be written out here; until it is, the receipt's `E2`/`E3`/`E4` functions in
+`h8_step3_pencil_floating_purepy.py` are the formulas, and the referee confirmed they are the right ones.)*
 
 **6.3 The four entries.**
 
@@ -278,7 +282,9 @@ An interval or ball-arithmetic evaluation at each of the five couplings:
 1. **The cross entries.** m₀₀ and k₀₀ are closed form. m₀₁ and k₀₁ are one 9×9 Gaussian evaluation each, with no
    integral.
 2. **The SO(3) integrals.** ∫N₁ and ∫(h − U)N₁, where h = N_H/N₁ is the bracket in 6.2, in rotation-vector
-   coordinates θ on the closed ball |θ| ≤ π. There dO = (2 − 2cos|θ|)/(8π²|θ|²) d³θ, the Weyl density
+   coordinates θ on the closed ball |θ| ≤ π. Note that h is **not** positive: it changes sign (the referee's sampling
+   found h ∈ [−0.52, 5.87] at g² = 0.002, α = 1, and [−10.3, 8.1] at g² = 0.07, α = 4). So ∫(h − U)N₁ involves
+   cancellation, which widens interval enclosures, worst at large α. There dO = (2 − 2cos|θ|)/(8π²|θ|²) d³θ, the Weyl density
    (2/π)sin²(θ/2) on the angle with a uniform axis. It integrates to 1, which I checked. On each box, enclose the
    integrand with interval or Taylor bounds; it is analytic.
 3. **Tail bound, small couplings only.** From 6.2, κ(O) ≥ (λ_min/2)|a − aO|². Also |a'(1 − O)|²_F ≥ u²·8 sin²(θ/2)
@@ -290,7 +296,9 @@ An interval or ball-arithmetic evaluation at each of the five couplings:
    not: at g² = 0.07 the factor at θ = π is only e^{−7.5} against a prefactor of about 500. **There I cover the
    whole ball**, which is still compact and 3-dimensional, instead of using the tail bound. This corrects the
    research note's plan of "box cover near O = 1 plus a Gaussian tail" at the larger couplings.
-4. **The pencil test.** Check (5) with U = 5.2731 in interval arithmetic.
+4. **The pencil test.** Check (5) with U = 5.2731 in interval arithmetic. Also record the certified upper end of μ₂
+   itself at each coupling (≈ 5.11 to 5.12 plus the enclosure width), not only pass/fail at 5.2731: Step 4 needs
+   E_{1,m} > E_{2,0}, and the enclosure leaves it about 0.36 of harmonic room at |m| = 2 instead of about 0.21.
 
 Because α is free (any α > 0 gives a valid upper bound), it may be chosen per coupling to widen the margin.
 
@@ -317,8 +325,10 @@ How these line up with what I already had:
   μ₂ ≥ R(ψ₁) always, the decision has to be made on μ₂, as in (5), not on R(ψ₁).
 - α matters at the larger couplings. With α = 0.5 the margin collapses to 0.028; with α ≥ 1 it is 0.15 to 0.23.
   A small α means a wide Gaussian in the gauge directions. That Gaussian follows the tangent line rather than the
-  curved orbit, and averaging then smears the transverse profile. I would certify with α = 1, or α = 4 at
-  g² ≥ 0.05.
+  curved orbit, and averaging then smears the transverse profile. I would certify with **α = 1 at all five
+  couplings**, where the floating margin is already 0.151 to 0.159. The α = 4 rows have no convergence check (the
+  nq = 15, 21, 27 check is for g² = 0.07, α = 1 only), and an independent referee estimate at g² = 0.07, α = 4 is lower
+  by about 0.12, so α = 4 is not supported until it has its own convergence check.
 
 ## 8. What this does not give
 

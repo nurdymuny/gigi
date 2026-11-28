@@ -1,8 +1,12 @@
-# H6 closure note: the integrated trace identity, conditional on H4(a)
+# H6 closure note: the integrated trace identity, conditional on torus H4(a)
+
+Revised 28 Nov after the referee pass: Lemma 5 depth repair (the temporal links of z_k now sit in depth 0; ε_k unchanged); k_0 → k_γ in the proof of Theorem 1; tag [D, conditional on (L1),(L2)] rewritten as [Cd] on named off-register inputs (torus H4(a) for an interval of schemes, plus (L1)), not "conditional on H4′"; §7 now says the integrated identity is a chain-rule consistency check, not evidence about the local field; the infinite-time flow definition is recorded as a definitional choice for matching (L2) to H4(a). No change to the mathematics beyond the Lemma 5 repair; no status upgraded.
 
 28 November 2026. Proof note. It changes no status in `CLOSED-SET.md`, and H6 (line 25) stays [X].
 If adopted, it adds one conditional sub-statement under H6(b3):
-**[D, conditional on (L1) and (L2)]** (Corollary 3 also needs (A) and (B)).
+**[Cd] on (L1) and (L2)** (Corollary 3 also needs (A) and (B)). Neither (L1) nor (L2) is a register line: (L2) is torus
+H4(a) uniformized over an interval of schemes, and (L1) needs the four-direction infinite-volume lattice state with a
+unique $C^1$ solution $B$. So this is **not** "conditional on H4′".
 
 Source of the route: `H6-borrowed-routes.md` §5. Here I write out every step, including the step that note only
 sketched (the β-derivative at infinite time extent).
@@ -26,7 +30,7 @@ The route works, with one correction and three changes of scope.
 - **Scope 3.** I replace the sketched transfer-matrix-gap argument with a Doeblin (minorization) argument. It is
   elementary and explicitly uniform in β, and it needs no Perron–Frobenius theory.
 
-Every step below is proved here, or is a definition, or is a textbook theorem of analysis (dominated convergence,
+Every step below is proved here (after the Lemma 5 depth repair made in the referee pass), or is a definition, or is a textbook theorem of analysis (dominated convergence,
 Kolmogorov extension, existence of ODE flows on compact manifolds). No physics theorem enters the proof.
 
 ---
@@ -93,8 +97,10 @@ Then for every $F\in\mathcal O_{\rm Lip}$ and every $\varphi\in C_c^\infty(\ln J
 That is, the integrated, vacuum-subtracted plaquette insertion converges in $\mathcal D'(\ln J)$ to $\frac{d}{du}S_{e^u}(F)$.
 
 **Naming the prefactor.** Let $\beta_n(s)$ be H4's coupling with $\Lambda\to s\Lambda$, that is, $t_0\to t_0/s^2$.
-Then $c_n(s)=-\,d\beta_0/d\ln a$, evaluated at spacing $s a_n$ (§5). This is the normalization of H6(b3), and no
-other multiplicative factor appears. The research note's sign is corrected here.
+Then $c_n(s)=-\,d\beta_0/d\ln a$, evaluated at spacing $s a_n$ (§5). This is the normalization of H6(b3). At the
+integrated level it is exactly the chain-rule factor, so the identity cannot fail with this normalization and must fail
+with any other; the absence of a further multiplicative factor here carries no evidential weight about the *local*
+renormalized trace. The research note's sign is corrected here.
 
 **Corollary 3 (dilatation form).** Take $\beta_n(s)$ from H4's scale condition as just described. Write the condition
 as $\beta=B(\tau_0)$, where $B(\tau_0)$ is the (assumed unique) solution of
@@ -271,14 +277,21 @@ at infinite time. The class $\mathcal O_{\rm Lip}$ inherits the property, with s
 - **Dini bound.** Left invariance, then right invariance, give
   $d(e^{hX}V,e^{hY}W)\le d(V,W)+d(e^{hX},e^{hY})$. Hence
   $D^+d(V_\ell,W_\ell)\le|X_\ell(V)-X_\ell(W)|$.
-- **Depth.** Compare slabs $k$ and $k'$, starting from the same $U$. The vector fields differ only on the spatial
-  links at slices $\pm k$. Give each slab-$k$ link a depth, its graph distance to that set. A link at depth $r\ge1$ has
-  all its neighbours at depth $\ge r-1$, and they lie in slab $k$.
+- **Depth.** Compare slabs $k$ and $k'$, starting from the same $U$. The vector fields can differ on the spatial
+  links at slices $\pm k$ **and on the temporal links of $z_{\pm k}$** (by the slice convention, $z_k$ contains the
+  temporal links from $k$ to $k+1$; they lie in slab $k$, but every plaquette through them uses spatial links at $k+1$,
+  outside the slab, so their vector field is zero in slab $k$ and not zero in slab $k'>k$). Call the union of these two
+  sets the depth-0 set. Give each slab-$k$ link a depth, its graph distance to the depth-0 set. A link at depth
+  $r\ge1$ has the same vector field in both slabs, and all its neighbours are at depth $\ge r-1$ and lie in slab $k$.
+  *(Repair from the referee pass: the first version put only the spatial links at $\pm k$ in depth 0, which made the
+  temporal links of $z_k$ depth 1 with a differing vector field, and the iteration step failed for them.)*
 - **Iteration.** Let $f_r(\tau)$ be the maximum of $d(V_\ell,W_\ell)$ over depth $\ge r$. Then
   $f_r\le19c_1\int_0^\tau f_{r-1}$ and $f_0\le D_0:=\operatorname{diam}SU(2)$, so $f_r\le D_0(c\tau)^r/r!$ with
   $c=19c_1$.
 - **Loop depth.** One adjacency step changes the time slice by at most one, so loop links have depth
-  $\ge k-k_\gamma$.
+  $\ge k-k_\gamma$. This survives the repair: a temporal link $j\to j+1$ is at graph distance $k-j$ from the spatial
+  links at $k$, and at distance $\ge k-j+1$ from the temporal links of $z_k$, because temporal links at different times
+  share no plaquette. So $\varepsilon_k$ is unchanged.
 - **Holonomy.** $|\tfrac12\operatorname{tr}A-\tfrac12\operatorname{tr}B|\le\|A-B\|\le d(A,B)$, and
   $\|\prod A_i-\prod B_i\|\le\sum\|A_i-B_i\|$ for unitaries. Combined with $\operatorname{Lip}(\Phi)$ (ℓ¹ norm on the
   cube), this gives $\varepsilon_k$.
@@ -304,9 +317,9 @@ Fix a compact $I=[0,\beta_+]$.
 - Take cylinder approximants $A_k$ on $[-k,k]$ with $\|F-A_k\|\le\varepsilon_k$, where $\varepsilon_k$ is
   non-increasing and summable (Lemma 5). Then $\langle A_k\rangle_\infty\to\langle F\rangle_\infty$ uniformly on $I$.
 - Termwise, $|\langle A_k;s_p\rangle-\langle F;s_p\rangle|\le4\varepsilon_k$.
-- Domination. Let $p$ be at slice $j$ with $|j|\ge2k_0+2$, and put $m=\lfloor|j|/2\rfloor$. The slices of $s_p$ are at
+- Domination. Let $p$ be at slice $j$ with $|j|\ge2k_\gamma+2$, and put $m=\lfloor|j|/2\rfloor$. The slices of $s_p$ are at
   distance $\ge|j|/2-1$ from $[-m,m]$.
-  - For $k<m$, Lemma 3 gives $|\langle A_k;s_p\rangle|\le4C(1-\delta)^{|j|/2-1}$, with $C=C_F+\varepsilon_{k_0}$.
+  - For $k<m$, Lemma 3 gives $|\langle A_k;s_p\rangle|\le4C(1-\delta)^{|j|/2-1}$, with $C=C_F+\varepsilon_{k_\gamma}$.
   - For $k\ge m$, $|\langle A_k;s_p\rangle|\le|\langle A_m;s_p\rangle|+|\langle A_k-A_m;s_p\rangle|\le4C(1-\delta)^{|j|/2-1}+8\varepsilon_m$.
   - The dominating sequence $P\big(4C(1-\delta)^{|j|/2-1}+8\varepsilon_{\lfloor|j|/2\rfloor}\big)$ is summable over
     $j$, because $\sum\varepsilon_m<\infty$. It does not depend on $k$ or β.
@@ -393,7 +406,11 @@ $a$ equals the $\ln a$-derivative at fixed $\Lambda$, **with the same sign**.
 
 ## 7. Status if adopted
 
-Under H6(b3): **[D, conditional on (L1), (L2)]**. The integrated trace identity holds at fixed box, with the lattice
-normalization $-d\beta_0/d\ln a=-s\beta_n'$ (sign corrected) and no further multiplicative renormalization, for
-$\mathcal O_{\rm Lip}$. The dilatation form is [D, conditional also on (A), (B)]. The infinite-time β-derivative
+Under H6(b3): **[Cd] on named off-register inputs: torus H4(a) for an interval of schemes ((L2)), plus (L1)**. It
+cannot be read as "conditional on H4′" (the register now states H6 on the sphere family; see §6, "Not on the sphere
+family as such"). The integrated trace identity holds at fixed box, with the lattice normalization
+$-d\beta_0/d\ln a=-s\beta_n'$ (sign corrected), for $\mathcal O_{\rm Lip}$. The integrated identity holds with the
+chain-rule normalization; this is a consistency check, not evidence about the local field. (Here the infinite-time
+flowed observable means the uniform limit of slab flows, Lemma 5; (L2) must be read with that meaning when it is
+matched to H4(a).) The dilatation form is [Cd], conditional also on (A), (B) and uniqueness of $B$. The infinite-time β-derivative
 (Theorem 1) is [P] at each fixed $(n,L)$. H6 and the seven top-level hypotheses are unchanged.

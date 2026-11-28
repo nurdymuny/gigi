@@ -6,8 +6,12 @@ that route that was **wrong as stated** (step 4, "u is not built from the metric
 the route works and the conclusion holds. Status words are as in the register: [PC] proved and cited, [D] closed by
 deduction, [Cd] conditional.*
 
+Revised 28 Nov after the referee pass: clause (d)/Step 11 restates (HR) as matching one locally covariant prescription on each M_{R,t}, drops the invalid "by Step 10 it does not depend on (R, t)", and makes R/t-independence and constant coefficients an explicit extra regulator-locality hypothesis; (b)/Step 9 say "BV canonical transformation" instead of "field redefinition" and drop "X linear in antifields"; Step 6 no longer credits representatives (63) with tr F∧F; Step 4 credits T2 on both prescriptions (the Hadamard scale is a dimensionful constant); Step 8 says the 1/Scal term is excluded by smoothness across the category; (c) restated as "the marginal freedom is the single coupling g"; §5 no longer claims to be the content of line 14; the Theorem-2-for-YM caveat moved up to the outcome; §8 suggested text says Lorentzian, Hollands' gauge-fixed framework, and "in perturbation theory". No status upgraded.
+
 **Outcome.** C₀ is closed **in renormalized perturbation theory (formal power series in g), on the Lorentzian static
-spacetimes ℝ × S³_{R,t}, for locally covariant prescriptions in Hollands' sense**: [PC + D]. The clause about
+spacetimes ℝ × S³_{R,t}, for locally covariant prescriptions in Hollands' sense**: [PC + D], *modulo the vector/ghost
+analogue of Hollands–Wald uniqueness (Theorem 2), which Hollands asserts by analogy (§3.5, §4.3) and uses himself in
+§4.4, but does not prove separately.* The clause about
 non-covariant regulators (H2's spatial cutoff) stays [Cd]. Nothing non-perturbative and nothing Euclidean is proved
 here (§7).
 
@@ -46,16 +50,23 @@ order is
 where a ∈ ℝ is a constant, κ is a real linear combination of the dimension-4 curvature scalars (a c-number), and
 X, Y are local covariant forms. X is built from g, ε and the fields alone, with no curvature factor. The constants
 (a, κ's coefficients) are the same for every (R, t) and for Minkowski space. Iterating order by order, T̂ is T
-followed by a finite renormalization of g, a field redefinition and a c-number shift.
+followed by a finite renormalization of g, a BV canonical transformation (field redefinition and/or change of gauge
+fermion) and a c-number shift.
 
-(c) *(No c₀.)* Consequently no prescription change carries a c₀, at any order. Every locally covariant
-renormalized theory on M_{R,t} has c₀ ≡ 1, for every R and t.
+(c) *(No c₀.)* Consequently no prescription change carries a c₀, at any order. Put plainly: the marginal freedom of
+locally covariant schemes on Lorentzian ℝ × S³_{R,t} is the single coupling g (plus ŝ-exact changes and c-numbers);
+there is no second, anisotropic marginal parameter. (In that sense every locally covariant renormalized theory on
+M_{R,t} has c₀ ≡ 1, for every R and t; a covariant scheme has no bare c₀ to compare.)
 
 (d) *(Non-covariant regulators: conditional.)* Suppose a regulator that breaks local covariance comes with bare
-parameters (g₀, c₀). If, after tuning, its renormalized perturbation series satisfies T1–T12 (a Reisz-type theorem
-for that regulator), then (b) fixes c₀ order by order as a formal series c₀ = 1 + Σ_k c₀^{(k)} g₀^{2k}. Its
-coefficients are determined by matching, and by locality they do not depend on R or t. **This clause is
-conditional on the Reisz-type theorem, which is not proved.**
+parameters (g₀, c₀). If, after tuning, its renormalized perturbation series on each M_{R,t} equals the restriction of
+a single locally covariant prescription T* (a Reisz-type theorem for that regulator), then (b) fixes c₀ order by
+order, separately on each (R, t), by matching. **R- and t-independence of the bare c₀ does not follow**: the bare
+c₀(ε; R, t) is not a natural transformation, and nothing cited forbids dependence on R (through ε²/R² heat-kernel
+terms) or on ε. It needs an extra regulator-locality hypothesis, for example that the regulator's local UV structure
+is the flat one up to O(ε²·Riem) corrections that vanish as ε → 0 order by order. A formal series
+c₀ = 1 + Σ_k c₀^{(k)} g₀^{2k} with constant coefficients is likewise part of that hypothesis. **This clause is
+conditional on the Reisz-type theorem and, for R/t-independence, on regulator locality; neither is proved.**
 
 ---
 
@@ -168,8 +179,11 @@ The interaction is F = ∫(f λL₁ + f²λ²L₂), with L₁, L₂ of dimension
 D_n(L^{⊗n}) = Σ_α c_α O_α ∂^α δ, with sd(∂^α δ) = 4(n − 1) + |α|. Then (257) gives N_d(c_α O_α) = 4 − |α|. After
 smearing with f and integrating by parts, the change of the interaction, D(exp_⊗F), restricted to the region where
 f = 1, is the integral of a local covariant 4-form of **dimension exactly 4**. Here curvature counts 2, each ∇ counts
-1, and the fields count as in the table. There is no other dimensionful constant: pure YM has no m², and λ is
-dimensionless. So no term of dimension ≠ 4 occurs.
+1, and the fields count as in the table. The construction does contain one dimensionful constant, the length scale of
+the Hadamard parametrix (which is why T2 holds only "up to logarithms"). What forbids terms such as
+ℓ²·Ric^{μν} tr F_{μρ}F_ν{}^ρ is T2 applied to *both* T and T̂: their difference D is polynomial in curvature, so it
+cannot carry logarithms, so it scales exactly, which is (257). Pure YM has no m² and λ is dimensionless, so no other
+constant enters. So no term of dimension ≠ 4 occurs.
 
 **Step 5 (the leading change is a cocycle) [D from H-L11].** Both prescriptions satisfy the Ward identities, so
 their anomalies vanish, A = Â = 0. Let ħ^m be the first order where D ≠ 0. On the region where f = 1, S₀ + F agrees
@@ -189,10 +203,9 @@ d-exact local forms the class of D_m is a combination of:
   fundamental theorem for SO(1,3): its invariant tensors are generated by g and ε. For G simple there is one
   invariant quadratic form, so one trace. The r of dimension 4 are the curvature scalars Riem², Ric², Scal², □Scal
   and the Pontryagin and Euler densities (c-numbers).
-- the representatives (63). Their Chern–Simons factors q_r(C + A, F) have m(r) ≥ 2 for a semisimple group, so their
-  ghost-0 part has form degree 2m(r) − 1 ≥ 3. A ghost-0 4-form of dimension 4 built this way would need a further
-  factor of form degree 1 and dimension ≤ 1, and no closed curvature form or invariant monomial of F has that. The
-  only survivor is the ghost-0 top component d q = tr F∧F already listed.
+- the representatives (63). They contribute **nothing** at ghost number 0 in form degree 4: the total degree (form +
+  ghost) of q_r is 2m(r) − 1 ≥ 3, and any extra factor r_t or f_s raises it by at least 2, so no product reaches total
+  degree exactly 4. (tr F∧F comes from [H-L1] with Θ = tr F∧F, already listed above, not from (63).)
 - tr F∧F = d CS(A) with CS(A) a local form, so its class modulo d is **zero**. (With the action Ward identity [H-T11]
   it drops out of the local interacting theory where f = 1. It is in any case the E·B density, not an E²/B² split, so
   it is irrelevant to c₀ whether or not Θ/CP is imposed.)
@@ -215,7 +228,9 @@ false.** The product metric has Ric(∂_τ, ·) = 0. On the round sphere, Ric = 
 which is a local expression in the curvature. Then 𝒜 = [(3/Scal) Ric^{μν} − g^{μν}] tr F_{μρ}F_ν{}^ρ vol. Hence the
 anisotropy class *is* locally constructible from the metric on this geometry. What excludes it is the correct
 pair of facts from [H-§3.6]:
-1. **Polynomiality.** D depends polynomially on the curvature. The factor 1/Scal is not polynomial.
+1. **Polynomiality.** D depends polynomially on the curvature. The factor 1/Scal is not polynomial. It is ruled out
+   by smoothness across the whole category (T4/T5 hold on spacetimes where Scal = 0, where a 1/Scal coefficient is not
+   smooth), not by anything on M_{R,t} itself.
 2. **Dimension.** The polynomial candidates that use the curvature direction, such as Ric^{μν} tr F_{μρ}F_ν{}^ρ vol
    and C^{μνρσ} tr F_{μν}F_{ρσ} vol (Weyl), have dimension 6. With no dimensionful constant in pure YM, Step 4 forbids
    them. The same holds for the Berger metric (t ≠ 1), whose Ricci tensor also has ∂_τ in its kernel and spatial
@@ -235,7 +250,9 @@ f = 1:
 - dY is removed by [H-T11];
 - ŝX: modify T by D′ = −ŝX at order ħ^m. This is allowed (local, covariant, dimension 4, polynomial; the same checks
   Hollands does after eq. (390)). [H-L11] with A_m = 0 gives the new anomaly (S, (S, X)) = 0 by the Jacobi identity
-  and (S, S) = 0, so T12 still holds. ŝX with X linear in antifields is the BV form of a field redefinition.
+  and (S, S) = 0, so T12 still holds. ŝX is a BV canonical transformation: a field redefinition and/or a change of gauge
+fermion (X may contain gauge-fermion-type terms such as tr C̄ d⋆A, ghost −1, dimension 4, a colour singlet). Either
+way it is ŝ-exact and does not change the physical cohomology or c₀.
 After these moves the two prescriptions agree through order ħ^m. Repeating Steps 4–8 at the next order gives (b) by
 induction. At no order does a c₀ appear, which is (c). ∎
 
@@ -248,8 +265,11 @@ covariant schemes is the same constant in every room. ∎
 the hypothesis (HR): for a suitable tuning (g₀(ε), c₀(ε)) the regulated perturbation series converges, order by
 order, to time-ordered products satisfying T1–T12. Then by (b) the limit is a covariant scheme, and by (c) its
 c₀-class vanishes. At each order the coefficient c₀^{(k)} is the unique value that cancels the regulator's
-anisotropic class. (b) fixes it uniquely, and by Step 10 it does not depend on (R, t). Without (HR) nothing is
-claimed. (HR) is the curved-space, anisotropic analogue of Reisz's lattice theorem (flat, hypercubic). For H2's
+anisotropic class. (b) fixes it uniquely on each M_{R,t}. (HR) here means: on each M_{R,t} the limit coincides with
+the restriction of one fixed locally covariant prescription T* (T1 is a condition across spacetimes, so a regulator
+defined only on the sphere family cannot satisfy it by itself). Step 10 does **not** give R- or t-independence of the
+bare c₀^{(k)}: Step 10 concerns differences of covariant prescriptions, and the bare c₀ of a non-covariant regulator is
+not one. That needs the extra regulator-locality hypothesis of (d). Without (HR) nothing is claimed. (HR) is the curved-space, anisotropic analogue of Reisz's lattice theorem (flat, hypercubic). For H2's
 spatial spectral cutoff with continuous time it has not been proved. ∎
 
 ---
@@ -260,7 +280,8 @@ Under g ↦ μ²g, M_{R,t} becomes (ℝ × S³, −μ²dτ² + μ²R²h_t). With
 preserves orientation and time orientation. So by [H-T1], **Hollands' renormalization-group flow g ↦ μ²g is exactly
 motion along my base coordinate R, at fixed t.** [H-Rem3] says that this flow of the coupling "must be exactly the same
 as in Minkowski spacetime". So to all orders in perturbation theory the running of g with R on the sphere family is
-the flat β-function. That is the perturbative content behind register line 14's −(b₀/8π²) log(Λ_cut R). *Status:*
+the flat β-function. Line 14 concerns a *non-covariant* cutoff, so only the scheme-independent leading coefficient
+(the universal b₀ in −(b₀/8π²) log(Λ_cut R)) transfers without the matching of clause (d). *Status:*
 [H-Rem3] is a remark with a short argument, not a numbered theorem. I record this as cited support, not as a closure.
 This fits my bundle framing: the UV data (the β-function, and c₀ ≡ 1) are constant along the base, and only the IR
 (the vacuum and the spectrum in each room) moves with R.
@@ -309,8 +330,10 @@ This fits my bundle framing: the UV data (the β-function, and c₀ ≡ 1) are c
 ## 8. Suggested register reading (I do not edit the register here)
 
 H4′, first bullet: the sentence "the limit tunes two bare parameters, the coupling g₀ and a speed of light c₀" could
-carry the note: *In perturbation theory, every locally covariant scheme on S³_{R,t} × ℝ has c₀ ≡ 1 for all R, t
-(Hollands 2008 + this note, [PC + D]). c₀ is regulator data, needed only for non-covariant regulators such as H2's
-spatial cutoff, where it is fixed by matching [Cd on a Reisz-type theorem]. The non-perturbative statement remains part
-of H4′.* The labelled conjecture in paper §8 ("c₀ is controlled by the trace anomaly") should be replaced by "c₀ is
-regulator data fixed by local covariance", as `H4-borrowed-routes.md` §3 already proposes.
+carry the note: *In perturbation theory, in Hollands' gauge-fixed framework, every locally covariant scheme on
+Lorentzian ℝ × S³_{R,t} has c₀ ≡ 1 for all R, t (Hollands 2008 + this note, [PC + D], modulo the YM analogue of
+Hollands' Theorem 2). c₀ is regulator data, needed only for non-covariant regulators such as H2's spatial cutoff, where
+it is fixed by matching [Cd on a Reisz-type theorem; R-independence needs a further regulator-locality hypothesis]. The
+non-perturbative, Euclidean statement remains part of H4′.* The labelled conjecture in paper §8 ("c₀ is controlled by
+the trace anomaly") should be replaced by "in perturbation theory, c₀ is regulator data: covariant schemes have no c₀",
+as `H4-borrowed-routes.md` §3 already proposes.

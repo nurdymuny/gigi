@@ -10,6 +10,54 @@ Every note is in this folder. For each topic, `*-borrowed-routes.md` is the rese
 
 ---
 
+## Update, later the same night
+
+**H8 Step 3 is certified at all five registered couplings.** The run took about 33 minutes. At t = 3, s = 1, α = 1, with U = 274/(30√3) = 5.273132, every coupling gives M > 0 and K − U·M < 0 as strict Arb ball inequalities. The whole of SO(3) is covered, with no tail bound. The certified upper ends of μ₂ are:
+
+| g² | 0.002 | 0.004 | 0.03 | 0.05 | 0.07 |
+|---|---|---|---|---|---|
+| certified μ₂ ≤ | 5.12221 | 5.12196 | 5.11796 | 5.11395 | 5.11399 |
+
+The margin to U is at least 0.1509 (smallest at g² = 0.002). Note: `H8-step3-certified.md`. Receipt: `research/h8-step3-certified-20261128/receipt.json`.
+
+**The auditor's verdict: certified at all five.** An independent auditor tried to break it and found no soundness defect. The checks were:
+- a line-by-line read of the code (every input to the verdict is a ball, and the cover is an exact partition);
+- an independent floating integral over the full rotation ball, with no symmetry reduction, which lands inside every receipt ball;
+- a 40-digit check of the point entries;
+- a full re-run;
+- eight mutation runs. Dropping the remainders makes the "enclosure" miss the truth by about 2500 radii, so the remainders really carry the weight.
+
+Two caveats from the audit:
+- At g² = 0.07 the run stops at its 600 s time cap. That coupling reproduces in verdict and in μ*, but not bit for bit.
+- The pass/fail verdict at U is a weak test on its own: several gross errors still pass it. So "certified" is only as good as the enclosures, and those passed every check.
+
+The audit also found four small reporting slips in the note, none of which changes a verdict. The radii were quoted from printed strings. "2 to 6 times narrower" should read 1.3 to 3.0. The relative radii should be quoted from `rad`. The script docstring says degree 2, but the code runs degree 4.
+
+**What this establishes, exactly:** E_{2,0}(g) < μ* < 274/(30√3) at each of the five registered couplings, in the reduced model. That is **Step 3 only**. It is conditional on the closure lemma (and through it on Theorem A at s = 1 and the symmetry reduction), on Arb, and on the script. Nothing is established between the couplings, at α ≠ 1, or as a lower bound on E_{2,0}. **H8 at the registered couplings still needs Step 4**, the lower bounds E_{1,m} > E_{2,0} for 1 ≤ |m| ≤ 6. **Physical H8 also needs H2b.** H8 stays [X]. I have not touched the register. If you accept the result, the line 18 entry in §4 below would say "Step 3 certified at the five couplings" instead of "reduced to a finite interval computation". The tag is yours to choose.
+
+**The referee fixes are applied.** I edited 11 notes: both H2 notes, both H3 notes, the H4′ closure, both H6 notes, both H7 notes and both H8 Step 3 notes. No status was upgraded, and no mathematics changed apart from the H6 Lemma 5 depth repair you asked for. Each edited note now opens with a "Revised 28 Nov after the referee pass: …" line. All six closure notes have one, and so does each research note I edited. The changes, briefly:
+- **H2:** cite line 13 (M = 2gq), not line 8, and call the map anisotropic and linear, not a scalar rescaling. W_Λ is a Gaussian integral only where both fast operators are positive. Theorem (a) gains the q-independent α₀ log(ΛR) term. The ζ remark now goes through the Mellin transform. §5 says "B = 0" and the "log part" of van den Heuvel. The Hasenfratz/Karsch numbers are flagged as unconfirmed. The proposed tag for KC1-ζ is [PC], not [D]. That uses the register's vocabulary and is not an upgrade. KC1 stays [Cd on R3, R4], and H2 stays [X].
+- **H3:** Lemma G no longer "closes" any part of Sub-conjecture 5.1, and (5-ver) is no longer "equivalent to" a non-perturbative mass statement. The narrower claims are stated instead.
+- **H4′:** the regulator clause now carries regulator locality as an explicit extra hypothesis. The other referee wording fixes are in.
+- **H6:** the Lemma 5 depth repair (the temporal links of z_k now sit in depth 0). The integrated identity is now tagged [Cd] on named off-register inputs, and the research note flags the sign of the prefactor.
+- **H7:** the closure is retitled so it does not read as "H7 closed". Corollary B's limit is min(ω_C, 2√t).
+- **H8:** the target is 274/(30√3) = 5.273132, the receipt is cross-referenced to §7, and the cancellation in N_H is noted.
+
+So the "small fixes" list at the end of §4 is done. I did not touch CLOSED-SET.md, the paper or the referee reports, and I did not re-read the edited files afterwards.
+
+**What to attack next, re-ranked now that Step 3 is done** (this replaces the order in §3; the tools listed there still apply):
+1. **H8 Step 4:** lower bounds in charges 1 to 6 (|m| = 2 is the tight one). Use Lehmann–Goerisch with Plum's homotopy at s = 1. The bar to beat is now the certified μ* above instead of U, which gives about 0.15 more room.
+2. **H1, the R2 interval Lehmann step.** It uses the same machinery, so build it once for both.
+3. **Housekeeping on the certificate (small).** Fix the four reporting slips. Rerun g² = 0.07 with a larger time cap, or a box cap, so it is bit-reproducible.
+4. H7: prove (S) and the uniqueness of the competitor's well.
+5. The kinetic sign on line 15 (the finite Berger sum).
+6. H2 R3/R4.
+7. H4′ beyond perturbation theory.
+8. H3 on the room graph.
+9. H6, N1 to N3.
+
+---
+
 ## 1. The best borrowed idea for each hypothesis, and how it fits your theory
 
 | Hyp. | Borrowed idea (citation) | How it fits your theory |
@@ -111,4 +159,4 @@ The register allows only status changes or proof changes inside a line. Each ite
   - Retitle the H7 closure so it does not read as "H7 closed".
   - Apply the H6 Lemma 5 depth repair.
 
-That's everything. Rest well before 5 if you can. The first job when you're up is item 1, and it should take minutes.
+That's everything. Rest well before 5 if you can. The first job when you're up is item 1, and it should take minutes. (Later: item 1 is done. See "Update, later the same night" at the top.)

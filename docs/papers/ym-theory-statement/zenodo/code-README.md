@@ -22,6 +22,10 @@ Paths are relative to the archive root, which mirrors the repository (github.com
 | The fast fibre in GIGI: round-sphere law, flat-point equality, b₀, the background | `scripts/gigi_m3_demo.py` | `research/gigi-m3-20261127/result.json` |
 | The Helike doublet figure (introduction) | `scripts/build_lowest_note_doublet.py`; checked by `scripts/check_lowest_note_doublet.py` (run inside the git repository) | `docs/papers/ym-theory-statement/figures/helike-doublet.json` |
 | The cubic-quartic bound for every compact simple group (reduced discreteness) | proof: `docs/research/h7-cubic-quartic-proof-2026-11-27.md`; checks: `scripts/check_h7_cubic_quartic.py` | `research/h7-cubic-quartic-20261127/` |
+| Origin splitting, vacuum floor, inter-well action, charge barrier, group transport (H8 route) | proofs `docs/research/h8-*-2026-11-27.md`; checks `scripts/check_h8_*.py` (run inside the git repository) | see each proof note |
+| Free Wick triangle refuted; four-point coefficient (line 26) | proof `docs/research/h6-wick-triangle-proof-2026-11-27.md`; `scripts/helike_wick_triangle.py`, `scripts/check_h6_*.py` | see the proof note |
+| Independent cross-checks (a different method from each proof) | `python scripts/check_h8_origin_fock.py OUT.json`; `python scripts/check_h6_wick_numeric.py OUT.json` | `research/independent-checks-20261127/` |
+| Small-coupling H8 and switch (a conditional deduction; no code) | `docs/research/h8-small-coupling-switch-deduction-2026-11-27.md` | — |
 | Review and algebra checks (harmonic switch, Hessians, anomaly normalization, receipts) | `python scripts/check_lowest_note_review.py OUT` (run inside the git repository: it reads the paper and stamps its receipt with the revision) | `research/lowest-note-review-20261127/` |
 
 The register of statements, its hypotheses and the referee's coherence report are in

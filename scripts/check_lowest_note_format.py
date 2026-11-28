@@ -19,6 +19,11 @@ BASELINE = 'df949c7a69aae59b873230aabf9ccab7e5821910'
 # Baseline statements match exactly except the two explicitly frozen evidence corrections.
 ADDITIONS = {
     'b:threshold': ('COMPUTED', 2),   # 27 Nov: the kinetic-term threshold, from eq. (dressing) of the baseline
+    'b:origin': ('PROVED', 0),        # 27 Nov: O(g^2) origin splitting folded into point 2
+    'b:vacfloor': ('PROVED', 0),      # 27 Nov: strict vacuum floor
+    'b:smallg': ('CONDITIONAL', 0),   # 27 Nov: small-coupling H8 and switch (deduction, two named inputs)
+    'b:interwell': ('PROVED', 0),     # 27 Nov: exact inter-well action
+    'b:chargetail': ('PROVED', 0),    # 27 Nov: horizontal charge barrier
     'b:cubicquartic': ('PROVED', 0),  # 27 Nov: cited global bound plus homogeneity; H7 stays conjectural
 }
 H7_OLD = r'''Discreteness of the small room for general $G$ needs a cubic--quartic inequality I

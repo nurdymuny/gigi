@@ -140,6 +140,17 @@ The Clay statement rests on **H3, H4′, H6 and H7**, with H2 as the route into 
 
 ## Change log
 
+- **27 Nov, small-coupling H8 and switch (conditional deduction, reduced model).** Two named inputs:
+  (S) the semiclassical harmonic limit per charge sector for wells that are group orbits (Simon 1983 for isolated
+  minima; the orbit case by IMS in slice coordinates), and (M) the background orbit as the minimum set at s = 1.15
+  (supported by S_C's proved outside bound via V = g⁻²V¹(gq)). Then, at t = 3, there is g₀ > 0 such that for
+  0 < g < g₀: H8 holds at s = 1 (gaps → ω_C = 0.7923 vs 2/√3 = 1.1547), and some s* ∈ (1, 1.15) carries an exact
+  crossing (gaps → 1.1067 vs 1.0901 at s = 1.15). Line 18's existence clause gains this small-coupling route without
+  H1. The registered couplings, physical H8 (H2b) and uniqueness of the switch stay open. The seven hypotheses are
+  unchanged. Proof: `docs/research/h8-small-coupling-switch-deduction-2026-11-27.md`. Independent cross-checks of the
+  origin splitting and the Wick results: `scripts/check_h8_origin_fock.py`, `scripts/check_h6_wick_numeric.py`
+  (receipts in `research/independent-checks-20261127/`).
+
 - **27 Nov, charge tail bounded in the reduced model (bounded deduction).** Route Step 2. The
   horizontal barrier |∇W|² ≥ |X_hor|²/t holds at every q (every rank stratum, both sheets), every g,
   every compact simple metric colour algebra: rotating colour about X1 by g√t X1 gives

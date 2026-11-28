@@ -78,6 +78,34 @@ for $t>1$ is the other well's ground state, not one competitor quantum above tha
 to equal $\omega_C$ because $\operatorname{tr}\nabla^2W=3S$. Those are equal numbers but different states.
 Finite-$g$ H8 still needs controlled remainders; the supporting H8 note explicitly leaves the registered couplings open.
 
+Point 2 now holds one order further in the reduced model. At the zero-field well the two candidates tie at harmonic
+order, and second order splits them in the scalar's favour.
+
+\begin{claim}{PROVED}{Through second order the scalar stays below Helike at the origin}\label{b:origin}
+In the unsourced reduced model ($s=1$, $t>1$, every compact simple colour algebra), write $\kappa_{\rm ad}$ for the
+adjoint Casimir in the model's normalization ($\kappa_{\rm ad}=2$ for $SU(2)$). The charge-$\pm2$ pair at the
+zero-field well stays at excitation $2/\sqrt t$ to every order: on $e^{-W}$ the perturbation is
+$-\nabla\det q\cdot\nabla$, and cofactor expansion along rows 2 and 3 annihilates both members of the pair. The
+charge-0 two-quantum level moves by $-2\kappa_{\rm ad}(1+1/t)\,g^2$, which is $-\tfrac{16}{3}g^2$ for $SU(2)$ at $t=3$.
+Quasimodes place spectrum within $O(g^3)$ of these values; counting and assignment to this well use the cited
+localization.
+\evidence{Proof with exact $SU(2)$ and $SU(3)$ checks and Lean declarations: \texttt{h8-origin-splitting-proof}. An
+independent Rayleigh--Schr\"odinger calculation in a Fock basis reproduces $-2\kappa_{\rm ad}(1+1/t)$ at
+$t=1.5,2,3,5$ and a zero shift for the pair (\texttt{check\_h8\_origin\_fock.py})~\cite{ClosedSet}.}
+\lines{18}
+\end{claim}
+
+So both charge-0 candidates in the reduced model, the other well's ground state at $\omega_C$ and the origin's
+breathing level, lie below Helike's pair through $O(g^2)$. The vacuum itself sits strictly above its harmonic floor.
+
+\begin{claim}{PROVED}{The vacuum lies strictly above the floor}\label{b:vacfloor}
+For the unsourced reduced operator, every $t>0$, $g>0$ and compact simple colour algebra of dimension $n$:
+$E_0>nS/2$. Equality would need the state to be a multiple of $e^{-W}$, and $e^{-W}=e^{-W_0+g\det q}$ is not
+normalizable on the cone where the cubic wins. At $g=0$ the Gaussian attains the floor.
+\evidence{From the exact factorization $H-nS/2=\tfrac12\sum a_i^*a_i$: \texttt{h8-vacuum-floor-proof}~\cite{ClosedSet}.}
+\lines{8, 9}
+\end{claim}
+
 \spine{3} Tensor and scalar trade places at a calculable point. Turn the sources on ($s>1$): Helike's frequency
 $\omega_H(s)^2=2s(1+2/t-s)$ falls toward the competitor's, and the order reverses.
 
@@ -108,6 +136,21 @@ No uniqueness of the switch or exclusion of other carriers follows from this arg
 \lines{18, 12}
 \end{claim}
 
+At small enough coupling both brackets are supplied by the harmonic limits themselves, so the switch need not wait for
+H1 there.
+
+\begin{claim}{CONDITIONAL}{At small coupling, H8 holds and a switch exists}\label{b:smallg}
+At $t=3$ in the undressed reduced model there is $g_0>0$ such that for $0<g<g_0$ the lowest excitation at $s=1$
+has charge 0, and some $s^*\in(1,1.15)$ carries an exact crossing of the second charge-0 level with the lowest
+charge-$\pm2$ level. As $g\to0$ the two gaps tend to $\omega_C=0.7923$ and $2/\sqrt3=1.1547$ at $s=1$, and to
+$1.1067$ and $1.0901$ at $s=1.15$. Continuity in $s$ (Statement~\ref{b:bridge}) and the intermediate value theorem do
+the rest. Any switch at small coupling lies near the harmonic root $s_0^*=1.1436$; uniqueness is not claimed.
+\evidence{Conditional on two named inputs: the semiclassical harmonic limit per charge sector for wells that are group
+orbits~\cite{Simon83}, and the background orbit as the minimum set at $s=1.15$, supported by the proved outside bound
+of $S_C$ through the scaling $V=g^{-2}V^1(gq)$. Deduction: \texttt{h8-small-coupling-switch-deduction}~\cite{ClosedSet}.}
+\lines{18, 19}
+\end{claim}
+
 The sources are scaffolding; the physical room has none. Their removal is continuous within the reduced operator,
 but does not by itself restore the full gauge identifications or justify the fast-mode approximation.
 
@@ -134,6 +177,19 @@ for that two-well model only; it is not a budget for the physically degenerate p
 \lines{18, 16}
 \end{claim}
 
+Every non-zero charge also pays a geometric price, which turns the charge competition into a finite list.
+
+\begin{claim}{PROVED}{Each unit of charge pays a horizontal toll}\label{b:chargetail}
+At every field (every rank stratum, both determinant sheets), every $g$ and every compact simple colour algebra,
+$|\nabla W|^2\ge|X_{\rm hor}|^2/t$, where $X_{\rm hor}$ is the circle generator with its colour-gauge part removed.
+The bound is sharp. With the zero-point inequality it gives $\inf\operatorname{spec}H|_m\ge\sigma+m^2/(4t\sigma)$,
+$\sigma=nS/2$. At $t=3$, a certified upper bound below $5.2731$ on the second charge-0 eigenvalue would exclude
+every $|m|\ge7$; that upper bound is not yet established.
+\evidence{An exact identity after rotating colour about $X_1$: \texttt{h8-charge-tail-proof}, with exact $SU(2)$ and
+$SU(3)$ checks and Lean declarations~\cite{ClosedSet}.}
+\lines{18}
+\end{claim}
+
 \textbf{Theta and tunnelling.} The degree-one gauge map shifts the Chern--Simons number by one, so the vacuum angle
 $\theta$ is a Bloch phase~\cite{JackiwRebbi76,CallanDashenGross76}, and tunnelling between windings is set by the Agmon
 distance~\cite{Agmon82,Simon83}.
@@ -147,6 +203,19 @@ off-resonant shifts may be second order in it, while a resonant avoided-crossing
 \evidence{The analogue of the instanton bound $8\pi^2|\Delta CS|/g^2$~\cite{BPST75,tHooft76}; the upper bound is the
 straight path~\cite{ClosedSet}.}
 \lines{18, 19}
+\end{claim}
+
+The lower end of that interval is attained: the gradient line exists.
+
+\begin{claim}{PROVED}{The inter-well action is exactly the Chern--Simons step}\label{b:interwell}
+For the unsourced reduced potential and every $t>0$, the inward gradient branch in $\mathrm{diag}(x,y,y)$ joins the
+winding-one orbit to zero field, with the inherited metric $dx^2+2\,dy^2$. Its action is exactly $d=1/(2\sqrt t)$ in
+$p=gq$ variables, so the Bogomolny bound of Statement~\ref{b:agmon} is sharp. The straight path exceeds it by
+$d_{\rm line}^2-d^2=(1-1/t)^2/18$. Through each injective $\mathfrak{su}(2)$ embedding the path extends to every
+compact simple colour algebra, and extra colour directions cannot lower the action to that endpoint orbit.
+\evidence{\texttt{h8-interwell-proof} and \texttt{h8-group-transport-proof}; Lean checks the local algebra and
+calculus~\cite{ClosedSet}.}
+\lines{8, 18}
 \end{claim}
 
 I conjecture that theta barely moves the note, $|\Delta(\theta)-\Delta(0)|\le C\,e^{-8\pi^2/g^2}$ by tight binding over

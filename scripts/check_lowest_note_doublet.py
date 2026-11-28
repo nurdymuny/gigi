@@ -18,6 +18,9 @@ from lowest_note_wick_amendment import amend_wick_statements, amend_wick_text
 ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT/'docs/papers/ym-theory-statement'
 BASELINE = '1d7ce3e77cc5df8782b5080d93ad25225cfdcc63'
+# Statements added after this check was written, each named with its status; every other statement stays pinned.
+LATER_ADDITIONS = {'b:origin': 'PROVED', 'b:vacfloor': 'PROVED', 'b:smallg': 'CONDITIONAL',
+                   'b:interwell': 'PROVED', 'b:chargetail': 'PROVED'}
 
 
 def validate_data(data):
@@ -112,8 +115,10 @@ class Document(unittest.TestCase):
         after = '\n'.join(p.read_text(encoding='utf-8') for p in sorted((PAPER/'sections').glob('*.tex')))
         current = statements(after)
         self.assertEqual(current.pop('b:cubicquartic')[0], 'PROVED')
+        for label, status in LATER_ADDITIONS.items():
+            self.assertEqual(current.pop(label)[0], status)
         self.assertEqual(amend_wick_statements(amended_h7_baseline(statements(before))),current)
-        self.assertEqual(len(statements(after)),48)
+        self.assertEqual(len(statements(after)),48+len(LATER_ADDITIONS))
         self.assertFalse(mathematics(amend_wick_text(before))-mathematics(after))
 
 

@@ -1,0 +1,7 @@
+{
+ "max_relative_triangle": 1.2918376515124484e-14,
+ "four_point": 0.0026386631391763595,
+ "four_point_exact": 0.002638663139176361,
+ "four_point_relative_error": 4.93068852808819e-16,
+ "pass": true
+}
